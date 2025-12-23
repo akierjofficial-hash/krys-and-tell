@@ -1259,13 +1259,61 @@
         html[data-theme="dark"] .receipt-container i {
             color: #ffffff !important;
         }
+        /* ===== Mobile Responsive Sidebar Drawer (Staff) ===== */
+.side-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 1999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+}
+.side-overlay.show{
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.menu-toggle{
+    display:none;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid var(--kt-border);
+    background: var(--kt-surface);
+    box-shadow: var(--kt-shadow);
+    place-items:center;
+    cursor:pointer;
+}
+
+@media (max-width: 900px){
+    .menu-toggle{ display:grid; }
+
+    .sidebar{
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100dvh;
+        z-index: 2000;
+        transform: translateX(-105%);
+        transition: transform .18s ease;
+    }
+    .sidebar.open{ transform: translateX(0); }
+
+    .content{ padding: 14px; }
+}
+
     </style>
 </head>
 
 <body>
 <div class="layout">
+
+    <!-- mobile overlay -->
+    <div class="side-overlay" id="sideOverlay"></div>
+
     <!-- SIDEBAR -->
-    <div class="sidebar">
+    <div class="sidebar" id="staffSidebar">
         <div class="brand">
             <div class="brand-left">
                 <div class="logo">
@@ -1317,34 +1365,64 @@
 
     <!-- CONTENT -->
     <div class="content app-content">
+        <!-- mobile menu button (SAME PATTERN AS ADMIN) -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <button class="menu-toggle" id="menuToggle" type="button" title="Menu">
+                <i class="fa fa-bars"></i>
+            </button>
+            <div></div>
+        </div>
+
         @yield('content')
     </div>
 </div>
 
 <script>
-    (function () {
-        const html = document.documentElement;
-        const btn = document.getElementById('themeToggle');
-        const icon = document.getElementById('themeIcon');
+(function () {
+    // theme
+    const html = document.documentElement;
+    const btnTheme  = document.getElementById('themeToggle');
+    const icon = document.getElementById('themeIcon');
 
-        function applyTheme(theme) {
-            html.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
+    function applyTheme(theme){
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
 
-            if (icon) {
-                icon.classList.remove('fa-moon', 'fa-sun');
-                icon.classList.add(theme === 'dark' ? 'fa-sun' : 'fa-moon');
-            }
+        if (icon) {
+            icon.classList.remove('fa-moon', 'fa-sun');
+            icon.classList.add(theme === 'dark' ? 'fa-sun' : 'fa-moon');
         }
+    }
 
-        const saved = localStorage.getItem('theme') || 'light';
-        applyTheme(saved);
+    const saved = localStorage.getItem('theme') || 'light';
+    applyTheme(saved);
 
-        btn?.addEventListener('click', function () {
-            const next = (html.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
-            applyTheme(next);
-        });
-    })();
+    btnTheme?.addEventListener('click', function () {
+        const next = (html.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+        applyTheme(next);
+    });
+
+    // sidebar drawer (mobile) — SAME AS ADMIN
+    const side = document.getElementById('staffSidebar');
+    const overlay = document.getElementById('sideOverlay');
+    const btnMenu = document.getElementById('menuToggle');
+
+    function closeSidebar(){
+        side?.classList.remove('open');
+        overlay?.classList.remove('show');
+    }
+
+    btnMenu?.addEventListener('click', () => {
+        side?.classList.toggle('open');
+        overlay?.classList.toggle('show');
+    });
+
+    overlay?.addEventListener('click', closeSidebar);
+
+    window.addEventListener('resize', () => {
+        if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
+    });
+})();
 </script>
 
 </body>
