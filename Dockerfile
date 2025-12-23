@@ -15,3 +15,6 @@ ENV LOG_CHANNEL stderr
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
 CMD ["/start.sh"]
+
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
