@@ -11,7 +11,9 @@ composer install --no-dev --optimize-autoloader
 php artisan optimize:clear || true
 
 # Run migrations
-php artisan migrate --force || true
+php artisan migrate --force
+php artisan db:seed --force
+
 
 # Rebuild caches
 php artisan config:cache || true
