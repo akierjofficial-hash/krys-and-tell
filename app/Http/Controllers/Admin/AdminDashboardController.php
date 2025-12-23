@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\InstallmentPlan;
 use App\Models\InstallmentPayment;
 use App\Models\VisitProcedure;
+use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -29,26 +30,38 @@ class AdminDashboardController extends Controller
 
         $installmentIncomeThisMonth = InstallmentPayment::whereBetween('payment_date', [$start, $end])->sum('amount');
 
-        // If your installment plan downpayment is considered received upon creation/start_date:
         $downpaymentsThisMonth = InstallmentPlan::whereBetween('start_date', [$start, $end])->sum('downpayment');
 
-        $totalIncomeThisMonth = (float)$cashIncomeThisMonth + (float)$installmentIncomeThisMonth + (float)$downpaymentsThisMonth;
+        $totalIncomeThisMonth = (float) $cashIncomeThisMonth
+            + (float) $installmentIncomeThisMonth
+            + (float) $downpaymentsThisMonth;
 
+        // ✅ this counts performed procedures (visit_procedures rows this month)
         $proceduresThisMonth = VisitProcedure::whereHas('visit', function ($q) use ($start, $end) {
             $q->whereBetween('visit_date', [$start, $end]);
         })->count();
 
+        // ✅ this counts ALL services (what you expected to be 17)
+        $servicesTotal = Service::count();
+
         // Charts
         $patientsByAge = $this->patientsByAgeBuckets();
 
-        $proceduresByService = VisitProcedure::select('services.name as name', DB::raw('COUNT(*) as total'))
-            ->join('services', 'services.id', '=', 'visit_procedures.service_id')
-            ->join('visits', 'visits.id', '=', 'visit_procedures.visit_id')
-            ->whereBetween('visits.visit_date', [$start, $end])
-            ->groupBy('services.name')
-            ->orderByDesc('total')
-            ->limit(6)
-            ->get();
+        // ✅ include all services even if 0 used this month
+        $proceduresByService = Service::query()
+            ->leftJoin('visit_procedures', 'visit_procedures.service_id', '=', 'services.id')
+            ->leftJoin('visits', function ($join) use ($start, $end) {
+                $join->on('visits.id', '=', 'visit_procedures.visit_id')
+                    ->whereBetween('visits.visit_date', [$start, $end]);
+            })
+            ->groupBy('services.id', 'services.name', 'services.created_at')
+            ->orderByDesc(DB::raw('COUNT(visit_procedures.id)'))
+            ->orderByDesc('services.created_at')
+            ->limit(20)
+            ->get([
+                'services.name as name',
+                DB::raw('COUNT(visit_procedures.id) as total'),
+            ]);
 
         // Nearest appointments table
         $nearestAppointments = Appointment::with(['patient', 'service'])
@@ -64,11 +77,15 @@ class AdminDashboardController extends Controller
             'appointmentsThisMonth' => $appointmentsThisMonth,
             'newPatientsThisMonth'  => $newPatientsThisMonth,
             'totalIncomeThisMonth'  => $totalIncomeThisMonth,
+
+            // keep this for real procedure count
             'proceduresThisMonth'   => $proceduresThisMonth,
+
+            // ✅ add this for total services count
+            'servicesTotal'         => $servicesTotal,
 
             'patientsByAge'         => $patientsByAge,
             'proceduresByService'   => $proceduresByService,
-
             'nearestAppointments'   => $nearestAppointments,
         ]);
     }
