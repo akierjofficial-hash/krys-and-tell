@@ -356,13 +356,13 @@
 
         <div class="kpi green">
             <div class="kpi-left">
-                <div class="kpi-k">Procedures</div>
-                <div class="kpi-v">{{ $proceduresThisMonth ?? 0 }}</div>
-                <div class="kpi-sub"><i class="fa fa-tooth"></i> {{ $range }}</div>
+                <div class="kpi-k">Services</div>
+                <div class="kpi-v">{{ $servicesTotal ?? 0 }}</div>
+                <div class="kpi-sub"><i class="fa fa-tooth"></i> Total</div>
             </div>
             <div class="kpi-ico ico-green"><i class="fa fa-tooth"></i></div>
         </div>
-    </div>
+    </div> {{-- ✅ IMPORTANT: close kpi-grid --}}
 
     {{-- CHARTS --}}
     <div class="charts">
@@ -427,7 +427,6 @@
                         $dateLabel   = $a->appointment_date ? \Carbon\Carbon::parse($a->appointment_date)->format('m.d.Y') : '—';
                         $timeLabel   = $a->appointment_time ? \Carbon\Carbon::parse($a->appointment_time)->format('g:i a') : '—';
 
-                        // ✅ Service color (if you added services.color)
                         $procColor = $a->service->color ?? '#64748b';
                     @endphp
                     <tr>
@@ -519,7 +518,6 @@
             }
         });
 
-        // Apply nicer bar fill after chart exists (keeps it theme-safe)
         const ctx = document.getElementById('ageChart').getContext('2d');
         const grad = ctx.createLinearGradient(0, 0, 0, 260);
         grad.addColorStop(0, 'rgba(59,130,246,.85)');
@@ -527,7 +525,7 @@
         ageChart.data.datasets[0].backgroundColor = grad;
         ageChart.update();
 
-        // Procedures chart (doughnut) – keep colors (service color if provided, else stable)
+        // Procedures chart (doughnut)
         const colors = procRows.map(r => r.color || hashColor(r.name || 'Service'));
 
         procChart = new Chart(document.getElementById('procChart'), {
