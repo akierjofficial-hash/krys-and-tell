@@ -1332,25 +1332,31 @@
         </div>
 
         <div class="sidebar-menu">
-            <a href="/dashboard" class="{{ request()->is('dashboard') ? 'active' : '' }}">
-                <i class="fa fa-chart-line"></i> Dashboard
-            </a>
-            <a href="/patients" class="{{ request()->is('patients*') ? 'active' : '' }}">
-                <i class="fa fa-users"></i> Patients
-            </a>
-            <a href="/visits" class="{{ request()->is('visits*') ? 'active' : '' }}">
-                <i class="fa fa-calendar-check"></i> Visits
-            </a>
-            <a href="/payments" class="{{ request()->is('payments*') ? 'active' : '' }}">
-                <i class="fa fa-money-bill"></i> Payments
-            </a>
-            <a href="/appointments" class="{{ request()->is('appointments*') ? 'active' : '' }}">
-                <i class="fa fa-calendar-days"></i> Appointments
-            </a>
-            <a href="/services" class="{{ request()->is('services*') ? 'active' : '' }}">
-                <i class="fa fa-gear"></i> Services
-            </a>
-        </div>
+    <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+        <i class="fa fa-chart-line"></i> Dashboard
+    </a>
+
+    <a href="{{ route('patients.index') }}" class="{{ request()->routeIs('patients.*') ? 'active' : '' }}">
+        <i class="fa fa-users"></i> Patients
+    </a>
+
+    <a href="{{ route('visits.index') }}" class="{{ request()->routeIs('visits.*') ? 'active' : '' }}">
+        <i class="fa fa-calendar-check"></i> Visits
+    </a>
+
+    <a href="{{ route('payments.index') }}" class="{{ request()->routeIs('payments.*') ? 'active' : '' }}">
+        <i class="fa fa-money-bill"></i> Payments
+    </a>
+
+    <a href="{{ route('appointments.index') }}" class="{{ request()->routeIs('appointments.*') ? 'active' : '' }}">
+        <i class="fa fa-calendar-days"></i> Appointments
+    </a>
+
+    <a href="{{ route('services.index') }}" class="{{ request()->routeIs('services.*') ? 'active' : '' }}">
+        <i class="fa fa-gear"></i> Services
+    </a>
+</div>
+
 
         <div class="sidebar-footer">
             <form method="POST" action="{{ route('logout') }}">

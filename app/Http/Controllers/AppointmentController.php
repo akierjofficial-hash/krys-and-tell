@@ -14,9 +14,10 @@ class AppointmentController extends Controller
 {
     public function index()
     {
-        $appointments = Appointment::with(['patient', 'service'])
-            ->latest('id')
-            ->paginate(15);
+       $appointments = \App\Models\Appointment::with(['patient', 'service', 'doctor'])
+    ->latest()
+    ->paginate(10);
+
 
         return view('appointments.index', compact('appointments'));
     }
