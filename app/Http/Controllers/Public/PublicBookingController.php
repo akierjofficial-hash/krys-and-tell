@@ -202,22 +202,21 @@ class PublicBookingController extends Controller
 
     /**
      * If column is NOT NULL and has no default -> require it, else optional
+     * ✅ Driver-aware (MySQL/Postgres/SQLite) so Render(Postgres) won't 500.
      */
     private function rulesIfRequiredColumn(string $table, string $column, array $baseRules): array
     {
         if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) return [];
 
-        $info = DB::selectOne("
-            SELECT IS_NULLABLE as is_nullable, COLUMN_DEFAULT as col_default
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-              AND table_name = ?
-              AND column_name = ?
-            LIMIT 1
-        ", [$table, $column]);
+        $info = $this->columnInfo($table, $column);
 
-        $nullable = isset($info->is_nullable) && strtoupper($info->is_nullable) === 'YES';
-        $hasDefault = isset($info->col_default) && $info->col_default !== null;
+        // If we can't read info, be safe: optional
+        if (!$info) {
+            return [$column => array_merge(['nullable'], $baseRules)];
+        }
+
+        $nullable = $info['nullable'];
+        $hasDefault = $info['has_default'];
 
         if (!$nullable && !$hasDefault) {
             return [$column => array_merge(['required'], $baseRules)];
@@ -233,22 +232,94 @@ class PublicBookingController extends Controller
         $input = trim((string) $input);
         if ($input !== '') return $input;
 
-        $info = DB::selectOne("
-            SELECT IS_NULLABLE as is_nullable, COLUMN_DEFAULT as col_default
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-              AND table_name = ?
-              AND column_name = ?
-            LIMIT 1
-        ", [$table, $column]);
+        $info = $this->columnInfo($table, $column);
 
-        $nullable = isset($info->is_nullable) && strtoupper($info->is_nullable) === 'YES';
-        $default = $info->col_default ?? null;
+        // If we can't read info, just use fallback (safe for required columns)
+        if (!$info) {
+            return $fallback;
+        }
 
-        if ($nullable) return null;
-        if ($default !== null) return (string) $default;
+        if ($info['nullable']) return null;
+        if ($info['default'] !== null) return (string) $info['default'];
 
         return $fallback;
+    }
+
+    /**
+     * Returns: ['nullable'=>bool, 'default'=>mixed, 'has_default'=>bool]
+     * Supports mysql / pgsql / sqlite
+     */
+    private function columnInfo(string $table, string $column): ?array
+    {
+        $driver = DB::getDriverName();
+
+        // PostgreSQL (Render)
+        if ($driver === 'pgsql') {
+            $row = DB::selectOne(
+                "select is_nullable, column_default
+                 from information_schema.columns
+                 where table_schema = current_schema()
+                   and table_name = ?
+                   and column_name = ?
+                 limit 1",
+                [$table, $column]
+            );
+
+            if (!$row) return null;
+
+            $nullable = isset($row->is_nullable) && strtoupper($row->is_nullable) === 'YES';
+            $default = $row->column_default ?? null;
+
+            return [
+                'nullable' => $nullable,
+                'default' => $default,
+                'has_default' => $default !== null,
+            ];
+        }
+
+        // MySQL / MariaDB
+        if ($driver === 'mysql') {
+            $row = DB::selectOne(
+                "select IS_NULLABLE as is_nullable, COLUMN_DEFAULT as column_default
+                 from information_schema.columns
+                 where table_schema = DATABASE()
+                   and table_name = ?
+                   and column_name = ?
+                 limit 1",
+                [$table, $column]
+            );
+
+            if (!$row) return null;
+
+            $nullable = isset($row->is_nullable) && strtoupper($row->is_nullable) === 'YES';
+            $default = $row->column_default ?? null;
+
+            return [
+                'nullable' => $nullable,
+                'default' => $default,
+                'has_default' => $default !== null,
+            ];
+        }
+
+        // SQLite
+        if ($driver === 'sqlite') {
+            $rows = DB::select("PRAGMA table_info($table)");
+            foreach ($rows as $r) {
+                if ($r->name === $column) {
+                    $nullable = ((int) $r->notnull) !== 1;
+                    $default = $r->dflt_value ?? null;
+
+                    return [
+                        'nullable' => $nullable,
+                        'default' => $default,
+                        'has_default' => $default !== null,
+                    ];
+                }
+            }
+            return null;
+        }
+
+        return null;
     }
 
     private function upsertPatient(string $fullName, string $email, string $contact, ?string $gender, ?string $birthdate): ?int
