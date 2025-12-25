@@ -332,7 +332,7 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('visits.create') }}" class="add-btn">
+        <a href="{{ route('staff.visits.create') }}" class="add-btn">
             <i class="fa fa-plus"></i> Add Visit
         </a>
     </div>
@@ -412,15 +412,15 @@
 
                         <td class="text-end">
                             <div class="action-pills">
-                                <a href="{{ route('visits.edit', $visit->id) }}" class="pill pill-edit">
+                                <a href="{{ route('staff.visits.edit', $visit->id) }}" class="pill pill-edit">
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
-                                <a href="{{ route('visits.show', $visit->id) }}" class="pill pill-view">
+                                <a href="{{ route('staff.visits.show', $visit->id) }}" class="pill pill-view">
                                     <i class="fa fa-eye"></i> View
                                 </a>
 
-                                <form action="{{ route('visits.destroy', $visit->id) }}"
+                                <form action="{{ route('staff.visits.destroy', $visit->id) }}"
                                       method="POST"
                                       style="display:inline;"
                                       onsubmit="return confirm('Delete this visit?');">

@@ -177,7 +177,7 @@
         <p class="subtitle">Choose a visit or appointment, then set downpayment and payment term.</p>
     </div>
 
-    <a href="{{ route('payments.choose') }}" class="btn-ghostx">
+    <a href="{{ route('staff.payments.choose') }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Plan
     </a>
 </div>
@@ -200,7 +200,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('payments.store.installment') }}" method="POST">
+        <form action="{{ route('staff.payments.store.installment') }}" method="POST">
             @csrf
 
             <div class="row g-3">
@@ -245,17 +245,34 @@
                     <select name="appointment_id" id="appointmentSelect" class="selectx">
                         <option value="">-- Select Appointment --</option>
                         @foreach($appointments as $app)
-                            <option value="{{ $app->id }}"
-                                data-type="appointment"
-                                data-treatments="{{ $app->service?->name }}"
-                                data-amount="{{ $app->service?->base_price ?? 0 }}"
-                                {{ old('appointment_id') == $app->id ? 'selected' : '' }}
-                            >
-                                Appointment - {{ $app->patient?->first_name }} {{ $app->patient?->last_name }}
-                                ({{ \Carbon\Carbon::parse($app->appointment_date)->format('m/d/Y') }}
-                                {{ \Carbon\Carbon::parse($app->appointment_time)->format('h:i A') }})
-                            </option>
-                        @endforeach
+    @php
+        $pFirst = $app->patient?->first_name ?? $app->public_first_name ?? '';
+        $pLast  = $app->patient?->last_name  ?? $app->public_last_name  ?? '';
+        $pName  = trim($pFirst.' '.$pLast) ?: ($app->public_name ?? 'Patient');
+
+        $svcName  = $app->service?->name ?? '—';
+        $svcPrice = $app->service?->base_price ?? 0;
+
+        $dateLabel = $app->appointment_date
+            ? \Carbon\Carbon::parse($app->appointment_date)->format('m/d/Y')
+            : '—';
+
+        $timeLabel = $app->appointment_time
+            ? \Carbon\Carbon::parse($app->appointment_time)->format('h:i A')
+            : '—';
+    @endphp
+
+    <option value="{{ $app->id }}"
+        data-type="appointment"
+        data-treatments="{{ $svcName }}"
+        data-amount="{{ $svcPrice }}"
+        {{ old('appointment_id') == $app->id ? 'selected' : '' }}
+    >
+        Appointment - {{ $pName }}
+        ({{ $dateLabel }} {{ $timeLabel }})
+    </option>
+@endforeach
+
                     </select>
                     <div class="helper">Or select an appointment instead.</div>
                 </div>
@@ -301,7 +318,7 @@
                         <i class="fa fa-check"></i> Create Installment Plan
                     </button>
 
-                    <a href="{{ route('payments.choose') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.payments.choose') }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

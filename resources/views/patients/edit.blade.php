@@ -157,7 +157,7 @@
         <p class="subtitle">Update the patient’s information below.</p>
     </div>
 
-    <a href="{{ route('patients.index') }}" class="btn-ghostx">
+    <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Patients
     </a>
 </div>
@@ -180,7 +180,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('patients.update', $patient->id) }}" method="POST">
+        <form action="{{ route('staff.patients.update', $patient->id) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -242,7 +242,7 @@
                         <i class="fa fa-check"></i> Update Patient
                     </button>
 
-                    <a href="{{ route('patients.index') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

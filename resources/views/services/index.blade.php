@@ -297,7 +297,7 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('services.create') }}" class="add-btn">
+        <a href="{{ route('staff.services.create') }}" class="add-btn">
             <i class="fa fa-plus"></i> Add Service
         </a>
     </div>
@@ -365,11 +365,11 @@
 
                         <td class="text-end">
                             <div class="action-pills">
-                                <a href="{{ route('services.edit', $service) }}" class="pill pill-edit">
+                                <a href="{{ route('staff.services.edit', $service) }}" class="pill pill-edit">
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
-                                <form action="{{ route('services.destroy', $service) }}"
+                                <form action="{{ route('staff.services.destroy', $service) }}"
                                       method="POST"
                                       style="display:inline;"
                                       onsubmit="return confirm('Delete this service?');">

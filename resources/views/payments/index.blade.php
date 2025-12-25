@@ -360,7 +360,7 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('payments.choose') }}" class="add-btn">
+        <a href="{{ route('staff.payments.choose') }}" class="add-btn">
             <i class="fa fa-plus"></i> Add Payment
         </a>
     </div>
@@ -448,14 +448,14 @@
 
                     <td class="text-end">
                         <div class="action-pills">
-                            <a href="{{ route('payments.edit', $payment->id) }}" class="pill pill-edit">
+                            <a href="{{ route('staff.payments.edit', $payment->id) }}" class="pill pill-edit">
                                 <i class="fa fa-pen"></i> Edit
                             </a>
-                            <a href="{{ route('payments.show', $payment->id) }}" class="pill pill-view">
+                            <a href="{{ route('staff.payments.show', $payment->id) }}" class="pill pill-view">
                                 <i class="fa fa-receipt"></i> Receipt
                             </a>
 
-                            <form action="{{ route('payments.destroy', $payment->id) }}" method="POST" style="display:inline;"
+                            <form action="{{ route('staff.payments.destroy', $payment->id) }}" method="POST" style="display:inline;"
                                   onsubmit="return confirm('Delete this payment?');">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="pill pill-del">
@@ -560,20 +560,20 @@
                     <td class="text-end">
                         <div class="action-pills">
                             @if(!$isPaid)
-                                <a href="{{ route('installments.pay', $plan->id) }}" class="pill pill-pay">
+                                <a href="{{ route('staff.installments.pay', $plan->id) }}" class="pill pill-pay">
                                     <i class="fa fa-circle-dollar-to-slot"></i> Pay
                                 </a>
                             @endif
 
-                            <a href="{{ route('installments.edit', $plan->id) }}" class="pill pill-edit">
+                            <a href="{{ route('staff.installments.edit', $plan->id) }}" class="pill pill-edit">
                                 <i class="fa fa-pen"></i> Edit
                             </a>
 
-                            <a href="{{ route('installments.show', $plan->id) }}" class="pill pill-view">
+                            <a href="{{ route('staff.installments.show', $plan->id) }}" class="pill pill-view">
                                 <i class="fa fa-receipt"></i> Receipt
                             </a>
 
-                            <form action="{{ route('installments.destroy', $plan) }}" method="POST" style="display:inline;"
+                            <form action="{{ route('staff.installments.destroy', $plan) }}" method="POST" style="display:inline;"
                                   onsubmit="return confirm('Delete this installment plan?');">
                                 @csrf
                                 @method('DELETE')

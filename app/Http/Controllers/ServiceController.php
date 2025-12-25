@@ -34,7 +34,7 @@ class ServiceController extends Controller
             'description'        => $validated['description'] ?? null,      // ✅ FIXED
         ]);
 
-        return redirect()->route('services.index')->with('success', 'Service added successfully!');
+        return redirect()->route('staff.services.index')->with('success', 'Service added successfully!');
     }
 
     public function edit(Service $service)
@@ -58,12 +58,12 @@ class ServiceController extends Controller
             'description'        => $validated['description'] ?? null,      // ✅ FIXED
         ]);
 
-        return redirect()->route('services.index')->with('success', 'Service updated successfully!');
+        return redirect()->route('staff.services.index')->with('success', 'Service updated successfully!');
     }
 
     public function destroy(Service $service)
     {
         $service->delete();
-        return redirect()->route('services.index')->with('success', 'Service deleted successfully!');
+        return redirect()->route('staff.services.index')->with('success', 'Service deleted successfully!');
     }
 }

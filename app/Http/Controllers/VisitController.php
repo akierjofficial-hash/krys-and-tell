@@ -68,7 +68,7 @@ class VisitController extends Controller
             ]);
         }
 
-        return redirect()->route('visits.index')
+        return redirect()->route('staff.visits.index')
             ->with('success', 'Visit created successfully.');
     }
 
@@ -143,13 +143,13 @@ class VisitController extends Controller
             ]);
         }
 
-        return redirect()->route('visits.index')
+        return redirect()->route('staff.visits.index')
             ->with('success', 'Visit updated successfully!');
     }
 
     public function destroy(Visit $visit)
     {
         $visit->delete();
-        return redirect()->route('visits.index')->with('success', 'Visit deleted successfully!');
+        return redirect()->route('staff.visits.index')->with('success', 'Visit deleted successfully!');
     }
 }

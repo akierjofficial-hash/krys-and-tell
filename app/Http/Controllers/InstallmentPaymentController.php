@@ -56,7 +56,7 @@ class InstallmentPaymentController extends Controller
         });
 
         return redirect()
-            ->route('installments.show', $plan->id)
+            ->route('staff.installments.show', $plan->id)
             ->with('success', 'Installment payment recorded successfully.');
     }
     

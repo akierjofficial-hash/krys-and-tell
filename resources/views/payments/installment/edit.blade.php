@@ -124,7 +124,7 @@
         <p class="subtitle">Update the editable details of this installment plan.</p>
     </div>
 
-    <a href="{{ route('payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
+    <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back
     </a>
 </div>
@@ -140,7 +140,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('installments.update', $plan) }}" method="POST">
+        <form action="{{ route('staff.installments.update', $plan) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -214,7 +214,7 @@
                         <i class="fa fa-check"></i> Update Plan
                     </button>
 
-                    <a href="{{ route('payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
+                    <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
                         Cancel
                     </a>
                 </div>

@@ -157,7 +157,7 @@
         <p class="subtitle">Update the details of this payment below.</p>
     </div>
 
-    <a href="{{ route('payments.index') }}" class="btn-ghostx">
+    <a href="{{ route('staff.payments.index') }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Payments
     </a>
 </div>
@@ -180,7 +180,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('payments.update', $payment) }}" method="POST">
+        <form action="{{ route('staff.payments.update', $payment) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -236,7 +236,7 @@
                         <i class="fa fa-check"></i> Update Payment
                     </button>
 
-                    <a href="{{ route('payments.index') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.payments.index') }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

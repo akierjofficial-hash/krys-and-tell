@@ -630,7 +630,7 @@ html[data-theme="dark"] .fc .fc-event{
 
                             <div class="mt-2 d-flex gap-2">
                                 <a href="{{ $o['url'] ?? '#' }}" class="btn btn-sm btn-outline-primary" style="border-radius:12px;font-weight:900;">View</a>
-                                <a href="{{ route('payments.index', ['tab' => 'installment']) }}" class="btn btn-sm btn-primary" style="border-radius:12px;font-weight:900;">Go to Payments</a>
+                                <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn btn-sm btn-primary" style="border-radius:12px;font-weight:900;">Go to Payments</a>
                             </div>
                         </div>
                     @empty
@@ -667,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function () {
         slotMinTime: "08:00:00",
         slotMaxTime: "19:00:00",
 
-        events: "{{ route('dashboard.calendar.events') }}",
+        events: "{{ route('staff.dashboard.calendar.events') }}",
 
         eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
 

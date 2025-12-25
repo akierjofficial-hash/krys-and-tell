@@ -152,7 +152,7 @@
         <p class="subtitle">Update the details of this appointment.</p>
     </div>
 
-    <a href="{{ route('appointments.index') }}" class="btn-ghostx">
+    <a href="{{ route('staff.appointments.index') }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Appointments
     </a>
 </div>
@@ -179,7 +179,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('appointments.update', $appointment) }}" method="POST">
+        <form action="{{ route('staff.appointments.update', $appointment) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -267,7 +267,7 @@
                     <button type="submit" class="btn-warnx">
                         <i class="fa fa-check"></i> Update Appointment
                     </button>
-                    <a href="{{ route('appointments.index') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.appointments.index') }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

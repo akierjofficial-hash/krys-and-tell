@@ -245,11 +245,11 @@
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{{ route('patients.index') }}" class="btn-ghostx">
+        <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
             <i class="fa fa-arrow-left"></i> Back
         </a>
 
-        <a href="{{ route('patients.edit', $patient->id) }}" class="btn-primaryx">
+        <a href="{{ route('staff.patients.edit', $patient->id) }}" class="btn-primaryx">
             <i class="fa fa-pen"></i> Edit Patient
         </a>
     </div>

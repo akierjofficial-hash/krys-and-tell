@@ -570,7 +570,7 @@
 
     {{-- PRINT BUTTONS --}}
     <div class="print-actions">
-        <a href="{{ route('payments.index') }}" class="back-btn">
+        <a href="{{ route('staff.payments.index') }}" class="back-btn">
             <i class="fa fa-arrow-left"></i> Back to Payments
         </a>
         <button onclick="window.print()" class="print-btn">

@@ -22,6 +22,6 @@ class PatientImportExportController extends Controller
 
         Excel::import(new PatientsImport, $request->file('file'));
 
-        return redirect()->route('patients.index')->with('success', 'Patients imported successfully!');
+        return redirect()->route('staff.patients.index')->with('success', 'Patients imported successfully!');
     }
 }

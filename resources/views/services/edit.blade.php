@@ -78,7 +78,7 @@
 <p class="page-subtitle">Update the details of this service below.</p>
 
 <div class="form-card">
-    <form action="{{ route('services.update', $service) }}" method="POST">
+    <form action="{{ route('staff.services.update', $service) }}" method="POST">
         @csrf
         @method('PUT')
 
@@ -109,7 +109,7 @@
 
         <div class="mt-5">
             <button type="submit" class="submit-btn">Update Service</button>
-            <a href="{{ route('services.index') }}" class="cancel-link">Cancel</a>
+            <a href="{{ route('satff.services.index') }}" class="cancel-link">Cancel</a>
         </div>
     </form>
 </div>

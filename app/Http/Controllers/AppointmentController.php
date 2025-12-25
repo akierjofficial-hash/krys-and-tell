@@ -2,22 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Doctor;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AppointmentController extends Controller
 {
     public function index()
     {
-       $appointments = \App\Models\Appointment::with(['patient', 'service', 'doctor'])
-    ->latest()
-    ->paginate(10);
-
+        $appointments = Appointment::with(['patient', 'service', 'doctor'])
+            ->latest()
+            ->paginate(10);
 
         return view('appointments.index', compact('appointments'));
     }
@@ -27,7 +25,6 @@ class AppointmentController extends Controller
         $patients = Patient::orderBy('first_name')->get();
         $services = Service::orderBy('name')->get();
 
-        // ✅ Pull from admin doctors table (active only)
         $doctors = Doctor::where('is_active', 1)
             ->orderBy('name')
             ->get(['id', 'name', 'specialty']);
@@ -42,36 +39,49 @@ class AppointmentController extends Controller
             'service_id' => ['required', 'exists:services,id'],
             'appointment_date' => ['required', 'date'],
             'appointment_time' => ['required'],
-            'dentist_name' => [
-                'required',
-                'string',
-                'max:255',
-                // ✅ must exist in doctors table AND be active
-                Rule::exists('doctors', 'name')->where(fn ($q) => $q->where('is_active', 1)),
-            ],
-            'status' => ['required', Rule::in(['scheduled', 'completed', 'canceled'])],
+
+            // If you have doctor_id column in appointments, allow using it
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+
+            // Keep dentist_name for compatibility with your UI
+            'dentist_name' => ['nullable', 'string', 'max:255'],
+
+            // ✅ allow new statuses
+            'status' => ['required', Rule::in([
+                'pending', 'approved', 'confirmed',
+                'scheduled', 'completed', 'done',
+                'canceled', 'cancelled', 'declined', 'rejected'
+            ])],
+
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        // ✅ if doctor_id is selected, auto-fill dentist_name from doctors table
+        if (!empty($validated['doctor_id'])) {
+            $validated['dentist_name'] = Doctor::whereKey($validated['doctor_id'])->value('name') ?? ($validated['dentist_name'] ?? null);
+        }
 
         Appointment::create($validated);
 
         return redirect()
-            ->route('appointments.index')
+            ->route('staff.appointments.index')
             ->with('success', 'Appointment added successfully!');
     }
 
     public function show(Appointment $appointment)
     {
-        $appointment->load(['patient', 'service']);
+        $appointment->load(['patient', 'service', 'doctor']);
+
         return view('appointments.show', compact('appointment'));
     }
 
     public function edit(Appointment $appointment)
     {
+        $appointment->load(['patient', 'service', 'doctor']);
+
         $patients = Patient::orderBy('first_name')->get();
         $services = Service::orderBy('name')->get();
 
-        // ✅ same list for edit page
         $doctors = Doctor::where('is_active', 1)
             ->orderBy('name')
             ->get(['id', 'name', 'specialty']);
@@ -86,20 +96,27 @@ class AppointmentController extends Controller
             'service_id' => ['required', 'exists:services,id'],
             'appointment_date' => ['required', 'date'],
             'appointment_time' => ['required'],
-            'dentist_name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::exists('doctors', 'name')->where(fn ($q) => $q->where('is_active', 1)),
-            ],
-            'status' => ['required', Rule::in(['scheduled', 'completed', 'canceled'])],
+
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+            'dentist_name' => ['nullable', 'string', 'max:255'],
+
+            'status' => ['required', Rule::in([
+                'pending', 'approved', 'confirmed',
+                'scheduled', 'completed', 'done',
+                'canceled', 'cancelled', 'declined', 'rejected'
+            ])],
+
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        if (!empty($validated['doctor_id'])) {
+            $validated['dentist_name'] = Doctor::whereKey($validated['doctor_id'])->value('name') ?? ($validated['dentist_name'] ?? null);
+        }
 
         $appointment->update($validated);
 
         return redirect()
-            ->route('appointments.index')
+            ->route('staff.appointments.index')
             ->with('success', 'Appointment updated successfully!');
     }
 
@@ -108,7 +125,7 @@ class AppointmentController extends Controller
         $appointment->delete();
 
         return redirect()
-            ->route('appointments.index')
+            ->route('staff.appointments.index')
             ->with('success', 'Appointment deleted successfully!');
     }
 }

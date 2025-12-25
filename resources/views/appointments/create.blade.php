@@ -152,7 +152,7 @@
         <p class="subtitle">Fill out the form below to schedule a new appointment.</p>
     </div>
 
-    <a href="{{ route('appointments.index') }}" class="btn-ghostx">
+    <a href="{{ route('staff.appointments.index') }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Appointments
     </a>
 </div>
@@ -179,7 +179,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('appointments.store') }}" method="POST">
+        <form action="{{ route('staff.appointments.store') }}" method="POST">
             @csrf
 
             <div class="row g-3">
@@ -268,7 +268,7 @@
                     <button type="submit" class="btn-primaryx">
                         <i class="fa fa-check"></i> Save Appointment
                     </button>
-                    <a href="{{ route('appointments.index') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.appointments.index') }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

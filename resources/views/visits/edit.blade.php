@@ -414,7 +414,7 @@
             <p class="subtitle">Update visit details and procedures.</p>
         </div>
 
-        <a href="{{ route('visits.index') }}" class="btn-ghostx">
+        <a href="{{ route('staff.visits.index') }}" class="btn-ghostx">
             <i class="fa fa-arrow-left"></i> Back
         </a>
     </div>
@@ -443,7 +443,7 @@
         </div>
 
         <div class="card-bodyx">
-            <form action="{{ route('visits.update', $visit->id) }}" method="POST" id="visitForm">
+            <form action="{{ route('staff.visits.update', $visit->id) }}" method="POST" id="visitForm">
                 @csrf
                 @method('PUT')
 
@@ -610,7 +610,7 @@
                             <i class="fa fa-check"></i> Update Visit
                         </button>
 
-                        <a href="{{ route('visits.index') }}" class="btn-ghostx">
+                        <a href="{{ route('staff.visits.index') }}" class="btn-ghostx">
                             Cancel
                         </a>
                     </div>

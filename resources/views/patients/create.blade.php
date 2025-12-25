@@ -158,7 +158,7 @@
         <p class="subtitle">Fill out the details below to register a new patient.</p>
     </div>
 
-    <a href="{{ route('patients.index') }}" class="btn-ghostx">
+    <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Patients
     </a>
 </div>
@@ -181,7 +181,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('patients.store') }}" method="POST">
+        <form action="{{ route('staff.patients.store') }}" method="POST">
             @csrf
 
             <div class="row g-3">
@@ -237,7 +237,7 @@
                         <i class="fa fa-check"></i> Save Patient
                     </button>
 
-                    <a href="{{ route('patients.index') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

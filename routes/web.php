@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Auth\LoginController;
+
+// Staff controllers
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\VisitController;
@@ -12,38 +14,34 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\InstallmentPlanController;
 use App\Http\Controllers\InstallmentPaymentController;
 use App\Http\Controllers\PatientImportExportController;
+use App\Http\Controllers\Staff\ApprovalRequestController;
 
+// Admin controllers
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminScheduleController;
 use App\Http\Controllers\Admin\AdminAppointmentController;
 use App\Http\Controllers\Admin\AdminPatientController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
+
+// Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
 
-
 /*
 |--------------------------------------------------------------------------
 | PUBLIC WEBSITE (NO LOGIN REQUIRED)
 |--------------------------------------------------------------------------
-| UI first — these can be Blade views for now.
-| Later we’ll wire controllers + booking logic.
 */
-/*
-|--------------------------------------------------------------------------|
-| PUBLIC WEBSITE (NO LOGIN REQUIRED)
-|--------------------------------------------------------------------------|
-*/
-Route::get('/', fn() => view('public.home'))->name('public.home');
-Route::get('/about', fn() => view('public.about'))->name('public.about');
-Route::get('/contact', fn() => view('public.contact'))->name('public.contact');
+Route::get('/', fn () => view('public.home'))->name('public.home');
+Route::get('/about', fn () => view('public.about'))->name('public.about');
+Route::get('/contact', fn () => view('public.contact'))->name('public.contact');
 
-/** ✅ Public services pull from DB (staff-managed services table) */
+/** Public services */
 Route::get('/services', [PublicServiceController::class, 'index'])->name('public.services.index');
 Route::get('/services/{service}', [PublicServiceController::class, 'show'])->name('public.services.show');
 
-/** ✅ Booking flow */
+/** Booking flow */
 Route::get('/book/{service}', [PublicBookingController::class, 'create'])->name('public.booking.create');
 Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
 Route::post('/book/{service}', [PublicBookingController::class, 'store'])->name('public.booking.store');
@@ -68,11 +66,11 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-    // ✅ Portal redirect based on role (Admin → /admin/dashboard, Staff → /staff/dashboard)
+    // ✅ Portal redirect based on role
     Route::get('/portal', function () {
         return (auth()->user()->role ?? 'staff') === 'admin'
             ? redirect()->route('admin.dashboard')
-            : redirect()->route('dashboard');
+            : redirect()->route('staff.dashboard');
     })->name('portal');
 
     /*
@@ -87,11 +85,11 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-            // ✅ Schedule (READ-ONLY)
+            // Schedule (READ-ONLY)
             Route::get('/schedule', [AdminScheduleController::class, 'index'])->name('schedule.index');
             Route::get('/schedule/events', [AdminScheduleController::class, 'events'])->name('schedule.events');
 
-            // ✅ Users / Staff Accounts
+            // Users / Staff Accounts
             Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
             Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
             Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
@@ -99,17 +97,17 @@ Route::middleware('auth')->group(function () {
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
 
-            // ✅ Analytics
+            // Analytics
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
 
-            // ✅ Appointments
+            // Appointments
             Route::get('/appointments', [AdminAppointmentController::class, 'index'])->name('appointments.index');
 
-            // ✅ Patients
+            // Patients
             Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
             Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
 
-            // ✅ Doctors
+            // Doctors
             Route::get('/doctors', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'index'])->name('doctors.index');
             Route::get('/doctors/create', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'create'])->name('doctors.create');
             Route::post('/doctors', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'store'])->name('doctors.store');
@@ -122,11 +120,13 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     | STAFF ROUTES
     |--------------------------------------------------------------------------
-    | ✅ Prefix all staff URLs with /staff to avoid conflict with public site.
-    | ✅ Route NAMES stay the same (dashboard, services.index, etc.) so your Blade links won’t break.
+    | ✅ URL prefix: /staff/...
+    | ✅ Name prefix: staff....
+    |--------------------------------------------------------------------------
     */
     Route::middleware('role:staff')
         ->prefix('staff')
+        ->name('staff.')
         ->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -134,17 +134,27 @@ Route::middleware('auth')->group(function () {
             Route::get('/dashboard/calendar/events', [DashboardController::class, 'calendarEvents'])
                 ->name('dashboard.calendar.events');
 
+            // ✅ Approval Requests
+            Route::prefix('approvals')->name('approvals.')->group(function () {
+                Route::get('/', [ApprovalRequestController::class, 'index'])->name('index');
+                Route::get('/widget', [ApprovalRequestController::class, 'widget'])->name('widget');
+                Route::post('/{appointment}/approve', [ApprovalRequestController::class, 'approve'])->name('approve');
+                Route::post('/{appointment}/decline', [ApprovalRequestController::class, 'decline'])->name('decline');
+            });
+
+            // Patients import/export
             Route::get('/patients/export', [PatientImportExportController::class, 'export'])->name('patients.export');
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
 
+            // Resources (names become staff.patients.*, staff.visits.*, etc.)
             Route::resource('patients', PatientController::class);
             Route::resource('visits', VisitController::class);
             Route::resource('appointments', AppointmentController::class);
             Route::resource('services', ServiceController::class);
 
+            // Payments
             Route::prefix('payments')->name('payments.')->group(function () {
                 Route::get('/', [PaymentController::class, 'index'])->name('index');
-
                 Route::get('/choose', [PaymentController::class, 'choosePlan'])->name('choose');
 
                 Route::get('/create/cash', [PaymentController::class, 'createCash'])->name('create.cash');
@@ -159,6 +169,7 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/{payment}', [PaymentController::class, 'destroy'])->name('destroy');
             });
 
+            // Installments
             Route::prefix('installments')->name('installments.')->group(function () {
                 Route::get('/', [InstallmentPlanController::class, 'index'])->name('index');
                 Route::get('/create', [InstallmentPlanController::class, 'create'])->name('create');

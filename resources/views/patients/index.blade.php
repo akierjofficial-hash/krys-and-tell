@@ -338,12 +338,12 @@
         </button>
 
         {{-- Export --}}
-        <a href="{{ route('patients.export') }}" class="btnx btn-green">
+        <a href="{{ route('staff.patients.export') }}" class="btnx btn-green">
             <i class="fa fa-file-excel"></i> Export
         </a>
 
         {{-- Import --}}
-        <form id="importForm" action="{{ route('patients.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
+        <form id="importForm" action="{{ route('staff.patients.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
             @csrf
             <input id="patientFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
             <button type="button" id="importBtn" class="btnx btn-purple">
@@ -351,7 +351,7 @@
             </button>
         </form>
 
-        <a href="{{ route('patients.create') }}" class="btnx add-btn">
+        <a href="{{ route('staff.patients.create') }}" class="btnx add-btn">
             <i class="fa fa-plus"></i> Add Patient
         </a>
     </div>
@@ -412,16 +412,16 @@
 
                         <td class="text-end">
                             <div class="action-pills">
-                                <a href="{{ route('patients.edit', $patient->id) }}" class="pill pill-edit">
+                                <a href="{{ route('staff.patients.edit', $patient->id) }}" class="pill pill-edit">
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
-                                <a href="{{ route('patients.show', $patient->id) }}" class="pill pill-view">
+                                <a href="{{ route('staff.patients.show', $patient->id) }}" class="pill pill-view">
                                     <i class="fa fa-eye"></i> View
                                 </a>
 
                                 <form
-                                    action="{{ route('patients.destroy', $patient->id) }}"
+                                    action="{{ route('staff.patients.destroy', $patient->id) }}"
                                     method="POST"
                                     onsubmit="return confirm('Are you sure you want to delete this patient?');"
                                     style="display:inline;"
