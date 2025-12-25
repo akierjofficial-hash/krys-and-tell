@@ -144,30 +144,32 @@
             display: block;
         }
         .kt-top-icon{
-    width:42px;
-    height:42px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.06);
-    color:#fff;
-}
-.kt-top-icon:hover{
-    background: rgba(255,255,255,.10);
-}
+            width:42px;
+            height:42px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:14px;
 
-.kt-dot{
-    position:absolute;
-    top:9px;
-    right:9px;
-    width:10px;
-    height:10px;
-    border-radius:999px;
-    background:#ef4444; /* red */
-    box-shadow:0 0 0 2px rgba(15,23,42,.9);
-}
+            /* LIGHT MODE defaults */
+            border: 1px solid var(--kt-border) !important;
+            background: var(--kt-surface) !important;
+            color: var(--kt-text) !important;
+        }
+        .kt-top-icon:hover{
+            background: var(--kt-surface-2) !important;
+        }
+
+        .kt-dot{
+            position:absolute;
+            top:9px;
+            right:9px;
+            width:10px;
+            height:10px;
+            border-radius:999px;
+            background:#ef4444;
+            box-shadow: 0 0 0 2px rgba(255,255,255,.95); /* light mode ring */
+        }
 
         /* ===== Approval popover (bell dropdown card) ===== */
         .kt-popover{
