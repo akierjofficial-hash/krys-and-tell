@@ -143,6 +143,136 @@
             object-position: center;
             display: block;
         }
+        .kt-top-icon{
+    width:42px;
+    height:42px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.06);
+    color:#fff;
+}
+.kt-top-icon:hover{
+    background: rgba(255,255,255,.10);
+}
+
+.kt-dot{
+    position:absolute;
+    top:9px;
+    right:9px;
+    width:10px;
+    height:10px;
+    border-radius:999px;
+    background:#ef4444; /* red */
+    box-shadow:0 0 0 2px rgba(15,23,42,.9);
+}
+
+        /* ===== Approval popover (bell dropdown card) ===== */
+        .kt-popover{
+            position:absolute;
+            top:54px;           /* distance below the top bar */
+            right:0;
+            width:380px;
+            max-width: calc(100vw - 24px);
+            border-radius: 16px;
+            background: var(--kt-surface-2);
+            border: 1px solid var(--kt-border);
+            box-shadow: var(--kt-shadow);
+            display:none;
+            z-index: 2500;
+            overflow:hidden;
+        }
+
+        .kt-popover.show{ display:block; }
+
+        .kt-popover .kt-pop-h{
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--kt-border);
+            display:flex;
+            align-items:center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .kt-popover .kt-pop-title{
+            font-weight: 800;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .kt-popover .kt-badge{
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(37,99,235,.15);
+            border: 1px solid rgba(37,99,235,.25);
+        }
+
+        .kt-popover .kt-pop-body{
+            padding: 10px;
+            max-height: 360px;
+            overflow:auto;
+        }
+
+        .kt-popover .kt-item{
+            border: 1px solid var(--kt-border);
+            background: var(--kt-surface);
+            border-radius: 14px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+
+        .kt-popover .kt-item:last-child{ margin-bottom: 0; }
+
+        .kt-popover .kt-item .top{
+            display:flex;
+            align-items:flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .kt-popover .kt-item .name{
+            font-weight: 800;
+            font-size: 13px;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .kt-popover .kt-item .meta{
+            font-size: 12px;
+            opacity: .9;
+            margin-top: 4px;
+        }
+
+        .kt-popover .kt-actions{
+            display:flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .kt-popover .kt-actions form{ margin:0; }
+
+        .kt-popover .btn-mini{
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .kt-popover .btn-approve{
+            background: rgba(34,197,94,.15);
+            border: 1px solid rgba(34,197,94,.25);
+            color: #16a34a !important;
+        }
+        .kt-popover .btn-decline{
+            background: rgba(239,68,68,.15);
+            border: 1px solid rgba(239,68,68,.25);
+            color: #ef4444 !important;
+        }
+
+
 
         .brand h4 {
             margin: 0;
@@ -1306,6 +1436,7 @@
     </style>
 </head>
 
+{{-- layouts/app.blade.php (BODY PART UPDATED) --}}
 <body>
 <div class="layout">
 
@@ -1332,31 +1463,30 @@
         </div>
 
         <div class="sidebar-menu">
-    <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-        <i class="fa fa-chart-line"></i> Dashboard
-    </a>
+            <a href="{{ route('staff.dashboard') }}" class="{{ request()->routeIs('staff.dashboard') ? 'active' : '' }}">
+                <i class="fa fa-chart-line"></i> Dashboard
+            </a>
 
-    <a href="{{ route('patients.index') }}" class="{{ request()->routeIs('patients.*') ? 'active' : '' }}">
-        <i class="fa fa-users"></i> Patients
-    </a>
+            <a href="{{ route('staff.patients.index') }}" class="{{ request()->routeIs('staff.patients.*') ? 'active' : '' }}">
+                <i class="fa fa-users"></i> Patients
+            </a>
 
-    <a href="{{ route('visits.index') }}" class="{{ request()->routeIs('visits.*') ? 'active' : '' }}">
-        <i class="fa fa-calendar-check"></i> Visits
-    </a>
+            <a href="{{ route('staff.visits.index') }}" class="{{ request()->routeIs('staff.visits.*') ? 'active' : '' }}">
+                <i class="fa fa-calendar-check"></i> Visits
+            </a>
 
-    <a href="{{ route('payments.index') }}" class="{{ request()->routeIs('payments.*') ? 'active' : '' }}">
-        <i class="fa fa-money-bill"></i> Payments
-    </a>
+            <a href="{{ route('staff.payments.index') }}" class="{{ request()->routeIs('staff.payments.*') ? 'active' : '' }}">
+                <i class="fa fa-money-bill"></i> Payments
+            </a>
 
-    <a href="{{ route('appointments.index') }}" class="{{ request()->routeIs('appointments.*') ? 'active' : '' }}">
-        <i class="fa fa-calendar-days"></i> Appointments
-    </a>
+            <a href="{{ route('staff.appointments.index') }}" class="{{ request()->routeIs('staff.appointments.*') ? 'active' : '' }}">
+                <i class="fa fa-calendar-days"></i> Appointments
+            </a>
 
-    <a href="{{ route('services.index') }}" class="{{ request()->routeIs('services.*') ? 'active' : '' }}">
-        <i class="fa fa-gear"></i> Services
-    </a>
-</div>
-
+            <a href="{{ route('staff.services.index') }}" class="{{ request()->routeIs('staff.services.*') ? 'active' : '' }}">
+                <i class="fa fa-gear"></i> Services
+            </a>
+        </div>
 
         <div class="sidebar-footer">
             <form method="POST" action="{{ route('logout') }}">
@@ -1371,12 +1501,129 @@
 
     <!-- CONTENT -->
     <div class="content app-content">
-        <!-- mobile menu button (SAME PATTERN AS ADMIN) -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        {{-- Top bar: menu (left) + bell dropdown (right) --}}
+        @php
+            $pendingApprovals = 0;
+            $pendingItems = collect();
+
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+
+                    $pendingItems = \App\Models\Appointment::query()
+                        ->with(['service','doctor','patient'])
+                        ->where('status', 'pending')
+                        ->orderByDesc('created_at')
+                        ->take(8)
+                        ->get();
+
+                    $pendingApprovals = $pendingItems->count();
+                }
+            } catch (\Throwable $e) {
+                $pendingApprovals = 0;
+                $pendingItems = collect();
+            }
+        @endphp
+
+        <div class="d-flex align-items-center mb-3">
             <button class="menu-toggle" id="menuToggle" type="button" title="Menu">
                 <i class="fa fa-bars"></i>
             </button>
-            <div></div>
+
+            {{-- ✅ Right side --}}
+            <div class="ms-auto d-flex align-items-center gap-2 position-relative">
+                {{-- Bell button (no page redirect) --}}
+                <button type="button"
+                        id="approvalBell"
+                        class="kt-top-icon position-relative border-0"
+                        title="Approval Requests"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+                    <i class="fa-solid fa-bell"></i>
+
+                    {{-- ✅ dot always exists; JS toggles it --}}
+                    <span id="approvalDot" class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
+                </button>
+
+                {{-- Dropdown card --}}
+                <div id="approvalPopover" class="kt-popover" aria-hidden="true">
+                    <div class="kt-pop-h">
+                        <p class="kt-pop-title mb-0">Approval Requests</p>
+                        <span class="kt-badge">
+                            <span id="approvalBadge">{{ $pendingApprovals }}</span> pending
+                        </span>
+                    </div>
+
+                    {{-- ✅ Flash message INSIDE the dropdown card --}}
+                    <div id="approvalFlash" class="px-3 pt-3 d-none"></div>
+
+                    <div class="kt-pop-body" id="approvalList">
+                        @if($pendingItems->isEmpty())
+                            <div class="text-center py-3" id="approvalEmpty">
+                                <div class="fw-bold">No pending requests</div>
+                                <div class="small text-muted">You're all caught up.</div>
+                            </div>
+                        @else
+                            @foreach($pendingItems as $a)
+                                @php
+                                    $displayName =
+                                        $a->public_name
+                                        ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').' '.($a->public_last_name ?? ''))
+                                        ?: ($a->patient->name ?? 'Patient');
+
+                                    $serviceName = $a->service->name ?? 'Service';
+                                    $doctorName  = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
+
+                                    $date = $a->appointment_date ?? null;
+                                    $time = $a->appointment_time ?? null;
+                                @endphp
+
+                                <div class="kt-item" data-approval-id="{{ $a->id }}">
+                                    <div class="top">
+                                        <div>
+                                            <p class="name">{{ $displayName }}</p>
+                                            <div class="meta">
+                                                <div><b>{{ $serviceName }}</b></div>
+                                                <div>
+                                                    {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
+                                                    @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                </div>
+                                                <div class="small text-muted">Doctor: {{ $doctorName }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="small text-muted text-end">
+                                            {{ optional($a->created_at)->diffForHumans() }}
+                                        </div>
+                                    </div>
+
+                                    <div class="kt-actions">
+                                        <form class="approval-form"
+                                              data-action="approve"
+                                              method="POST"
+                                              action="{{ route('staff.approvals.approve', $a->id) }}">
+                                            @csrf
+                                            <button class="btn btn-mini btn-approve" type="submit">
+                                                <i class="fa-solid fa-check me-1"></i> Approve
+                                            </button>
+                                        </form>
+
+                                        <form class="approval-form"
+                                              data-action="decline"
+                                              method="POST"
+                                              action="{{ route('staff.approvals.decline', $a->id) }}">
+                                            @csrf
+                                            <button class="btn btn-mini btn-decline" type="submit">
+                                                <i class="fa-solid fa-xmark me-1"></i> Decline
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
 
         @yield('content')
@@ -1408,7 +1655,7 @@
         applyTheme(next);
     });
 
-    // sidebar drawer (mobile) — SAME AS ADMIN
+    // sidebar drawer (mobile)
     const side = document.getElementById('staffSidebar');
     const overlay = document.getElementById('sideOverlay');
     const btnMenu = document.getElementById('menuToggle');
@@ -1428,6 +1675,155 @@
     window.addEventListener('resize', () => {
         if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
     });
+
+    // ✅ approval popover (bell) + AJAX approve/decline
+    const bell = document.getElementById('approvalBell');
+    const pop  = document.getElementById('approvalPopover');
+
+    const badgeEl = document.getElementById('approvalBadge');
+    const dotEl   = document.getElementById('approvalDot');
+    const flashEl = document.getElementById('approvalFlash');
+    const listEl  = document.getElementById('approvalList');
+
+    const csrf =
+        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        || document.querySelector('input[name="_token"]')?.value
+        || '';
+
+    function closePopover(){
+        if(!pop) return;
+        pop.classList.remove('show');
+        pop.setAttribute('aria-hidden', 'true');
+        bell?.setAttribute('aria-expanded', 'false');
+    }
+
+    function togglePopover(e){
+        e?.stopPropagation();
+        if(!pop) return;
+
+        const isOpen = pop.classList.contains('show');
+        if(isOpen){
+            closePopover();
+        }else{
+            pop.classList.add('show');
+            pop.setAttribute('aria-hidden', 'false');
+            bell?.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    function setCount(n){
+        n = Number(n || 0);
+        if (badgeEl) badgeEl.textContent = String(n);
+        if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
+    }
+
+    function showFlash(type, text){
+        if (!flashEl) return;
+        flashEl.classList.remove('d-none');
+        flashEl.innerHTML = `
+            <div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px;">
+                ${escapeHtml(text)}
+            </div>
+        `;
+        window.clearTimeout(showFlash._t);
+        showFlash._t = window.setTimeout(() => flashEl.classList.add('d-none'), 2500);
+    }
+
+    function ensureEmptyState(){
+        if (!listEl) return;
+        const anyItem = listEl.querySelector('.kt-item');
+        const empty = listEl.querySelector('#approvalEmpty');
+
+        if (!anyItem) {
+            if (!empty) {
+                listEl.innerHTML = `
+                    <div class="text-center py-3" id="approvalEmpty">
+                        <div class="fw-bold">No pending requests</div>
+                        <div class="small text-muted">You're all caught up.</div>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    async function postAction(form){
+        const item = form.closest('.kt-item');
+        const action = form.dataset.action || 'approve';
+
+        // disable buttons for this item
+        const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
+        btns.forEach(b => b.disabled = true);
+
+        try{
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: '' // no payload
+            });
+
+            const ct = res.headers.get('content-type') || '';
+            const data = ct.includes('application/json') ? await res.json() : null;
+
+            if (!res.ok || (data && data.ok === false)) {
+                showFlash('danger', (data && data.message) ? data.message : 'Action failed. Please try again.');
+                btns.forEach(b => b.disabled = false);
+                return;
+            }
+
+            showFlash('success', (data && data.message)
+                ? data.message
+                : (action === 'approve' ? 'Booking approved.' : 'Booking declined.')
+            );
+
+            // remove the item
+            if (item) item.remove();
+
+            // update count
+            if (data && typeof data.pendingCount !== 'undefined') {
+                setCount(data.pendingCount);
+            } else {
+                const current = Number(badgeEl?.textContent || 0);
+                setCount(Math.max(0, current - 1));
+            }
+
+            ensureEmptyState();
+        } catch (e){
+            showFlash('danger', 'Network error. Please try again.');
+            btns.forEach(b => b.disabled = false);
+        }
+    }
+
+    // intercept approve/decline forms in the popover
+    pop?.addEventListener('submit', function(e){
+        const form = e.target.closest('form.approval-form');
+        if (!form) return;
+        e.preventDefault();
+        e.stopPropagation();
+        postAction(form);
+    });
+
+    bell?.addEventListener('click', togglePopover);
+    pop?.addEventListener('click', (e) => e.stopPropagation());
+
+    document.addEventListener('click', closePopover);
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape') closePopover();
+    });
+
+    function escapeHtml(str){
+        return (str ?? '').toString()
+            .replaceAll('&','&amp;')
+            .replaceAll('<','&lt;')
+            .replaceAll('>','&gt;')
+            .replaceAll('"','&quot;')
+            .replaceAll("'",'&#039;');
+    }
+
 })();
 </script>
 

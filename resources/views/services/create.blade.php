@@ -82,7 +82,7 @@
 @endif
 
 <div class="form-card">
-    <form action="{{ route('services.store') }}" method="POST">
+    <form action="{{ route('staff.services.store') }}" method="POST">
         @csrf
 
         <div class="grid grid-cols-1 gap-4">
@@ -112,7 +112,7 @@
 
         <div class="mt-5">
             <button type="submit" class="submit-btn">Save Service</button>
-            <a href="{{ route('services.index') }}" class="cancel-link">Cancel</a>
+            <a href="{{ route('staff.services.index') }}" class="cancel-link">Cancel</a>
         </div>
     </form>
 </div>

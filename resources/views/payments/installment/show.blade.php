@@ -549,7 +549,7 @@ function ordinal($number) {
     </div>
 
     <div class="print-actions">
-        <a href="{{ route('payments.index', ['tab' => 'installment']) }}" class="back-btn">
+        <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="back-btn">
             <i class="fa fa-arrow-left"></i> Back to Plan
         </a>
         <button onclick="window.print()" class="print-btn">

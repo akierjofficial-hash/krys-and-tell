@@ -188,7 +188,7 @@
         <p class="subtitle">Record a payment for this installment plan.</p>
     </div>
 
-    <a href="{{ route('installments.show', $plan) }}" class="btn-ghostx">
+    <a href="{{ route('staff.installments.show', $plan) }}" class="btn-ghostx">
         <i class="fa fa-arrow-left"></i> Back to Plan
     </a>
 </div>
@@ -228,7 +228,7 @@
         </div>
 
         {{-- Payment Form --}}
-        <form action="{{ route('installments.pay.store', $plan) }}" method="POST">
+        <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
             @csrf
 
             <div class="row g-3">
@@ -266,7 +266,7 @@
                         <i class="fa fa-check"></i> Record Payment
                     </button>
 
-                    <a href="{{ route('payments.index', $plan) }}" class="btn-ghostx">
+                    <a href="{{ route('staff.payments.index', $plan) }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

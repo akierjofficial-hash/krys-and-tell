@@ -299,7 +299,7 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('appointments.create') }}" class="add-btn">
+        <a href="{{ route('staff.appointments.create') }}" class="add-btn">
             <i class="fa fa-plus"></i> Add Appointment
         </a>
     </div>
@@ -309,7 +309,8 @@
 <div class="card-shell">
     <div class="card-head">
         <div class="hint">
-            Showing <strong id="visibleCount">{{ $appointments->count() }}</strong> / <strong id="totalCount">{{ $appointments->count() }}</strong> appointment(s)
+            Showing <strong id="visibleCount">{{ $appointments->count() }}</strong> /
+            <strong id="totalCount">{{ $appointments->count() }}</strong> appointment(s)
         </div>
         <div class="hint">Tip: search + sort works together</div>
     </div>
@@ -328,86 +329,114 @@
             </thead>
 
             <tbody id="appointmentTableBody">
-                @forelse ($appointments as $appointment)
-                    @php
-                        $status = strtolower($appointment->status ?? '');
-                        $statusClass = match($status) {
-                            'pending' => 'st-pending',
-                            'confirmed' => 'st-confirmed',
-                            'done', 'completed' => 'st-done',
-                            'cancelled', 'canceled' => 'st-cancelled',
-                            default => 'st-default',
-                        };
+            @forelse ($appointments as $appointment)
+                @php
+                    $status = strtolower($appointment->status ?? '');
 
-                        $patientKey = strtolower(trim(($appointment->patient->last_name ?? '').', '.($appointment->patient->first_name ?? '')));
-                        $dentistKey = strtolower(trim($appointment->dentist_name ?? ''));
-                        $statusKey  = strtolower(trim($appointment->status ?? ''));
-                        $dtTs = 0;
-                        try {
-                            $dtTs = \Carbon\Carbon::parse(($appointment->appointment_date ?? '').' '.($appointment->appointment_time ?? ''))->timestamp;
-                        } catch (\Throwable $e) {
-                            $dtTs = 0;
+                    $statusClass = match($status) {
+                        'pending' => 'st-pending',
+                        'confirmed', 'approved', 'upcoming', 'scheduled' => 'st-confirmed',
+                        'done', 'completed' => 'st-done',
+                        'cancelled', 'canceled', 'declined', 'rejected' => 'st-cancelled',
+                        default => 'st-default',
+                    };
+
+                    // ✅ patient safe fallbacks (patient can be null)
+                    $pFirst = $appointment->patient->first_name ?? $appointment->public_first_name ?? '';
+                    $pLast  = $appointment->patient->last_name  ?? $appointment->public_last_name  ?? '';
+                    $patientName = trim($pFirst.' '.$pLast);
+                    if ($patientName === '') $patientName = $appointment->public_name ?? 'N/A';
+
+                    $patientKey = strtolower(trim(($pLast ?: '').', '.($pFirst ?: '')));
+
+                    // ✅ service safe fallback (service can be null)
+                    $serviceName = $appointment->service->name ?? 'N/A';
+
+                    // ✅ dentist safe fallback (dentist_name OR doctor relation)
+                    $dentistName = $appointment->dentist_name
+                        ?? ($appointment->doctor->name ?? null)
+                        ?? 'N/A';
+
+                    $dentistKey = strtolower(trim($dentistName));
+                    $statusKey  = strtolower(trim($appointment->status ?? ''));
+
+                    // ✅ date/time safe
+                    $dateLabel = '—';
+                    $timeLabel = '—';
+                    $dtTs = 0;
+
+                    try {
+                        if (!empty($appointment->appointment_date)) {
+                            $dateLabel = \Carbon\Carbon::parse($appointment->appointment_date)->format('m/d/Y');
                         }
-                    @endphp
+                        if (!empty($appointment->appointment_time)) {
+                            $timeLabel = \Carbon\Carbon::parse($appointment->appointment_time)->format('h:i A');
+                        }
+                        if (!empty($appointment->appointment_date) && !empty($appointment->appointment_time)) {
+                            $dtTs = \Carbon\Carbon::parse($appointment->appointment_date.' '.$appointment->appointment_time)->timestamp;
+                        }
+                    } catch (\Throwable $e) {
+                        $dtTs = 0;
+                    }
+                @endphp
 
-                    <tr class="appointment-row"
-                        data-patient="{{ $patientKey }}"
-                        data-dentist="{{ $dentistKey }}"
-                        data-status="{{ $statusKey }}"
-                        data-dt="{{ $dtTs }}"
-                    >
-                        <td class="fw-semibold">
-                            {{ $appointment->patient->first_name }} {{ $appointment->patient->last_name }}
-                        </td>
+                <tr class="appointment-row"
+                    data-patient="{{ $patientKey }}"
+                    data-dentist="{{ $dentistKey }}"
+                    data-status="{{ $statusKey }}"
+                    data-dt="{{ $dtTs }}"
+                >
+                    <td class="fw-semibold">
+                        {{ $patientName }}
+                        @if(empty($appointment->patient_id))
+                            <div class="muted" style="font-size:12px;">(Not linked yet)</div>
+                        @endif
+                    </td>
 
-                        <td>{{ $appointment->service->name }}</td>
+                    <td>{{ $serviceName }}</td>
 
-                        <td class="muted">{{ $appointment->dentist_name ?? 'N/A' }}</td>
+                    <td class="muted">{{ $dentistName }}</td>
 
-                        <td>
-                            <div class="fw-semibold">
-                                {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('m/d/Y') }}
-                            </div>
-                            <div class="muted" style="font-size:12px;">
-                                {{ \Carbon\Carbon::parse($appointment->appointment_time)->format('h:i A') }}
-                            </div>
-                        </td>
+                    <td>
+                        <div class="fw-semibold">{{ $dateLabel }}</div>
+                        <div class="muted" style="font-size:12px;">{{ $timeLabel }}</div>
+                    </td>
 
-                        <td>
-                            <span class="badge-soft {{ $statusClass }}">
-                                <span class="badge-dot"></span>
-                                {{ ucfirst($appointment->status ?? 'N/A') }}
-                            </span>
-                        </td>
+                    <td>
+                        <span class="badge-soft {{ $statusClass }}">
+                            <span class="badge-dot"></span>
+                            {{ ucfirst($appointment->status ?? 'N/A') }}
+                        </span>
+                    </td>
 
-                        <td class="text-end">
-                            <div class="action-pills">
-                                <a href="{{ route('appointments.show', $appointment) }}" class="pill pill-view">
-                                    <i class="fa fa-eye"></i> View
-                                </a>
+                    <td class="text-end">
+                        <div class="action-pills">
+                            <a href="{{ route('staff.appointments.show', $appointment) }}" class="pill pill-view">
+                                <i class="fa fa-eye"></i> View
+                            </a>
 
-                                <a href="{{ route('appointments.edit', $appointment) }}" class="pill pill-edit">
-                                    <i class="fa fa-pen"></i> Edit
-                                </a>
+                            <a href="{{ route('staff.appointments.edit', $appointment) }}" class="pill pill-edit">
+                                <i class="fa fa-pen"></i> Edit
+                            </a>
 
-                                <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" style="display:inline;"
-                                      onsubmit="return confirm('Delete appointment?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="pill pill-del">
-                                        <i class="fa fa-trash"></i> Delete
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            No appointments found.
-                        </td>
-                    </tr>
-                @endforelse
+                            <form action="{{ route('staff.appointments.destroy', $appointment) }}" method="POST" style="display:inline;"
+                                  onsubmit="return confirm('Delete appointment?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="pill pill-del">
+                                    <i class="fa fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No appointments found.
+                    </td>
+                </tr>
+            @endforelse
             </tbody>
         </table>
     </div>
@@ -465,16 +494,13 @@
             const va = getComparable(a, mode);
             const vb = getComparable(b, mode);
 
-            // string compare
             if (typeof va === 'string' || typeof vb === 'string'){
                 const A = String(va), B = String(vb);
                 if (A < B) return mode.endsWith('_desc') ? 1 : -1;
                 if (A > B) return mode.endsWith('_desc') ? -1 : 1;
-                // tie-breaker: date newest first
                 return Number(b.dataset.dt || 0) - Number(a.dataset.dt || 0);
             }
 
-            // numeric compare
             if (va === vb) return 0;
             const asc = mode.endsWith('_asc');
             return asc ? (va - vb) : (vb - va);
@@ -498,7 +524,6 @@
         searchInput.focus();
     });
 
-    // first load
     applyAll();
 })();
 </script>

@@ -468,7 +468,7 @@
             <p class="subtitle">Record a new visit and add treatments per tooth.</p>
         </div>
 
-        <a href="{{ route('visits.index') }}" class="btn-ghostx">
+        <a href="{{ route('staff.visits.index') }}" class="btn-ghostx">
             <i class="fa fa-arrow-left"></i> Back
         </a>
     </div>
@@ -497,7 +497,7 @@
         </div>
 
         <div class="card-bodyx">
-            <form action="{{ route('visits.store') }}" method="POST" id="visitForm">
+            <form action="{{ route('staff.visits.store') }}" method="POST" id="visitForm">
                 @csrf
 
                 <div class="row g-3">
@@ -677,7 +677,7 @@
                                 <button type="submit" class="btn-primaryx" id="saveBtn">
                                     <i class="fa fa-check"></i> Save Visit
                                 </button>
-                                <a href="{{ route('visits.index') }}" class="btn-ghostx">
+                                <a href="{{ route('staff.visits.index') }}" class="btn-ghostx">
                                     Cancel
                                 </a>
                             </div>

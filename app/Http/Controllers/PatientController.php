@@ -35,7 +35,7 @@ class PatientController extends Controller
 
         Patient::create($validated);
 
-        return redirect()->route('patients.index')->with('success', 'Patient added successfully!');
+        return redirect()->route('staff.patients.index')->with('success', 'Patient added successfully!');
     }
 
     public function edit(Patient $patient)
@@ -58,13 +58,13 @@ class PatientController extends Controller
 
         $patient->update($validated);
 
-        return redirect()->route('patients.index')->with('success', 'Patient updated successfully!');
+        return redirect()->route('staff.patients.index')->with('success', 'Patient updated successfully!');
     }
 
     public function destroy(Patient $patient)
     {
         $patient->delete();
-        return redirect()->route('patients.index')->with('success', 'Patient deleted successfully!');
+        return redirect()->route('staff.patients.index')->with('success', 'Patient deleted successfully!');
     }
 
     public function show(Patient $patient)

@@ -12,7 +12,9 @@
             <div class="col-lg-6">
                 <div class="card card-soft p-4">
                     <h2 class="sec-title mb-2">Book: {{ $service->name }}</h2>
-                    <div class="sec-sub">Select a doctor, date, and available time slot. Appointment will be created as <b>Pending</b>.</div>
+                    <div class="sec-sub">
+                        Select a doctor (if required), date, and available time slot. Appointment will be created as <b>Pending</b>.
+                    </div>
 
                     @if ($errors->any())
                         <div class="alert alert-danger mt-3">
@@ -27,7 +29,10 @@
                     <form class="mt-3" method="POST" action="{{ route('public.booking.store', $service->id) }}">
                         @csrf
 
-                        @if($doctors->count())
+                        {{-- Doctor selection (only show if doctors exist) --}}
+                        @php $doctorRequired = ($doctors->count() > 0); @endphp
+
+                        @if($doctorRequired)
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Select Doctor</label>
                                 <select class="form-select" name="doctor_id" id="doctor_id" required>
@@ -39,72 +44,109 @@
                                     @endforeach
                                 </select>
                                 <div class="small text-muted mt-1">Slots will be based on the doctor you choose.</div>
+                                @error('doctor_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
+                        @else
+                            <input type="hidden" name="doctor_id" id="doctor_id" value="{{ old('doctor_id') }}">
                         @endif
 
+                        {{-- Date + Time --}}
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Date</label>
-                                <input type="date" class="form-control" name="date" id="date"
+                                <input type="date"
+                                       class="form-control"
+                                       name="date"
+                                       id="date"
                                        value="{{ old('date') }}"
-                                       min="{{ now()->toDateString() }}" required>
+                                       min="{{ now()->toDateString() }}"
+                                       required>
+                                @error('date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Time</label>
                                 <select class="form-select" name="time" id="time" required>
-                                    <option value="">Select doctor + date first…</option>
+                                    <option value="">
+                                        {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
+                                    </option>
                                 </select>
                                 <div class="small text-muted mt-1" id="timeHelp"></div>
+                                @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                         </div>
 
                         <hr class="my-4">
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Full Name</label>
-                            <input type="text" class="form-control" name="name" value="{{ old('name') }}" required>
-                        </div>
-
+                        {{-- Patient Info --}}
                         <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">First Name</label>
+                                <input class="form-control kt-input"
+                                       type="text"
+                                       name="first_name"
+                                       value="{{ old('first_name') }}"
+                                       required>
+                                @error('first_name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Middle Name (optional)</label>
+                                <input class="form-control kt-input"
+                                       type="text"
+                                       name="middle_name"
+                                       value="{{ old('middle_name') }}">
+                                @error('middle_name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Last Name</label>
+                                <input class="form-control kt-input"
+                                       type="text"
+                                       name="last_name"
+                                       value="{{ old('last_name') }}"
+                                       required>
+                                @error('last_name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Email</label>
-                                <input type="email" class="form-control" name="email" value="{{ old('email') }}" required>
+                                <input class="form-control kt-input"
+                                       type="email"
+                                       name="email"
+                                       value="{{ old('email') }}"
+                                       required>
+                                @error('email')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Contact Number</label>
-                                <input type="text" class="form-control" name="contact" value="{{ old('contact') }}" required>
+                                <input class="form-control kt-input"
+                                       type="text"
+                                       name="contact"
+                                       value="{{ old('contact') }}"
+                                       required>
+                                @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Address (optional)</label>
+                                <input class="form-control kt-input"
+                                       type="text"
+                                       name="address"
+                                       value="{{ old('address') }}"
+                                       placeholder="House no., Street, Barangay, City">
+                                @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                         </div>
-
-                        <div class="row g-3 mt-1">
-    <div class="col-md-6">
-        <label class="form-label fw-bold">Gender</label>
-        <select class="form-select" name="gender" required>
-            <option value="">-- Select Gender --</option>
-            <option value="Male" @selected(old('gender') === 'Male')>Male</option>
-            <option value="Female" @selected(old('gender') === 'Female')>Female</option>
-            <option value="Other" @selected(old('gender') === 'Other')>Other</option>
-            <option value="Prefer not to say" @selected(old('gender') === 'Prefer not to say')>Prefer not to say</option>
-        </select>
-    </div>
-
-    <div class="col-md-6">
-        <label class="form-label fw-bold">Birthdate</label>
-        <input type="date"
-               class="form-control"
-               name="birthdate"
-               value="{{ old('birthdate') }}"
-               max="{{ now()->toDateString() }}"
-               required>
-    </div>
-</div>
-
-
-                        
 
                         <div class="mt-3">
                             <label class="form-label fw-bold">Message (optional)</label>
-                            <textarea class="form-control" name="message" rows="3">{{ old('message') }}</textarea>
+                            <textarea class="form-control"
+                                      name="message"
+                                      rows="3"
+                                      placeholder="Any notes for the clinic?">{{ old('message') }}</textarea>
+                            @error('message')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
 
                         <button class="btn kt-btn kt-btn-primary text-white mt-4" type="submit">
@@ -132,6 +174,8 @@
     const helpEl = document.getElementById('timeHelp');
     const doctorEl = document.getElementById('doctor_id');
 
+    const doctorRequired = @json($doctors->count() > 0);
+
     function setLoading(msg){
         timeEl.innerHTML = `<option value="">${msg}</option>`;
         helpEl.textContent = '';
@@ -141,7 +185,7 @@
         const date = dateEl?.value;
         const doctorId = doctorEl?.value || '';
 
-        if(!doctorId){
+        if (doctorRequired && !doctorId){
             setLoading('Select doctor first…');
             return;
         }
@@ -154,9 +198,10 @@
 
         const url = new URL(`/book/${serviceId}/slots`, window.location.origin);
         url.searchParams.set('date', date);
-        url.searchParams.set('doctor_id', doctorId);
+        if (doctorRequired) url.searchParams.set('doctor_id', doctorId);
 
         const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+
         if(!res.ok){
             setLoading('Unable to load slots');
             helpEl.textContent = 'Please try again.';
@@ -172,8 +217,11 @@
             return;
         }
 
+        const oldTime = @json(old('time'));
+
         timeEl.innerHTML = `<option value="">Select time…</option>` + slots.map(t => {
-            return `<option value="${t}">${t}</option>`;
+            const selected = (oldTime && oldTime === t) ? 'selected' : '';
+            return `<option value="${t}" ${selected}>${t}</option>`;
         }).join('');
 
         helpEl.textContent = `${slots.length} slot(s) available.`;
@@ -182,7 +230,7 @@
     dateEl?.addEventListener('change', loadSlots);
     doctorEl?.addEventListener('change', loadSlots);
 
-    if(dateEl?.value && doctorEl?.value) loadSlots();
+    if(dateEl?.value && (!doctorRequired || doctorEl?.value)) loadSlots();
 })();
 </script>
 @endpush

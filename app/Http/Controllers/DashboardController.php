@@ -93,7 +93,7 @@ class DashboardController extends Controller
                         'due_date' => $dueDate->format('M d, Y'),
                         'days_overdue' => $dueDate->diffInDays($todayCarbon),
                         'amount' => ($m === 1) ? $down : $monthlyExpected,
-                        'url' => route('installments.show', ['plan' => $plan->id]), // ✅ adjust if your route differs
+                        'url' => route('staff.installments.show', ['plan' => $plan->id]), // ✅ adjust if your route differs
                     ];
 
                     break;
@@ -169,7 +169,7 @@ class DashboardController extends Controller
                 'textColor'       => '#ffffff',
                 'extendedProps' => [
                     'type' => 'appointment',
-                    'url' => route('appointments.show', ['appointment' => $a->id]), // ✅ adjust if needed
+                    'url' => route('staff.appointments.show', ['appointment' => $a->id]), // ✅ adjust if needed
                 ],
             ];
         }

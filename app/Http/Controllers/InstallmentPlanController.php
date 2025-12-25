@@ -108,7 +108,7 @@ class InstallmentPlanController extends Controller
             ]);
         }
 
-        return redirect()->route('payments.index', ['tab' => 'installment'])
+        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan created successfully!');
     }
 
@@ -207,7 +207,7 @@ class InstallmentPlanController extends Controller
             'status'      => $status,
         ]);
 
-        return redirect()->route('payments.index', ['tab' => 'installment'])
+        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan updated successfully!');
     }
 
@@ -218,7 +218,7 @@ class InstallmentPlanController extends Controller
     {
         $plan->delete();
 
-        return redirect()->route('payments.index', ['tab' => 'installment'])
+        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment deleted successfully');
     }
 }
