@@ -11,15 +11,21 @@ class Visit extends Model
 
     protected $fillable = [
         'patient_id',
+        'doctor_id',
+        'dentist_name',
         'visit_date',
         'status',
         'notes',
         'price',
     ];
 
+    protected $casts = [
+        'visit_date' => 'date',
+    ];
+
     public function doctor()
     {
-        return $this->belongsTo(Doctor::class);
+        return $this->belongsTo(Doctor::class, 'doctor_id');
     }
 
     public function patient()

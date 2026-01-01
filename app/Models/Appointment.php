@@ -9,7 +9,6 @@ class Appointment extends Model
 {
     use HasFactory;
 
-    // Allow mass assignment for all needed fields
     protected $fillable = [
     'patient_id',
     'service_id',

@@ -270,6 +270,11 @@
 @endpush
 
 @section('content')
+@php
+    // ✅ SAFE: check once (prevents extra work inside the loop)
+    $hasActivityRoute = \Illuminate\Support\Facades\Route::has('admin.users.activity');
+@endphp
+
 <div class="uwrap">
 
     <div class="head">
@@ -334,7 +339,7 @@
                         <th>Role</th>
                         <th>Status</th>
                         <th style="min-width: 240px;">Last Login</th>
-                        <th class="text-end" style="min-width: 260px;">Actions</th>
+                        <th class="text-end" style="min-width: 320px;">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -394,6 +399,12 @@
                             </td>
 
                             <td class="text-end">
+                                @if($hasActivityRoute)
+                                    <a href="{{ route('admin.users.activity', $u->id) }}" class="btn btn-sm abtn me-1">
+                                        <i class="fa-solid fa-clock-rotate-left me-1"></i> Activity
+                                    </a>
+                                @endif
+
                                 <a href="{{ route('admin.users.edit', $u->id) }}" class="btn btn-sm abtn me-1">
                                     <i class="fa fa-pen me-1"></i> Edit
                                 </a>

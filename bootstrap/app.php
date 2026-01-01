@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // ✅ Trust Render / proxy headers (fixes http/https form submit issues)
         $middleware->append(\App\Http\Middleware\TrustProxies::class);
+
+        // ✅ Activity logging (for admin/staff pages)
+        $middleware->appendToGroup('web', \App\Http\Middleware\LogUserActivity::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

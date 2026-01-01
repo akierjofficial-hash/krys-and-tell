@@ -5,15 +5,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 
 // Staff controllers
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\PatientController;
-use App\Http\Controllers\VisitController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\InstallmentPlanController;
-use App\Http\Controllers\InstallmentPaymentController;
-use App\Http\Controllers\PatientImportExportController;
+use App\Http\Controllers\Staff\DashboardController;
+use App\Http\Controllers\Staff\PatientController;
+use App\Http\Controllers\Staff\VisitController;
+use App\Http\Controllers\Staff\PaymentController;
+use App\Http\Controllers\Staff\AppointmentController;
+use App\Http\Controllers\Staff\ServiceController;
+use App\Http\Controllers\Staff\InstallmentPlanController;
+use App\Http\Controllers\Staff\InstallmentPaymentController;
+use App\Http\Controllers\Staff\PatientImportExportController;
 use App\Http\Controllers\Staff\ApprovalRequestController;
 
 // Admin controllers
@@ -96,6 +96,11 @@ Route::middleware('auth')->group(function () {
             Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
+
+            // ✅ NEW: Activity Log per user
+            Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');
+
+            
 
             // Analytics
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');

@@ -8,19 +8,14 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
         'email',
         'password',
-
-        // ✅ admin/staff controls
         'role',
         'is_active',
-
-        // ✅ optional tracking
         'last_login_at',
     ];
 

@@ -1,4 +1,4 @@
-@extends('layouts.app') {{-- change to your staff layout if different --}}
+@extends('layouts.staff') 
 @section('title', 'Approval Requests')
 
 @section('content')

@@ -32,15 +32,13 @@ public function visits()
 
 public function payments()
 {
-    // Payments are linked to patients through visits:
-    // patients -> visits (patient_id) -> payments (visit_id)
     return $this->hasManyThrough(
         Payment::class,
         Visit::class,
-        'patient_id', // Foreign key on visits table
-        'visit_id',   // Foreign key on payments table
-        'id',         // Local key on patients table
-        'id'          // Local key on visits table
+        'patient_id', 
+        'visit_id',   
+        'id',         
+        'id'         
     );
 }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\ActivityLog; // ✅ add
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -76,8 +77,6 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::in(['admin', 'staff'])],
             'is_active' => ['nullable', 'boolean'],
-
-            // optional password change
             'password' => ['nullable', 'string', 'min:8', 'max:72'],
         ]);
 
@@ -97,7 +96,6 @@ class AdminUserController extends Controller
 
     public function toggleActive(User $user)
     {
-        // Optional safety: prevent admin from deactivating themself
         if (auth()->id() === $user->id) {
             return back()->with('error', "You can't deactivate your own account.");
         }
@@ -106,5 +104,17 @@ class AdminUserController extends Controller
         $user->save();
 
         return back()->with('success', 'User status updated.');
+    }
+
+    // ✅ NEW: Activity Log page
+    public function activity(User $user)
+    {
+        $logs = ActivityLog::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->paginate(30)
+            ->withQueryString();
+
+        return view('admin.users.activity', compact('user', 'logs'));
     }
 }

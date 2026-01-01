@@ -14,17 +14,15 @@ class Payment extends Model
         'amount',
         'method',
         'payment_date',
-        'installment_plan_id', // nullable
+        'installment_plan_id', 
         'notes'
     ];
 
-    // Payment belongs to a Visit
 public function visit()
 {
     return $this->belongsTo(Visit::class);
 }
 
-// Payment has patient through Visit
 public function patient()
 {
     return $this->hasOneThrough(Patient::class, Visit::class, 'id', 'id', 'visit_id', 'patient_id');

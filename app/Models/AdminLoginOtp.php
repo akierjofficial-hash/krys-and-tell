@@ -1,6 +1,5 @@
 <?php
 
-// app/Models/AdminLoginOtp.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
