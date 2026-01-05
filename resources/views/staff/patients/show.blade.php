@@ -236,6 +236,23 @@
         'female' => 'chip-female',
         default => 'chip-other',
     };
+
+    $info = $patient->informationRecord;
+    $consent = $patient->informedConsent;
+
+    $consentLabels = [
+        'treatment'   => 'Treatment to be done',
+        'meds'        => 'Drugs & medications',
+        'changes'     => 'Changes in treatment plan',
+        'radiograph'  => 'Radiographs / X-rays',
+        'removal'     => 'Removal of teeth',
+        'crowns'      => 'Crowns / caps / bridges',
+        'endo'        => 'Endodontics / root canal',
+        'perio'       => 'Periodontal disease',
+        'fillings'    => 'Fillings',
+        'dentures'    => 'Dentures',
+        'disclaimer'  => 'Acknowledgement / disclaimer',
+    ];
 @endphp
 
 <div class="page-head max-wrap">
@@ -245,15 +262,20 @@
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+    <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
+        <i class="fa fa-arrow-left"></i> Back
+    </a>
 
-        <a href="{{ route('staff.patients.edit', $patient->id) }}" class="btn-primaryx">
-            <i class="fa fa-pen"></i> Edit Patient
-        </a>
-    </div>
+    {{-- ✅ PRINT PATIENT INFORMATION PDF --}}
+    <a href="{{ route('staff.patients.printInfo', $patient->id) }}" target="_blank" class="btn-ghostx">
+        <i class="fa fa-print"></i> Print Patient Info (PDF)
+    </a>
+
+    <a href="{{ route('staff.patients.edit', $patient->id) }}" class="btn-primaryx">
+        <i class="fa fa-pen"></i> Edit Patient
+    </a>
 </div>
+
 
 {{-- Patient info card --}}
 <div class="card-shell max-wrap">
@@ -310,6 +332,12 @@
                 <div class="value">{{ $patient->contact_number ?? '—' }}</div>
             </div>
 
+            {{-- ✅ Email --}}
+            <div class="info">
+                <div class="label">Email</div>
+                <div class="value">{{ $patient->email ?? '—' }}</div>
+            </div>
+
             <div class="info full">
                 <div class="label">Address</div>
                 <div class="value">{{ $patient->address ?? '—' }}</div>
@@ -320,6 +348,244 @@
                 <div class="value">{{ $patient->notes ?? '—' }}</div>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- =======================
+    Patient Information Record
+======================= --}}
+<div class="card-shell max-wrap">
+    <div class="card-head">
+        <div class="card-title">
+            <i class="fa fa-clipboard-list"></i> Patient Information Record
+        </div>
+        <div class="card-hint">
+            @if(optional($info)->signed_at)
+                Signed: <strong>{{ \Carbon\Carbon::parse($info->signed_at)->format('M d, Y h:i A') }}</strong>
+            @else
+                <span class="muted">Not signed</span>
+            @endif
+        </div>
+    </div>
+
+    <div class="card-bodyx">
+        @if(!$info)
+            <div class="text-muted">No Patient Information Record saved yet.</div>
+        @else
+            <div class="info-grid">
+                <div class="info">
+                    <div class="label">Nickname</div>
+                    <div class="value">{{ $info->nickname ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Occupation</div>
+                    <div class="value">{{ $info->occupation ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Dental Insurance</div>
+                    <div class="value">{{ $info->dental_insurance ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Effective Date</div>
+                    <div class="value">{{ $info->effective_date ? \Carbon\Carbon::parse($info->effective_date)->format('M d, Y') : '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Home No.</div>
+                    <div class="value">{{ $info->home_no ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Office No.</div>
+                    <div class="value">{{ $info->office_no ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Fax No.</div>
+                    <div class="value">{{ $info->fax_no ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Minor?</div>
+                    <div class="value">{{ $info->is_minor ? 'Yes' : 'No' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Guardian Name</div>
+                    <div class="value">{{ $info->guardian_name ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Guardian Occupation</div>
+                    <div class="value">{{ $info->guardian_occupation ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Referral Source</div>
+                    <div class="value">{{ $info->referral_source ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Consultation Reason</div>
+                    <div class="value">{{ $info->consultation_reason ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Previous Dentist</div>
+                    <div class="value">{{ $info->previous_dentist ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Last Dental Visit</div>
+                    <div class="value">{{ $info->last_dental_visit ? \Carbon\Carbon::parse($info->last_dental_visit)->format('M d, Y') : '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Physician Name</div>
+                    <div class="value">{{ $info->physician_name ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Physician Specialty</div>
+                    <div class="value">{{ $info->physician_specialty ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Blood Type</div>
+                    <div class="value">{{ $info->blood_type ?? '—' }}</div>
+                </div>
+
+                <div class="info">
+                    <div class="label">Blood Pressure</div>
+                    <div class="value">{{ $info->blood_pressure ?? '—' }}</div>
+                </div>
+
+                <div class="info full">
+                    <div class="label">Allergies</div>
+                    <div class="value">
+                        @php $all = $info->allergies ?? []; @endphp
+                        @if(!empty($all))
+                            {{ implode(', ', $all) }}
+                        @else
+                            —
+                        @endif
+
+                        @if($info->allergies_other)
+                            <div class="muted mt-1">Other: {{ $info->allergies_other }}</div>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="info full">
+                    <div class="label">Medical Conditions</div>
+                    <div class="value">
+                        @php $conds = $info->medical_conditions ?? []; @endphp
+                        @if(!empty($conds))
+                            {{ implode(', ', $conds) }}
+                        @else
+                            —
+                        @endif
+
+                        @if($info->medical_conditions_other)
+                            <div class="muted mt-1">Other: {{ $info->medical_conditions_other }}</div>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="info full">
+                    <div class="label">Signature</div>
+                    <div class="value">
+                        @if($info->signature_path)
+                            <img
+                                src="{{ asset('storage/'.$info->signature_path) }}"
+                                alt="Patient signature"
+                                style="max-width:520px;width:100%;border:1px solid rgba(15,23,42,.10);border-radius:12px;background:#fff;padding:8px;"
+                            >
+                        @else
+                            —
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
+
+{{-- =======================
+    Informed Consent
+======================= --}}
+<div class="card-shell max-wrap">
+    <div class="card-head">
+        <div class="card-title">
+            <i class="fa fa-file-signature"></i> Informed Consent
+        </div>
+        <div class="card-hint">
+            @if(optional($consent)->patient_signed_at)
+                Patient Signed: <strong>{{ \Carbon\Carbon::parse($consent->patient_signed_at)->format('M d, Y h:i A') }}</strong>
+            @else
+                <span class="muted">Not signed</span>
+            @endif
+        </div>
+    </div>
+
+    <div class="card-bodyx">
+        @if(!$consent)
+            <div class="text-muted">No Informed Consent saved yet.</div>
+        @else
+            <div class="table-wrap table-responsive" style="padding:0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>Initials</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($consentLabels as $key => $label)
+                            <tr>
+                                <td class="fw-semibold">{{ $label }}</td>
+                                <td class="muted">{{ $consent->initials[$key] ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-grid mt-3">
+                <div class="info full">
+                    <div class="label">Patient/Guardian Signature</div>
+                    <div class="value">
+                        @if($consent->patient_signature_path)
+                            <img
+                                src="{{ asset('storage/'.$consent->patient_signature_path) }}"
+                                alt="Consent patient signature"
+                                style="max-width:520px;width:100%;border:1px solid rgba(15,23,42,.10);border-radius:12px;background:#fff;padding:8px;"
+                            >
+                        @else
+                            —
+                        @endif
+                    </div>
+                </div>
+
+                <div class="info full">
+                    <div class="label">Dentist Signature</div>
+                    <div class="value">
+                        @if($consent->dentist_signature_path)
+                            <img
+                                src="{{ asset('storage/'.$consent->dentist_signature_path) }}"
+                                alt="Consent dentist signature"
+                                style="max-width:520px;width:100%;border:1px solid rgba(15,23,42,.10);border-radius:12px;background:#fff;padding:8px;"
+                            >
+                        @else
+                            <span class="muted">Not signed</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 

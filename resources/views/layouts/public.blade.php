@@ -403,7 +403,8 @@
                             <span class="kt-info-ico"><i class="fa-solid fa-location-dot"></i></span>
                             <div>
                                 <div class="kt-info-main">Clinic Address</div>
-                                <div class="kt-info-sub">Your street, barangay, city</div>
+                                <div class="kt-info-sub"></div>C-T Bldg. Jose Romero Rd Bagacay Dumaguete City, Negros Oriental
+( Across Hypermart)
                             </div>
                         </div>
 
@@ -411,7 +412,7 @@
                             <span class="kt-info-ico"><i class="fa-solid fa-phone"></i></span>
                             <div>
                                 <div class="kt-info-main">Phone</div>
-                                <div class="kt-info-sub">+63 9XX XXX XXXX</div>
+                                <div class="kt-info-sub">+63 928 559 8951</div>
                             </div>
                         </div>
 
@@ -419,7 +420,7 @@
                             <span class="kt-info-ico"><i class="fa-solid fa-clock"></i></span>
                             <div>
                                 <div class="kt-info-main">Clinic Hours</div>
-                                <div class="kt-info-sub">Mon–Sat: 9:00 AM – 6:00 PM</div>
+                                <div class="kt-info-sub">Mon–Sat: 10:00 AM – 5:00 PM</div>
                             </div>
                         </div>
                     </div>

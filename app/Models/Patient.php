@@ -29,6 +29,16 @@ public function visits()
 {
     return $this->hasMany(Visit::class);
 }
+public function informationRecord()
+{
+    return $this->hasOne(\App\Models\PatientInformationRecord::class);
+}
+
+public function informedConsent()
+{
+    return $this->hasOne(\App\Models\PatientInformedConsent::class);
+}
+
 
 public function payments()
 {

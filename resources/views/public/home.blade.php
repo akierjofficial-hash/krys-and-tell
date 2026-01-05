@@ -17,12 +17,11 @@
                     </div>
 
                     <h1 class="kt-hero-title">
-                        Calm, modern dental care<br class="d-none d-md-block">
-                        for confident smiles.
+                        Welcome to  Krys&Tell.<br class="d-none d-md-block">
                     </h1>
 
                     <p class="kt-hero-sub">
-                        Welcome to <b>Krys &amp; Tell</b> — clear explanations, gentle hands,
+                        <b>Krys &amp; Tell</b> — clear explanations, gentle hands,
                         and a clinic that feels warm and comfortable. Book in minutes.
                     </p>
 

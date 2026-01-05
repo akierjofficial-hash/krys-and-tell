@@ -5,13 +5,20 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Patient;
+use App\Models\PatientInformationRecord;
+use App\Models\PatientInformedConsent;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+
 
 class PatientController extends Controller
 {
     public function index()
     {
         $patients = Patient::all();
-
         return view('staff.patients.index', compact('patients'));
     }
 
@@ -20,20 +27,131 @@ class PatientController extends Controller
         return view('staff.patients.create');
     }
 
+    /**
+     * Convert request input (0/1) to nullable boolean.
+     * - If the key is missing => null
+     * - If present and "1" => true
+     * - If present and "0" => false
+     */
+    private function nullableBool(Request $request, string $key): ?bool
+    {
+        if (!$request->has($key)) return null;
+
+        $v = $request->input($key);
+
+        if ($v === null || $v === '') return null;
+        if ($v === 1 || $v === '1' || $v === true || $v === 'true') return true;
+        if ($v === 0 || $v === '0' || $v === false || $v === 'false') return false;
+
+        return null;
+    }
+
+    /**
+     * Store a base64 PNG signature (data:image/png;base64,...) to /storage/app/public/...
+     * Returns the public disk path like: signatures/patient-info/<uuid>.png
+     */
+    private function storeSignature(?string $dataUrl, string $folder): ?string
+    {
+        if (!$dataUrl) return null;
+
+        if (!preg_match('/^data:image\/png;base64,/', $dataUrl)) {
+            return null;
+        }
+
+        $raw = base64_decode(substr($dataUrl, strpos($dataUrl, ',') + 1));
+        if ($raw === false) return null;
+
+        $path = trim($folder, '/') . '/' . Str::uuid() . '.png';
+        Storage::disk('public')->put($path, $raw);
+
+        return $path;
+    }
+
     public function store(Request $request)
     {
+        // ✅ Validate patient base (same as your current form, plus optional email)
         $validated = $request->validate([
+            // Patient core
             'first_name'     => 'required|string|max:255',
             'last_name'      => 'required|string|max:255',
             'middle_name'    => 'nullable|string|max:255',
             'birthdate'      => 'required|date',
             'gender'         => 'required|string|in:Male,Female,Other',
             'contact_number' => 'nullable|string|max:20',
+            'email'          => 'nullable|email|max:255',
             'address'        => 'nullable|string|max:500',
             'notes'          => 'nullable|string|max:1000',
+
+            // Patient Information Record (optional for now)
+            'nickname'              => 'nullable|string|max:255',
+            'occupation'            => 'nullable|string|max:255',
+            'dental_insurance'      => 'nullable|string|max:255',
+            'effective_date'        => 'nullable|date',
+
+            'home_no'               => 'nullable|string|max:50',
+            'office_no'             => 'nullable|string|max:50',
+            'fax_no'                => 'nullable|string|max:50',
+
+            'is_minor'              => 'nullable|in:0,1',
+            'guardian_name'         => 'nullable|string|max:255',
+            'guardian_occupation'   => 'nullable|string|max:255',
+
+            'referral_source'       => 'nullable|string|max:255',
+            'consultation_reason'   => 'nullable|string|max:2000',
+
+            'previous_dentist'      => 'nullable|string|max:255',
+            'last_dental_visit'     => 'nullable|date',
+
+            'physician_name'        => 'nullable|string|max:255',
+            'physician_specialty'   => 'nullable|string|max:255',
+
+            // medical yes/no (we will build as radio/select later, optional now)
+            'good_health'           => 'nullable|in:0,1',
+            'under_treatment'       => 'nullable|in:0,1',
+            'treatment_condition'   => 'nullable|string|max:255',
+
+            'serious_illness'           => 'nullable|in:0,1',
+            'serious_illness_details'   => 'nullable|string|max:2000',
+
+            'hospitalized'          => 'nullable|in:0,1',
+            'hospitalized_reason'   => 'nullable|string|max:2000',
+
+            'taking_medication'     => 'nullable|in:0,1',
+            'medications'           => 'nullable|string|max:2000',
+            'takes_aspirin'         => 'nullable|in:0,1',
+
+            'allergies'             => 'nullable|array',
+            'allergies.*'           => 'nullable|string|max:60',
+            'allergies_other'       => 'nullable|string|max:255',
+
+            'tobacco_use'           => 'nullable|in:0,1',
+            'alcohol_use'           => 'nullable|in:0,1',
+            'dangerous_drugs'       => 'nullable|in:0,1',
+
+            'bleeding_time'         => 'nullable|string|max:255',
+
+            'pregnant'              => 'nullable|in:0,1',
+            'nursing'               => 'nullable|in:0,1',
+            'birth_control_pills'   => 'nullable|in:0,1',
+
+            'blood_type'            => 'nullable|string|max:20',
+            'blood_pressure'        => 'nullable|string|max:20',
+
+            'medical_conditions'        => 'nullable|array',
+            'medical_conditions.*'      => 'nullable|string|max:80',
+            'medical_conditions_other'  => 'nullable|string|max:255',
+
+            // Signatures (base64 PNG strings)
+            'patient_info_signature'    => 'nullable|string|max:800000',
+
+            // Informed consent (optional for now)
+            'consent_initials'          => 'nullable|array',
+            'consent_initials.*'        => 'nullable|string|max:10',
+            'consent_patient_signature' => 'nullable|string|max:800000',
+            'consent_dentist_signature' => 'nullable|string|max:800000',
         ]);
 
-        // ✅ If staff didn't click "Create Anyway", run duplicate check
+        // ✅ Duplicate check (keep your current behavior)
         $forceCreate = $request->boolean('force_create');
 
         if (!$forceCreate) {
@@ -46,7 +164,6 @@ class PatientController extends Controller
                 ->whereRaw('LOWER(first_name) = ? AND LOWER(last_name) = ?', [$first, $last])
                 ->when($birth, fn ($q) => $q->whereDate('birthdate', $birth));
 
-            // If contact was provided, also check contact matches
             if ($contact !== '') {
                 $dupesQuery->orWhere('contact_number', $contact);
             }
@@ -63,15 +180,152 @@ class PatientController extends Controller
             }
         }
 
-        Patient::create($validated);
+        // Split out patient core data
+        $patientData = collect($validated)->only([
+            'first_name','last_name','middle_name','birthdate','gender',
+            'contact_number','email','address','notes',
+        ])->toArray();
+
+        // Build info record data
+        $infoData = [
+            'nickname'            => $validated['nickname'] ?? null,
+            'occupation'          => $validated['occupation'] ?? null,
+            'dental_insurance'    => $validated['dental_insurance'] ?? null,
+            'effective_date'      => $validated['effective_date'] ?? null,
+
+            'home_no'             => $validated['home_no'] ?? null,
+            'office_no'           => $validated['office_no'] ?? null,
+            'fax_no'              => $validated['fax_no'] ?? null,
+
+            'is_minor'            => $request->boolean('is_minor'),
+            'guardian_name'       => $validated['guardian_name'] ?? null,
+            'guardian_occupation' => $validated['guardian_occupation'] ?? null,
+
+            'referral_source'     => $validated['referral_source'] ?? null,
+            'consultation_reason' => $validated['consultation_reason'] ?? null,
+
+            'previous_dentist'    => $validated['previous_dentist'] ?? null,
+            'last_dental_visit'   => $validated['last_dental_visit'] ?? null,
+
+            'physician_name'      => $validated['physician_name'] ?? null,
+            'physician_specialty' => $validated['physician_specialty'] ?? null,
+
+            'good_health'         => $this->nullableBool($request, 'good_health'),
+            'under_treatment'     => $this->nullableBool($request, 'under_treatment'),
+            'treatment_condition' => $validated['treatment_condition'] ?? null,
+
+            'serious_illness'         => $this->nullableBool($request, 'serious_illness'),
+            'serious_illness_details' => $validated['serious_illness_details'] ?? null,
+
+            'hospitalized'        => $this->nullableBool($request, 'hospitalized'),
+            'hospitalized_reason' => $validated['hospitalized_reason'] ?? null,
+
+            'taking_medication'   => $this->nullableBool($request, 'taking_medication'),
+            'medications'         => $validated['medications'] ?? null,
+            'takes_aspirin'       => $this->nullableBool($request, 'takes_aspirin'),
+
+            'allergies'           => !empty($validated['allergies']) ? array_values(array_filter($validated['allergies'])) : null,
+            'allergies_other'     => $validated['allergies_other'] ?? null,
+
+            'tobacco_use'         => $this->nullableBool($request, 'tobacco_use'),
+            'alcohol_use'         => $this->nullableBool($request, 'alcohol_use'),
+            'dangerous_drugs'     => $this->nullableBool($request, 'dangerous_drugs'),
+
+            'bleeding_time'       => $validated['bleeding_time'] ?? null,
+
+            'pregnant'            => $this->nullableBool($request, 'pregnant'),
+            'nursing'             => $this->nullableBool($request, 'nursing'),
+            'birth_control_pills' => $this->nullableBool($request, 'birth_control_pills'),
+
+            'blood_type'          => $validated['blood_type'] ?? null,
+            'blood_pressure'      => $validated['blood_pressure'] ?? null,
+
+            'medical_conditions'       => !empty($validated['medical_conditions']) ? array_values(array_filter($validated['medical_conditions'])) : null,
+            'medical_conditions_other' => $validated['medical_conditions_other'] ?? null,
+        ];
+
+        // Consent data
+        $consentData = [
+            'initials' => !empty($validated['consent_initials']) ? $validated['consent_initials'] : null,
+        ];
+
+        // ✅ Save everything atomically
+        DB::transaction(function () use ($patientData, $infoData, $consentData, $request, &$patient) {
+            $patient = Patient::create($patientData);
+
+            // ---- Patient Info Record ----
+            $sigInfoPath = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
+            if ($sigInfoPath) {
+                $infoData['signature_path'] = $sigInfoPath;
+                $infoData['signed_at'] = now();
+            }
+
+            PatientInformationRecord::create(array_merge(
+                ['patient_id' => $patient->id],
+                $infoData
+            ));
+
+            // ---- Informed Consent ----
+            $sigConsentPatientPath = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
+            if ($sigConsentPatientPath) {
+                $consentData['patient_signature_path'] = $sigConsentPatientPath;
+                $consentData['patient_signed_at'] = now();
+            }
+
+            $sigConsentDentistPath = $this->storeSignature($request->input('consent_dentist_signature'), 'signatures/consent/dentist');
+            if ($sigConsentDentistPath) {
+                $consentData['dentist_signature_path'] = $sigConsentDentistPath;
+                $consentData['dentist_signed_at'] = now();
+            }
+
+            PatientInformedConsent::create(array_merge(
+                ['patient_id' => $patient->id],
+                $consentData
+            ));
+        });
 
         return redirect()
             ->route('staff.patients.index')
             ->with('success', 'Patient added successfully!');
     }
+    public function printInfo(\App\Models\Patient $patient)
+{
+    $patient->loadMissing(['informationRecord']);
+
+    $info = $patient->informationRecord;
+
+    $age = null;
+    if ($patient->birthdate) {
+        $age = Carbon::parse($patient->birthdate)->age;
+    }
+
+    // Optional: prepare signature as base64 for PDF
+    $signatureBase64 = null;
+    if ($info && $info->signature_path) {
+        $abs = public_path('storage/' . $info->signature_path);
+        if (file_exists($abs)) {
+            $mime = mime_content_type($abs) ?: 'image/png';
+            $data = base64_encode(file_get_contents($abs));
+            $signatureBase64 = "data:$mime;base64,$data";
+        }
+    }
+
+    $pdf = Pdf::loadView('staff.patients.print.patient_information', [
+        'patient' => $patient,
+        'info' => $info,
+        'age' => $age,
+        'signatureBase64' => $signatureBase64,
+    ])->setPaper('letter', 'portrait');
+
+    return $pdf->stream("patient-{$patient->id}-patient-information.pdf");
+}
+
 
     public function show(Patient $patient)
     {
+        // Load new relations so show page can use them later
+        $patient->loadMissing(['informationRecord', 'informedConsent']);
+
         $visits = $patient->visits()
             ->orderByDesc('visit_date')
             ->paginate(10, ['*'], 'visits_page');
@@ -99,29 +353,197 @@ class PatientController extends Controller
     }
 
     public function edit(Patient $patient)
-    {
-        return view('staff.patients.edit', compact('patient'));
-    }
+{
+    $patient->loadMissing(['informationRecord', 'informedConsent']);
+    return view('staff.patients.edit', compact('patient'));
+}
+
 
     public function update(Request $request, Patient $patient)
-    {
-        $validated = $request->validate([
-            'first_name'     => 'required|string|max:255',
-            'last_name'      => 'required|string|max:255',
-            'middle_name'    => 'nullable|string|max:255',
-            'birthdate'      => 'nullable|date',
-            'gender'         => 'nullable|string|max:10',
-            'contact_number' => 'nullable|string|max:20',
-            'address'        => 'nullable|string|max:500',
-            'notes'          => 'nullable|string|max:1000',
-        ]);
+{
+    $validated = $request->validate([
+        // Patient core
+        'first_name'     => 'required|string|max:255',
+        'last_name'      => 'required|string|max:255',
+        'middle_name'    => 'nullable|string|max:255',
+        'birthdate'      => 'required|date',
+        'gender'         => 'required|string|in:Male,Female,Other',
+        'contact_number' => 'required|string|max:20',
+        'email'          => 'required|email|max:255',
+        'address'        => 'required|string|max:500',
+        'notes'          => 'nullable|string|max:1000',
 
-        $patient->update($validated);
+        // Info record
+        'nickname'            => 'required|string|max:255',
+        'occupation'          => 'required|string|max:255',
+        'dental_insurance'    => 'nullable|string|max:255',
+        'effective_date'      => 'nullable|date',
+        'home_no'             => 'nullable|string|max:50',
+        'office_no'           => 'nullable|string|max:50',
+        'fax_no'              => 'nullable|string|max:50',
 
-        return redirect()
-            ->route('staff.patients.index')
-            ->with('success', 'Patient updated successfully!');
+        'is_minor'            => 'nullable|in:0,1',
+        'guardian_name'       => 'nullable|string|max:255',
+        'guardian_occupation' => 'nullable|string|max:255',
+
+        'referral_source'     => 'nullable|string|max:255',
+        'consultation_reason' => 'nullable|string|max:2000',
+
+        'previous_dentist'    => 'nullable|string|max:255',
+        'last_dental_visit'   => 'nullable|date',
+
+        'physician_name'      => 'nullable|string|max:255',
+        'physician_specialty' => 'nullable|string|max:255',
+
+        'good_health'         => 'nullable|in:0,1',
+        'under_treatment'     => 'nullable|in:0,1',
+        'treatment_condition' => 'nullable|string|max:255',
+
+        'serious_illness'         => 'nullable|in:0,1',
+        'serious_illness_details' => 'nullable|string|max:2000',
+
+        'hospitalized'        => 'nullable|in:0,1',
+        'hospitalized_reason' => 'nullable|string|max:2000',
+
+        'taking_medication'   => 'nullable|in:0,1',
+        'medications'         => 'nullable|string|max:2000',
+        'takes_aspirin'       => 'nullable|in:0,1',
+
+        'allergies'           => 'nullable|array',
+        'allergies.*'         => 'nullable|string|max:60',
+        'allergies_other'     => 'nullable|string|max:255',
+
+        'tobacco_use'         => 'nullable|in:0,1',
+        'alcohol_use'         => 'nullable|in:0,1',
+        'dangerous_drugs'     => 'nullable|in:0,1',
+
+        'bleeding_time'       => 'nullable|string|max:255',
+
+        'blood_type'          => 'nullable|string|max:20',
+        'blood_pressure'      => 'nullable|string|max:20',
+
+        'medical_conditions'       => 'nullable|array',
+        'medical_conditions.*'     => 'nullable|string|max:80',
+        'medical_conditions_other' => 'nullable|string|max:255',
+
+        // Signatures (optional on edit)
+        'patient_info_signature'    => 'nullable|string|max:800000',
+        'consent_patient_signature' => 'nullable|string|max:800000',
+        'consent_dentist_signature' => 'nullable|string|max:800000',
+
+        // Consent
+        'consent_initials'     => 'required|array',
+        'consent_initials.*'   => 'nullable|string|max:10',
+    ]);
+
+    // Update patient core
+    $patient->update([
+        'first_name'     => $validated['first_name'],
+        'last_name'      => $validated['last_name'],
+        'middle_name'    => $validated['middle_name'] ?? null,
+        'birthdate'      => $validated['birthdate'],
+        'gender'         => $validated['gender'],
+        'contact_number' => $validated['contact_number'],
+        'email'          => $validated['email'],
+        'address'        => $validated['address'],
+        'notes'          => $validated['notes'] ?? null,
+    ]);
+
+    // Update/create info record
+    $info = $patient->informationRecord()->firstOrNew([]);
+
+    $info->fill([
+        'nickname'            => $validated['nickname'],
+        'occupation'          => $validated['occupation'],
+        'dental_insurance'    => $validated['dental_insurance'] ?? null,
+        'effective_date'      => $validated['effective_date'] ?? null,
+        'home_no'             => $validated['home_no'] ?? null,
+        'office_no'           => $validated['office_no'] ?? null,
+        'fax_no'              => $validated['fax_no'] ?? null,
+
+        'is_minor'            => $request->boolean('is_minor'),
+        'guardian_name'       => $validated['guardian_name'] ?? null,
+        'guardian_occupation' => $validated['guardian_occupation'] ?? null,
+
+        'referral_source'     => $validated['referral_source'] ?? null,
+        'consultation_reason' => $validated['consultation_reason'] ?? null,
+
+        'previous_dentist'    => $validated['previous_dentist'] ?? null,
+        'last_dental_visit'   => $validated['last_dental_visit'] ?? null,
+
+        'physician_name'      => $validated['physician_name'] ?? null,
+        'physician_specialty' => $validated['physician_specialty'] ?? null,
+
+        'good_health'         => $request->has('good_health') ? (bool) ((int) $request->input('good_health')) : null,
+        'under_treatment'     => $request->has('under_treatment') ? (bool) ((int) $request->input('under_treatment')) : null,
+        'treatment_condition' => $validated['treatment_condition'] ?? null,
+
+        'serious_illness'         => $request->has('serious_illness') ? (bool) ((int) $request->input('serious_illness')) : null,
+        'serious_illness_details' => $validated['serious_illness_details'] ?? null,
+
+        'hospitalized'        => $request->has('hospitalized') ? (bool) ((int) $request->input('hospitalized')) : null,
+        'hospitalized_reason' => $validated['hospitalized_reason'] ?? null,
+
+        'taking_medication'   => $request->has('taking_medication') ? (bool) ((int) $request->input('taking_medication')) : null,
+        'medications'         => $validated['medications'] ?? null,
+        'takes_aspirin'       => $request->has('takes_aspirin') ? (bool) ((int) $request->input('takes_aspirin')) : null,
+
+        'allergies'           => !empty($validated['allergies']) ? array_values(array_filter($validated['allergies'])) : null,
+        'allergies_other'     => $validated['allergies_other'] ?? null,
+
+        'tobacco_use'         => $request->has('tobacco_use') ? (bool) ((int) $request->input('tobacco_use')) : null,
+        'alcohol_use'         => $request->has('alcohol_use') ? (bool) ((int) $request->input('alcohol_use')) : null,
+        'dangerous_drugs'     => $request->has('dangerous_drugs') ? (bool) ((int) $request->input('dangerous_drugs')) : null,
+
+        'bleeding_time'       => $validated['bleeding_time'] ?? null,
+
+        'blood_type'          => $validated['blood_type'] ?? null,
+        'blood_pressure'      => $validated['blood_pressure'] ?? null,
+
+        'medical_conditions'       => !empty($validated['medical_conditions']) ? array_values(array_filter($validated['medical_conditions'])) : null,
+        'medical_conditions_other' => $validated['medical_conditions_other'] ?? null,
+    ]);
+
+    // Optional: replace signature only if user drew a new one
+    if ($request->filled('patient_info_signature')) {
+        $path = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
+        if ($path) {
+            $info->signature_path = $path;
+            $info->signed_at = now();
+        }
     }
+
+    $info->patient_id = $patient->id;
+    $info->save();
+
+    // Update/create consent
+    $consent = $patient->informedConsent()->firstOrNew([]);
+    $consent->patient_id = $patient->id;
+    $consent->initials = $validated['consent_initials'];
+
+    if ($request->filled('consent_patient_signature')) {
+        $path = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
+        if ($path) {
+            $consent->patient_signature_path = $path;
+            $consent->patient_signed_at = now();
+        }
+    }
+
+    if ($request->filled('consent_dentist_signature')) {
+        $path = $this->storeSignature($request->input('consent_dentist_signature'), 'signatures/consent/dentist');
+        if ($path) {
+            $consent->dentist_signature_path = $path;
+            $consent->dentist_signed_at = now();
+        }
+    }
+
+    $consent->save();
+
+    return redirect()
+        ->route('staff.patients.show', $patient->id)
+        ->with('success', 'Patient record updated successfully!');
+}
+
 
     public function destroy(Patient $patient)
     {

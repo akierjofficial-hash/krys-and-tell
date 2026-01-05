@@ -100,8 +100,6 @@ Route::middleware('auth')->group(function () {
             // ✅ NEW: Activity Log per user
             Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');
 
-            
-
             // Analytics
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
 
@@ -150,6 +148,12 @@ Route::middleware('auth')->group(function () {
             // Patients import/export
             Route::get('/patients/export', [PatientImportExportController::class, 'export'])->name('patients.export');
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
+
+            // ✅ PRINT Patient Information Record (PDF)
+            // URL becomes: /staff/patients/{patient}/print-info
+            // Route name becomes: staff.patients.printInfo
+            Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])
+                ->name('patients.printInfo');
 
             // Resources (names become staff.patients.*, staff.visits.*, etc.)
             Route::resource('patients', PatientController::class);
