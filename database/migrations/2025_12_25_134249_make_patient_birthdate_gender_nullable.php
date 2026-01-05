@@ -10,28 +10,13 @@ return new class extends Migration
     {
         if (!Schema::hasTable('patients')) return;
 
-        // Make birthdate nullable (keep the SAME type)
+        // Works on Postgres and is safe to run even if already nullable
         if (Schema::hasColumn('patients', 'birthdate')) {
-            $type = DB::table('information_schema.columns')
-                ->where('table_schema', DB::raw('database()'))
-                ->where('table_name', 'patients')
-                ->where('column_name', 'birthdate')
-                ->value('column_type'); // e.g. "date"
-
-            $type = $type ?: 'date';
-            DB::statement("ALTER TABLE `patients` MODIFY `birthdate` {$type} NULL");
+            DB::statement('ALTER TABLE patients ALTER COLUMN birthdate DROP NOT NULL');
         }
 
-        // Make gender nullable (keep SAME type — enum stays enum)
         if (Schema::hasColumn('patients', 'gender')) {
-            $type = DB::table('information_schema.columns')
-                ->where('table_schema', DB::raw('database()'))
-                ->where('table_name', 'patients')
-                ->where('column_name', 'gender')
-                ->value('column_type'); // e.g. "varchar(20)" or "enum('male','female')"
-
-            $type = $type ?: 'varchar(20)';
-            DB::statement("ALTER TABLE `patients` MODIFY `gender` {$type} NULL");
+            DB::statement('ALTER TABLE patients ALTER COLUMN gender DROP NOT NULL');
         }
     }
 
@@ -39,12 +24,13 @@ return new class extends Migration
     {
         if (!Schema::hasTable('patients')) return;
 
-        // Down = return NOT NULL (this can fail if you already have NULL data)
-        // So we do it safely only if you really want it back.
-        // Recommended: leave as-is.
+        // NOTE: this can fail if you already have NULLs in production
+        if (Schema::hasColumn('patients', 'birthdate')) {
+            DB::statement('ALTER TABLE patients ALTER COLUMN birthdate SET NOT NULL');
+        }
 
-        // Example (NOT recommended):
-        // DB::statement("ALTER TABLE `patients` MODIFY `birthdate` date NOT NULL");
-        // DB::statement("ALTER TABLE `patients` MODIFY `gender` varchar(20) NOT NULL");
+        if (Schema::hasColumn('patients', 'gender')) {
+            DB::statement('ALTER TABLE patients ALTER COLUMN gender SET NOT NULL');
+        }
     }
 };
