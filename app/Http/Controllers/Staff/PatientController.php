@@ -152,33 +152,28 @@ class PatientController extends Controller
         ]);
 
         // ✅ Duplicate check (keep your current behavior)
-        $forceCreate = $request->boolean('force_create');
+        // ✅ If staff didn't click "Create Anyway", run duplicate check
+$forceCreate = $request->boolean('force_create');
 
-        if (!$forceCreate) {
-            $first   = mb_strtolower(trim($validated['first_name']));
-            $last    = mb_strtolower(trim($validated['last_name']));
-            $birth   = $validated['birthdate'] ?? null;
-            $contact = trim($validated['contact_number'] ?? '');
+if (!$forceCreate) {
+    $first = mb_strtolower(trim($validated['first_name']));
+    $last  = mb_strtolower(trim($validated['last_name']));
+    $birth = $validated['birthdate'] ?? null;
 
-            $dupesQuery = Patient::query()
-                ->whereRaw('LOWER(first_name) = ? AND LOWER(last_name) = ?', [$first, $last])
-                ->when($birth, fn ($q) => $q->whereDate('birthdate', $birth));
+    // ✅ ONLY consider duplicates if SAME first+last AND SAME birthdate
+    $dupes = Patient::query()
+        ->whereRaw('LOWER(first_name) = ? AND LOWER(last_name) = ?', [$first, $last])
+        ->when($birth, fn ($q) => $q->whereDate('birthdate', $birth))
+        ->orderByDesc('created_at')
+        ->take(5)
+        ->get(['id', 'first_name', 'middle_name', 'last_name', 'birthdate', 'contact_number']);
 
-            if ($contact !== '') {
-                $dupesQuery->orWhere('contact_number', $contact);
-            }
-
-            $dupes = $dupesQuery
-                ->orderByDesc('created_at')
-                ->take(5)
-                ->get(['id', 'first_name', 'middle_name', 'last_name', 'birthdate', 'contact_number']);
-
-            if ($dupes->isNotEmpty()) {
-                return back()
-                    ->withInput()
-                    ->with('duplicate_candidates', $dupes);
-            }
-        }
+    if ($dupes->isNotEmpty()) {
+        return back()
+            ->withInput()
+            ->with('duplicate_candidates', $dupes);
+    }
+}
 
         // Split out patient core data
         $patientData = collect($validated)->only([

@@ -685,66 +685,84 @@
     </div>
 
     {{-- CARD 7: INFORMED CONSENT --}}
-    <div class="card-shell">
-        <div class="card-head">
-            <div class="section-title"><i class="fa fa-file-signature"></i> Informed Consent</div>
-            <div class="hint">Initial each section + optionally re-sign</div>
+    {{-- CARD 7: INFORMED CONSENT --}}
+<div class="card-shell">
+    <div class="card-head">
+        <div class="section-title"><i class="fa fa-file-signature"></i> Informed Consent</div>
+        <div class="hint">Yes / No per section + optionally re-sign</div>
+    </div>
+
+    <div class="card-bodyx">
+        <div class="helper mb-2">
+            Checked = Yes, unchecked = No. (Old saved “initials” will be treated as Yes.)
         </div>
 
-        <div class="card-bodyx">
-            <div class="row g-3">
-                @foreach($consentSections as $key => $label)
-                    <div class="col-12 col-md-8">
-                        <div style="font-weight:900; color:rgba(15,23,42,.85);">{{ $label }}</div>
-                        <div class="helper">Type initials</div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-labelx">Initials <span class="text-danger">*</span></label>
-                        <input
-                            type="text"
-                            name="consent_initials[{{ $key }}]"
-                            class="inputx"
-                            maxlength="10"
-                            value="{{ $oldInitials[$key] ?? '' }}"
-                            required
-                        >
-                    </div>
-                @endforeach
+        <div class="checks-grid" style="grid-template-columns: 1fr;">
+            @foreach($consentSections as $key => $label)
+                @php
+                    // If old data is initials like "AK", consider that as YES (checked)
+                    $raw = $oldInitials[$key] ?? null;
+                    $rawLower = strtolower((string)$raw);
+                    $checked = !empty($raw) && !in_array($rawLower, ['no','0','false'], true);
+                @endphp
 
-                <div class="col-12"><hr style="border-color:rgba(15,23,42,.10);"></div>
+                <label class="check-item" for="consent_{{ $key }}" style="align-items:center;">
+                    <input type="hidden" name="consent_initials[{{ $key }}]" value="No">
 
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">New Patient/Guardian Signature (optional)</label>
-                    <div class="sig-wrap">
-                        <canvas id="sig_consent_patient" class="sig"></canvas>
-                    </div>
-                    <div class="d-flex gap-2 mt-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_patient">Clear</button>
-                    </div>
+                    <input
+                        type="checkbox"
+                        id="consent_{{ $key }}"
+                        name="consent_initials[{{ $key }}]"
+                        value="Yes"
+                        {{ $checked ? 'checked' : '' }}
+                    >
 
-                    @if($consent && $consent->patient_signature_path)
-                        <div class="helper">Current saved signature:</div>
-                        <img class="sig-preview" src="{{ asset('storage/'.$consent->patient_signature_path) }}" alt="Current Consent Patient Signature">
-                    @endif
+                    <div class="txt">
+                        {{ $label }}
+                        <div class="helper" style="margin-top:4px;">Yes = checked • No = unchecked</div>
+                    </div>
+                </label>
+            @endforeach
+        </div>
+
+        <div class="mt-3">
+            <hr style="border-color:rgba(15,23,42,.10);">
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-labelx">New Patient/Guardian Signature (optional)</label>
+                <div class="sig-wrap">
+                    <canvas id="sig_consent_patient" class="sig"></canvas>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_patient">Clear</button>
                 </div>
 
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">New Dentist Signature (optional)</label>
-                    <div class="sig-wrap">
-                        <canvas id="sig_consent_dentist" class="sig"></canvas>
-                    </div>
-                    <div class="d-flex gap-2 mt-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_dentist">Clear</button>
-                    </div>
+                @if($consent && $consent->patient_signature_path)
+                    <div class="helper">Current saved signature:</div>
+                    <img class="sig-preview" src="{{ asset('storage/'.$consent->patient_signature_path) }}" alt="Current Consent Patient Signature">
+                @endif
+            </div>
 
-                    @if($consent && $consent->dentist_signature_path)
-                        <div class="helper">Current saved signature:</div>
-                        <img class="sig-preview" src="{{ asset('storage/'.$consent->dentist_signature_path) }}" alt="Current Consent Dentist Signature">
-                    @endif
+            <div class="col-12 col-md-6">
+                <label class="form-labelx">New Dentist Signature (optional)</label>
+                <div class="sig-wrap">
+                    <canvas id="sig_consent_dentist" class="sig"></canvas>
                 </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_dentist">Clear</button>
+                </div>
+
+                @if($consent && $consent->dentist_signature_path)
+                    <div class="helper">Current saved signature:</div>
+                    <img class="sig-preview" src="{{ asset('storage/'.$consent->dentist_signature_path) }}" alt="Current Consent Dentist Signature">
+                @endif
             </div>
         </div>
     </div>
+</div>
+
 
     {{-- SUBMIT --}}
     <div class="card-shell">

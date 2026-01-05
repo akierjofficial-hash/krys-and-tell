@@ -1,360 +1,790 @@
+{{-- resources/views/staff/patients/print/patient_information.blade.php --}}
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Patient Information Record</title>
     <style>
-        @page { size: letter; margin: 0.5in; }
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color:#000; }
-        .top { display:flex; justify-content:space-between; align-items:flex-start; }
-        .brand { display:flex; gap:12px; align-items:center; }
-        .logoBox {
-            width: 90px; height: 70px;
-            border: 1px solid #ddd;
-            display:flex; align-items:center; justify-content:center;
-            font-size:10px; color:#777;
-        }
-        .clinic h1 { margin:0; font-size:14px; font-weight:800; }
-        .clinic .sub { font-size:10px; line-height:1.2; margin-top:2px; }
-        .rightBox { text-align:right; }
-        .chart {
-            display:inline-block;
-            border: 2px solid #000;
-            padding: 6px 10px;
-            font-weight:800;
-            font-size:11px;
-            border-radius: 6px;
-        }
-        .chartBox {
-            margin-top:6px;
-            width: 140px; height: 55px;
-            border: 1px solid #000;
-            border-radius: 10px;
+        @page {
+            size: letter;
+            margin: 0.35in 0.45in 0.35in 0.45in;
         }
 
-        .title { margin-top: 10px; font-size:12px; font-weight:900; }
-        .hr { border-top: 2px solid #000; margin: 6px 0 10px; }
-
-        .row { display:flex; gap:10px; }
-        .col { flex:1; }
-        .field { margin-bottom: 4px; }
-        .label { display:inline-block; min-width: 95px; font-weight:700; }
-        .line {
-            display:inline-block;
-            border-bottom: 1px solid #000;
-            min-width: 220px;
-            padding: 0 4px 1px;
-        }
-        .line.sm { min-width: 120px; }
-        .line.xs { min-width: 80px; }
-        .line.lg { min-width: 320px; }
-
-        .req { color:#c00000; font-weight:900; } /* red check mark */
-        .section { margin-top: 6px; }
-        .section h2{
-            margin: 8px 0 4px;
+        * { box-sizing: border-box; }
+        body{
+            font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 11px;
+            color:#000;
+            margin:0;
+            padding:0;
+        }
+
+        /* ===== PAGE WRAPPER ===== */
+        .page{
+            width: 100%;
+            page-break-after: always;
+        }
+        .page:last-child{ page-break-after: auto; }
+
+        /* ===== HEADER (match image vibe) ===== */
+        .hdr{
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+        .hdr td{ vertical-align: top; }
+
+        .logo-wrap{
+            width: 28%;
+            padding-top: 2px;
+        }
+        .logo{
+            width: 150px;
+            height: auto;
+        }
+
+        .center-wrap{
+            width: 44%;
+            text-align: left;
+            padding-top: 6px;
+        }
+        .clinic-name{
             font-weight: 900;
-            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: .2px;
+        }
+        .clinic-line{
+            margin-top: 2px;
+            font-size: 10px;
         }
 
-        .q { margin: 2px 0; }
-        .box { display:inline-block; width: 10px; height: 10px; border: 1px solid #000; margin-right:6px; vertical-align:middle; }
-        .checked { background:#000; }
-
-        .grid3 { display:flex; gap:12px; margin-top:4px; }
-        .grid3 .col { flex:1; }
-
-        .sigRow { margin-top: 10px; display:flex; justify-content:flex-end; }
-        .sigBox {
-            width: 240px;
-            text-align:center;
+        .chart-wrap{
+            width: 28%;
+            text-align: right;
+            padding-top: 2px;
         }
-        .sigLine { border-top: 1px solid #000; margin-top: 6px; }
-        .sigImg { width: 240px; height: 70px; object-fit: contain; }
+        .chart-title{
+            display: inline-block;
+            background: #000;
+            color:#fff;
+            font-weight: 900;
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: .3px;
+        }
+        .chart-box{
+            margin-top: 6px;
+            width: 160px;
+            height: 78px;
+            border: 1px solid #000;
+            border-radius: 16px;
+            display: inline-block;
+        }
 
-        .small { font-size:10px; }
+        /* ===== SECTION TITLES ===== */
+        .section-title{
+            font-weight: 900;
+            font-size: 12px;
+            margin: 6px 0 4px 0;
+        }
+        .rule{
+            border-top: 1px solid #000;
+            margin: 2px 0 6px 0;
+        }
+
+        /* ===== FORM LINES ===== */
+        .row-table{ width: 100%; border-collapse: collapse; }
+        .row-table td{ padding: 0; }
+
+        .lbl{
+            white-space: nowrap;
+            padding-right: 6px;
+        }
+        .req{
+            color: #cc0000;
+            font-weight: 900;
+            padding-left: 2px;
+        }
+        .line{
+            border-bottom: 1px solid #000;
+            height: 16px;
+            vertical-align: bottom;
+        }
+        .val{
+            display: inline-block;
+            padding: 0 2px 1px 2px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        .subcap{
+            font-size: 9px;
+            color:#000;
+            padding-top: 2px;
+        }
+
+        /* main 2-col block like the image */
+        .two-col{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+        }
+        .two-col td{
+            vertical-align: top;
+            padding-right: 12px;
+        }
+        .two-col td:last-child{ padding-right: 0; }
+        .left-col{ width: 62%; }
+        .right-col{ width: 38%; }
+
+        .spacer-6{ height: 6px; }
+        .spacer-10{ height: 10px; }
+
+        /* ===== LIST STYLE (medical questions) ===== */
+        .q{
+            font-size: 10px;
+            line-height: 1.25;
+            margin: 1px 0;
+        }
+        .ans{
+            font-weight: 800;
+        }
+
+        /* ===== CHECKLIST (3 cols like image) ===== */
+        .check3{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+        }
+        .check3 td{
+            width: 33.333%;
+            vertical-align: top;
+            font-size: 10px;
+            line-height: 1.25;
+            padding-right: 8px;
+        }
+        .box{
+            display:inline-block;
+            width: 14px;
+            text-align: center;
+            font-weight: 900;
+        }
+
+        /* ===== SIGNATURE AREA ===== */
+        .sig-area{
+            width: 100%;
+            margin-top: 10px;
+        }
+        .sig-img{
+            width: 220px;
+            height: auto;
+            display:block;
+            margin-left: auto; /* align right-ish like image bottom */
+            margin-bottom: 2px;
+        }
+        .sig-line{
+            width: 280px;
+            border-bottom: 1px solid #000;
+            margin-left: auto;
+            height: 18px;
+            position: relative;
+        }
+        .sig-text{
+            position: absolute;
+            right: 0;
+            bottom: -14px;
+            font-weight: 700;
+            font-style: italic;
+            font-size: 11px;
+        }
+
+        /* ===== PAGE 2 CONSENT SUMMARY ===== */
+        .consent-table{
+            width:100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            font-size: 10.5px;
+        }
+        .consent-table th, .consent-table td{
+            border: 1px solid #000;
+            padding: 6px 8px;
+            vertical-align: top;
+        }
+        .consent-table th{
+            background: #f2f2f2;
+            font-weight: 900;
+            text-align: left;
+        }
+        .yn{
+            white-space: nowrap;
+            font-weight: 800;
+        }
+        .sig2{
+            width: 100%;
+            margin-top: 12px;
+            border-collapse: collapse;
+        }
+        .sig2 td{
+            width:50%;
+            vertical-align: top;
+            padding-right: 10px;
+        }
+        .sig2 td:last-child{ padding-right: 0; }
+        .sig-cap{
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: 800;
+        }
+        .sig-prev{
+            width: 280px;
+            height: auto;
+            border: 1px solid #000;
+            padding: 6px;
+        }
     </style>
 </head>
 <body>
 @php
-    $info = $info ?? null;
+    // Expecting $patient passed from controller
+    $info = $patient->informationRecord ?? null;
+    $consent = $patient->informedConsent ?? null;
 
-    $fullName = trim(($patient->last_name ?? '').', '.($patient->first_name ?? '').' '.($patient->middle_name ?? ''));
-    $birth = $patient->birthdate ? \Carbon\Carbon::parse($patient->birthdate)->format('m/d/Y') : '';
-    $sex = $patient->gender ? (strtolower($patient->gender) === 'male' ? 'M' : (strtolower($patient->gender) === 'female' ? 'F' : $patient->gender)) : '';
-    $ageVal = $age !== null ? $age : '';
+    $logoPath = public_path('images/katlogo.jpeg');
+    $logoData = file_exists($logoPath)
+        ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+        : null;
+
+    $fmtDate = function($d, $format = 'm/d/Y'){
+        if (!$d) return '';
+        try { return \Carbon\Carbon::parse($d)->format($format); } catch (\Throwable $e) { return ''; }
+    };
+
+    $age = '';
+    if (!empty($patient->birthdate)) {
+        try { $age = \Carbon\Carbon::parse($patient->birthdate)->age; } catch (\Throwable $e) { $age=''; }
+    }
+
+    $arr = fn($v) => is_array($v) ? $v : (empty($v) ? [] : (array)$v);
+
+    $yesNo = function($value){
+        // Supports old initials (non-empty) OR new Yes/No storage
+        if ($value === 'Yes' || $value === 'No') return $value;
+        if (is_string($value) && trim($value) !== '') return 'Yes';
+        return '';
+    };
+
+    $allergies = $arr($info->allergies ?? []);
+    $conditions = $arr($info->medical_conditions ?? []);
+
+    // Condition ordering to match the photo layout as close as possible
+    $col1 = [
+        'High Blood Pressure',
+        'Low Blood Pressure',
+        'Epilepsy / Convulsions',
+        'AIDS or HIV Infection',
+        'Sexually Transmitted Disease',
+        'Stomach Troubles / Ulcers',
+        'Fainting Seizure',
+        'Rapid Weight Loss',
+        'Radiation Therapy',
+        'Joint Replacement / Implant',
+        'Heart Surgery',
+        'Heart Attack',
+        'Thyroid Problem',
+    ];
+    $col2 = [
+        'Heart Murmur',
+        'Hepatitis / Liver Disease',
+        'Rheumatic Fever',
+        'Hay Fever / Allergies',
+        'Respiratory Problems',
+        'Hepatitis / Jaundice',
+        'Tuberculosis',
+        'Swollen Ankles',
+        'Kidney Disease',
+        'Diabetes',
+        'Chest Pain',
+        'Stroke',
+    ];
+    $col3 = [
+        'Cancer',
+        'Anemia',
+        'Angina',
+        'Asthma',
+        'Emphysema',
+        'Bleeding Problems',
+        'Blood Diseases',
+        'Head Injuries',
+        'Arthritis / Rheumatism',
+        'Other',
+    ];
+
+    $isChecked = fn($needle) => in_array($needle, $conditions, true);
+
+    $sigInfo = ($info && $info->signature_path) ? public_path('storage/'.$info->signature_path) : null;
+    $sigConsentPatient = ($consent && $consent->patient_signature_path) ? public_path('storage/'.$consent->patient_signature_path) : null;
+    $sigConsentDentist = ($consent && $consent->dentist_signature_path) ? public_path('storage/'.$consent->dentist_signature_path) : null;
+
+    $imgData = function($path){
+        if (!$path || !file_exists($path)) return null;
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime = $ext === 'jpg' ? 'jpeg' : $ext;
+        return 'data:image/'.$mime.';base64,'.base64_encode(file_get_contents($path));
+    };
+
+    $sigInfoData = $imgData($sigInfo);
+    $sigConsentPatientData = $imgData($sigConsentPatient);
+    $sigConsentDentistData = $imgData($sigConsentDentist);
+
+    $consentSections = [
+        'treatment'   => 'Treatment to be done',
+        'meds'        => 'Drugs & medications',
+        'changes'     => 'Changes in treatment plan',
+        'radiograph'  => 'Radiographs / X-rays',
+        'removal'     => 'Removal of teeth',
+        'crowns'      => 'Crowns / caps / bridges',
+        'endo'        => 'Endodontics / root canal',
+        'perio'       => 'Periodontal disease',
+        'fillings'    => 'Fillings',
+        'dentures'    => 'Dentures',
+        'disclaimer'  => 'Acknowledgement / disclaimer',
+    ];
 @endphp
 
-<div class="top">
-    <div class="brand">
-        <div class="logoBox">LOGO</div>
-        <div class="clinic">
-            <h1>KRYS&TELL DENTAL CENTER</h1>
-            <div class="sub">
-                CT Building Jose Romeo Road, Bagacay Dumaguete City<br>
-                09772443595<br>
-                Krys&Tell Dental Center
-            </div>
-        </div>
+{{-- =========================
+    PAGE 1 (Patient Info Record)
+========================= --}}
+<div class="page">
+    <table class="hdr">
+        <tr>
+            <td class="logo-wrap">
+                @if($logoData)
+                    <img class="logo" src="{{ $logoData }}" alt="Logo">
+                @endif
+            </td>
+
+            <td class="center-wrap">
+                <div class="clinic-name">KRYS&amp;TELL DENTAL CENTER</div>
+                <div class="clinic-line">CT Building Jose Romeo Road, Bagacay Dumaguete City</div>
+                <div class="clinic-line">09772443595</div>
+                <div class="clinic-line">Krys&amp;Tell Dental Center</div>
+            </td>
+
+            <td class="chart-wrap">
+                <div class="chart-title">DENTAL CHART</div>
+                <div class="chart-box"></div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">PATIENT INFORMATION RECORD</div>
+
+    {{-- NAME LINE (Last/First/Middle) --}}
+    <table class="row-table">
+        <tr>
+            <td class="lbl">Name:<span class="req">✓</span></td>
+            <td style="width:100%;">
+                <table class="row-table" style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td class="line" style="width:33.33%; padding-right:8px;">
+                            <span class="val">{{ $patient->last_name ?? '' }}</span>
+                        </td>
+                        <td class="line" style="width:33.33%; padding-right:8px;">
+                            <span class="val">{{ $patient->first_name ?? '' }}</span>
+                        </td>
+                        <td class="line" style="width:33.33%;">
+                            <span class="val">{{ $patient->middle_name ?? '' }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="subcap">Last Name</td>
+                        <td class="subcap">First Name</td>
+                        <td class="subcap">Middle Name</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="spacer-6"></div>
+
+    {{-- TWO COLUMN BLOCK (like the image) --}}
+    <table class="two-col">
+        <tr>
+            {{-- LEFT --}}
+            <td class="left-col">
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Home Address:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $patient->address ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Birthdate (mm/dd/yyyy):<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $fmtDate($patient->birthdate) }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Occupation:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $info->occupation ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Dental Insurance:</td>
+                        <td class="line"><span class="val">{{ $info->dental_insurance ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Effective Date:</td>
+                        <td class="line"><span class="val">{{ $fmtDate($info->effective_date ?? null) }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-10"></div>
+
+                <div style="font-weight:900;">For Minors:</div>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Parent/ Guardian’s Name:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $info->guardian_name ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Occupation:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $info->guardian_occupation ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Whom may we thank for referring you?</td>
+                        <td class="line"><span class="val">{{ $info->referral_source ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">What is your reason for dental consultation?</td>
+                        <td class="line"><span class="val">{{ $info->consultation_reason ?? '' }}</span></td>
+                    </tr>
+                </table>
+            </td>
+
+            {{-- RIGHT --}}
+            <td class="right-col">
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Sex:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $patient->gender ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Age:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $age }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Nickname:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $info->nickname ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Home No.:</td>
+                        <td class="line"><span class="val">{{ $info->home_no ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Office No.:</td>
+                        <td class="line"><span class="val">{{ $info->office_no ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Fax No.:</td>
+                        <td class="line"><span class="val">{{ $info->fax_no ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Cell/ Mobile No.:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $patient->contact_number ?? '' }}</span></td>
+                    </tr>
+                </table>
+
+                <div class="spacer-6"></div>
+
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Email Add:<span class="req">✓</span></td>
+                        <td class="line"><span class="val">{{ $patient->email ?? '' }}</span></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="spacer-10"></div>
+
+    {{-- DENTAL HISTORY --}}
+    <div class="section-title">DENTAL HISTORY</div>
+    <div class="rule"></div>
+
+    <table class="two-col">
+        <tr>
+            <td class="left-col">
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Previous Dentist Dr.</td>
+                        <td class="line"><span class="val">{{ $info->previous_dentist ?? '' }}</span></td>
+                    </tr>
+                </table>
+            </td>
+            <td class="right-col">
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Last Dental Visit:</td>
+                        <td class="line"><span class="val">{{ $fmtDate($info->last_dental_visit ?? null) }}</span></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="spacer-10"></div>
+
+    {{-- MEDICAL HISTORY --}}
+    <div class="section-title">MEDICAL HISTORY</div>
+    <div class="rule"></div>
+
+    <table class="two-col">
+        <tr>
+            <td class="left-col">
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Name of Physician:</td>
+                        <td class="line"><span class="val">{{ $info->physician_name ?? '' }}</span></td>
+                    </tr>
+                </table>
+            </td>
+            <td class="right-col">
+                <table class="row-table">
+                    <tr>
+                        <td class="lbl">Specialty (if applicable):</td>
+                        <td class="line"><span class="val">{{ $info->physician_specialty ?? '' }}</span></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="spacer-6"></div>
+
+    {{-- Questions (kept compact like the form) --}}
+    <div class="q">1. Are you in good health? <span class="ans">{{ ($info?->good_health === 1 || $info?->good_health === true) ? 'Yes' : (($info?->good_health === 0 || $info?->good_health === false) ? 'No' : '') }}</span></div>
+    <div class="q">2. Are you under medical treatment now? <span class="ans">{{ ($info?->under_treatment === 1 || $info?->under_treatment === true) ? 'Yes' : (($info?->under_treatment === 0 || $info?->under_treatment === false) ? 'No' : '') }}</span></div>
+    <div class="q">&nbsp;&nbsp;&nbsp;&nbsp;a. If so, what is the condition being treated? <span class="ans">{{ $info?->treatment_condition ?? '' }}</span></div>
+    <div class="q">3. Have you ever had serious illness or surgical operation? <span class="ans">{{ ($info?->serious_illness === 1 || $info?->serious_illness === true) ? 'Yes' : (($info?->serious_illness === 0 || $info?->serious_illness === false) ? 'No' : '') }}</span></div>
+    <div class="q">&nbsp;&nbsp;&nbsp;&nbsp;a. If so, what illness or operation? <span class="ans">{{ $info?->serious_illness_details ?? '' }}</span></div>
+    <div class="q">4. Have you ever been hospitalized? <span class="ans">{{ ($info?->hospitalized === 1 || $info?->hospitalized === true) ? 'Yes' : (($info?->hospitalized === 0 || $info?->hospitalized === false) ? 'No' : '') }}</span></div>
+    <div class="q">&nbsp;&nbsp;&nbsp;&nbsp;a. If so, please specify <span class="ans">{{ $info?->hospitalized_reason ?? '' }}</span></div>
+    <div class="q">5. Are you taking any prescription/nonprescription medication? <span class="ans">{{ ($info?->taking_medication === 1 || $info?->taking_medication === true) ? 'Yes' : (($info?->taking_medication === 0 || $info?->taking_medication === false) ? 'No' : '') }}</span></div>
+    <div class="q">&nbsp;&nbsp;&nbsp;&nbsp;a. If so, please specify <span class="ans">{{ $info?->medications ?? '' }}</span></div>
+    <div class="q">6. Do you take aspirin regularly? <span class="ans">{{ ($info?->takes_aspirin === 1 || $info?->takes_aspirin === true) ? 'Yes' : (($info?->takes_aspirin === 0 || $info?->takes_aspirin === false) ? 'No' : '') }}</span></div>
+
+    <div class="q">7. Do you have allergies to any of the following?</div>
+    <div class="q">
+        <span class="box">[{{ in_array('Local Anesthetic', $allergies, true) ? 'x' : ' ' }}]</span> Local Anesthetic&nbsp;&nbsp;
+        <span class="box">[{{ in_array('Penicillin', $allergies, true) ? 'x' : ' ' }}]</span> Penicillin&nbsp;&nbsp;
+        <span class="box">[{{ in_array('Sulfa Drugs', $allergies, true) ? 'x' : ' ' }}]</span> Sulfa Drugs&nbsp;&nbsp;
+        <span class="box">[{{ in_array('Aspirin', $allergies, true) ? 'x' : ' ' }}]</span> Aspirin&nbsp;&nbsp;
+        <span class="box">[{{ in_array('Latex', $allergies, true) ? 'x' : ' ' }}]</span> Latex
+        @if(!empty($info?->allergies_other))
+            &nbsp;&nbsp;Other: <span class="ans">{{ $info->allergies_other }}</span>
+        @endif
     </div>
 
-    <div class="rightBox">
-        <div class="chart">DENTAL CHART</div>
-        <div class="chartBox"></div>
-    </div>
-</div>
+    <div class="q">8. Do you use tobacco products? <span class="ans">{{ ($info?->tobacco_use === 1 || $info?->tobacco_use === true) ? 'Yes' : (($info?->tobacco_use === 0 || $info?->tobacco_use === false) ? 'No' : '') }}</span></div>
+    <div class="q">9. Do you use alcohol, cocaine or other dangerous drugs? <span class="ans">
+        {{ (($info?->alcohol_use === 1 || $info?->alcohol_use === true) || ($info?->dangerous_drugs === 1 || $info?->dangerous_drugs === true)) ? 'Yes' : ((($info?->alcohol_use === 0 || $info?->alcohol_use === false) && ($info?->dangerous_drugs === 0 || $info?->dangerous_drugs === false)) ? 'No' : '') }}
+    </span></div>
+    <div class="q">10. Bleeding Time <span class="ans">{{ $info?->bleeding_time ?? '' }}</span></div>
 
-<div class="title">PATIENT INFORMATION RECORD</div>
-<div class="hr"></div>
-
-<div class="row">
-    <div class="col">
-        <div class="field">
-            <span class="label">Name:</span>
-            <span class="req">✓</span>
-            <span class="line lg">{{ $fullName }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Home Address:</span>
-            <span class="req">✓</span>
-            <span class="line lg">{{ $patient->address ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Birthdate:</span>
-            <span class="req">✓</span>
-            <span class="line sm">{{ $birth }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Occupation:</span>
-            <span class="req">✓</span>
-            <span class="line lg">{{ $info->occupation ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Dental Insurance:</span>
-            <span class="line lg">{{ $info->dental_insurance ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Effective Date:</span>
-            <span class="line sm">
-                {{ $info && $info->effective_date ? \Carbon\Carbon::parse($info->effective_date)->format('m/d/Y') : '' }}
-            </span>
-        </div>
-
-        <div class="section">
-            <div class="small"><strong>For Minors:</strong></div>
-            <div class="field">
-                <span class="label">Parent/Guardian’s Name:</span>
-                <span class="{{ ($info && $info->is_minor) ? 'req' : '' }}">{{ ($info && $info->is_minor) ? '✓' : '' }}</span>
-                <span class="line lg">{{ $info->guardian_name ?? '' }}</span>
-            </div>
-            <div class="field">
-                <span class="label">Occupation:</span>
-                <span class="{{ ($info && $info->is_minor) ? 'req' : '' }}">{{ ($info && $info->is_minor) ? '✓' : '' }}</span>
-                <span class="line lg">{{ $info->guardian_occupation ?? '' }}</span>
-            </div>
-        </div>
-
-        <div class="field">
-            <span class="label">Whom may we thank for referring you?</span>
-            <span class="line lg">{{ $info->referral_source ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Reason for dental consultation?</span>
-            <span class="line lg">{{ $info->consultation_reason ?? '' }}</span>
-        </div>
+    <div class="q" style="margin-top:2px;">
+        For women only:
+        Are you pregnant? <span class="ans">{{ ($info?->pregnant === 1 || $info?->pregnant === true) ? 'Yes' : (($info?->pregnant === 0 || $info?->pregnant === false) ? 'No' : '') }}</span>
+        &nbsp;&nbsp;Are you nursing? <span class="ans">{{ ($info?->nursing === 1 || $info?->nursing === true) ? 'Yes' : (($info?->nursing === 0 || $info?->nursing === false) ? 'No' : '') }}</span>
+        &nbsp;&nbsp;Are you taking birth control pills? <span class="ans">{{ ($info?->birth_control_pills === 1 || $info?->birth_control_pills === true) ? 'Yes' : (($info?->birth_control_pills === 0 || $info?->birth_control_pills === false) ? 'No' : '') }}</span>
     </div>
 
-    <div class="col">
-        <div class="field">
-            <span class="label">Sex:</span>
-            <span class="req">✓</span>
-            <span class="line xs">{{ $sex }}</span>
-        </div>
+    <div class="spacer-6"></div>
 
-        <div class="field">
-            <span class="label">Age:</span>
-            <span class="line xs">{{ $ageVal }}</span>
-        </div>
+    <div class="q">11. Blood Type <span class="ans">{{ $info?->blood_type ?? '' }}</span></div>
+    <div class="q">12. Blood Pressure <span class="ans">{{ $info?->blood_pressure ?? '' }}</span></div>
 
-        <div class="field">
-            <span class="label">Nickname:</span>
-            <span class="req">✓</span>
-            <span class="line sm">{{ $info->nickname ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Home No.:</span>
-            <span class="line sm">{{ $info->home_no ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Office No.:</span>
-            <span class="line sm">{{ $info->office_no ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Fax No.:</span>
-            <span class="line sm">{{ $info->fax_no ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Cell/Mobile No.:</span>
-            <span class="req">✓</span>
-            <span class="line sm">{{ $patient->contact_number ?? '' }}</span>
-        </div>
-
-        <div class="field">
-            <span class="label">Email Add:</span>
-            <span class="req">✓</span>
-            <span class="line sm">{{ $patient->email ?? '' }}</span>
-        </div>
-    </div>
-</div>
-
-<div class="section">
-    <h2>DENTAL HISTORY</h2>
-    <div class="field">
-        <span class="label">Previous Dentist/Dr.:</span>
-        <span class="line lg">{{ $info->previous_dentist ?? '' }}</span>
-        <span class="label" style="min-width:120px;">Last Dental Visit:</span>
-        <span class="line sm">
-            {{ $info && $info->last_dental_visit ? \Carbon\Carbon::parse($info->last_dental_visit)->format('m/d/Y') : '' }}
-        </span>
-    </div>
-</div>
-
-<div class="section">
-    <h2>MEDICAL HISTORY</h2>
-    <div class="field">
-        <span class="label">Name of Physician:</span>
-        <span class="line lg">{{ $info->physician_name ?? '' }}</span>
-        <span class="label" style="min-width:120px;">Specialty:</span>
-        <span class="line sm">{{ $info->physician_specialty ?? '' }}</span>
-    </div>
-
-    <div class="q">1. Are you in good health? <span class="line sm">{{ is_null($info?->good_health) ? '' : ($info->good_health ? 'Yes' : 'No') }}</span></div>
-    <div class="q">2. Are you under medical treatment now? <span class="line sm">{{ is_null($info?->under_treatment) ? '' : ($info->under_treatment ? 'Yes' : 'No') }}</span></div>
-    <div class="q small">a. If yes, what condition being treated? <span class="line lg">{{ $info->treatment_condition ?? '' }}</span></div>
-
-    <div class="q">3. Serious illness or surgical operation? <span class="line sm">{{ is_null($info?->serious_illness) ? '' : ($info->serious_illness ? 'Yes' : 'No') }}</span></div>
-    <div class="q small">a. If yes, what illness/operation? <span class="line lg">{{ $info->serious_illness_details ?? '' }}</span></div>
-
-    <div class="q">4. Have you ever been hospitalized? <span class="line sm">{{ is_null($info?->hospitalized) ? '' : ($info->hospitalized ? 'Yes' : 'No') }}</span></div>
-    <div class="q small">a. If yes, please specify <span class="line lg">{{ $info->hospitalized_reason ?? '' }}</span></div>
-
-    <div class="q">5. Taking prescription/nonprescription medication? <span class="line sm">{{ is_null($info?->taking_medication) ? '' : ($info->taking_medication ? 'Yes' : 'No') }}</span></div>
-    <div class="q small">a. If yes, please specify <span class="line lg">{{ $info->medications ?? '' }}</span></div>
-
-    <div class="q">6. Do you take aspirin regularly? <span class="line sm">{{ is_null($info?->takes_aspirin) ? '' : ($info->takes_aspirin ? 'Yes' : 'No') }}</span></div>
-
-    <div class="q">7. Do you use tobacco products? <span class="line sm">{{ is_null($info?->tobacco_use) ? '' : ($info->tobacco_use ? 'Yes' : 'No') }}</span></div>
-    <div class="q">8. Do you use alcohol, cocaine or other dangerous drugs? <span class="line sm">{{ is_null($info?->dangerous_drugs) ? '' : ($info->dangerous_drugs ? 'Yes' : 'No') }}</span></div>
-
-    <div class="q">9. Bleeding Time: <span class="line sm">{{ $info->bleeding_time ?? '' }}</span></div>
-
-    <div class="q">10. For women only: Pregnant? <span class="line xs">{{ is_null($info?->pregnant) ? '' : ($info->pregnant ? 'Yes' : 'No') }}</span>
-        &nbsp; Nursing? <span class="line xs">{{ is_null($info?->nursing) ? '' : ($info->nursing ? 'Yes' : 'No') }}</span>
-        &nbsp; Birth control pills? <span class="line xs">{{ is_null($info?->birth_control_pills) ? '' : ($info->birth_control_pills ? 'Yes' : 'No') }}</span>
-    </div>
-
-    <div class="q">11. Blood Type: <span class="line xs">{{ $info->blood_type ?? '' }}</span></div>
-    <div class="q">12. Blood Pressure: <span class="line xs">{{ $info->blood_pressure ?? '' }}</span></div>
-
-    <div class="q" style="margin-top:6px;">
+    <div class="q" style="margin-top:4px;">
         13. Do you have or have you had any of the following? Check which apply.
     </div>
 
-    @php
-        $conds = $info->medical_conditions ?? [];
-        $isChecked = function($name) use ($conds){
-            return in_array($name, $conds) ? true : false;
-        };
-        $mk = function($checked){
-            // Dompdf supports simple blocks; use filled box for checked
-            return $checked ? '■' : '□';
-        };
+    <table class="check3">
+        <tr>
+            <td>
+                @foreach($col1 as $opt)
+                    <div><span class="box">[{{ $isChecked($opt) ? 'x' : ' ' }}]</span> {{ $opt }}</div>
+                @endforeach
+            </td>
+            <td>
+                @foreach($col2 as $opt)
+                    <div><span class="box">[{{ $isChecked($opt) ? 'x' : ' ' }}]</span> {{ $opt }}</div>
+                @endforeach
+            </td>
+            <td>
+                @foreach($col3 as $opt)
+                    <div><span class="box">[{{ $isChecked($opt) ? 'x' : ' ' }}]</span> {{ $opt }}</div>
+                @endforeach
+                @if(!empty($info?->medical_conditions_other))
+                    <div style="margin-top:2px;"><span class="ans">Other:</span> {{ $info->medical_conditions_other }}</div>
+                @endif
+            </td>
+        </tr>
+    </table>
 
-        // Three columns like your form
-        $col1 = [
-            'High Blood Pressure',
-            'Low Blood Pressure',
-            'Epilepsy / Convulsions',
-            'AIDS or HIV Infection',
-            'Sexually Transmitted Disease',
-            'Stomach Troubles / Ulcers',
-            'Fainting Seizure',
-            'Radiation Therapy',
-            'Rapid Weight Loss',
-            'Joint Replacement / Implant',
-            'Heart Surgery',
-            'Heart Attack',
-            'Thyroid Problem',
-        ];
-        $col2 = [
-            'Heart Murmur',
-            'Hepatitis / Liver Disease',
-            'Rheumatic Fever',
-            'Hay Fever / Allergies',
-            'Respiratory Problems',
-            'Hepatitis / Jaundice',
-            'Tuberculosis',
-            'Swollen Ankles',
-            'Kidney Disease',
-            'Diabetes',
-            'Chest Pain',
-            'Stroke',
-        ];
-        $col3 = [
-            'Cancer',
-            'Anemia',
-            'Angina',
-            'Asthma',
-            'Emphysema',
-            'Bleeding Problems',
-            'Blood Diseases',
-            'Arthritis / Rheumatism',
-            'Other',
-        ];
+    {{-- SIGNATURE (bottom like image) --}}
+    <div class="sig-area">
+        @if($sigInfoData)
+            <img class="sig-img" src="{{ $sigInfoData }}" alt="Signature">
+        @endif
+
+        <div class="sig-line">
+            <div class="sig-text">Signature</div>
+        </div>
+    </div>
+</div>
+
+{{-- =========================
+    PAGE 2 (Consent summary)
+========================= --}}
+<div class="page">
+    <table class="hdr">
+        <tr>
+            <td class="logo-wrap">
+                @if($logoData)
+                    <img class="logo" src="{{ $logoData }}" alt="Logo">
+                @endif
+            </td>
+
+            <td class="center-wrap">
+                <div class="clinic-name">KRYS&amp;TELL DENTAL CENTER</div>
+                <div class="clinic-line">CT Building Jose Romeo Road, Bagacay Dumaguete City</div>
+                <div class="clinic-line">09772443595</div>
+                <div class="clinic-line">Krys&amp;Tell Dental Center</div>
+            </td>
+
+            <td class="chart-wrap">
+                <div class="chart-title">DENTAL CHART</div>
+                <div class="chart-box"></div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">INFORMED CONSENT (SUMMARY)</div>
+    <div class="rule"></div>
+
+    @php
+        $answers = $consent?->initials ?? []; // still named initials in your DB; now can hold Yes/No too
+        if (!is_array($answers)) $answers = (array) $answers;
     @endphp
 
-    <div class="grid3">
-        <div class="col">
-            @foreach($col1 as $c)
-                <div class="q small">{{ $mk($isChecked($c)) }} {{ $c }}</div>
+    <table class="consent-table">
+        <thead>
+            <tr>
+                <th style="width:60%;">Section</th>
+                <th style="width:20%;">Yes</th>
+                <th style="width:20%;">No</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($consentSections as $key => $label)
+                @php
+                    $v = $answers[$key] ?? '';
+                    $yn = $yesNo($v); // 'Yes' / 'No' / ''
+                @endphp
+                <tr>
+                    <td><strong>{{ $label }}</strong></td>
+                    <td class="yn">[{{ $yn === 'Yes' ? 'x' : ' ' }}]</td>
+                    <td class="yn">[{{ $yn === 'No' ? 'x' : ' ' }}]</td>
+                </tr>
             @endforeach
-        </div>
-        <div class="col">
-            @foreach($col2 as $c)
-                <div class="q small">{{ $mk($isChecked($c)) }} {{ $c }}</div>
-            @endforeach
-        </div>
-        <div class="col">
-            @foreach($col3 as $c)
-                <div class="q small">{{ $mk($isChecked($c)) }} {{ $c }}</div>
-            @endforeach
-            <div class="q small">Other specify: <span class="line sm">{{ $info->medical_conditions_other ?? '' }}</span></div>
-        </div>
-    </div>
-</div>
+        </tbody>
+    </table>
 
-<div class="sigRow">
-    <div class="sigBox">
-        @if($signatureBase64)
-            <img class="sigImg" src="{{ $signatureBase64 }}" alt="Signature">
-        @else
-            <div style="height:70px;"></div>
-        @endif
-        <div class="sigLine"></div>
-        <div style="margin-top:3px; font-weight:700;">Signature</div>
-    </div>
-</div>
-
+    <table class="sig2">
+        <tr>
+            <td>
+                <div class="sig-cap">Patient/Guardian Signature</div>
+                @if($sigConsentPatientData)
+                    <img class="sig-prev" src="{{ $sigConsentPatientData }}" alt="Consent Patient Signature">
+                @else
+                    <div style="height:120px; border:1px solid #000;"></div>
+                @endif
+            </td>
+            <td>
+                <div class="sig-cap">Dentist Signature</div>
+                @if($sigConsentDentistData)
+                    <img class="sig-prev" src="{{ $sigConsentDentistData }}" alt="Consent Dentist Signature">
+                @else
+                    <div style="height:120px; border:1px solid #000;"></div>
+                @endif
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
