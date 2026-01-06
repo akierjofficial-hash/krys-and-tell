@@ -109,7 +109,7 @@
 
         <div class="mt-5">
             <button type="submit" class="submit-btn">Update Service</button>
-            <a href="{{ route('satff.services.index') }}" class="cancel-link">Cancel</a>
+            <a href="{{ route('staff.services.index') }}" class="cancel-link">Cancel</a>
         </div>
     </form>
 </div>
