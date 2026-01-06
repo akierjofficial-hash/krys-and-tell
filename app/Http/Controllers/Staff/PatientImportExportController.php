@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Exports\PatientsExport;
 use App\Http\Controllers\Controller;
+use App\Imports\PatientsImport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\PatientsExport;
-use App\Imports\PatientsImport;
 
 class PatientImportExportController extends Controller
 {
@@ -18,11 +18,20 @@ class PatientImportExportController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => ['required','file','mimes:xlsx,xls,csv'],
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
         ]);
 
-        Excel::import(new PatientsImport, $request->file('file'));
+        try {
+            Excel::import(new PatientsImport, $request->file('file'));
+        } catch (\Throwable $e) {
+            // Friendly error for UI
+            return redirect()
+                ->route('staff.patients.index')
+                ->with('error', 'Import failed: Please check the Birthdate format. Allowed examples: 22/11/2008, 2008-11-22, or Excel date format.');
+        }
 
-        return redirect()->route('staff.patients.index')->with('success', 'Patients imported successfully!');
+        return redirect()
+            ->route('staff.patients.index')
+            ->with('success', 'Patients imported successfully!');
     }
 }
