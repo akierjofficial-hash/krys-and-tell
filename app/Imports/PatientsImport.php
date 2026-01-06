@@ -4,18 +4,16 @@ namespace App\Imports;
 
 use App\Models\Patient;
 use Carbon\Carbon;
-use Carbon\Exceptions\InvalidFormatException;
 use DateTimeInterface;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
-use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 
 class PatientsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
 {
     public function model(array $row)
     {
-        // Required fields
         $last  = trim((string)($row['last_name'] ?? ''));
         $first = trim((string)($row['first_name'] ?? ''));
 
@@ -23,89 +21,93 @@ class PatientsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             return null;
         }
 
-        $birthdate = $this->parseBirthdate($row['birthdate'] ?? null);
+        $birthdate = $this->parseDateToYmd($row['birthdate'] ?? null);
 
         return new Patient([
             'last_name'      => $last,
             'first_name'     => $first,
             'middle_name'    => $this->nullIfBlank($row['middle_name'] ?? null),
             'gender'         => $this->nullIfBlank($row['gender'] ?? null),
-            'birthdate'      => $birthdate, // Y-m-d or null
-            'contact_number' => $this->normalizePhone($row['contact_number'] ?? null),
+
+            // ✅ create-form aligned
+            'birthdate'      => $birthdate,
+            'nickname'       => $this->nullIfBlank($row['nickname'] ?? null),
             'address'        => $this->nullIfBlank($row['address'] ?? null),
+            'occupation'     => $this->nullIfBlank($row['occupation'] ?? null),
+            'contact_number' => isset($row['contact_number']) ? (string)$row['contact_number'] : null,
+
+            // ✅ email optional for now
+            'email'          => $this->nullIfBlank($row['email'] ?? null),
+
+            // ✅ optional extras (safe if columns exist in DB)
+            'home_no'        => $this->nullIfBlank($row['home_no'] ?? null),
+            'office_no'      => $this->nullIfBlank($row['office_no'] ?? null),
+            'fax_no'         => $this->nullIfBlank($row['fax_no'] ?? null),
+            'dental_insurance'=> $this->nullIfBlank($row['dental_insurance'] ?? null),
+            'effective_date' => $this->parseDateToYmd($row['effective_date'] ?? null),
+            'notes'          => $this->nullIfBlank($row['notes'] ?? null),
+
+            'is_minor'       => $this->toBool($row['is_minor'] ?? null),
+            'guardian_name'  => $this->nullIfBlank($row['guardian_name'] ?? null),
+            'guardian_occupation' => $this->nullIfBlank($row['guardian_occupation'] ?? null),
         ]);
     }
 
-    private function parseBirthdate($value): ?string
+    private function nullIfBlank($v): ?string
     {
-        if ($value === null || $value === '') {
-            return null;
+        $v = trim((string)($v ?? ''));
+        return $v === '' ? null : $v;
+    }
+
+    private function toBool($v): ?int
+    {
+        if ($v === null || $v === '') return null;
+        $s = strtolower(trim((string)$v));
+        if (in_array($s, ['1','true','yes','y'], true)) return 1;
+        if (in_array($s, ['0','false','no','n'], true)) return 0;
+        if (is_numeric($v)) return ((int)$v) ? 1 : 0;
+        return null;
+    }
+
+    private function parseDateToYmd($value): ?string
+    {
+        if ($value === null || $value === '') return null;
+
+        // Excel numeric date
+        if (is_numeric($value)) {
+            return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->toDateString();
         }
 
-        // Excel can give a DateTimeInterface
+        // Already a date object
         if ($value instanceof DateTimeInterface) {
             return Carbon::instance($value)->toDateString();
         }
 
-        // Excel numeric date serial
-        if (is_numeric($value)) {
+        $v = trim((string)$value);
+
+        // Try strict known formats first
+        foreach ([
+            'Y-m-d',     // 2008-11-22
+            'd/m/Y',     // 22/11/2008  ✅ your file
+            'm/d/Y',
+            'd-m-Y',
+            'm-d-Y',
+            'Y/m/d',
+            'd.m.Y',
+            'm.d.Y',
+        ] as $fmt) {
             try {
-                return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->toDateString();
+                return Carbon::createFromFormat($fmt, $v)->toDateString();
             } catch (\Throwable $e) {
-                return null;
+                // continue
             }
         }
 
-        // String dates
-        $str = trim((string)$value);
-        if ($str === '') return null;
-
-        // Try common formats first (including DD/MM/YYYY)
-        $formats = [
-            'd/m/Y', 'd-m-Y', 'd.m.Y',
-            'm/d/Y', 'm-d-Y', 'm.d.Y',
-            'Y-m-d', 'Y/m/d', 'Y.m.d',
-            'd/m/Y H:i:s', 'm/d/Y H:i:s', 'Y-m-d H:i:s',
-        ];
-
-        foreach ($formats as $fmt) {
-            try {
-                $dt = Carbon::createFromFormat($fmt, $str);
-                if ($dt !== false) {
-                    return $dt->toDateString();
-                }
-            } catch (\Throwable $e) {
-                // try next format
-            }
-        }
-
-        // Last resort: Carbon::parse (can still fail)
+        // Fallback (may still fail)
         try {
-            return Carbon::parse($str)->toDateString();
-        } catch (InvalidFormatException $e) {
-            return null; // don't crash import
+            return Carbon::parse($v)->toDateString();
         } catch (\Throwable $e) {
-            return null;
+            return null; // or throw if you want to hard-fail invalid dates
         }
-    }
-
-    private function normalizePhone($value): ?string
-    {
-        if ($value === null || $value === '') return null;
-
-        // If numeric, Excel might convert to float/scientific notation
-        if (is_numeric($value)) {
-            // Format as whole number without decimals/scientific notation
-            $value = rtrim(rtrim(sprintf('%.0f', (float)$value), '0'), '.');
-        }
-
-        $str = trim((string)$value);
-        return $str === '' ? null : $str;
-    }
-
-    private function nullIfBlank($value): ?string
-    {
-        $str = trim((string)($value ?? ''));
-        return $str === '' ? null : $str;
     }
 }
