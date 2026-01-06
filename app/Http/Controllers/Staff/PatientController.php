@@ -322,8 +322,10 @@ if (!$forceCreate) {
         $patient->loadMissing(['informationRecord', 'informedConsent']);
 
         $visits = $patient->visits()
-            ->orderByDesc('visit_date')
-            ->paginate(10, ['*'], 'visits_page');
+    ->with(['procedures.service'])
+    ->orderByDesc('visit_date')
+    ->paginate(10, ['*'], 'visits_page');
+
 
         $appointments = $patient->appointments()
             ->with('service')

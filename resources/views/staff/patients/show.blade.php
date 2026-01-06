@@ -189,6 +189,23 @@
     .chip-yes{ background: rgba(16,185,129,.14); color:#047857; border-color: rgba(16,185,129,.25); }
     .chip-no{ background: rgba(107,114,128,.12); color: rgba(15,23,42,.70); border-color: rgba(107,114,128,.25); }
 
+    /* Visit services pills */
+    .svc-pill{
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 1000;
+        background: rgba(13,110,253,.10);
+        color: #0d6efd;
+        border: 1px solid rgba(13,110,253,.25);
+        white-space: nowrap;
+        line-height: 1;
+    }
+    .svc-wrap{ display:flex; gap: 6px; flex-wrap: wrap; }
+
     /* Tabs */
     .tabsx{
         border-bottom: 1px solid rgba(15,23,42,.10);
@@ -626,15 +643,37 @@
                                     <thead>
                                         <tr>
                                             <th>Visit Date</th>
+                                            <th>Services</th>
                                             <th>Notes / Description</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($visits as $visit)
+                                            @php
+                                                $serviceNames = $visit->procedures
+                                                    ->map(fn($p) => optional($p->service)->name)
+                                                    ->filter()
+                                                    ->unique()
+                                                    ->values();
+                                            @endphp
+
                                             <tr>
                                                 <td style="font-weight:900;">
                                                     {{ $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y') : '—' }}
                                                 </td>
+
+                                                <td>
+                                                    @if($serviceNames->count())
+                                                        <div class="svc-wrap">
+                                                            @foreach($serviceNames as $name)
+                                                                <span class="svc-pill">{{ $name }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <span class="muted">—</span>
+                                                    @endif
+                                                </td>
+
                                                 <td class="muted">
                                                     {{ $visit->notes ?? $visit->description ?? '—' }}
                                                 </td>
