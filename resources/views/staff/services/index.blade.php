@@ -343,7 +343,7 @@
                     >
                         <td class="fw-semibold">{{ $service->name }}</td>
 
-                        <td class="fw-semibold">₱{{ number_format($service->base_price, 2) }}</td>
+                        <td class="fw-semibold">₱{{ number_format((float)($service->base_price ?? 0), 2) }}</td>
 
                         <td>
                             @if($service->allow_custom_price)
@@ -365,11 +365,13 @@
 
                         <td class="text-end">
                             <div class="action-pills">
-                                <a href="{{ route('staff.services.edit', $service) }}" class="pill pill-edit">
+                                {{-- ✅ FIX: pass ID explicitly --}}
+                                <a href="{{ route('staff.services.edit', $service->id) }}" class="pill pill-edit">
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
-                                <form action="{{ route('staff.services.destroy', $service) }}"
+                                {{-- ✅ FIX: pass ID explicitly --}}
+                                <form action="{{ route('staff.services.destroy', $service->id) }}"
                                       method="POST"
                                       style="display:inline;"
                                       onsubmit="return confirm('Delete this service?');">
