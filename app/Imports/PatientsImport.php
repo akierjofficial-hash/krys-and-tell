@@ -21,6 +21,7 @@ class PatientsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         }
 
         $birthdate = $this->parseBirthdate($row['birthdate'] ?? null);
+        $contact   = $this->normalizeContact($row['contact_number'] ?? null);
 
         return new Patient([
             'last_name'      => $last,
@@ -28,34 +29,16 @@ class PatientsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             'middle_name'    => trim((string)($row['middle_name'] ?? '')) ?: null,
             'gender'         => trim((string)($row['gender'] ?? '')) ?: null,
             'birthdate'      => $birthdate,
-
-            // NOTE: best practice is to format this column as TEXT in Excel
-            'contact_number' => isset($row['contact_number']) ? $this->safeString($row['contact_number']) : null,
-
+            'contact_number' => $contact,
             'address'        => trim((string)($row['address'] ?? '')) ?: null,
         ]);
     }
 
-    private function safeString($value): ?string
-    {
-        if ($value === null) return null;
-
-        // If Excel gives a float/int, convert without scientific notation
-        if (is_numeric($value)) {
-            // number_format keeps big numbers readable (no commas)
-            return number_format((float)$value, 0, '', '');
-        }
-
-        return trim((string)$value) ?: null;
-    }
-
     private function parseBirthdate($value): ?string
     {
-        if ($value === null || $value === '') {
-            return null;
-        }
+        if ($value === null || $value === '') return null;
 
-        // Excel serial date
+        // Excel date number
         if (is_numeric($value)) {
             return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->toDateString();
         }
@@ -63,46 +46,46 @@ class PatientsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         $s = trim((string)$value);
         if ($s === '') return null;
 
-        // Normalize separators
-        $s = str_replace(['.', '-'], '/', $s);
+        // Prefer mm/dd (your requested format), but accept common fallbacks too
+        $formats = ['m/d/Y', 'm/d/y', 'Y-m-d', 'm-d-Y', 'm-d-y', 'd/m/Y', 'd/m/y'];
 
-        // If it's already ISO-ish after normalization: YYYY/MM/DD
-        if (preg_match('/^\d{4}\/\d{1,2}\/\d{1,2}$/', $s)) {
-            return Carbon::createFromFormat('Y/m/d', $s)->toDateString();
-        }
-
-        // Handle slashed dates like 11/22/2008 or 22/11/2008
-        if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{2,4}$/', $s)) {
-            [$a, $b, $y] = explode('/', $s);
-            $a = (int)$a; // first part
-            $b = (int)$b; // second part
-
-            $yearFmt = (strlen($y) === 2) ? 'y' : 'Y';
-
-            // Auto-detect:
-            // - if first part > 12 => DD/MM
-            // - if second part > 12 => MM/DD
-            // - ambiguous (both <= 12) => DEFAULT to MM/DD (your preference)
-            if ($a > 12 && $b <= 12) {
-                $fmt = "d/m/{$yearFmt}";
-            } elseif ($b > 12 && $a <= 12) {
-                $fmt = "m/d/{$yearFmt}";
-            } else {
-                $fmt = "m/d/{$yearFmt}"; // default preference
-            }
-
+        foreach ($formats as $fmt) {
             try {
-                return Carbon::createFromFormat($fmt, $s)->toDateString();
+                return Carbon::createFromFormat($fmt, $s)->format('Y-m-d');
             } catch (\Throwable $e) {
-                // fall through to last-resort parsing
+                // try next
             }
         }
 
-        // Last resort (e.g. "Nov 22, 2008")
+        // last resort
         try {
             return Carbon::parse($s)->toDateString();
         } catch (\Throwable $e) {
-            throw new \InvalidArgumentException("Invalid birthdate format: '{$s}'. Use MM/DD/YY (preferred) or YYYY-MM-DD.");
+            return null;
         }
+    }
+
+    private function normalizeContact($value): ?string
+    {
+        if ($value === null || $value === '') return null;
+
+        // If Excel gave a number, convert safely to digits (no decimals)
+        if (is_int($value) || is_float($value)) {
+            $value = number_format($value, 0, '', '');
+        }
+
+        $s = trim((string)$value);
+        if ($s === '') return null;
+
+        // keep digits only
+        $digits = preg_replace('/\D+/', '', $s);
+        if ($digits === '') return null;
+
+        // common PH case: lost the leading 0 -> 10 digits
+        if (strlen($digits) === 10) {
+            $digits = '0' . $digits;
+        }
+
+        return $digits;
     }
 }
