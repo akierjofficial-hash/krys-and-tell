@@ -468,28 +468,48 @@ function ordinal($number) {
                 <table class="receipt-table">
                     <thead>
                         <tr>
-                            <th style="width:110px;">DATE</th>
-                            <th style="width:200px;">DESCRIPTION</th>
-                            <th>TREATMENT</th>
-                            <th style="width:130px; text-align:right;">AMOUNT</th>
+		                            <th style="width:110px;">DATE</th>
+		                            <th style="width:220px;">DESCRIPTION</th>
+		                            <th>TREATMENT</th>
+		                            <th style="width:260px;">NOTES</th>
+		                            <th style="width:130px; text-align:right;">AMOUNT</th>
                         </tr>
                     </thead>
                     <tbody>
                         @for ($i = 1; $i <= $months; $i++)
                             @php
-                                $date = $startDate->copy()->addMonths($i - 1)->format('m/d/Y');
-                                if ($i == 1) {
-                                    $amount = $downpayment;
-                                } else {
-                                    $payment = $plan->payments->firstWhere('month_number', $i);
-                                    $amount = $payment->amount ?? null;
-                                }
+		                                $scheduled = $startDate->copy()->addMonths($i - 1);
+		                                $payment = $plan->payments->firstWhere('month_number', $i);
+		                                $paidDate = $payment?->payment_date ? \Carbon\Carbon::parse($payment->payment_date) : null;
+		                                $date = ($paidDate ?? $scheduled)->format('m/d/Y');
+
+		                                if ($i == 1) {
+		                                    $amount = $payment?->amount ?? $downpayment;
+		                                } else {
+		                                    $amount = $payment?->amount ?? null;
+		                                }
+
+		                                $notesRaw = $payment?->notes ?? $payment?->visit?->notes;
+		                                $notes = trim((string)($notesRaw ?? ''));
                             @endphp
                             <tr>
                                 <td>{{ $date }}</td>
                                 <td>{{ ordinal($i) }} Payment @if($i == 1) (Downpayment) @endif</td>
                                 <td>{{ $plan->service->name ?? 'Dental Treatment' }}</td>
-                                <td>@if($amount) ₱{{ number_format($amount, 2) }} @endif</td>
+		                                <td>
+		                                    @if($notes !== '')
+		                                        @php $short = \Illuminate\Support\Str::limit($notes, 60); @endphp
+		                                        <span title="{{ $notes }}">{{ $short }}</span>
+		                                        @if($payment?->visit_id)
+		                                            <div style="margin-top:4px; font-size:12px; opacity:.75;">
+		                                                Visit: <a href="{{ route('staff.visits.show', $payment->visit_id) }}" style="color:#0d6efd; text-decoration:none;">#{{ $payment->visit_id }}</a>
+		                                            </div>
+		                                        @endif
+		                                    @else
+		                                        —
+		                                    @endif
+		                                </td>
+		                                <td style="text-align:right;">@if($amount) ₱{{ number_format($amount, 2) }} @endif</td>
                             </tr>
                         @endfor
                     </tbody>

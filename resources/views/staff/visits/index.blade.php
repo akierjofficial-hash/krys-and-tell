@@ -401,9 +401,35 @@
 
                         <td>
                             @if($visit->procedures->count() > 0)
+                                @php
+                                    $chips = collect();
+
+                                    foreach($visit->procedures->groupBy(fn($p) => $p->service?->name ?? '—') as $serviceName => $rows){
+                                        $rows = $rows->values();
+
+                                        // If it's tooth-based work, keep the compact summary
+                                        $hasTooth = $rows->contains(fn($p) => !empty($p->tooth_number) || !empty($p->surface));
+
+                                        // If it's a non-tooth procedure (like braces follow-ups), show the note label
+                                        $notes = $rows->pluck('notes')
+                                            ->filter(fn($n) => trim((string)$n) !== '')
+                                            ->map(fn($n) => trim((string)$n))
+                                            ->unique()
+                                            ->values();
+
+                                        if(!$hasTooth && $notes->count()){
+                                            foreach($notes as $n){
+                                                $chips->push($serviceName.' — '.\Illuminate\Support\Str::limit($n, 28));
+                                            }
+                                        } else {
+                                            $chips->push($serviceName.' ('.$rows->count().')');
+                                        }
+                                    }
+                                @endphp
+
                                 <div class="tags">
-                                    @foreach($visit->procedures->groupBy(fn($p) => $p->service->name) as $serviceName => $rows)
-                                        <span class="tag">{{ $serviceName }} ({{ $rows->count() }})</span>
+                                    @foreach($chips as $chip)
+                                        <span class="tag">{{ $chip }}</span>
                                     @endforeach
                                 </div>
                             @else

@@ -202,7 +202,9 @@
                                         $svc = $p->service?->name ?? '—';
                                         $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : '';
                                         $surface = $p->surface ? (' '.$p->surface) : '';
-                                        return trim($svc.' '.$tooth.$surface);
+                                        $note = trim((string)($p->notes ?? ''));
+                                        $noteLabel = $note !== '' ? (' — '.\Illuminate\Support\Str::limit($note, 24)) : '';
+                                        return trim($svc.' '.$tooth.$surface.$noteLabel);
                                     })
                                     ->implode(', ');
 

@@ -338,7 +338,8 @@ class PaymentController extends Controller
 
             $visit = Visit::create([
                 'patient_id' => $patientId,
-                'visit_date' => now()->toDateString(),
+                // Align the initial visit date with the plan start date
+                'visit_date' => $request->start_date,
                 'status'     => 'installment',
             ]);
 
@@ -363,7 +364,7 @@ class PaymentController extends Controller
         $down  = (float) $request->downpayment;
         $balance = $total - $down;
 
-        InstallmentPlan::create([
+        $plan = InstallmentPlan::create([
             'visit_id'    => $visitId,
             'patient_id'  => $patientId,
             'service_id'  => $serviceId,
@@ -374,6 +375,22 @@ class PaymentController extends Controller
             'start_date'  => $request->start_date,
             'status'      => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
         ]);
+
+        // Record the downpayment as Month #1 (clinic workflow: downpayment is the 1st month).
+        // This makes Month #1 show as PAID in the installment pay screen.
+        if ($down > 0) {
+            $hasMonth1 = $plan->payments()->where('month_number', 1)->exists();
+            if (!$hasMonth1) {
+                $plan->payments()->create([
+                    'month_number' => 1,
+                    'amount'       => $down,
+                    'method'       => 'Cash',
+                    'payment_date' => $request->start_date,
+                    'visit_id'     => $visitId,
+                    'notes'        => 'Downpayment (Month 1)',
+                ]);
+            }
+        }
 
         // Update visit status if we have a visit
         if ($visitId) {

@@ -199,7 +199,7 @@
             <span class="badge-soft"><i class="fa fa-file-invoice"></i> Plan ID: #{{ $plan->id }}</span>
             <span class="badge-soft"><i class="fa fa-calendar"></i> Term: {{ $plan->months }} months</span>
         </div>
-        <div class="hint">Make sure the amount does not exceed the remaining balance.</div>
+		<div class="hint">Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.</div>
     </div>
 
     <div class="card-bodyx">
@@ -210,6 +210,12 @@
                 <div class="k"><i class="fa fa-user"></i> Patient Name</div>
                 <div class="v">{{ $plan->patient->first_name }} {{ $plan->patient->last_name }}</div>
             </div>
+
+			<div class="tile">
+				<div class="k"><i class="fa fa-tooth"></i> Service / Treatment</div>
+				<div class="v">{{ $plan->service?->name ?? '—' }}</div>
+				<div class="helper">Use the <strong>Notes</strong> field below for braces details (upper/lower wire, recementation, adjustments, etc.).</div>
+			</div>
 
             <div class="tile">
                 <div class="k"><i class="fa fa-peso-sign"></i> Total Treatment Cost</div>
@@ -234,39 +240,61 @@
             <div class="row g-3">
 
                 {{-- Month --}}
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
-                    <select name="month_number" class="selectx" required>
-                        @for($i = 1; $i <= $plan->months; $i++)
-                            <option value="{{ $i }}">Month {{ $i }}</option>
-                        @endfor
-                    </select>
-                    <div class="helper">Choose the installment month you’re recording.</div>
-                </div>
+		                <div class="col-12 col-md-6">
+		                    <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
+		                    <select name="month_number" class="selectx" required>
+		                        @for($i = 1; $i <= $plan->months; $i++)
+		                            @php $isPaid = isset($paidMonths) && $paidMonths->contains($i); @endphp
+		                            <option value="{{ $i }}"
+		                                {{ $isPaid ? 'disabled' : '' }}
+		                                {{ (int)old('month_number', $nextMonth ?? 1) === $i ? 'selected' : '' }}
+		                            >
+		                                Month {{ $i }}{{ $isPaid ? ' (paid)' : '' }}
+		                            </option>
+		                        @endfor
+		                    </select>
+		                    <div class="helper">Only unpaid months can be selected.</div>
+		                </div>
 
                 {{-- Amount --}}
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
-                    <input type="number" name="amount" class="inputx" required>
-                    <div class="helper">Tip: keep it ≤ remaining balance.</div>
-                </div>
+		                <div class="col-12 col-md-6">
+		                    <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
+		                    <input type="number" name="amount" class="inputx" step="0.01" min="0" value="{{ old('amount') }}" required>
+		                    <div class="helper">Tip: keep it ≤ remaining balance.</div>
+		                </div>
+
+		                {{-- Payment Date --}}
+		                <div class="col-12 col-md-6">
+		                    <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
+		                    <input type="date" name="payment_date" class="inputx" value="{{ old('payment_date', now()->toDateString()) }}" required>
+		                    <div class="helper">This will also be used as the Visit date.</div>
+		                </div>
 
                 {{-- Method --}}
-                <div class="col-12 col-md-6">
+		                <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Method <span class="text-danger">*</span></label>
                     <select name="method" class="selectx" required>
-                        <option>Cash</option>
-                        <option>GCash</option>
-                        <option>Card</option>
+		                        @php $m = old('method', 'Cash'); @endphp
+		                        <option value="Cash" {{ $m === 'Cash' ? 'selected' : '' }}>Cash</option>
+		                        <option value="GCash" {{ $m === 'GCash' ? 'selected' : '' }}>GCash</option>
+		                        <option value="Card" {{ $m === 'Card' ? 'selected' : '' }}>Card</option>
+		                        <option value="Bank Transfer" {{ $m === 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer</option>
                     </select>
                 </div>
+
+		                {{-- Notes (saved into the auto-created visit) --}}
+		                <div class="col-12">
+		                    <label class="form-labelx">Treatment Notes / Visit Notes</label>
+		                    <textarea name="notes" rows="3" class="inputx" placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ old('notes') }}</textarea>
+		                    <div class="helper">Shown in Visits and linked to this installment payment.</div>
+		                </div>
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
                     <button type="submit" class="btn-primaryx">
                         <i class="fa fa-check"></i> Record Payment
                     </button>
 
-                    <a href="{{ route('staff.payments.index', $plan) }}" class="btn-ghostx">
+		                    <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

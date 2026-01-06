@@ -408,23 +408,28 @@
     $rows = $groups->map(function($items, $serviceName){
         $teeth = $items->pluck('tooth_number')
             ->filter(fn($t) => trim((string)$t) !== '')
-            ->map(fn($t) => trim((string)$t))
+            ->map(fn($t) => '#'.trim((string)$t))
             ->unique()
-            ->sort()
             ->values()
             ->implode(', ');
 
-        $total = $items->sum(function($p){
-            return (float)($p->price
-                ?? $p->service?->base_price
-                ?? $p->service?->price
-                ?? 0);
-        });
+        $notes = $items->pluck('notes')
+            ->filter(fn($n) => trim((string)$n) !== '')
+            ->map(fn($n) => trim((string)$n))
+            ->unique()
+            ->values();
+
+        $notesLabel = $notes->map(fn($n) => \Illuminate\Support\Str::limit($n, 40))->implode('; ');
+
+        $detailsParts = [];
+        if ($teeth !== '') $detailsParts[] = 'Teeth: '.$teeth;
+        if ($notesLabel !== '') $detailsParts[] = 'Notes: '.$notesLabel;
+        $details = implode(' | ', $detailsParts);
 
         return [
-            'service' => $serviceName,
-            'teeth'   => $teeth,
-            'total'   => $total,
+            'service'  => $serviceName,
+            'details'  => $details,
+            'total'    => (float)$items->sum('price'),
         ];
     })->values();
 
@@ -510,8 +515,8 @@
                                 <tr>
                                     <td>
                                         <strong>{{ $r['service'] }}</strong>
-                                        @if($r['teeth'])
-                                            <div class="tooth-chip">Tooth {{ $r['teeth'] }}</div>
+                                        @if(!empty($r['details']))
+                                            <div class="tooth-chip">{{ $r['details'] }}</div>
                                         @endif
                                     </td>
                                     <td>₱{{ number_format($r['total'], 2) }}</td>

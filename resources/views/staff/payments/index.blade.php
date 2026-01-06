@@ -421,6 +421,12 @@
                                 $name = $p->service?->name ?? '—';
                                 $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;
                                 $surface = $p->surface ? ($p->surface) : null;
+
+                                $note = trim((string)($p->notes ?? ''));
+                                if ($note !== '') {
+                                    $name .= ' — ' . \Illuminate\Support\Str::limit($note, 24);
+                                }
+
                                 return trim($name.' '.trim(($tooth ?? '').' '.($surface ?? '')));
                             })->filter()->values();
                         @endphp
@@ -431,6 +437,13 @@
                                     <span class="tag">{{ $label }}</span>
                                 @endforeach
                             </div>
+
+                            @php $vnote = trim((string)($payment->visit?->notes ?? '')); @endphp
+                            @if($vnote !== '')
+                                <div class="muted" style="font-size:12px; margin-top:6px;">
+                                    Notes: {{ \Illuminate\Support\Str::limit($vnote, 120) }}
+                                </div>
+                            @endif
                         @else
                             <span class="muted">—</span>
                         @endif
@@ -528,6 +541,12 @@
                                     $name = $p->service?->name ?? '—';
                                     $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;
                                     $surface = $p->surface ? ($p->surface) : null;
+
+                                    $note = trim((string)($p->notes ?? ''));
+                                    if ($note !== '') {
+                                        $name .= ' — ' . \Illuminate\Support\Str::limit($note, 24);
+                                    }
+
                                     return trim($name.' '.trim(($tooth ?? '').' '.($surface ?? '')));
                                 })->filter()->values();
                             }
@@ -539,6 +558,13 @@
                                     <span class="tag">{{ $t }}</span>
                                 @endforeach
                             </div>
+
+                            @php $vnote2 = trim((string)(optional($plan->visit)->notes ?? '')); @endphp
+                            @if($vnote2 !== '')
+                                <div class="muted" style="font-size:12px; margin-top:6px;">
+                                    Notes: {{ \Illuminate\Support\Str::limit($vnote2, 120) }}
+                                </div>
+                            @endif
                         @else
                             <span class="muted">N/A</span>
                         @endif
