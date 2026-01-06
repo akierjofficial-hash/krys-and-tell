@@ -19,6 +19,8 @@
         /* ==========================================================
            THEME TOKENS (GLOBAL) — + LEGACY VARIABLE OVERRIDES
            ========================================================== */
+           body { overflow-x: hidden; }
+
         html {
             /* NEW TOKENS (recommended) */
             --kt-bg: #eef3fa !important;
@@ -388,12 +390,21 @@
         }
 
         /* CONTENT */
-        .content {
-            flex: 1;
-            width: 100%;
-            padding: 16px;
-            color: var(--kt-text);
-        }
+        /* CONTENT */
+.content {
+    flex: 1;
+    width: 100%;
+
+    /* ✅ IMPORTANT: allow the flex item to shrink */
+    min-width: 0;
+
+    /* ✅ prevent page-level horizontal scroll (tables should scroll inside their wrapper) */
+    overflow-x: hidden;
+
+    padding: 16px;
+    color: var(--kt-text);
+}
+
 
         @media (min-width: 768px) {
             .content {
