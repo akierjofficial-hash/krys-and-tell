@@ -11,23 +11,90 @@ use App\Models\Doctor;
 
 class VisitController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $visits = Visit::with(['patient', 'doctor', 'procedures.service'])->get();
-        return view('staff.visits.index', compact('visits'));
+        // Toggle: show "All Visits" (old behavior) when ?view=all
+        $view = $request->query('view', 'patients');
+
+        if ($view === 'all') {
+            $visits = Visit::with([
+                    'patient',
+                    'procedures.service',
+                    'doctor',
+                ])
+                ->orderByDesc('visit_date')
+                ->orderByDesc('created_at')
+                ->get();
+
+            return view('staff.visits.index', compact('view', 'visits'));
+        }
+
+        // Default: show UNIQUE patients list (one row per patient)
+        // Default: show ONLY patients that have visits (unique list)
+$patients = Patient::query()
+    ->whereHas('visits') // ✅ only patients with at least 1 visit
+    ->select('patients.*')
+    ->withCount('visits')
+    ->withMax('visits as last_visit_date', 'visit_date')
+    ->orderByDesc('last_visit_date')
+    ->orderBy('last_name')
+    ->orderBy('first_name')
+    ->get();
+
+return view('staff.visits.index', compact('view', 'patients'));
+
     }
 
-    public function create()
+    public function patientVisits(Patient $patient)
     {
-        $patients = Patient::orderBy('first_name')->get();
-        $services = Service::orderBy('name')->get();
+        $visits = Visit::with([
+                'patient',
+                'procedures.service',
+                'doctor',
+            ])
+            ->where('patient_id', $patient->id)
+            ->orderByDesc('visit_date')
+            ->orderByDesc('created_at')
+            ->get();
 
-        $doctors = Doctor::where('is_active', 1)
-            ->orderBy('name')
-            ->get(['id','name','specialty']);
-
-        return view('staff.visits.create', compact('patients', 'services', 'doctors'));
+        return view('staff.visits.patient', compact('patient', 'visits'));
     }
+
+
+    public function create(Request $request)
+{
+    $patients = Patient::orderBy('last_name')->orderBy('first_name')->get();
+
+    // ✅ Load doctors for "Assigned Dentist" dropdown
+    // If you have an "active" column, keep it. If not, remove the where().
+    $doctors = Doctor::query()
+        ->when(\Schema::hasColumn('doctors', 'status'), fn($q) => $q->where('status', 'Active'))
+        ->when(\Schema::hasColumn('doctors', 'is_active'), fn($q) => $q->where('is_active', 1))
+        ->orderBy('name')
+        ->get();
+
+    // ✅ Load services for procedures dropdown
+    $services = Service::orderBy('name')->get();
+
+    // ✅ Patient preselect via ?patient_id=
+    $preselectedPatientId = $request->query('patient_id');
+    $preselectedPatient = null;
+
+    if ($preselectedPatientId) {
+        $preselectedPatient = Patient::find($preselectedPatientId);
+        if (!$preselectedPatient) {
+            $preselectedPatientId = null;
+        }
+    }
+
+    return view('staff.visits.create', compact(
+        'patients',
+        'doctors',
+        'services',
+        'preselectedPatientId',
+        'preselectedPatient'
+    ));
+}
 
     public function store(Request $request)
     {

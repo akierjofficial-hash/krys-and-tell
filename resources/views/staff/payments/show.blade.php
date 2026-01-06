@@ -1,580 +1,388 @@
 @extends('layouts.staff')
 
-@section('title', 'Payment Receipt')
+@section('title', 'Payment Details')
 
 @section('content')
 
 <style>
-/* EXACT SHORT BOND / LETTER CANVAS */
-@page { size: 8.5in 11in; margin: 0; }
-
-/* Theme (Krys&Tell) */
-:root{
-    --kt-cream: #fbf4ec;
-    --kt-cream-2:#f6eee5;
-    --kt-ink:   #2b2623;
-    --kt-muted: rgba(43,38,35,.70);
-    --kt-line:  rgba(43,38,35,.14);
-    --kt-brown: #9c6b4f;
-    --kt-brown2:#c1926e;
-    --kt-soft:  rgba(156,107,79,.10);
-}
-
-/* ===== Screen wrapper ===== */
-.receipt-page{ padding: 18px 12px 26px; }
-.print-sheet{
-    width: 100%;
-    max-width: 8.5in;
-    margin: 0 auto;
-}
-
-/* ===== Receipt card ===== */
-.receipt-container{
-    width: 100%;
-    max-width: 7.6in;
-    margin: 0 auto;
-    padding: 14mm 14mm;
-    box-sizing: border-box;
-
-    position: relative;
-    overflow: hidden;
-
-    background: linear-gradient(180deg, #ffffff 0%, #ffffff 55%, var(--kt-cream) 100%);
-    border: 1px solid var(--kt-line);
-    border-radius: 16px;
-    box-shadow: 0 14px 35px rgba(15,23,42,.10);
-
-    color: var(--kt-ink);
-    font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-
-    display:flex;
-    flex-direction:column;
-}
-
-/* Soft background blobs */
-.receipt-container::before{
-    content:"";
-    position:absolute;
-    inset:-40mm -30mm auto -30mm;
-    height: 120mm;
-    pointer-events:none;
-    opacity:.55;
-    background:
-        radial-gradient(110mm 70mm at 18% 30%, rgba(193,146,110,.28) 0%, rgba(193,146,110,0) 60%),
-        radial-gradient(120mm 80mm at 78% 18%, rgba(156,107,79,.18) 0%, rgba(156,107,79,0) 60%),
-        radial-gradient(90mm 60mm at 55% 78%, rgba(246,238,229,.90) 0%, rgba(246,238,229,0) 70%);
-}
-
-/* Tooth watermark pattern */
-.receipt-container::after{
-    content:"";
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-    opacity:.07;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%239c6b4f' stroke-width='3'%3E%3Cpath d='M90 26c-22 0-40 16-40 40 0 16 6 28 12 48 4 13 9 38 28 38s24-25 28-38c6-20 12-32 12-48 0-24-18-40-40-40z'/%3E%3Cpath d='M77 64c4-6 10-9 13-9s9 3 13 9'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 220px 220px;
-    background-repeat: repeat;
-}
-
-/* Bottom wave strip */
-.kt-wave{
-    position:absolute;
-    left:-8%;
-    right:-8%;
-    bottom:-28px;
-    height: 120px;
-    pointer-events:none;
-    background: linear-gradient(180deg, rgba(251,244,236,0) 0%, rgba(251,244,236,.95) 30%, rgba(246,238,229,.98) 100%);
-    border-top-left-radius: 999px;
-    border-top-right-radius: 999px;
-    transform: rotate(-1.5deg);
-}
-.kt-wave::after{
-    content:"";
-    position:absolute;
-    left:6%;
-    right:6%;
-    top:16px;
-    height: 6px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(156,107,79,.0) 0%, rgba(156,107,79,.35) 25%, rgba(193,146,110,.35) 75%, rgba(156,107,79,.0) 100%);
-}
-
-/* HEADER */
-.receipt-header{
-    display:flex;
-    justify-content:space-between;
-    gap: 14px;
-    padding-bottom: 12px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--kt-line);
-    position: relative;
-    z-index: 2;
-}
-
-/* ✅ FIX: receipt-only brand classes (no conflict with layout sidebar .brand) */
-.receipt-brand{ display:flex; align-items:center; gap: 12px; min-width: 240px; }
-.receipt-brand-logo{
-    width: 56px; height: 56px; border-radius: 14px;
-    background: linear-gradient(135deg, rgba(156,107,79,.16), rgba(193,146,110,.12));
-    display:flex; align-items:center; justify-content:center;
-    border: 1px solid rgba(156,107,79,.18);
-    overflow: hidden;
-}
-.receipt-brand-logo img{
-    width:44px;height:44px;object-fit:contain;display:block;
-}
-.receipt-brand-title{ line-height:1.05; }
-.receipt-brand-title .clinic{ font-size: 18px; font-weight: 900; letter-spacing: .2px; margin:0; }
-.receipt-brand-title .sub{ font-size: 12px; margin: 3px 0 0 0; color: var(--kt-muted); font-weight: 700; }
-
-.header-right{ text-align:right; font-size: 11px; line-height: 1.55; color: var(--kt-muted); }
-.header-right b{ color: var(--kt-ink); }
-
-/* META (like installment) */
-.receipt-meta{
-    display:flex;
-    justify-content:space-between;
-    gap: 12px;
-    font-size: 12px;
-    color: var(--kt-ink);
-    margin: 2px 0 10px;
-    position: relative;
-    z-index: 2;
-}
-.meta-pill{
-    border: 1px solid rgba(43,38,35,.14);
-    background: rgba(255,255,255,.90);
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-weight: 800;
-}
-.meta-pill span{ font-weight: 900; }
-
-/* SECTION */
-.section{ position: relative; z-index: 2; }
-.section-title{
-    background: linear-gradient(90deg, rgba(156,107,79,.20), rgba(193,146,110,.12));
-    border: 1px solid rgba(156,107,79,.22);
-    color: var(--kt-ink);
-    font-weight: 900;
-    text-align:center;
-    padding: 8px 10px;
-    border-radius: 10px;
-    font-size: 12px;
-    letter-spacing: .3px;
-    margin: 6px 0 8px;
-}
-.info-table{
-    width: 100%;
-    border-collapse: collapse;
-    border: 1px solid var(--kt-line);
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgba(255,255,255,.92);
-}
-.info-table td{
-    padding: 9px 10px;
-    font-size: 12px;
-    border-top: 1px solid rgba(43,38,35,.10);
-}
-.info-table tr:first-child td{ border-top: 0; }
-.info-table td:first-child{
-    width: 120px;
-    color: rgba(43,38,35,.75);
-    font-weight: 800;
-    background: rgba(246,238,229,.75);
-    border-right: 1px solid rgba(43,38,35,.10);
-}
-
-/* TABLE */
-.receipt-table{
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    margin: 10px 0 12px 0;
-    overflow: hidden;
-    border-radius: 12px;
-    border: 1px solid var(--kt-line);
-    position: relative;
-    z-index: 2;
-    background: rgba(255,255,255,.92);
-}
-.receipt-table thead th{
-    background: rgba(246,238,229,.90);
-    color: var(--kt-ink);
-    padding: 10px 12px;
-    font-size: 12px;
-    text-align: left;
-    letter-spacing: .35px;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(43,38,35,.12);
-}
-.receipt-table thead th:last-child{ text-align:right; }
-.receipt-table td{
-    border-top: 1px solid rgba(43,38,35,.10);
-    padding: 10px 12px;
-    font-size: 12px;
-    color: var(--kt-ink);
-    vertical-align: top;
-}
-.receipt-table tbody tr:nth-child(even){ background: rgba(251,244,236,.60); }
-.receipt-table td:last-child{
-    text-align: right;
-    white-space: nowrap;
-    font-weight: 900;
-}
-.tooth-chip{
-    display:inline-block;
-    margin-top: 6px;
-    padding: 4px 9px;
-    border-radius: 999px;
-    border: 1px solid rgba(156,107,79,.25);
-    background: rgba(156,107,79,.10);
-    color: rgba(156,107,79,.95);
-    font-weight: 900;
-    font-size: 11px;
-}
-
-/* TOTALS */
-.receipt-totals{
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    margin-top: 6px;
-    font-size: 12px;
-    position: relative;
-    z-index: 2;
-}
-.left-details{
-    width: 55%;
-    border: 1px solid var(--kt-line);
-    border-radius: 12px;
-    padding: 12px;
-    background: rgba(255,255,255,.92);
-}
-.left-details p{ margin: 6px 0; color: rgba(43,38,35,.82); }
-.left-details strong{ color: var(--kt-ink); }
-
-.right-details{
-    width: 45%;
-    border: 1px solid var(--kt-line);
-    border-radius: 12px;
-    overflow:hidden;
-    background: rgba(255,255,255,.92);
-}
-.right-details .row{
-    display:flex;
-    justify-content:space-between;
-    gap: 10px;
-    padding: 9px 12px;
-    border-top: 1px solid rgba(43,38,35,.10);
-    font-size: 12px;
-}
-.right-details .row:first-child{ border-top: 0; }
-.right-details .row b{ color: rgba(43,38,35,.78); }
-.right-details .row span{ font-weight: 900; color: var(--kt-ink); }
-.right-details .row.total{
-    background: rgba(246,238,229,.90);
-    border-top: 1px solid rgba(43,38,35,.14);
-}
-
-/* FOOTER */
-.goodday{
-    text-align:center;
-    margin-top: 10px;
-    font-weight: 900;
-    color: rgba(43,38,35,.75);
-    letter-spacing: .25px;
-}
-.receipt-footer{
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid var(--kt-line);
-    font-size: 10.5px;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-    gap: 12px;
-    position: relative;
-    z-index: 2;
-}
-.signature{ width: 40%; text-align: center; }
-.signature-line{
-    margin-top: 22px;
-    border-top: 1px solid rgba(43,38,35,.75);
-    padding-top: 6px;
-    font-weight: 900;
-    letter-spacing: .3px;
-    color: var(--kt-ink);
-}
-
-/* Buttons */
-.print-actions{
-    max-width: 7.6in;
-    margin: 14px auto 0;
-    display:flex;
-    justify-content:flex-end;
-    gap: 10px;
-}
-.print-btn{
-    border: none;
-    padding: 11px 14px;
-    border-radius: 12px;
-    font-weight: 900;
-    color: #fff;
-    background: linear-gradient(135deg, var(--kt-brown), var(--kt-brown2));
-    box-shadow: 0 10px 18px rgba(156,107,79,.22);
-    cursor:pointer;
-    transition: .15s ease;
-}
-.print-btn:hover{ transform: translateY(-1px); }
-.back-btn{
-    text-decoration:none;
-    padding: 11px 14px;
-    border-radius: 12px;
-    font-weight: 900;
-    border: 1px solid rgba(43,38,35,.14);
-    color: rgba(43,38,35,.75);
-    background: rgba(255,255,255,.92);
-}
-
-/* ===== PRINT: SAME WORKING METHOD AS INSTALLMENT ===== */
-@media print{
-    html, body{
-        width: 8.5in !important;
-        height: 11in !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    *{
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    :root{
+        --p-border: 1px solid rgba(15, 23, 42, .10);
+        --p-shadow: 0 10px 25px rgba(15, 23, 42, .06);
+        --p-text: #0f172a;
+        --p-muted: rgba(15, 23, 42, .58);
+        --p-soft: rgba(15, 23, 42, .05);
+        --p-radius: 16px;
+        --p-brand: #0d6efd;
     }
 
-    body *{ visibility: hidden; }
-    .receipt-page, .receipt-page *{ visibility: visible; }
-
-    .receipt-page{
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 8.5in !important;
-        height: 11in !important;
-        margin: 0 !important;
-        padding: 0 !important;
+    /* Header */
+    .p-head{
+        display:flex;
+        align-items:flex-end;
+        justify-content:space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .p-title{
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: -0.3px;
+        margin: 0;
+        color: var(--p-text);
+    }
+    .p-subtitle{
+        margin: 4px 0 0 0;
+        font-size: 13px;
+        color: var(--p-muted);
+    }
+    .p-actions{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
-    .print-sheet{
-        width: 8.5in !important;
-        height: 11in !important;
-        max-width: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        display: block !important;
+    .p-btn{
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 14px;
+        text-decoration: none;
+        border: 1px solid rgba(15, 23, 42, .12);
+        background: rgba(255,255,255,.88);
+        color: rgba(15, 23, 42, .80);
+        transition: .15s ease;
+        white-space: nowrap;
+    }
+    .p-btn:hover{ background: rgba(15, 23, 42, .04); }
+
+    .p-btn-primary{
+        border: none;
+        color: #fff !important;
+        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        box-shadow: 0 10px 18px rgba(13, 110, 253, .18);
+    }
+    .p-btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 14px 24px rgba(13, 110, 253, .22); }
+
+    /* Main card */
+    .p-card{
+        background: rgba(255,255,255,.94);
+        border: var(--p-border);
+        border-radius: var(--p-radius);
+        box-shadow: var(--p-shadow);
+        overflow: hidden;
+    }
+    .p-card-head{
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .p-card-head-left{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .p-ref{
+        font-weight: 950;
+        letter-spacing: .3px;
+        color: var(--p-text);
+        display:flex;
+        align-items:center;
+        gap: 8px;
+    }
+    .p-meta{
+        font-size: 12px;
+        color: var(--p-muted);
+        font-weight: 700;
     }
 
-    .receipt-container{
-        width: 8.5in !important;
-        height: 11in !important;
-        max-width: none !important;
-        margin: 0 !important;
+    .p-badge{
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 900;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+    .p-dot{ width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .p-paid{ background: rgba(34, 197, 94, .12); color:#15803d; border-color: rgba(34,197,94,.25); }
+    .p-info{ background: rgba(59, 130, 246, .12); color:#1d4ed8; border-color: rgba(59,130,246,.25); }
 
-        box-sizing: border-box !important;
-        padding: 10mm !important;
+    .p-card-body{ padding: 16px; }
 
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-
-        display:flex !important;
-        flex-direction:column !important;
+    /* Simple two-column content */
+    .p-split{
+        display:grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 14px;
+        align-items:start;
+    }
+    @media (max-width: 900px){
+        .p-split{ grid-template-columns: 1fr; }
     }
 
-    .print-actions{ display:none !important; }
-}
+    .p-panel{
+        border: 1px solid rgba(15, 23, 42, .08);
+        background: rgba(248,250,252,.75);
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    .p-section-title{
+        font-size: 12px;
+        font-weight: 900;
+        color: rgba(15, 23, 42, .55);
+        text-transform: uppercase;
+        letter-spacing: .25px;
+        margin-bottom: 10px;
+    }
+
+    /* Key-values (simple, not fancy) */
+    .p-kv{
+        display:grid;
+        grid-template-columns: 140px 1fr;
+        gap: 8px 12px;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+    .p-k{ color: rgba(15, 23, 42, .55); font-weight: 800; }
+    .p-v{ color: var(--p-text); font-weight: 800; word-break: break-word; }
+
+    .p-amount{
+        font-size: 22px;
+        font-weight: 950;
+        color: var(--p-text);
+        letter-spacing: -0.2px;
+    }
+    .p-small{
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--p-muted);
+        font-weight: 700;
+    }
+
+    /* Notes (one simple section) */
+    .p-notes{
+        margin-top: 14px;
+        border: 1px solid rgba(15, 23, 42, .08);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(255,255,255,.92);
+    }
+    .p-notes-row{
+        padding: 12px 14px;
+        border-top: 1px solid rgba(15, 23, 42, .06);
+    }
+    .p-notes-row:first-child{ border-top: 0; }
+    .p-notes-h{
+        font-weight: 900;
+        color: var(--p-text);
+        font-size: 13px;
+        margin-bottom: 6px;
+        display:flex;
+        align-items:center;
+        gap: 8px;
+    }
+    .p-notes-b{
+        font-size: 13px;
+        color: rgba(15, 23, 42, .78);
+        font-weight: 700;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    /* Table */
+    .p-table-wrap{
+        margin-top: 14px;
+        border: 1px solid rgba(15, 23, 42, .08);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(255,255,255,.95);
+    }
+    table{ width: 100%; border-collapse: separate; border-spacing: 0; }
+    thead th{
+        font-size: 12px;
+        letter-spacing: .3px;
+        text-transform: uppercase;
+        color: rgba(15, 23, 42, .55);
+        padding: 13px 14px;
+        border-bottom: 1px solid rgba(15, 23, 42, .08);
+        background: rgba(248, 250, 252, .9);
+        white-space: nowrap;
+    }
+    tbody td{
+        padding: 13px 14px;
+        font-size: 14px;
+        color: var(--p-text);
+        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        vertical-align: top;
+    }
+    .text-end{ text-align:right; }
 </style>
 
 @php
-    $procedures = $payment->visit?->procedures ?? collect();
+    $visit = $payment->visit;
+    $patient = $visit?->patient;
 
-    $groups = $procedures->groupBy(fn($p) => $p->service?->name ?? 'Service');
-
-    $rows = $groups->map(function($items, $serviceName){
-        $teeth = $items->pluck('tooth_number')
-            ->filter(fn($t) => trim((string)$t) !== '')
-            ->map(fn($t) => '#'.trim((string)$t))
-            ->unique()
-            ->values()
-            ->implode(', ');
-
-        $notes = $items->pluck('notes')
-            ->filter(fn($n) => trim((string)$n) !== '')
-            ->map(fn($n) => trim((string)$n))
-            ->unique()
-            ->values();
-
-        $notesLabel = $notes->map(fn($n) => \Illuminate\Support\Str::limit($n, 40))->implode('; ');
-
-        $detailsParts = [];
-        if ($teeth !== '') $detailsParts[] = 'Teeth: '.$teeth;
-        if ($notesLabel !== '') $detailsParts[] = 'Notes: '.$notesLabel;
-        $details = implode(' | ', $detailsParts);
-
-        return [
-            'service'  => $serviceName,
-            'details'  => $details,
-            'total'    => (float)$items->sum('price'),
-        ];
-    })->values();
-
-    $computedTotal = $rows->sum('total');
-    $shownTotal = $computedTotal > 0 ? $computedTotal : (float)$payment->amount;
-
-    $patient = $payment->visit?->patient ?? null;
-    $patientName = trim(($patient->first_name ?? '').' '.($patient->last_name ?? ''));
+    $patientName = trim(($patient?->first_name ?? '').' '.($patient?->last_name ?? ''));
     $patientName = $patientName !== '' ? $patientName : 'N/A';
 
-    $receiptNo = 'RCPT-' . str_pad((string)($payment->id ?? 0), 6, '0', STR_PAD_LEFT);
     $paymentDate = $payment->payment_date
-        ? \Carbon\Carbon::parse($payment->payment_date)->format('m/d/Y')
-        : now()->format('m/d/Y');
+        ? \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y')
+        : '—';
+
+    $visitDate = $visit?->visit_date
+        ? \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y')
+        : '—';
+
+    $procedures = $visit?->procedures ?? collect();
+    $computedTotal = (float) $procedures->sum('price');
+    $amountPaid = (float) ($payment->amount ?? 0);
+    $totalShown = $computedTotal > 0 ? $computedTotal : $amountPaid;
+
+    $receiptNo = 'PMT-' . str_pad((string)($payment->id ?? 0), 6, '0', STR_PAD_LEFT);
+
+    $visitNotes = trim((string)($visit?->notes ?? ''));
+    $paymentNotes = trim((string)($payment->notes ?? ''));
 @endphp
 
-<div class="receipt-page">
-    <div class="print-sheet">
+<div class="p-head">
+    <div>
+        <h2 class="p-title">Payment Details</h2>
+        <p class="p-subtitle">Simple view of payment, visit, and treatments.</p>
+    </div>
 
-        <div class="receipt-container">
-            <div class="kt-wave"></div>
+    <div class="p-actions">
+        <a href="{{ route('staff.payments.index') }}" class="p-btn">
+            <i class="fa fa-arrow-left"></i> Back
+        </a>
 
-            {{-- HEADER --}}
-            <div class="receipt-header">
-                <div class="receipt-brand">
-                    <div class="receipt-brand-logo">
-                        {{-- ✅ Correct logo path --}}
-                        <img src="{{ asset('images/krysandtelllogo.jpg') }}" alt="Krys &amp; Tell">
-                    </div>
-                    <div class="receipt-brand-title">
-                        <p class="clinic">KRYS &amp; TELL</p>
-                        <p class="sub">Dental Center</p>
-                    </div>
-                </div>
+        @if($visit)
+            <a href="{{ route('staff.visits.show', $visit->id) }}" class="p-btn">
+                <i class="fa fa-eye"></i> View Visit
+            </a>
+        @endif
 
-                <div class="header-right">
-                    <div><b>Krys &amp; Tell Dental Center</b></div>
-                    <div>872X+C92 Aldrich Autocare, Jose Romero Road</div>
-                    <div>Dumaguete City, Negros Oriental</div>
-                    <div><b>Phone:</b> 0912-345-6789</div>
-                </div>
+        <a href="{{ route('staff.payments.edit', $payment->id) }}" class="p-btn p-btn-primary">
+            <i class="fa fa-pen"></i> Edit
+        </a>
+    </div>
+</div>
+
+<div class="p-card">
+    <div class="p-card-head">
+        <div class="p-card-head-left">
+            <div class="p-ref">
+                <i class="fa fa-receipt"></i> {{ $receiptNo }}
             </div>
+            <span class="p-badge p-paid"><span class="p-dot"></span> PAID</span>
+        </div>
 
-            {{-- META --}}
-            <div class="receipt-meta">
-                <div class="meta-pill"><b>Date:</b> <span>{{ $paymentDate }}</span></div>
-                <div class="meta-pill"><b>Receipt #:</b> <span>{{ $receiptNo }}</span></div>
-            </div>
-
-            {{-- PATIENT INFO --}}
-            <div class="section">
-                <div class="section-title">PATIENT INFORMATION</div>
-                <table class="info-table">
-                    <tr>
-                        <td>Name</td>
-                        <td>{{ $patientName }}</td>
-                    </tr>
-                    <tr>
-                        <td>Address</td>
-                        <td>{{ $patient->address ?? '______________________________' }}</td>
-                    </tr>
-                    <tr>
-                        <td>Phone</td>
-                        <td>{{ $patient->contact_number ?? '______________________________' }}</td>
-                    </tr>
-                </table>
-            </div>
-
-            {{-- SERVICES --}}
-            <div class="section" style="margin-top:10px;">
-                <div class="section-title">DESCRIPTION OF SERVICES</div>
-
-                <table class="receipt-table">
-                    <thead>
-                        <tr>
-                            <th>TREATMENT</th>
-                            <th style="width:160px;">TOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if($rows->count() > 0)
-                            @foreach($rows as $r)
-                                <tr>
-                                    <td>
-                                        <strong>{{ $r['service'] }}</strong>
-                                        @if(!empty($r['details']))
-                                            <div class="tooth-chip">{{ $r['details'] }}</div>
-                                        @endif
-                                    </td>
-                                    <td>₱{{ number_format($r['total'], 2) }}</td>
-                                </tr>
-                            @endforeach
-                        @else
-                            <tr>
-                                <td colspan="2" style="text-align:center;">No treatments available</td>
-                            </tr>
-                        @endif
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- TOTALS --}}
-            <div class="receipt-totals">
-                <div class="left-details">
-                    <p><strong>PAYMENT METHOD :</strong> {{ ucfirst($payment->method) }}</p>
-                    <p><strong>REMARKS :</strong> ____________________________</p>
-                </div>
-
-                <div class="right-details">
-                    <div class="row"><b>Subtotal</b> <span>₱{{ number_format($shownTotal, 2) }}</span></div>
-                    <div class="row"><b>Discount</b> <span>₱0.00</span></div>
-                    <div class="row"><b>TAX / VAT</b> <span>₱0.00</span></div>
-                    <div class="row total"><b>Total Amount Due</b> <span>₱{{ number_format($shownTotal, 2) }}</span></div>
-                    <div class="row"><b>Amount Paid</b> <span>₱{{ number_format($shownTotal, 2) }}</span></div>
-                </div>
-            </div>
-
-            <div class="goodday">Have a Nice Day!</div>
-
-            {{-- FOOTER --}}
-            <div class="receipt-footer">
-                <p style="width:55%; text-align:left; margin:0; color:rgba(43,38,35,.72);">
-                    For dental appointments or inquiries, you may contact <br>
-                    <strong>Krys &amp; Tell Dental Center</strong> at <strong>0912-345-6789</strong> or visit us <br>
-                    at 872X+C92 Aldrich Autocare, Jose Romero Road,<br>
-                    Dumaguete City, Negros Oriental
-                </p>
-
-                <div class="signature">
-                    <div class="signature-line">KRYS &amp; TELL DENTAL CENTER</div>
-                    <div style="font-size:11px; color:rgba(43,38,35,.70);">Authorized Signature</div>
-                </div>
-            </div>
-
+        <div class="p-meta">
+            Payment Date: <strong>{{ $paymentDate }}</strong>
         </div>
     </div>
 
-    {{-- PRINT BUTTONS --}}
-    <div class="print-actions">
-        <a href="{{ route('staff.payments.index') }}" class="back-btn">
-            <i class="fa fa-arrow-left"></i> Back to Payments
-        </a>
-        <button onclick="window.print()" class="print-btn">
-            <i class="fa fa-print"></i> Print Receipt
-        </button>
+    <div class="p-card-body">
+
+        <div class="p-split">
+            <div class="p-panel">
+                <div class="p-section-title">Details</div>
+
+                <div class="p-kv">
+                    <div class="p-k">Patient</div>
+                    <div class="p-v">{{ $patientName }}</div>
+
+                    <div class="p-k">Contact</div>
+                    <div class="p-v">{{ $patient?->contact_number ?: '—' }}</div>
+
+                    <div class="p-k">Address</div>
+                    <div class="p-v">{{ $patient?->address ?: '—' }}</div>
+
+                    <div class="p-k">Method</div>
+                    <div class="p-v">{{ $payment->method ?: '—' }}</div>
+
+                    <div class="p-k">Visit Date</div>
+                    <div class="p-v">{{ $visitDate }}</div>
+
+                    <div class="p-k">Visit Status</div>
+                    <div class="p-v">
+                        <span class="p-badge p-info"><span class="p-dot"></span> {{ strtoupper($visit?->status ?? '—') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-panel">
+                <div class="p-section-title">Amount</div>
+
+                <div class="p-amount">₱{{ number_format($amountPaid, 2) }}</div>
+
+                <div class="p-small">
+                    Total shown: <strong>₱{{ number_format($totalShown, 2) }}</strong><br>
+                    @if($computedTotal > 0)
+                        Procedures total: <strong>₱{{ number_format($computedTotal, 2) }}</strong>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="p-notes">
+            <div class="p-notes-row">
+                <div class="p-notes-h"><i class="fa fa-notes-medical"></i> Visit Notes</div>
+                <div class="p-notes-b">{{ $visitNotes !== '' ? $visitNotes : '—' }}</div>
+            </div>
+            <div class="p-notes-row">
+                <div class="p-notes-h"><i class="fa fa-comment-dots"></i> Payment Notes</div>
+                <div class="p-notes-b">{{ $paymentNotes !== '' ? $paymentNotes : '—' }}</div>
+            </div>
+        </div>
+
+        <div class="p-table-wrap table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Treatment</th>
+                        <th>Tooth</th>
+                        <th>Surface</th>
+                        <th>Notes</th>
+                        <th class="text-end">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($procedures as $p)
+                        @php $pnote = trim((string)($p->notes ?? '')); @endphp
+                        <tr>
+                            <td style="font-weight:900;">{{ $p->service?->name ?? '—' }}</td>
+                            <td style="color:rgba(15,23,42,.70); font-weight:700;">{{ $p->tooth_number ? ('#'.$p->tooth_number) : '—' }}</td>
+                            <td style="color:rgba(15,23,42,.70); font-weight:700;">{{ $p->surface ?? '—' }}</td>
+                            <td style="color:rgba(15,23,42,.70); font-weight:700; max-width:520px;">
+                                {{ $pnote !== '' ? $pnote : '—' }}
+                            </td>
+                            <td class="text-end" style="font-weight:900;">
+                                ₱{{ number_format((float)($p->price ?? 0), 2) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No treatments found for this payment.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
     </div>
 </div>
 

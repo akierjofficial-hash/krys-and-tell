@@ -376,7 +376,6 @@
     }
     .mini-hint{ font-size: 12px; color: rgba(15,23,42,.55); }
 
-
     /* Teeth grid */
     .teeth-grid{
         display:grid;
@@ -500,53 +499,71 @@
             <form action="{{ route('staff.visits.store') }}" method="POST" id="visitForm">
                 @csrf
 
+                @php
+                    // ✅ Preselect patient if coming from Patients page (via ?patient_id=)
+                    $selectedPatientId = old('patient_id', $preselectedPatientId ?? null);
+                @endphp
+
+                @if(!empty($preselectedPatient) && (string)$selectedPatientId === (string)$preselectedPatient->id)
+                    <div class="alert alert-info mb-3">
+                        <strong>Selected patient:</strong>
+                        {{ $preselectedPatient->last_name }}, {{ $preselectedPatient->first_name }}
+                    </div>
+                @endif
+
                 <div class="row g-3">
                     {{-- Patient --}}
                     <div class="col-md-6">
                         <label class="form-labelx">Patient <span class="text-danger">*</span></label>
                         <select name="patient_id" class="selectx" required>
                             <option value="">-- Select Patient --</option>
+
                             @foreach($patients as $patient)
-                                <option value="{{ $patient->id }}">
+                                <option value="{{ $patient->id }}"
+                                    {{ (string)$selectedPatientId === (string)$patient->id ? 'selected' : '' }}>
                                     {{ $patient->first_name }} {{ $patient->last_name }}
                                 </option>
                             @endforeach
                         </select>
-                        <div class="helptext">Select the patient for this visit.</div>
+                        <div class="helptext">
+                            Select the patient for this visit.
+                            @if(!empty($preselectedPatientId))
+                                (Pre-selected from patient record — you may change if needed.)
+                            @endif
+                        </div>
                     </div>
 
-                {{-- Assigned Dentist --}}
-<div class="col-md-6">
-    <label class="form-labelx">Assigned Dentist <span class="text-danger">*</span></label>
-    <select name="doctor_id" class="selectx" required>
-        <option value="">-- Choose Dentist --</option>
+                    {{-- Assigned Dentist --}}
+                    <div class="col-md-6">
+                        <label class="form-labelx">Assigned Dentist <span class="text-danger">*</span></label>
+                        <select name="doctor_id" class="selectx" required>
+                            <option value="">-- Choose Dentist --</option>
 
-        @forelse($doctors as $doc)
-            <option value="{{ $doc->id }}" @selected(old('doctor_id') == $doc->id)>
-                {{ $doc->name }}{{ $doc->specialty ? ' — '.$doc->specialty : '' }}
-            </option>
-        @empty
-            <option value="" disabled>No active doctors yet (add from Admin → Doctors)</option>
-        @endforelse
-    </select>
+                            @forelse($doctors as $doc)
+                                <option value="{{ $doc->id }}" @selected(old('doctor_id') == $doc->id)>
+                                    {{ $doc->name }}{{ $doc->specialty ? ' — '.$doc->specialty : '' }}
+                                </option>
+                            @empty
+                                <option value="" disabled>No active doctors yet (add from Admin → Doctors)</option>
+                            @endforelse
+                        </select>
 
-    <div class="helptext">
-        This list is managed from Admin → Doctors. Only Active doctors appear here.
-    </div>
-</div>
-
+                        <div class="helptext">
+                            This list is managed from Admin → Doctors. Only Active doctors appear here.
+                        </div>
+                    </div>
 
                     {{-- Visit Date --}}
                     <div class="col-md-6">
                         <label class="form-labelx">Visit Date <span class="text-danger">*</span></label>
-                        <input type="date" name="visit_date" class="inputx" required>
+                        <input type="date" name="visit_date" class="inputx" value="{{ old('visit_date') }}" required>
                         <div class="helptext">When the visit happened.</div>
                     </div>
 
                     {{-- Notes --}}
                     <div class="col-12">
                         <label class="form-labelx">Notes</label>
-                        <textarea name="notes" rows="3" class="textareax" placeholder="Optional notes about the visit..."></textarea>
+                        <textarea name="notes" rows="3" class="textareax" placeholder="Optional notes about the visit...">{{ old('notes') }}</textarea>
                     </div>
 
                     {{-- ODONTOGRAM --}}
@@ -574,7 +591,6 @@
                             <div class="odonto-body">
                                 <div class="teeth-grid" id="toothChart"></div>
                             </div>
-
 
                             <div class="odonto-bottom">
                                 <span class="mini-hint">
@@ -779,14 +795,11 @@
             return;
         }
 
-        // If user selected teeth, use those; otherwise parse the input
         const chosen = Array.from(selectedTeeth);
         const list = chosen.length ? chosen : normalizeToothList(toothInput.value);
 
-        // If no tooth selected/typed, still allow a “general” procedure row (tooth empty)
         if (list.length === 0) list.push('');
 
-        // One row per tooth
         list.forEach(tn => {
             procedures.push({
                 service_id: serviceId,
@@ -800,7 +813,6 @@
 
         renderProcedures();
 
-        // clear inputs + selection
         selectedTeeth.clear();
         syncSelectedUI();
 
@@ -811,10 +823,8 @@
         toothInput.focus();
     }
 
-    // Add via button
     addBtn.addEventListener('click', addProcedure);
 
-    // Add via Enter key
     [serviceSelect, toothInput, surfaceInput, shadeInput, noteInput].forEach(el => {
         el.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -824,7 +834,6 @@
         });
     });
 
-    // Remove using event delegation
     tableBody.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-remove]');
         if (!btn) return;
@@ -834,7 +843,6 @@
         renderProcedures();
     });
 
-    // Enforce at least 1 procedure on submit
     visitForm.addEventListener('submit', (e) => {
         if (procedures.length === 0) {
             e.preventDefault();
@@ -842,9 +850,6 @@
         }
     });
 
-    /* =========================
-       ODONTOGRAM (MULTI SELECT)
-       ========================= */
     function toothSvg(){
         return `
             <svg class="tooth-svg" viewBox="0 0 64 80" aria-hidden="true">
@@ -935,7 +940,6 @@
         });
     }
 
-    // Helpers: basic escaping
     function escapeHtml(str) {
         return String(str ?? '').replace(/[&<>"']/g, s => ({
             '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -945,7 +949,6 @@
         return escapeHtml(str).replace(/`/g, '&#96;');
     }
 
-    // Init
     renderProcedures();
     buildToothChartIconsMulti();
 })();

@@ -160,6 +160,10 @@ Route::middleware('auth')->group(function () {
             Route::resource('visits', VisitController::class);
             Route::resource('appointments', AppointmentController::class);
             Route::resource('services', ServiceController::class);
+            // Patient Visit History (one patient, many visits)
+Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])
+    ->name('patients.visits');
+
 
             // Payments
             Route::prefix('payments')->name('payments.')->group(function () {

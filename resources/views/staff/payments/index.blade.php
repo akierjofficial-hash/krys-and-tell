@@ -464,8 +464,10 @@
                             <a href="{{ route('staff.payments.edit', $payment->id) }}" class="pill pill-edit">
                                 <i class="fa fa-pen"></i> Edit
                             </a>
+
+                            {{-- ✅ changed Receipt -> View --}}
                             <a href="{{ route('staff.payments.show', $payment->id) }}" class="pill pill-view">
-                                <i class="fa fa-receipt"></i> Receipt
+                                <i class="fa fa-eye"></i> View
                             </a>
 
                             <form action="{{ route('staff.payments.destroy', $payment->id) }}" method="POST" style="display:inline;"
@@ -595,8 +597,9 @@
                                 <i class="fa fa-pen"></i> Edit
                             </a>
 
+                            {{-- ✅ changed Receipt -> View --}}
                             <a href="{{ route('staff.installments.show', $plan->id) }}" class="pill pill-view">
-                                <i class="fa fa-receipt"></i> Receipt
+                                <i class="fa fa-eye"></i> View
                             </a>
 
                             <form action="{{ route('staff.installments.destroy', $plan) }}" method="POST" style="display:inline;"
@@ -650,7 +653,7 @@
         tabInstallment.classList.remove('active');
         cashTable.style.display = 'block';
         installmentTable.style.display = 'none';
-        applyAll(); // re-apply for current tab
+        applyAll();
     }
 
     function showInstallment(){
@@ -658,7 +661,7 @@
         tabCash.classList.remove('active');
         cashTable.style.display = 'none';
         installmentTable.style.display = 'block';
-        applyAll(); // re-apply for current tab
+        applyAll();
     }
 
     tabCash.addEventListener('click', showCash);
