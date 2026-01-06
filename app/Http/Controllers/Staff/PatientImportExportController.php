@@ -24,10 +24,12 @@ class PatientImportExportController extends Controller
         try {
             Excel::import(new PatientsImport, $request->file('file'));
         } catch (\Throwable $e) {
-            // Friendly error for UI
+            // Optional: log for debugging in Render logs
+            report($e);
+
             return redirect()
                 ->route('staff.patients.index')
-                ->with('error', 'Import failed: Please check the Birthdate format. Allowed examples: 22/11/2008, 2008-11-22, or Excel date format.');
+                ->with('error', 'Import failed: Birthdate must be a valid date. Preferred format is MM/DD/YY (e.g., 11/22/08) or MM/DD/YYYY (e.g., 11/22/2008). You can also use YYYY-MM-DD (e.g., 2008-11-22) or an Excel date cell.');
         }
 
         return redirect()

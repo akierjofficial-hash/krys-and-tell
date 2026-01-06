@@ -4,7 +4,6 @@ namespace App\Imports;
 
 use App\Models\Patient;
 use Carbon\Carbon;
-use DateTimeInterface;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -21,93 +20,89 @@ class PatientsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             return null;
         }
 
-        $birthdate = $this->parseDateToYmd($row['birthdate'] ?? null);
+        $birthdate = $this->parseBirthdate($row['birthdate'] ?? null);
 
         return new Patient([
             'last_name'      => $last,
             'first_name'     => $first,
-            'middle_name'    => $this->nullIfBlank($row['middle_name'] ?? null),
-            'gender'         => $this->nullIfBlank($row['gender'] ?? null),
-
-            // ✅ create-form aligned
+            'middle_name'    => trim((string)($row['middle_name'] ?? '')) ?: null,
+            'gender'         => trim((string)($row['gender'] ?? '')) ?: null,
             'birthdate'      => $birthdate,
-            'nickname'       => $this->nullIfBlank($row['nickname'] ?? null),
-            'address'        => $this->nullIfBlank($row['address'] ?? null),
-            'occupation'     => $this->nullIfBlank($row['occupation'] ?? null),
-            'contact_number' => isset($row['contact_number']) ? (string)$row['contact_number'] : null,
 
-            // ✅ email optional for now
-            'email'          => $this->nullIfBlank($row['email'] ?? null),
+            // NOTE: best practice is to format this column as TEXT in Excel
+            'contact_number' => isset($row['contact_number']) ? $this->safeString($row['contact_number']) : null,
 
-            // ✅ optional extras (safe if columns exist in DB)
-            'home_no'        => $this->nullIfBlank($row['home_no'] ?? null),
-            'office_no'      => $this->nullIfBlank($row['office_no'] ?? null),
-            'fax_no'         => $this->nullIfBlank($row['fax_no'] ?? null),
-            'dental_insurance'=> $this->nullIfBlank($row['dental_insurance'] ?? null),
-            'effective_date' => $this->parseDateToYmd($row['effective_date'] ?? null),
-            'notes'          => $this->nullIfBlank($row['notes'] ?? null),
-
-            'is_minor'       => $this->toBool($row['is_minor'] ?? null),
-            'guardian_name'  => $this->nullIfBlank($row['guardian_name'] ?? null),
-            'guardian_occupation' => $this->nullIfBlank($row['guardian_occupation'] ?? null),
+            'address'        => trim((string)($row['address'] ?? '')) ?: null,
         ]);
     }
 
-    private function nullIfBlank($v): ?string
+    private function safeString($value): ?string
     {
-        $v = trim((string)($v ?? ''));
-        return $v === '' ? null : $v;
+        if ($value === null) return null;
+
+        // If Excel gives a float/int, convert without scientific notation
+        if (is_numeric($value)) {
+            // number_format keeps big numbers readable (no commas)
+            return number_format((float)$value, 0, '', '');
+        }
+
+        return trim((string)$value) ?: null;
     }
 
-    private function toBool($v): ?int
+    private function parseBirthdate($value): ?string
     {
-        if ($v === null || $v === '') return null;
-        $s = strtolower(trim((string)$v));
-        if (in_array($s, ['1','true','yes','y'], true)) return 1;
-        if (in_array($s, ['0','false','no','n'], true)) return 0;
-        if (is_numeric($v)) return ((int)$v) ? 1 : 0;
-        return null;
-    }
+        if ($value === null || $value === '') {
+            return null;
+        }
 
-    private function parseDateToYmd($value): ?string
-    {
-        if ($value === null || $value === '') return null;
-
-        // Excel numeric date
+        // Excel serial date
         if (is_numeric($value)) {
             return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->toDateString();
         }
 
-        // Already a date object
-        if ($value instanceof DateTimeInterface) {
-            return Carbon::instance($value)->toDateString();
+        $s = trim((string)$value);
+        if ($s === '') return null;
+
+        // Normalize separators
+        $s = str_replace(['.', '-'], '/', $s);
+
+        // If it's already ISO-ish after normalization: YYYY/MM/DD
+        if (preg_match('/^\d{4}\/\d{1,2}\/\d{1,2}$/', $s)) {
+            return Carbon::createFromFormat('Y/m/d', $s)->toDateString();
         }
 
-        $v = trim((string)$value);
+        // Handle slashed dates like 11/22/2008 or 22/11/2008
+        if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{2,4}$/', $s)) {
+            [$a, $b, $y] = explode('/', $s);
+            $a = (int)$a; // first part
+            $b = (int)$b; // second part
 
-        // Try strict known formats first
-        foreach ([
-            'Y-m-d',     // 2008-11-22
-            'd/m/Y',     // 22/11/2008  ✅ your file
-            'm/d/Y',
-            'd-m-Y',
-            'm-d-Y',
-            'Y/m/d',
-            'd.m.Y',
-            'm.d.Y',
-        ] as $fmt) {
+            $yearFmt = (strlen($y) === 2) ? 'y' : 'Y';
+
+            // Auto-detect:
+            // - if first part > 12 => DD/MM
+            // - if second part > 12 => MM/DD
+            // - ambiguous (both <= 12) => DEFAULT to MM/DD (your preference)
+            if ($a > 12 && $b <= 12) {
+                $fmt = "d/m/{$yearFmt}";
+            } elseif ($b > 12 && $a <= 12) {
+                $fmt = "m/d/{$yearFmt}";
+            } else {
+                $fmt = "m/d/{$yearFmt}"; // default preference
+            }
+
             try {
-                return Carbon::createFromFormat($fmt, $v)->toDateString();
+                return Carbon::createFromFormat($fmt, $s)->toDateString();
             } catch (\Throwable $e) {
-                // continue
+                // fall through to last-resort parsing
             }
         }
 
-        // Fallback (may still fail)
+        // Last resort (e.g. "Nov 22, 2008")
         try {
-            return Carbon::parse($v)->toDateString();
+            return Carbon::parse($s)->toDateString();
         } catch (\Throwable $e) {
-            return null; // or throw if you want to hard-fail invalid dates
+            throw new \InvalidArgumentException("Invalid birthdate format: '{$s}'. Use MM/DD/YY (preferred) or YYYY-MM-DD.");
         }
     }
 }
