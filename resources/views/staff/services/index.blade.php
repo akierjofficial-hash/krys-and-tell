@@ -4,9 +4,9 @@
 
 <style>
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
-        --sticky-bg: rgba(255,255,255,.98);
+        --card-shadow: var(--kt-shadow, 0 10px 25px rgba(15, 23, 42, .06));
+        --card-border: 1px solid var(--kt-border, rgba(15, 23, 42, .10));
+        --sticky-bg: var(--kt-surface-2, rgba(255,255,255,.98));
     }
 
     /* Header */
@@ -20,15 +20,15 @@
     }
     .page-title{
         font-size: 26px;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--kt-text, #0f172a);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--kt-muted, rgba(15, 23, 42, .55));
     }
 
     /* Actions */
@@ -37,11 +37,14 @@
         align-items:center;
         gap: 10px;
         flex-wrap: wrap;
+        min-width: 0;
     }
     .search-box{
         position: relative;
         width: 340px;
         max-width: 100%;
+        min-width: 240px;
+        flex: 1 1 320px;
     }
     .search-box i{
         position: absolute;
@@ -56,40 +59,42 @@
         width: 100%;
         padding: 11px 12px 11px 38px;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-input-border, rgba(15, 23, 42, .14));
+        background: var(--kt-input-bg, rgba(255,255,255,.92));
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
         outline: none;
         transition: .15s ease;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--kt-text, #0f172a);
     }
     .search-box input:focus{
         border-color: rgba(13,110,253,.55);
         box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        background: var(--kt-surface-2, #fff);
     }
 
     .sort-box{
         display:flex;
         align-items:center;
         gap: 8px;
+        min-width: 0;
+        flex: 0 1 auto;
     }
     .sort-box .sort-label{
         font-size: 12px;
-        font-weight: 800;
-        color: rgba(15, 23, 42, .60);
+        font-weight: 900;
+        color: var(--kt-muted, rgba(15, 23, 42, .60));
         white-space: nowrap;
     }
     .sort-select{
         min-width: 230px;
         max-width: 100%;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-input-border, rgba(15, 23, 42, .14));
+        background: var(--kt-input-bg, rgba(255,255,255,.92));
         padding: 11px 12px;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--kt-text, #0f172a);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
@@ -97,7 +102,7 @@
     .sort-select:focus{
         border-color: rgba(13,110,253,.55);
         box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        background: var(--kt-surface-2, #fff);
     }
 
     .btnx{
@@ -106,18 +111,18 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 700;
+        font-weight: 800;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15,23,42,.10);
+        border: 1px solid var(--kt-border, rgba(15,23,42,.10));
         background: rgba(15,23,42,.06);
-        color: rgba(15,23,42,.75);
+        color: rgba(15,23,42,.78);
         transition: .15s ease;
         white-space: nowrap;
         cursor: pointer;
         user-select: none;
     }
-    .btnx:hover{ background: rgba(15,23,42,.08); }
+    .btnx:hover{ background: rgba(15,23,42,.08); transform: translateY(-1px); }
 
     .add-btn{
         display:inline-flex;
@@ -126,7 +131,7 @@
         background: linear-gradient(135deg, #0d6efd, #1e90ff);
         padding: 11px 14px;
         color: #fff !important;
-        font-weight: 600;
+        font-weight: 800;
         border-radius: 12px;
         font-size: 14px;
         text-decoration: none;
@@ -137,11 +142,12 @@
     .add-btn:hover{
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(13, 110, 253, .26);
+        filter: brightness(1.02);
     }
 
     /* Card */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface, rgba(255,255,255,.92));
         border: var(--card-border);
         border-radius: 16px;
         box-shadow: var(--card-shadow);
@@ -156,15 +162,17 @@
         padding: 16px 18px;
         border-bottom: 1px solid rgba(15, 23, 42, .06);
         flex-wrap: wrap;
+        background: linear-gradient(180deg, rgba(248,250,252,.85), rgba(255,255,255,0));
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--kt-muted, rgba(15, 23, 42, .55));
+        font-weight: 700;
     }
 
-    /* ✅ Table wrap: prevent page-level horizontal scroll */
+    /* Table wrap */
     .table-wrap{
-        padding: 8px 10px 10px 10px;
+        padding: 10px;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
@@ -173,9 +181,8 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-
-        /* ✅ KEY: fixed layout so long text doesn't widen the table */
-        table-layout: fixed;
+        table-layout: fixed; /* keep Actions visible */
+        background: transparent;
     }
 
     thead th{
@@ -195,23 +202,23 @@
     tbody td{
         padding: 14px 14px;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--kt-text, #0f172a);
         border-bottom: 1px solid rgba(15, 23, 42, .06);
         vertical-align: middle;
-        overflow: hidden; /* needed for fixed layout truncation */
+        overflow: hidden;
     }
     tbody tr{ transition: .12s ease; }
     tbody tr:hover{ background: rgba(13,110,253,.06); }
 
-    /* ✅ Column sizing (keeps Actions visible) */
+    /* Column sizing */
     th:nth-child(1), td:nth-child(1){ width: 220px; }  /* Name */
     th:nth-child(2), td:nth-child(2){ width: 140px; }  /* Base price */
     th:nth-child(3), td:nth-child(3){ width: 150px; }  /* Custom price */
-    th:nth-child(5), td:nth-child(5){ width: 190px; }  /* Actions */
+    th:nth-child(5), td:nth-child(5){ width: 240px; }  /* Actions */
 
-    .muted{ color: rgba(15, 23, 42, .55); }
+    .muted{ color: var(--kt-muted, rgba(15, 23, 42, .55)); }
 
-    /* Yes/No chips */
+    /* Yes/No chips (use !important to survive your global dark-mode “white text” rule) */
     .chip{
         display:inline-flex;
         align-items:center;
@@ -219,13 +226,22 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 900;
         border: 1px solid transparent;
         white-space: nowrap;
+        line-height: 1;
     }
     .chip-dot{ width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    .chip-yes{ background: rgba(34, 197, 94, .12); color:#15803d; border-color: rgba(34,197,94,.25); }
-    .chip-no{ background: rgba(107, 114, 128, .12); color: rgba(15, 23, 42, .70); border-color: rgba(107,114,128,.25); }
+    .chip-yes{
+        background: rgba(34, 197, 94, .12);
+        color: #16a34a !important;
+        border-color: rgba(34,197,94,.25);
+    }
+    .chip-no{
+        background: rgba(107, 114, 128, .12);
+        color: rgba(15, 23, 42, .80) !important;
+        border-color: rgba(107,114,128,.25);
+    }
 
     /* Actions */
     .action-pills{
@@ -242,7 +258,7 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
         border: 1px solid transparent;
         text-decoration: none;
         transition: .12s ease;
@@ -250,12 +266,22 @@
         background: transparent;
     }
     .pill i{ font-size: 12px; }
+
     .pill-edit{
         background: rgba(59, 130, 246, .12);
         color:#1d4ed8 !important;
         border-color: rgba(59,130,246,.22);
     }
     .pill-edit:hover{ background: rgba(59, 130, 246, .18); }
+
+    /* ✅ Patients folder pill (missing before) */
+    .pill-view{
+        background: rgba(124, 58, 237, .12);
+        color:#5b21b6 !important;
+        border-color: rgba(124,58,237,.22);
+    }
+    .pill-view:hover{ background: rgba(124, 58, 237, .18); }
+
     .pill-del{
         background: rgba(239, 68, 68, .12);
         color:#b91c1c !important;
@@ -264,10 +290,10 @@
     }
     .pill-del:hover{ background: rgba(239, 68, 68, .18); }
 
-    /* ✅ Description: wrap + clamp so it doesn't push width */
+    /* Description clamp */
     .desc{
         display: -webkit-box;
-        -webkit-line-clamp: 2;           /* 2 lines */
+        -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
         white-space: normal;
@@ -275,7 +301,7 @@
         line-height: 1.35;
     }
 
-    /* ✅ Optional but nice: keep Actions column visible when scrolling horizontally */
+    /* Sticky Actions column */
     thead th:last-child,
     tbody td:last-child{
         position: sticky;
@@ -288,17 +314,25 @@
         background: rgba(13,110,253,.06);
     }
 
+    /* “No results” row */
+    .empty-state{
+        padding: 18px;
+        text-align:center;
+        color: var(--kt-muted, rgba(15,23,42,.55));
+        font-weight: 800;
+    }
+
     @media (max-width: 768px){
-        .search-box{ width: 100%; }
+        .search-box{ width: 100%; flex: 1 1 100%; }
+        .sort-box{ width: 100%; }
         .sort-select{ width: 100%; min-width: 0; }
         .top-actions{ width: 100%; }
         .action-pills{ justify-content:flex-start; }
 
-        /* On small screens, reduce fixed widths a bit */
         th:nth-child(1), td:nth-child(1){ width: 180px; }
         th:nth-child(2), td:nth-child(2){ width: 120px; }
         th:nth-child(3), td:nth-child(3){ width: 130px; }
-        th:nth-child(5), td:nth-child(5){ width: 180px; }
+        th:nth-child(5), td:nth-child(5){ width: 220px; }
     }
 </style>
 
@@ -405,6 +439,10 @@
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
+                                <a href="{{ route('staff.services.patients', $service->id) }}" class="pill pill-view">
+                                    <i class="fa fa-folder-open"></i> Patients
+                                </a>
+
                                 <form action="{{ route('staff.services.destroy', $service->id) }}"
                                       method="POST"
                                       style="display:inline;"
@@ -419,8 +457,8 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
+                    <tr class="no-data-row">
+                        <td colspan="5" class="empty-state">
                             No services found.
                         </td>
                     </tr>
@@ -445,6 +483,13 @@
     totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
 
+    // “No results” row (only for search/filter)
+    const noResultsRow = document.createElement('tr');
+    noResultsRow.innerHTML = `<td colspan="5" class="empty-state">No matching services.</td>`;
+    noResultsRow.style.display = 'none';
+
+    if (rowsAll.length) tbody.appendChild(noResultsRow);
+
     function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
 
     function applySearch(){
@@ -458,6 +503,10 @@
         });
 
         visibleCountEl.textContent = visible;
+
+        if (rowsAll.length){
+            noResultsRow.style.display = (visible === 0) ? '' : 'none';
+        }
     }
 
     function applySort(){
@@ -494,6 +543,8 @@
         });
 
         sorted.forEach(r => tbody.appendChild(r));
+        // keep noResultsRow at the end
+        if (rowsAll.length) tbody.appendChild(noResultsRow);
     }
 
     function applyAll(){
@@ -501,10 +552,10 @@
         applySearch();
     }
 
-    searchInput.addEventListener('keyup', applySearch);
-    sortSelect.addEventListener('change', applyAll);
+    searchInput?.addEventListener('input', applySearch);
+    sortSelect?.addEventListener('change', applyAll);
 
-    resetBtn.addEventListener('click', () => {
+    resetBtn?.addEventListener('click', () => {
         searchInput.value = '';
         sortSelect.value = 'created_desc';
         applyAll();

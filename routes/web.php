@@ -150,8 +150,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
 
             // ✅ PRINT Patient Information Record (PDF)
-            // URL becomes: /staff/patients/{patient}/print-info
-            // Route name becomes: staff.patients.printInfo
             Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])
                 ->name('patients.printInfo');
 
@@ -160,10 +158,16 @@ Route::middleware('auth')->group(function () {
             Route::resource('visits', VisitController::class);
             Route::resource('appointments', AppointmentController::class);
             Route::resource('services', ServiceController::class);
-            // Patient Visit History (one patient, many visits)
-Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])
-    ->name('patients.visits');
 
+            // Patient Visit History (one patient, many visits)
+            Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])
+                ->name('patients.visits');
+
+            // ✅ NEW: Service Folder (patients who took a service)
+            // URL: /staff/services/{service}/patients
+            // Name: staff.services.patients
+            Route::get('services/{service}/patients', [ServiceController::class, 'patients'])
+                ->name('services.patients');
 
             // Payments
             Route::prefix('payments')->name('payments.')->group(function () {

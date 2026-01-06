@@ -458,7 +458,38 @@
     }
 
     .tooth-btn.midgap{ margin-left: 10px; }
+
+    /* =========================
+       Tom Select (Searchable Patient)
+       ========================= */
+    .ts-wrapper{ width: 100%; }
+    .ts-control{
+        border: 1px solid rgba(15, 23, 42, .12) !important;
+        padding: 11px 12px !important;
+        border-radius: 12px !important;
+        background: rgba(255,255,255,.96) !important;
+        font-size: 14px !important;
+        color: var(--text) !important;
+        box-shadow: none !important;
+    }
+    .ts-control:focus-within{
+        border-color: rgba(13,110,253,.40) !important;
+        box-shadow: 0 0 0 4px rgba(13,110,253,.12) !important;
+    }
+    .ts-dropdown{
+        border-radius: 12px !important;
+        overflow: hidden;
+        border: 1px solid rgba(15, 23, 42, .12) !important;
+    }
+    .ts-dropdown .option{
+        padding: 10px 12px !important;
+        font-weight: 700;
+    }
 </style>
+
+{{-- Tom Select CDN (no jQuery) --}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
 <div class="page-wrap">
     <div class="page-head form-max">
@@ -500,7 +531,6 @@
                 @csrf
 
                 @php
-                    // ✅ Preselect patient if coming from Patients page (via ?patient_id=)
                     $selectedPatientId = old('patient_id', $preselectedPatientId ?? null);
                 @endphp
 
@@ -515,9 +545,10 @@
                     {{-- Patient --}}
                     <div class="col-md-6">
                         <label class="form-labelx">Patient <span class="text-danger">*</span></label>
-                        <select name="patient_id" class="selectx" required>
-                            <option value="">-- Select Patient --</option>
 
+                        {{-- ✅ Searchable dropdown --}}
+                        <select name="patient_id" id="patientSelect" class="selectx" required>
+                            <option value="">-- Select Patient --</option>
                             @foreach($patients as $patient)
                                 <option value="{{ $patient->id }}"
                                     {{ (string)$selectedPatientId === (string)$patient->id ? 'selected' : '' }}>
@@ -525,12 +556,8 @@
                                 </option>
                             @endforeach
                         </select>
-                        <div class="helptext">
-                            Select the patient for this visit.
-                            @if(!empty($preselectedPatientId))
-                                (Pre-selected from patient record — you may change if needed.)
-                            @endif
-                        </div>
+
+                        <div class="helptext">Type to search the patient name (e.g., “mar”, “cruz”).</div>
                     </div>
 
                     {{-- Assigned Dentist --}}
@@ -708,6 +735,18 @@
 
 <script>
 (() => {
+    // ✅ Searchable Patient Dropdown (Tom Select)
+    const patientSelectEl = document.getElementById('patientSelect');
+    if (patientSelectEl && window.TomSelect) {
+        new TomSelect(patientSelectEl, {
+            create: false,
+            placeholder: 'Search patient…',
+            allowEmptyOption: true,
+            maxOptions: 5000,
+            sortField: [{ field: "text", direction: "asc" }],
+        });
+    }
+
     let procedures = [];
     const selectedTeeth = new Set();
 

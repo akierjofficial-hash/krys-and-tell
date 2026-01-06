@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Service;
+use App\Models\Patient;
 
 class ServiceController extends Controller
 {
@@ -61,6 +62,19 @@ class ServiceController extends Controller
 
         return redirect()->route('staff.services.index')->with('success', 'Service updated successfully!');
     }
+
+    public function patients(Service $service)
+{
+    $patients = Patient::query()
+        ->whereHas('visits.procedures', function ($q) use ($service) {
+            $q->where('service_id', $service->id);
+        })
+        ->orderBy('last_name')
+        ->orderBy('first_name')
+        ->get();
+
+    return view('staff.services.patients', compact('service', 'patients'));
+}
 
     public function destroy(Service $service)
     {
