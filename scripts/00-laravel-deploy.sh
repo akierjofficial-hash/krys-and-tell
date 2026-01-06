@@ -1,3 +1,6 @@
+echo "✅ Running 00-laravel-deploy.sh"
+php artisan migrate:status || true
+
 #!/usr/bin/env bash
 set -e
 

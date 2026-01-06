@@ -14,19 +14,16 @@ class Payment extends Model
         'amount',
         'method',
         'payment_date',
-        'installment_plan_id', 
-        'notes'
+        'notes',
     ];
 
-public function visit()
-{
-    return $this->belongsTo(Visit::class);
-}
+    protected $casts = [
+        'payment_date' => 'date',
+        'amount' => 'decimal:2',
+    ];
 
-public function patient()
-{
-    return $this->hasOneThrough(Patient::class, Visit::class, 'id', 'id', 'visit_id', 'patient_id');
-}
-
-    
+    public function visit()
+    {
+        return $this->belongsTo(Visit::class);
+    }
 }

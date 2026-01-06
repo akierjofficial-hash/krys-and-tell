@@ -21,11 +21,9 @@ class Service extends Model
         'allow_custom_price' => 'boolean',
         'base_price' => 'decimal:2',
     ];
-    public function visits()
-{
-    return $this->belongsToMany(Visit::class, 'visit_service')
-                ->withPivot('price')
-                ->withTimestamps();
-}
 
+    public function visitProcedures()
+    {
+        return $this->hasMany(VisitProcedure::class);
+    }
 }
