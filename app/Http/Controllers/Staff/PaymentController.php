@@ -16,12 +16,45 @@ class PaymentController extends Controller
     // =======================
     private function visitDue(Visit $visit): float
     {
-        // Make sure procedures are loaded when possible to avoid extra queries
+        // If a visit-level total was set, treat it as authoritative total due
+        if ($visit->price !== null) {
+            return (float) $visit->price;
+        }
+
         if ($visit->relationLoaded('procedures')) {
             return (float) $visit->procedures->sum(fn ($p) => (float) ($p->price ?? 0));
         }
 
         return (float) $visit->procedures()->sum('price');
+    }
+
+    /**
+     * If the visit contains at least one custom-price-allowed service,
+     * allow lowering the total due by setting visits.price.
+     *
+     * Safety: never allow lowering below the sum of fixed-price services.
+     */
+    private function maybeApplyCustomTotalOverride(Visit $visit, float $newTotalDue): bool
+    {
+        $currentDue = $this->visitDue($visit);
+        if ($newTotalDue >= $currentDue) return false;
+
+        $visit->loadMissing('procedures.service');
+
+        $hasCustom = $visit->procedures->contains(fn ($p) => (bool) ($p->service?->allow_custom_price ?? false));
+        if (!$hasCustom) return false;
+
+        // Don't allow lowering below fixed-price services total
+        $fixedMin = (float) $visit->procedures
+            ->filter(fn ($p) => !((bool) ($p->service?->allow_custom_price ?? false)))
+            ->sum(fn ($p) => (float) ($p->price ?? 0));
+
+        if ($newTotalDue < $fixedMin) return false;
+
+        $visit->price = $newTotalDue;
+        $visit->save();
+
+        return true;
     }
 
     private function visitPaid(Visit $visit): float
@@ -56,7 +89,6 @@ class PaymentController extends Controller
         if ($due > 0 && $paid >= $due) {
             $visit->update(['status' => 'completed']);
         } else {
-            // You can change this to whatever you prefer: 'pending', 'partial', etc.
             $visit->update(['status' => 'partial']);
         }
     }
@@ -87,25 +119,21 @@ class PaymentController extends Controller
     // =======================
     public function createCash()
     {
-        // Exclude visits that are already under installment plans (server-side)
         $installmentVisitIds = InstallmentPlan::whereNotNull('visit_id')->pluck('visit_id')->all();
         $installmentSet = array_flip($installmentVisitIds);
 
-        // Load visits with procedures + patient, and compute paid total
-        // Then filter out fully-paid visits.
         $visits = Visit::with(['patient', 'procedures.service'])
             ->whereHas('procedures')
             ->withSum('payments as paid_total', 'amount')
             ->orderByDesc('visit_date')
             ->get()
             ->filter(function (Visit $visit) use ($installmentSet) {
-                if (isset($installmentSet[$visit->id])) return false; // under installment plan
+                if (isset($installmentSet[$visit->id])) return false;
 
                 $due = $this->visitDue($visit);
                 $paid = (float) ($visit->paid_total ?? 0);
                 $balance = $due - $paid;
 
-                // Hide visits that are fully paid OR have no due amount
                 return $due > 0 && $balance > 0;
             })
             ->values();
@@ -145,14 +173,12 @@ class PaymentController extends Controller
 
         // ---- Pay an existing Visit ----
         if ($request->visit_id) {
-            $visit = Visit::with(['procedures', 'payments'])->findOrFail($request->visit_id);
+            $visit = Visit::with(['procedures.service', 'payments'])->findOrFail($request->visit_id);
 
-            // Must have procedures to be payable
             if ($visit->procedures->isEmpty()) {
                 return back()->withErrors('This visit has no procedures to charge.')->withInput();
             }
 
-            // Block if under installment plan
             if ($this->hasInstallmentPlanForVisit($visit->id)) {
                 return back()->withErrors('This visit is under an installment plan. Please collect payment from the plan instead.')->withInput();
             }
@@ -161,9 +187,20 @@ class PaymentController extends Controller
             $paid = $this->visitPaid($visit);
             $balance = $due - $paid;
 
-            // Block if already fully paid
             if ($due <= 0 || $balance <= 0) {
                 return back()->withErrors('This visit is already fully paid.')->withInput();
+            }
+
+            // ✅ KEY FIX:
+            // If staff enters an amount LESS than the computed balance,
+            // treat it as final cash price ONLY if the visit has a custom-price service.
+            if ($amount < $balance) {
+                $desiredFinalTotal = $paid + $amount; // total due should become exactly what was paid in cash
+                $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
+
+                // refresh totals after possible override
+                $visit->refresh();
+                $visit->load(['procedures.service', 'payments']);
             }
 
             Payment::create([
@@ -173,8 +210,7 @@ class PaymentController extends Controller
                 'payment_date' => $request->payment_date,
             ]);
 
-            // Update status based on total paid vs due
-            $visit->load('payments'); // refresh relation totals
+            $visit->load('payments');
             $this->updateVisitStatusBasedOnPayments($visit);
 
             return redirect()->route('staff.payments.index')->with('success', 'Cash payment added!');
@@ -194,7 +230,6 @@ class PaymentController extends Controller
                 return back()->withErrors('This appointment is not payable (already completed/cancelled/declined).')->withInput();
             }
 
-            // If your statuses are case-sensitive, adjust this check or remove it.
             if ($appointment->status && !in_array(strtolower((string) $appointment->status), $payableStatuses, true)) {
                 return back()->withErrors('This appointment status is not payable.')->withInput();
             }
@@ -202,7 +237,7 @@ class PaymentController extends Controller
             $visit = Visit::create([
                 'patient_id' => $appointment->patient_id,
                 'visit_date' => now()->toDateString(),
-                'status'     => 'partial', // will be corrected below
+                'status'     => 'partial',
             ]);
 
             if ($appointment->service_id) {
@@ -216,6 +251,20 @@ class PaymentController extends Controller
                 ]);
             }
 
+            // ✅ Apply the same custom-final-price logic for appointment → visit
+            $visit->load(['procedures.service', 'payments']);
+            $due = $this->visitDue($visit);
+            $paid = $this->visitPaid($visit);
+            $balance = $due - $paid;
+
+            if ($amount < $balance) {
+                $desiredFinalTotal = $paid + $amount; // usually just $amount since paid is 0
+                $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
+
+                $visit->refresh();
+                $visit->load(['procedures.service', 'payments']);
+            }
+
             Payment::create([
                 'visit_id'     => $visit->id,
                 'amount'       => $amount,
@@ -223,7 +272,6 @@ class PaymentController extends Controller
                 'payment_date' => $request->payment_date,
             ]);
 
-            // Status + appointment completion
             $visit->load(['procedures', 'payments']);
             $this->updateVisitStatusBasedOnPayments($visit);
 
@@ -241,7 +289,6 @@ class PaymentController extends Controller
     // =======================
     public function createInstallment()
     {
-        // Exclude visits already under installment plans
         $installmentVisitIds = InstallmentPlan::whereNotNull('visit_id')->pluck('visit_id')->all();
         $installmentSet = array_flip($installmentVisitIds);
 
@@ -251,10 +298,8 @@ class PaymentController extends Controller
             ->orderByDesc('visit_date')
             ->get()
             ->filter(function (Visit $visit) use ($installmentSet) {
-                if (isset($installmentSet[$visit->id])) return false; // already has plan
+                if (isset($installmentSet[$visit->id])) return false;
 
-                // Typically, installment should start only if no cash payments yet.
-                // If you want to allow installment even after partial cash payments, remove this block.
                 $paid = (float) ($visit->paid_total ?? 0);
                 if ($paid > 0) return false;
 
@@ -299,7 +344,6 @@ class PaymentController extends Controller
         $serviceId = null;
         $visitId   = null;
 
-        // ---- From Visit ----
         if ($request->visit_id) {
             $visit = Visit::with(['patient', 'procedures.service', 'payments'])->findOrFail($request->visit_id);
 
@@ -311,7 +355,6 @@ class PaymentController extends Controller
                 return back()->withErrors('This visit has no procedures to charge.')->withInput();
             }
 
-            // Typically, don’t allow installment if any cash payment already exists
             if ($this->visitPaid($visit) > 0) {
                 return back()->withErrors('This visit already has cash payments. Please continue cash payments instead of starting an installment plan.')->withInput();
             }
@@ -321,7 +364,6 @@ class PaymentController extends Controller
             $visitId   = $visit->id;
         }
 
-        // ---- From Appointment (create Visit) ----
         if ($request->appointment_id) {
             $appointment = Appointment::with(['patient', 'service'])->findOrFail($request->appointment_id);
 
@@ -338,7 +380,6 @@ class PaymentController extends Controller
 
             $visit = Visit::create([
                 'patient_id' => $patientId,
-                // Align the initial visit date with the plan start date
                 'visit_date' => $request->start_date,
                 'status'     => 'installment',
             ]);
@@ -356,7 +397,6 @@ class PaymentController extends Controller
 
             $visitId = $visit->id;
 
-            // Mark appointment completed (or keep as confirmed if you prefer)
             $appointment->update(['status' => 'completed']);
         }
 
@@ -376,8 +416,6 @@ class PaymentController extends Controller
             'status'      => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
         ]);
 
-        // Record the downpayment as Month #1 (clinic workflow: downpayment is the 1st month).
-        // This makes Month #1 show as PAID in the installment pay screen.
         if ($down > 0) {
             $hasMonth1 = $plan->payments()->where('month_number', 1)->exists();
             if (!$hasMonth1) {
@@ -392,7 +430,6 @@ class PaymentController extends Controller
             }
         }
 
-        // Update visit status if we have a visit
         if ($visitId) {
             $v = Visit::find($visitId);
             if ($v) {
@@ -429,7 +466,6 @@ class PaymentController extends Controller
 
         $payment->update($request->only('visit_id', 'amount', 'method', 'payment_date'));
 
-        // Recompute visit status after editing a payment
         $visit = Visit::with(['procedures', 'payments'])->find($payment->visit_id);
         if ($visit) {
             $this->updateVisitStatusBasedOnPayments($visit);
@@ -445,7 +481,6 @@ class PaymentController extends Controller
 
         $payment->delete();
 
-        // Recompute status after delete
         if ($visitId) {
             $visit = Visit::with(['procedures', 'payments'])->find($visitId);
             if ($visit) {

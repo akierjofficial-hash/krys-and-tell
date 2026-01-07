@@ -209,7 +209,10 @@
                                     ->implode(', ');
 
                                 // Total due
-                                $due = (float) ($visit->procedures->sum('price') ?? 0);
+                                $due = $visit->price !== null
+    ? (float) $visit->price
+    : (float) ($visit->procedures->sum('price') ?? 0);
+
 
                                 // Total paid (safe even if relation not eager loaded)
                                 $paid = 0.0;
