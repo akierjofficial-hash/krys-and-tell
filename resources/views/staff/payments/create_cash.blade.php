@@ -212,16 +212,14 @@
 
                                 // Total due
                                 $due = $visit->price !== null
-    ? (float) $visit->price
-    : (float) ($visit->procedures->sum('price') ?? 0);
+                                    ? (float) $visit->price
+                                    : (float) ($visit->procedures->sum('price') ?? 0);
 
-
-                                // Total paid (safe even if relation not eager loaded)
+                                // Total paid
                                 $paid = 0.0;
                                 if (property_exists($visit, 'total_paid') && $visit->total_paid !== null) {
                                     $paid = (float) $visit->total_paid;
                                 } else {
-                                    // If Visit has payments() relation, this will work; otherwise fallback to Payment model.
                                     if (method_exists($visit, 'payments')) {
                                         $paid = (float) $visit->payments()->sum('amount');
                                     } else {
@@ -234,7 +232,6 @@
 
                                 $balance = max($due - $paid, 0);
 
-                                // Skip: no procedures cost, fully paid, or already in installment
                                 if ($due <= 0 || $balance <= 0 || $inInstallment) {
                                     continue;
                                 }
@@ -243,12 +240,16 @@
 
                                 $pName = trim(($visit->patient?->first_name ?? '').' '.($visit->patient?->last_name ?? '')) ?: 'Patient';
                                 $dateLabel = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('m/d/Y') : '—';
+
+                                // ✅ date for input[type=date]
+                                $visitDateForInput = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : '';
                             @endphp
 
                             <option value="{{ $visit->id }}"
                                 data-type="visit"
                                 data-treatments="{{ $treatmentsPreview }}"
                                 data-amount="{{ $balance }}"
+                                data-date="{{ $visitDateForInput }}"
                                 {{ old('visit_id') == $visit->id ? 'selected' : '' }}
                             >
                                 Visit - {{ $pName }} ({{ $dateLabel }}) — Balance ₱{{ number_format($balance, 2) }}
@@ -325,15 +326,21 @@
                 {{-- Payment Date --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
-                    <input type="date" name="payment_date" class="inputx"
-                           value="{{ old('payment_date') }}" required>
+                    <input
+                        type="date"
+                        name="payment_date"
+                        id="paymentDateInput"
+                        class="inputx"
+                        value="{{ old('payment_date', now()->toDateString()) }}"
+                        required
+                    >
+                    <div class="helper">Auto-fills with the Visit date when a Visit is selected.</div>
                 </div>
 
                 {{-- Treatments --}}
                 <div class="col-12">
                     <label class="form-labelx">Treatments (auto-filled)</label>
 
-                    {{-- keep value for old() by submitting it --}}
                     <input type="hidden" name="treatments_preview" id="treatmentsHidden" value="{{ old('treatments_preview') }}">
 
                     <textarea id="treatmentsBox" class="textareax readonlyx" rows="3" readonly>{{ old('treatments_preview') }}</textarea>
@@ -362,6 +369,7 @@
     const amountInput = document.getElementById('amountInput');
     const treatmentsBox = document.getElementById('treatmentsBox');
     const treatmentsHidden = document.getElementById('treatmentsHidden');
+    const paymentDateInput = document.getElementById('paymentDateInput'); // ✅ added
 
     function updateFields(optionEl) {
         if (!optionEl) return;
@@ -372,6 +380,13 @@
         const tx = optionEl.getAttribute('data-treatments') || '';
         if (treatmentsBox) treatmentsBox.value = tx;
         if (treatmentsHidden) treatmentsHidden.value = tx;
+
+        // ✅ Auto-fill payment date when Visit is selected
+        const type = optionEl.getAttribute('data-type') || '';
+        const dt = optionEl.getAttribute('data-date') || '';
+        if (paymentDateInput && type === 'visit' && dt) {
+            paymentDateInput.value = dt;
+        }
     }
 
     function clearFieldsIfNone() {
