@@ -50,9 +50,12 @@
                     <a class="btn kt-btn kt-btn-primary text-white" href="{{ url('/book/' . $service->id) }}">
                         <i class="fa-solid fa-calendar-check me-1"></i> Book this service
                     </a>
-                    <a class="btn kt-btn kt-btn-outline" href="{{ url('/services') }}">
-                        <i class="fa-solid fa-arrow-left me-1"></i> Back to services
-                    </a>
+                    <x-back-button
+                        fallback="{{ url('/services') }}"
+                        class="btn kt-btn kt-btn-outline"
+                        icon_class="fa-solid fa-arrow-left me-1"
+                        label="Back to services"
+                    />
                 </div>
             </div>
 

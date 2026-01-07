@@ -152,9 +152,11 @@
         <p class="subtitle">Fill out the form below to schedule a new appointment.</p>
     </div>
 
-    <a href="{{ route('staff.appointments.index') }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Appointments
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.appointments.index') }}"
+        class="btn-ghostx"
+        label="Back to Appointments"
+    />
 </div>
 
 @if ($errors->any())

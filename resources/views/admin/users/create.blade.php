@@ -346,9 +346,12 @@
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.users.index') }}" class="btn btnx">
-                <i class="fa fa-arrow-left me-2"></i> Back
-            </a>
+            <x-back-button
+                fallback="{{ route('admin.users.index') }}"
+                class="btn btnx"
+                icon_class="fa fa-arrow-left me-2"
+                label="Back"
+            />
         </div>
     </div>
 

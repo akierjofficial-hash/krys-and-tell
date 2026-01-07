@@ -191,9 +191,11 @@
             <input type="text" id="patientSearch" placeholder="Search patient name…">
         </div>
 
-        <a href="{{ route('staff.services.index') }}" class="btnx">
-            <i class="fa fa-arrow-left"></i> Back to Services
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.services.index') }}"
+            class="btnx"
+            label="Back to Services"
+        />
     </div>
 </div>
 

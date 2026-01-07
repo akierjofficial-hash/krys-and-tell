@@ -182,9 +182,11 @@
         <p class="subtitle">Choose a payment type to continue.</p>
     </div>
 
-    <a href="{{ route('staff.payments.index') }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Payments
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.payments.index') }}"
+        class="btn-ghostx"
+        label="Back to Payments"
+    />
 </div>
 
 <div class="choose-wrap max-wrap">
@@ -192,7 +194,7 @@
 
         {{-- CASH --}}
         <div class="col-12 col-md-6">
-            <a href="{{ route('staff.payments.create.cash') }}" class="plan-card">
+            <a href="{{ route('staff.payments.create.cash', ['return' => url()->full()]) }}" class="plan-card">
                 <div class="plan-top">
                     <div class="d-flex align-items-center gap-3">
                         <div class="icon-pill" style="background:linear-gradient(135deg,#0d6efd,#1e90ff);">
@@ -215,7 +217,7 @@
 
         {{-- INSTALLMENT --}}
         <div class="col-12 col-md-6">
-            <a href="{{ route('staff.payments.create.installment') }}" class="plan-card">
+            <a href="{{ route('staff.payments.create.installment', ['return' => url()->full()]) }}" class="plan-card">
                 <div class="plan-top">
                     <div class="d-flex align-items-center gap-3">
                         <div class="icon-pill" style="background:linear-gradient(135deg,#7c3aed,#6f42c1);">

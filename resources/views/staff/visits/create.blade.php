@@ -498,9 +498,11 @@
             <p class="subtitle">Record a new visit and add treatments per tooth.</p>
         </div>
 
-        <a href="{{ route('staff.visits.index') }}" class="btn-ghostx">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.visits.index') }}"
+            class="btn-ghostx"
+            label="Back"
+        />
     </div>
 
     @if ($errors->any())

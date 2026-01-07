@@ -468,11 +468,11 @@
 
                             <td class="text-end">
                                 <div class="action-pills">
-                                    <a href="{{ route('staff.visits.edit', $visit->id) }}" class="pill pill-edit">
+                                    <a href="{{ route('staff.visits.edit', [$visit->id, 'return' => url()->full()]) }}" class="pill pill-edit">
                                         <i class="fa fa-pen"></i> Edit
                                     </a>
 
-                                    <a href="{{ route('staff.visits.show', $visit->id) }}" class="pill pill-view">
+                                    <a href="{{ route('staff.visits.show', [$visit->id, 'return' => url()->full()]) }}" class="pill pill-view">
                                         <i class="fa fa-eye"></i> View
                                     </a>
 

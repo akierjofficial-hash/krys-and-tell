@@ -238,9 +238,11 @@
         <p class="subtitle">Patient fills this on iPad. Required fields are marked with <span class="text-danger">*</span>.</p>
     </div>
 
-    <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Patients
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.patients.index') }}"
+        class="btn-ghostx"
+        label="Back to Patients"
+    />
 </div>
 
 @if ($errors->any())

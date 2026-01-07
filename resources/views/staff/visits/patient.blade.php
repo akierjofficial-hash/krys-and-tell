@@ -183,9 +183,11 @@
     </div>
 
     <div class="top-actions">
-        <a href="{{ route('staff.visits.index') }}" class="btnx">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.visits.index') }}"
+            class="btnx"
+            label="Back"
+        />
 
         <a href="{{ route('staff.visits.create', ['patient_id' => $patient->id]) }}" class="add-btn">
             <i class="fa fa-plus"></i> Add Visit
@@ -261,11 +263,11 @@
 
                         <td class="text-end">
                             <div class="action-pills">
-                                <a href="{{ route('staff.visits.edit', $visit->id) }}" class="pill pill-edit">
+                                <a href="{{ route('staff.visits.edit', [$visit->id, 'return' => url()->full()]) }}" class="pill pill-edit">
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
-                                <a href="{{ route('staff.visits.show', $visit->id) }}" class="pill pill-view">
+                                <a href="{{ route('staff.visits.show', [$visit->id, 'return' => url()->full()]) }}" class="pill pill-view">
                                     <i class="fa fa-eye"></i> View
                                 </a>
 

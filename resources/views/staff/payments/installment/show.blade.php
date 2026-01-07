@@ -246,22 +246,24 @@
     </div>
 
     <div class="i-actions">
-        <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="i-btn">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.payments.index', ['tab' => 'installment']) }}"
+            class="i-btn"
+            label="Back"
+        />
 
         @if(!$isPaid)
-            <a href="{{ route('staff.installments.pay', $plan->id) }}" class="i-btn i-btn-primary">
+            <a href="{{ route('staff.installments.pay', [$plan->id, 'return' => url()->full()]) }}" class="i-btn i-btn-primary">
                 <i class="fa fa-circle-dollar-to-slot"></i> Pay
             </a>
         @endif
 
-        <a href="{{ route('staff.installments.edit', $plan->id) }}" class="i-btn">
+        <a href="{{ route('staff.installments.edit', [$plan->id, 'return' => url()->full()]) }}" class="i-btn">
             <i class="fa fa-pen"></i> Edit
         </a>
 
         @if($plan->visit_id)
-            <a href="{{ route('staff.visits.show', $plan->visit_id) }}" class="i-btn">
+            <a href="{{ route('staff.visits.show', [$plan->visit_id, 'return' => url()->full()]) }}" class="i-btn">
                 <i class="fa fa-eye"></i> View Visit
             </a>
         @endif

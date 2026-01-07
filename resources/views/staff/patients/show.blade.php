@@ -317,15 +317,17 @@
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{{ route('staff.patients.index') }}" class="btn-ghostx">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.patients.index') }}"
+            class="btn-ghostx"
+            label="Back"
+        />
 
         <a href="{{ route('staff.patients.printInfo', $patient->id) }}" target="_blank" class="btn-ghostx">
             <i class="fa fa-print"></i> Print Patient Info (PDF)
         </a>
 
-        <a href="{{ route('staff.patients.edit', $patient->id) }}" class="btn-primaryx">
+        <a href="{{ route('staff.patients.edit', [$patient->id, 'return' => url()->full()]) }}" class="btn-primaryx">
             <i class="fa fa-pen"></i> Edit Patient
         </a>
     </div>

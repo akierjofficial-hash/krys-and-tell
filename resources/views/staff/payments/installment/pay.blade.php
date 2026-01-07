@@ -211,9 +211,11 @@
         <p class="subtitle">Record a payment for this installment plan.</p>
     </div>
 
-    <a href="{{ route('staff.installments.show', $plan) }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Plan
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.installments.show', $plan) }}"
+        class="btn-ghostx"
+        label="Back to Plan"
+    />
 </div>
 
 <div class="card-shell form-max">

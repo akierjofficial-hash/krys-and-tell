@@ -186,9 +186,11 @@
         <div class="sub">{{ $doctor->name }}</div>
     </div>
 
-    <a href="{{ route('admin.doctors.index') }}" class="back-btn">
-        <i class="fa fa-arrow-left"></i> Back
-    </a>
+    <x-back-button
+        fallback="{{ route('admin.doctors.index') }}"
+        class="back-btn"
+        label="Back"
+    />
 </div>
 
 @if($errors->any())

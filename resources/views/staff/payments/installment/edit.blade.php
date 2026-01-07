@@ -124,9 +124,11 @@
         <p class="subtitle">Update the editable details of this installment plan.</p>
     </div>
 
-    <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.payments.index', ['tab' => 'installment']) }}"
+        class="btn-ghostx"
+        label="Back"
+    />
 </div>
 
 <div class="card-shell form-max">

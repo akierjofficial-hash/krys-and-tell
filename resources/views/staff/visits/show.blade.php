@@ -313,11 +313,13 @@
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{{ route('staff.visits.index') }}" class="btn-ghostx">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.visits.index') }}"
+            class="btn-ghostx"
+            label="Back"
+        />
 
-        <a href="{{ route('staff.visits.edit', $visit->id) }}" class="btn-primaryx">
+        <a href="{{ route('staff.visits.edit', [$visit->id, 'return' => url()->full()]) }}" class="btn-primaryx">
             <i class="fa fa-pen"></i> Edit Visit
         </a>
     </div>

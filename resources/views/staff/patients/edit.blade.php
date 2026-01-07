@@ -306,9 +306,11 @@
         <p class="subtitle">Update the patient’s information record and consent.</p>
     </div>
 
-    <a href="{{ route('staff.patients.show', $patient->id) }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Patient
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.patients.show', $patient->id) }}"
+        class="btn-ghostx"
+        label="Back to Patient"
+    />
 </div>
 
 @if ($errors->any())

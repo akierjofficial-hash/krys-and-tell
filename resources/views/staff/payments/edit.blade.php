@@ -157,9 +157,11 @@
         <p class="subtitle">Update the details of this payment below.</p>
     </div>
 
-    <a href="{{ route('staff.payments.index') }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Payments
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.payments.index') }}"
+        class="btn-ghostx"
+        label="Back to Payments"
+    />
 </div>
 
 @if ($errors->any())

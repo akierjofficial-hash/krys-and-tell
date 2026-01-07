@@ -158,9 +158,11 @@
         <p class="subtitle">Select a visit or appointment, confirm the cost, then submit the payment.</p>
     </div>
 
-    <a href="{{ route('staff.payments.choose') }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Plan
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.payments.choose') }}"
+        class="btn-ghostx"
+        label="Back to Plan"
+    />
 </div>
 
 @if ($errors->any())

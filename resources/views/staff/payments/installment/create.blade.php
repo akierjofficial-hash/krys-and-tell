@@ -177,9 +177,11 @@
         <p class="subtitle">Choose a visit or appointment, then set downpayment and payment term.</p>
     </div>
 
-    <a href="{{ route('staff.payments.choose') }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Plan
-    </a>
+    <x-back-button
+        fallback="{{ route('staff.payments.choose') }}"
+        class="btn-ghostx"
+        label="Back to Plan"
+    />
 </div>
 
 @if ($errors->any())

@@ -265,17 +265,19 @@
     </div>
 
     <div class="p-actions">
-        <a href="{{ route('staff.payments.index') }}" class="p-btn">
-            <i class="fa fa-arrow-left"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.payments.index') }}"
+            class="p-btn"
+            label="Back"
+        />
 
         @if($visit)
-            <a href="{{ route('staff.visits.show', $visit->id) }}" class="p-btn">
+            <a href="{{ route('staff.visits.show', [$visit->id, 'return' => url()->full()]) }}" class="p-btn">
                 <i class="fa fa-eye"></i> View Visit
             </a>
         @endif
 
-        <a href="{{ route('staff.payments.edit', $payment->id) }}" class="p-btn p-btn-primary">
+        <a href="{{ route('staff.payments.edit', [$payment->id, 'return' => url()->full()]) }}" class="p-btn p-btn-primary">
             <i class="fa fa-pen"></i> Edit
         </a>
     </div>

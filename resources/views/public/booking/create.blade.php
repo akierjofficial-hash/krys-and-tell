@@ -4,9 +4,12 @@
 @section('content')
 <section class="section section-soft">
     <div class="container">
-        <a href="{{ route('public.services.show', $service->id) }}" class="text-decoration-none fw-bold">
-            <i class="fa-solid fa-arrow-left me-1"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('public.services.show', $service->id) }}"
+            class="text-decoration-none fw-bold"
+            icon_class="fa-solid fa-arrow-left me-1"
+            label="Back"
+        />
 
         <div class="row g-4 mt-2">
             <div class="col-lg-6">

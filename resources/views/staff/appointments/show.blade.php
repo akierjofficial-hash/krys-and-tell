@@ -317,11 +317,14 @@
     </div>
 
     <div class="actions">
-        <a href="{{ route('staff.appointments.index') }}" class="btn-soft">
-            <i class="fa fa-arrow-left me-1"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('staff.appointments.index') }}"
+            class="btn-soft"
+            icon_class="fa fa-arrow-left me-1"
+            label="Back"
+        />
 
-        <a href="{{ route('staff.appointments.edit', $appointment->id) }}" class="btn-primary-soft">
+        <a href="{{ route('staff.appointments.edit', [$appointment->id, 'return' => url()->full()]) }}" class="btn-primary-soft">
             <i class="fa fa-pen me-1"></i> Edit Appointment
         </a>
     </div>

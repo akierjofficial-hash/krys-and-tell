@@ -171,9 +171,12 @@
             </div>
         </div>
 
-        <a href="{{ route('admin.users.index') }}" class="btn btnx">
-            <i class="fa-solid fa-arrow-left me-1"></i> Back
-        </a>
+        <x-back-button
+            fallback="{{ route('admin.users.index') }}"
+            class="btn btnx"
+            icon_class="fa-solid fa-arrow-left me-1"
+            label="Back"
+        />
     </div>
 
     <div class="glass">
