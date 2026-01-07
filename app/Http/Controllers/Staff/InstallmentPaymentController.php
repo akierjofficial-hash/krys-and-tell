@@ -7,29 +7,89 @@ use App\Models\InstallmentPayment;
 use App\Models\InstallmentPlan;
 use App\Models\Visit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class InstallmentPaymentController extends Controller
 {
     /**
-     * Show the pay form for an installment plan.
+     * Keep redirects safe (no open redirect).
      */
-    public function create(InstallmentPlan $plan)
+    private function safeReturn(?string $url): ?string
+    {
+        if (!$url) return null;
+
+        // allow only same-app absolute URLs
+        $appUrl = rtrim(url('/'), '/');
+        if (Str::startsWith($url, $appUrl)) return $url;
+
+        return null;
+    }
+
+    /**
+     * ✅ Recompute plan balance/status correctly (avoid double-counting downpayment).
+     * - If Month 1 payment exists, do NOT add plan.downpayment again.
+     * - If Month 1 payment does NOT exist, treat plan.downpayment as already paid (legacy support).
+     */
+    private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
+    {
+        $plan->loadMissing('payments');
+
+        $totalCost   = (float) ($plan->total_cost ?? 0);
+        $downpayment = (float) ($plan->downpayment ?? 0);
+
+        $paymentsTotal = (float) $plan->payments->sum('amount');
+        $hasMonth1Payment = $plan->payments->contains(function ($p) {
+            return (int) ($p->month_number ?? 0) === 1;
+        });
+
+        $paidAmount = $paymentsTotal + ($hasMonth1Payment ? 0 : $downpayment);
+        $balance = max(0, $totalCost - $paidAmount);
+
+        $status = $balance <= 0 ? 'Fully Paid' : 'Partially Paid';
+
+        // keep DB consistent (so pay.blade.php which uses $plan->balance shows correct value)
+        $plan->balance = $balance;
+        $plan->status = $status;
+        $plan->save();
+
+        return $plan;
+    }
+
+    /**
+     * Show the pay form for an installment plan.
+     * Supports: ?month=3 to preselect month 3 (best UX from table row).
+     */
+    public function create(Request $request, InstallmentPlan $plan)
     {
         $plan->loadMissing(['patient', 'service', 'visit', 'payments']);
 
-        // For older plans: if there is a downpayment but no recorded Month 1 payment,
-        // treat Month 1 as paid (so the user won't accidentally pay it twice).
+        // ✅ fix plan balance/status when opening pay form (handles older wrong data)
+        $this->recomputePlan($plan);
+
+        // Paid months
         $paidMonths = $plan->payments->pluck('month_number')->filter()->values();
+
+        // Legacy: if downpayment exists but month 1 payment record doesn't exist, treat month 1 as paid
         if (!$paidMonths->contains(1) && (float) ($plan->downpayment ?? 0) > 0) {
             $paidMonths->push(1);
         }
 
-        // Default select the next unpaid month.
+        // Requested month (from table row "Pay" button)
+        $requestedMonth = (int) $request->query('month', 0);
+
+        // Default select month:
+        // - if requested month is valid & unpaid -> use it
+        // - else use next unpaid month
         $nextMonth = null;
-        for ($i = 1; $i <= (int) ($plan->months ?? 0); $i++) {
-            if (!$paidMonths->contains($i)) {
-                $nextMonth = $i;
-                break;
+
+        if ($requestedMonth >= 1 && $requestedMonth <= (int) ($plan->months ?? 0) && !$paidMonths->contains($requestedMonth)) {
+            $nextMonth = $requestedMonth;
+        } else {
+            for ($i = 1; $i <= (int) ($plan->months ?? 0); $i++) {
+                if (!$paidMonths->contains($i)) {
+                    $nextMonth = $i;
+                    break;
+                }
             }
         }
 
@@ -44,9 +104,7 @@ class InstallmentPaymentController extends Controller
 
     /**
      * Store a monthly installment payment.
-     *
-     * Recommendation B (default): Paying a month auto-creates a Visit record
-     * so the clinic can record notes (e.g., braces wire adjustments, recementation).
+     * Auto-creates a Visit record for notes.
      */
     public function store(Request $request, InstallmentPlan $plan)
     {
@@ -58,7 +116,10 @@ class InstallmentPaymentController extends Controller
             'notes'        => 'nullable|string|max:2000',
         ]);
 
-        $plan->loadMissing(['patient', 'visit', 'service']);
+        $plan->loadMissing(['patient', 'visit', 'service', 'payments']);
+
+        // ✅ Ensure plan is consistent before validating overpay
+        $this->recomputePlan($plan);
 
         $monthNumber = (int) $request->month_number;
 
@@ -66,14 +127,12 @@ class InstallmentPaymentController extends Controller
             return back()->withErrors('Invalid month selected.')->withInput();
         }
 
-        // Prevent duplicate payments for the same month.
-        $alreadyPaid = $plan->payments()->where('month_number', $monthNumber)->exists();
-        if ($alreadyPaid) {
+        // Prevent duplicate payments for the same month
+        if ($plan->payments()->where('month_number', $monthNumber)->exists()) {
             return back()->withErrors('This month is already paid.')->withInput();
         }
 
-        // Backward-compatibility: if an older plan has a downpayment recorded on the plan itself
-        // (but month 1 was never inserted into installment_payments), do not allow re-paying month 1.
+        // Legacy: if downpayment exists but no month 1 record, block paying month 1 again
         if ($monthNumber === 1) {
             $hasMonth1 = $plan->payments()->where('month_number', 1)->exists();
             if (!$hasMonth1 && (float) ($plan->downpayment ?? 0) > 0) {
@@ -81,10 +140,14 @@ class InstallmentPaymentController extends Controller
             }
         }
 
-        // ----------
-        // Auto-create visit for this monthly payment
-        // ----------
-        $baseVisit = $plan->visit; // may be null for some legacy plans
+        // ✅ Server-side anti-overpay check
+        $amount = (float) $request->amount;
+        if ($amount > (float) ($plan->balance ?? 0)) {
+            return back()->withErrors('Amount exceeds the remaining balance.')->withInput();
+        }
+
+        // Auto-create visit
+        $baseVisit = $plan->visit;
 
         $visitDate = $request->payment_date;
         $visitNotes = trim((string) $request->notes);
@@ -105,8 +168,7 @@ class InstallmentPaymentController extends Controller
             'price'        => null,
         ]);
 
-        // Optional: add a 0-priced procedure tied to the plan's service so the Visit shows a "Treatment" tag
-        // but will NOT appear as an unpaid cash visit (because due will be 0).
+        // Optional: add a 0-priced procedure so visit shows treatment tag
         if (!empty($plan->service_id)) {
             $visit->procedures()->create([
                 'service_id'   => $plan->service_id,
@@ -118,36 +180,121 @@ class InstallmentPaymentController extends Controller
             ]);
         }
 
-        // Save installment payment and link the new visit.
+        // Save payment
         InstallmentPayment::create([
             'installment_plan_id' => $plan->id,
             'visit_id'            => $visit->id,
             'month_number'        => $monthNumber,
-            'amount'              => $request->amount,
+            'amount'              => $amount,
             'method'              => $request->method,
             'payment_date'        => $request->payment_date,
             'notes'               => $request->notes,
         ]);
 
-        // ----------
-        // Recompute balance/status
-        // ----------
-        $paymentsTotal = (float) $plan->payments()->sum('amount');
-
-        // Backwards-compatible: if month 1 wasn't recorded, treat plan.downpayment as already paid.
-        $hasMonth1Payment = $plan->payments()->where('month_number', 1)->exists();
-        $totalPaid = $paymentsTotal + ($hasMonth1Payment ? 0 : (float) ($plan->downpayment ?? 0));
-
-        $balance = max(0, (float) ($plan->total_cost ?? 0) - $totalPaid);
-        $status = $balance <= 0 ? 'Fully Paid' : 'Partially Paid';
-
-        $plan->update([
-            'balance' => $balance,
-            'status'  => $status,
-        ]);
+        // ✅ Recompute plan after insert
+        $this->recomputePlan($plan);
 
         return redirect()
             ->route('staff.installments.show', $plan->id)
             ->with('success', 'Installment payment recorded and a visit was created.');
+    }
+
+    /**
+     * ✅ NEW: Edit an installment payment (per month).
+     */
+    public function edit(Request $request, InstallmentPlan $plan, InstallmentPayment $payment)
+    {
+        // Ensure the payment belongs to the plan
+        if ((int) $payment->installment_plan_id !== (int) $plan->id) {
+            abort(404);
+        }
+
+        $plan->loadMissing(['patient', 'service']);
+        $payment->loadMissing('visit');
+
+        // keep plan consistent
+        $this->recomputePlan($plan);
+
+        $return = $this->safeReturn($request->query('return')) ?? route('staff.installments.show', $plan->id);
+
+        return view('staff.payments.installment.edit-payment', compact('plan', 'payment', 'return'));
+    }
+
+    /**
+     * ✅ NEW: Update an installment payment (per month) + recompute balance.
+     */
+    public function update(Request $request, InstallmentPlan $plan, InstallmentPayment $payment)
+    {
+        // Ensure the payment belongs to the plan
+        if ((int) $payment->installment_plan_id !== (int) $plan->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'amount'       => 'required|numeric|min:0',
+            'method'       => 'required|string|max:50',
+            'payment_date' => 'required|date',
+            'notes'        => 'nullable|string|max:2000',
+            'return'       => 'nullable|string',
+        ]);
+
+        $plan->loadMissing('payments');
+
+        // Calculate "balance without this payment", then ensure new amount won't exceed total cost
+        $totalCost = (float) ($plan->total_cost ?? 0);
+        $downpayment = (float) ($plan->downpayment ?? 0);
+
+        $payments = $plan->payments->keyBy('id');
+        $paymentsTotal = (float) $plan->payments->sum('amount');
+
+        $hasMonth1Payment = $plan->payments->contains(function ($p) {
+            return (int) ($p->month_number ?? 0) === 1;
+        });
+
+        // remove current payment from totals, add new amount
+        $old = (float) ($payment->amount ?? 0);
+        $new = (float) $request->amount;
+
+        $paidWithoutThis = ($paymentsTotal - $old) + ($hasMonth1Payment ? 0 : $downpayment);
+        $newPaid = $paidWithoutThis + $new;
+
+        if ($newPaid > $totalCost + 0.0001) {
+            return back()->withErrors('Updated amount makes total paid exceed the plan total cost.')->withInput();
+        }
+
+        $payment->update([
+            'amount'       => $new,
+            'method'       => $request->method,
+            'payment_date' => $request->payment_date,
+            'notes'        => $request->notes,
+        ]);
+
+        // If this payment is month 1, keep plan.downpayment aligned (best UX)
+        if ((int) ($payment->month_number ?? 0) === 1) {
+            $plan->downpayment = $new;
+            $plan->save();
+        }
+
+        // Update linked visit (if exists)
+        if (!empty($payment->visit_id)) {
+            $visit = Visit::find($payment->visit_id);
+            if ($visit) {
+                $visit->visit_date = $request->payment_date;
+
+                $n = trim((string) $request->notes);
+                if ($n !== '') {
+                    $visit->notes = $n;
+                }
+
+                $visit->save();
+            }
+        }
+
+        // Recompute plan after update
+        $this->recomputePlan($plan);
+
+        $return = $this->safeReturn($request->input('return')) ?? route('staff.installments.show', $plan->id);
+
+        return redirect($return)->with('success', 'Installment payment updated.');
     }
 }

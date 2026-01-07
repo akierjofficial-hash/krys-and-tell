@@ -15,7 +15,6 @@
         --i-brand: #0d6efd;
     }
 
-    /* Header */
     .i-head{
         display:flex;
         align-items:flex-end;
@@ -68,7 +67,6 @@
     }
     .i-btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 14px 24px rgba(13, 110, 253, .22); }
 
-    /* Main card */
     .i-card{
         background: rgba(255,255,255,.94);
         border: var(--i-border);
@@ -123,7 +121,6 @@
 
     .i-card-body{ padding: 16px; }
 
-    /* Two-column summary */
     .i-split{
         display:grid;
         grid-template-columns: 1.6fr 1fr;
@@ -174,7 +171,6 @@
         line-height: 1.6;
     }
 
-    /* Table */
     .i-table-wrap{
         margin-top: 14px;
         border: 1px solid rgba(15, 23, 42, .08);
@@ -202,6 +198,37 @@
     }
     .text-end{ text-align:right; }
     .muted{ color: rgba(15,23,42,.65); font-weight:700; }
+
+    /* Row actions */
+    .i-row-actions{
+        display:flex;
+        gap: 8px;
+        justify-content:flex-end;
+        flex-wrap: wrap;
+    }
+    .i-mini{
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration:none;
+        border: 1px solid rgba(15, 23, 42, .12);
+        background: rgba(255,255,255,.92);
+        color: rgba(15, 23, 42, .82);
+        white-space: nowrap;
+        transition: .15s ease;
+    }
+    .i-mini:hover{ background: rgba(15,23,42,.04); }
+    .i-mini-primary{
+        border: none;
+        color: #fff !important;
+        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        box-shadow: 0 8px 14px rgba(13,110,253,.16);
+    }
+    .i-mini-primary:hover{ transform: translateY(-1px); box-shadow: 0 12px 18px rgba(13,110,253,.20); }
 </style>
 
 @php
@@ -229,20 +256,18 @@
     $paidAmount = $paymentsTotal + ($hasMonth1Payment ? 0 : $downpayment);
     $remaining = max(0, $totalCost - $paidAmount);
 
-    // status display
     $status = strtoupper(trim((string)($plan->status ?? 'PENDING')));
-    $isPaid = $remaining <= 0; // use computed remaining, not status text
+    $isPaid = $remaining <= 0;
 
     $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
 
-    // helpful lookup by month_number
     $paymentsByMonth = ($payments)->keyBy('month_number');
 @endphp
 
 <div class="i-head">
     <div>
         <h2 class="i-title">Installment Plan</h2>
-        <p class="i-subtitle">Simple view of plan summary and monthly payments.</p>
+        <p class="i-subtitle">View plan summary and monthly payments. You can edit paid months if needed.</p>
     </div>
 
     <div class="i-actions">
@@ -259,7 +284,7 @@
         @endif
 
         <a href="{{ route('staff.installments.edit', [$plan->id, 'return' => url()->full()]) }}" class="i-btn">
-            <i class="fa fa-pen"></i> Edit
+            <i class="fa fa-pen"></i> Edit Plan
         </a>
 
         @if($plan->visit_id)
@@ -328,6 +353,7 @@
                         <th style="width:120px;">Method</th>
                         <th style="width:120px;" class="text-end">Amount</th>
                         <th style="width:110px;">Status</th>
+                        <th style="width:160px;" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -339,7 +365,6 @@
                             $paidDate = $pay?->payment_date ? Carbon::parse($pay->payment_date) : null;
                             $showDate = ($paidDate ?? $due);
 
-                            // Downpayment shown on month 1 if no record
                             if ($i === 1) {
                                 $amount = $pay?->amount ?? $downpayment;
                             } else {
@@ -351,7 +376,7 @@
                                 $notes = 'Visit #' . $pay->visit_id;
                             }
 
-                            $rowPaid = $pay || ($i === 1 && $downpayment > 0);
+                            $rowPaid = (bool) $pay || ($i === 1 && $downpayment > 0);
                         @endphp
 
                         <tr>
@@ -366,6 +391,37 @@
                                 <span class="i-badge {{ $rowPaid ? 'st-paid' : 'st-pending' }}">
                                     <span class="i-dot"></span> {{ $rowPaid ? 'PAID' : 'PENDING' }}
                                 </span>
+                            </td>
+
+                            <td class="text-end">
+                                <div class="i-row-actions">
+                                    @if($pay)
+                                        <a class="i-mini"
+                                           href="{{ route('staff.installments.payments.edit', [$plan->id, $pay->id, 'return' => url()->full()]) }}">
+                                            <i class="fa fa-pen"></i> Edit
+                                        </a>
+
+                                        @if($pay->visit_id)
+                                            <a class="i-mini"
+                                               href="{{ route('staff.visits.show', [$pay->visit_id, 'return' => url()->full()]) }}">
+                                                <i class="fa fa-eye"></i> Visit
+                                            </a>
+                                        @endif
+                                    @else
+                                        @if(!$rowPaid)
+                                            <a class="i-mini i-mini-primary"
+                                               href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
+                                                <i class="fa fa-circle-dollar-to-slot"></i> Pay
+                                            </a>
+                                        @else
+                                            {{-- Month 1 legacy downpayment (no payment record) --}}
+                                            <a class="i-mini"
+                                               href="{{ route('staff.installments.edit', [$plan->id, 'return' => url()->full()]) }}">
+                                                <i class="fa fa-pen"></i> Edit DP
+                                            </a>
+                                        @endif
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endfor

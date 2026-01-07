@@ -153,19 +153,17 @@ Route::middleware('auth')->group(function () {
             Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])
                 ->name('patients.printInfo');
 
-            // Resources (names become staff.patients.*, staff.visits.*, etc.)
+            // Resources
             Route::resource('patients', PatientController::class);
             Route::resource('visits', VisitController::class);
             Route::resource('appointments', AppointmentController::class);
             Route::resource('services', ServiceController::class);
 
-            // Patient Visit History (one patient, many visits)
+            // Patient Visit History
             Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])
                 ->name('patients.visits');
 
-            // ✅ NEW: Service Folder (patients who took a service)
-            // URL: /staff/services/{service}/patients
-            // Name: staff.services.patients
+            // ✅ Service Folder
             Route::get('services/{service}/patients', [ServiceController::class, 'patients'])
                 ->name('services.patients');
 
@@ -199,6 +197,12 @@ Route::middleware('auth')->group(function () {
 
                 Route::get('/{plan}/pay', [InstallmentPaymentController::class, 'create'])->name('pay');
                 Route::post('/{plan}/pay', [InstallmentPaymentController::class, 'store'])->name('pay.store');
+
+                // ✅ NEW: Edit / Update an installment payment (per-month)
+                Route::get('/{plan}/payments/{payment}/edit', [InstallmentPaymentController::class, 'edit'])
+                    ->name('payments.edit');
+                Route::put('/{plan}/payments/{payment}', [InstallmentPaymentController::class, 'update'])
+                    ->name('payments.update');
             });
         });
 });
