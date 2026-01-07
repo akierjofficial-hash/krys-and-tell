@@ -1,338 +1,375 @@
-{{-- resources/views/staff/payments/installment/pay.blade.php --}}
-
 @extends('layouts.staff')
+
+@section('title', 'Installment Plan')
 
 @section('content')
 
 <style>
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --i-border: 1px solid rgba(15, 23, 42, .10);
+        --i-shadow: 0 10px 25px rgba(15, 23, 42, .06);
+        --i-text: #0f172a;
+        --i-muted: rgba(15, 23, 42, .58);
+        --i-soft: rgba(15, 23, 42, .05);
+        --i-radius: 16px;
+        --i-brand: #0d6efd;
     }
 
     /* Header */
-    .page-head{
+    .i-head{
         display:flex;
         align-items:flex-end;
         justify-content:space-between;
         gap: 14px;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
         flex-wrap: wrap;
     }
-    .page-title{
+    .i-title{
         font-size: 26px;
         font-weight: 900;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--i-text);
     }
-    .subtitle{
+    .i-subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--i-muted);
+    }
+    .i-actions{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
-    .btn-ghostx{
+    .i-btn{
         display:inline-flex;
         align-items:center;
         gap: 8px;
-        padding: 11px 14px;
+        padding: 10px 14px;
         border-radius: 12px;
         font-weight: 800;
         font-size: 14px;
         text-decoration: none;
         border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .75);
-        background: rgba(255,255,255,.85);
+        background: rgba(255,255,255,.88);
+        color: rgba(15, 23, 42, .80);
         transition: .15s ease;
         white-space: nowrap;
     }
-    .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
-    }
+    .i-btn:hover{ background: rgba(15, 23, 42, .04); }
 
-    .btn-primaryx{
-        display:inline-flex;
-        align-items:center;
-        gap: 8px;
-        padding: 11px 14px;
-        border-radius: 12px;
-        font-weight: 900;
-        font-size: 14px;
+    .i-btn-primary{
         border: none;
-        color: #fff;
-        background: linear-gradient(135deg, #16a34a, #22c55e);
-        box-shadow: 0 10px 18px rgba(34,197,94,.18);
-        transition: .15s ease;
-        white-space: nowrap;
+        color: #fff !important;
+        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        box-shadow: 0 10px 18px rgba(13, 110, 253, .18);
     }
-    .btn-primaryx:hover{
-        transform: translateY(-1px);
-        box-shadow: 0 14px 24px rgba(34,197,94,.24);
-        color:#fff;
-    }
+    .i-btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 14px 24px rgba(13, 110, 253, .22); }
 
-    /* Card */
-    .card-shell{
-        background: rgba(255,255,255,.92);
-        border: var(--card-border);
-        border-radius: 16px;
-        box-shadow: var(--card-shadow);
+    /* Main card */
+    .i-card{
+        background: rgba(255,255,255,.94);
+        border: var(--i-border);
+        border-radius: var(--i-radius);
+        box-shadow: var(--i-shadow);
         overflow: hidden;
-        width: 100%;
     }
-    .card-head{
-        padding: 16px 18px;
+    .i-card-head{
+        padding: 14px 16px;
         border-bottom: 1px solid rgba(15, 23, 42, .06);
         display:flex;
         align-items:center;
         justify-content:space-between;
-        flex-wrap: wrap;
         gap: 10px;
+        flex-wrap: wrap;
     }
-    .card-head .hint{
-        font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+    .i-card-head-left{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
-    .card-bodyx{ padding: 18px; }
-
-    /* Summary tiles */
-    .summary-grid{
-        display:grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-        margin-bottom: 14px;
-    }
-    @media (min-width: 768px){
-        .summary-grid{ grid-template-columns: repeat(2, 1fr); }
-    }
-
-    .tile{
-        border: 1px solid rgba(15,23,42,.10);
-        border-radius: 14px;
-        background: rgba(248,250,252,.9);
-        padding: 12px 12px;
-    }
-    .tile .k{
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: .35px;
-        text-transform: uppercase;
-        color: rgba(15,23,42,.58);
-        margin-bottom: 6px;
+    .i-ref{
+        font-weight: 950;
+        letter-spacing: .3px;
+        color: var(--i-text);
         display:flex;
         align-items:center;
         gap: 8px;
     }
-    .tile .v{
-        font-size: 14px;
-        font-weight: 900;
-        color: #0f172a;
-        word-break: break-word;
-    }
-    .balance{
-        color: #dc2626;
-        font-weight: 1000;
-    }
-
-    /* Inputs */
-    .form-labelx{
-        font-weight: 900;
-        font-size: 13px;
-        color: rgba(15, 23, 42, .75);
-        margin-bottom: 6px;
-    }
-    .inputx, .selectx{
-        width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
-        padding: 11px 12px;
-        border-radius: 12px;
-        font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
-        outline: none;
-        transition: .15s ease;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
-    }
-    .inputx:focus, .selectx:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
-    }
-    .helper{
-        margin-top: 6px;
+    .i-meta{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--i-muted);
+        font-weight: 700;
     }
 
-    /* Tiny badges */
-    .badge-soft{
+    .i-badge{
         display:inline-flex;
         align-items:center;
-        gap: 8px;
-        padding: 7px 10px;
+        gap: 6px;
+        padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
         font-weight: 900;
-        border: 1px solid rgba(59,130,246,.22);
-        background: rgba(59,130,246,.10);
-        color: rgba(15,23,42,.85);
+        border: 1px solid transparent;
         white-space: nowrap;
     }
+    .i-dot{ width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .st-paid{ background: rgba(34, 197, 94, .12); color:#15803d; border-color: rgba(34,197,94,.25); }
+    .st-pending{ background: rgba(245, 158, 11, .12); color:#b45309; border-color: rgba(245,158,11,.25); }
+    .st-info{ background: rgba(59, 130, 246, .12); color:#1d4ed8; border-color: rgba(59,130,246,.25); }
 
-    .form-max{ max-width: 1100px; }
+    .i-card-body{ padding: 16px; }
+
+    /* Two-column summary */
+    .i-split{
+        display:grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 14px;
+        align-items:start;
+    }
+    @media (max-width: 900px){
+        .i-split{ grid-template-columns: 1fr; }
+    }
+
+    .i-panel{
+        border: 1px solid rgba(15, 23, 42, .08);
+        background: rgba(248,250,252,.75);
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    .i-section-title{
+        font-size: 12px;
+        font-weight: 900;
+        color: rgba(15, 23, 42, .55);
+        text-transform: uppercase;
+        letter-spacing: .25px;
+        margin-bottom: 10px;
+    }
+
+    .i-kv{
+        display:grid;
+        grid-template-columns: 140px 1fr;
+        gap: 8px 12px;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+    .i-k{ color: rgba(15, 23, 42, .55); font-weight: 800; }
+    .i-v{ color: var(--i-text); font-weight: 800; word-break: break-word; }
+
+    .i-amount{
+        font-size: 20px;
+        font-weight: 950;
+        color: var(--i-text);
+        letter-spacing: -0.2px;
+    }
+    .i-small{
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--i-muted);
+        font-weight: 700;
+        line-height: 1.6;
+    }
+
+    /* Table */
+    .i-table-wrap{
+        margin-top: 14px;
+        border: 1px solid rgba(15, 23, 42, .08);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(255,255,255,.95);
+    }
+    table{ width: 100%; border-collapse: separate; border-spacing: 0; }
+    thead th{
+        font-size: 12px;
+        letter-spacing: .3px;
+        text-transform: uppercase;
+        color: rgba(15, 23, 42, .55);
+        padding: 13px 14px;
+        border-bottom: 1px solid rgba(15, 23, 42, .08);
+        background: rgba(248, 250, 252, .9);
+        white-space: nowrap;
+    }
+    tbody td{
+        padding: 13px 14px;
+        font-size: 14px;
+        color: var(--i-text);
+        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        vertical-align: top;
+    }
+    .text-end{ text-align:right; }
+    .muted{ color: rgba(15,23,42,.65); font-weight:700; }
 </style>
 
 @php
-    // ✅ FIX: compute remaining balance dynamically (robust for both “downpayment is a payment row” and legacy plans)
+    use Carbon\Carbon;
+
+    $patient = $plan->patient ?? $plan->visit?->patient ?? null;
+    $patientName = trim(($patient->first_name ?? '').' '.($patient->last_name ?? ''));
+    $patientName = $patientName !== '' ? $patientName : 'N/A';
+
+    $serviceName = $plan->service?->name ?? '—';
+
+    $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
+    $months = (int) ($plan->months ?? 0);
+
+    $totalCost = (float) ($plan->total_cost ?? 0);
+    $downpayment = (float) ($plan->downpayment ?? 0);
+
+    // ✅ FIX: don’t double count downpayment if Month 1 payment exists
     $payments = $plan->payments ?? collect();
     $paymentsTotal = (float) $payments->sum('amount');
-
     $hasMonth1Payment = $payments->contains(function ($p) {
         return (int)($p->month_number ?? 0) === 1;
     });
 
-    $down = (float) ($plan->downpayment ?? 0);
-    $total = (float) ($plan->total_cost ?? 0);
+    $paidAmount = $paymentsTotal + ($hasMonth1Payment ? 0 : $downpayment);
+    $remaining = max(0, $totalCost - $paidAmount);
 
-    // If Month 1 payment exists, downpayment is already included in paymentsTotal.
-    $totalPaid = $paymentsTotal + ($hasMonth1Payment ? 0 : $down);
+    // status display
+    $status = strtoupper(trim((string)($plan->status ?? 'PENDING')));
+    $isPaid = $remaining <= 0; // use computed remaining, not status text
 
-    $remainingBalance = max(0, $total - $totalPaid);
+    $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
+
+    // helpful lookup by month_number
+    $paymentsByMonth = ($payments)->keyBy('month_number');
 @endphp
 
-<div class="page-head form-max">
+<div class="i-head">
     <div>
-        <h2 class="page-title">Installment Payment</h2>
-        <p class="subtitle">Record a payment for this installment plan.</p>
+        <h2 class="i-title">Installment Plan</h2>
+        <p class="i-subtitle">Simple view of plan summary and monthly payments.</p>
     </div>
 
-    <a href="{{ route('staff.installments.show', $plan) }}" class="btn-ghostx">
-        <i class="fa fa-arrow-left"></i> Back to Plan
-    </a>
+    <div class="i-actions">
+        <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="i-btn">
+            <i class="fa fa-arrow-left"></i> Back
+        </a>
+
+        @if(!$isPaid)
+            <a href="{{ route('staff.installments.pay', $plan->id) }}" class="i-btn i-btn-primary">
+                <i class="fa fa-circle-dollar-to-slot"></i> Pay
+            </a>
+        @endif
+
+        <a href="{{ route('staff.installments.edit', $plan->id) }}" class="i-btn">
+            <i class="fa fa-pen"></i> Edit
+        </a>
+
+        @if($plan->visit_id)
+            <a href="{{ route('staff.visits.show', $plan->visit_id) }}" class="i-btn">
+                <i class="fa fa-eye"></i> View Visit
+            </a>
+        @endif
+    </div>
 </div>
 
-<div class="card-shell form-max">
-    <div class="card-head">
-        <div class="hint">
-            <span class="badge-soft"><i class="fa fa-file-invoice"></i> Plan ID: #{{ $plan->id }}</span>
-            <span class="badge-soft"><i class="fa fa-calendar"></i> Term: {{ $plan->months }} months</span>
+<div class="i-card">
+    <div class="i-card-head">
+        <div class="i-card-head-left">
+            <div class="i-ref"><i class="fa fa-layer-group"></i> {{ $refNo }}</div>
+            <span class="i-badge {{ $isPaid ? 'st-paid' : 'st-pending' }}">
+                <span class="i-dot"></span> {{ $isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING') }}
+            </span>
         </div>
-        <div class="hint">
-            Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.
+
+        <div class="i-meta">
+            Start: <strong>{{ $startDate ? $startDate->format('M d, Y') : '—' }}</strong>
         </div>
     </div>
 
-    <div class="card-bodyx">
+    <div class="i-card-body">
 
-        {{-- Plan Info --}}
-        <div class="summary-grid">
-            <div class="tile">
-                <div class="k"><i class="fa fa-user"></i> Patient Name</div>
-                <div class="v">{{ $plan->patient->first_name }} {{ $plan->patient->last_name }}</div>
+        <div class="i-split">
+            <div class="i-panel">
+                <div class="i-section-title">Details</div>
+
+                <div class="i-kv">
+                    <div class="i-k">Patient</div>
+                    <div class="i-v">{{ $patientName }}</div>
+
+                    <div class="i-k">Contact</div>
+                    <div class="i-v">{{ $patient?->contact_number ?: '—' }}</div>
+
+                    <div class="i-k">Treatment</div>
+                    <div class="i-v">{{ $serviceName }}</div>
+
+                    <div class="i-k">Term</div>
+                    <div class="i-v">{{ $months }} month(s)</div>
+                </div>
             </div>
 
-            <div class="tile">
-                <div class="k"><i class="fa fa-tooth"></i> Service / Treatment</div>
-                <div class="v">{{ $plan->service?->name ?? '—' }}</div>
-                <div class="helper">Use the <strong>Notes</strong> field below for braces details (upper/lower wire, recementation, adjustments, etc.).</div>
-            </div>
+            <div class="i-panel">
+                <div class="i-section-title">Summary</div>
 
-            <div class="tile">
-                <div class="k"><i class="fa fa-peso-sign"></i> Total Treatment Cost</div>
-                <div class="v">₱{{ number_format($plan->total_cost, 2) }}</div>
-            </div>
-
-            <div class="tile">
-                <div class="k"><i class="fa fa-arrow-down"></i> Downpayment</div>
-                <div class="v">₱{{ number_format($plan->downpayment, 2) }}</div>
-            </div>
-
-            <div class="tile">
-                <div class="k"><i class="fa fa-circle-exclamation"></i> Remaining Balance</div>
-                {{-- ✅ use computed remaining --}}
-                <div class="v balance">₱{{ number_format($remainingBalance, 2) }}</div>
+                <div class="i-amount">₱{{ number_format($remaining, 2) }}</div>
+                <div class="i-small">
+                    Remaining<br>
+                    Total: <strong>₱{{ number_format($totalCost, 2) }}</strong><br>
+                    Down: <strong>₱{{ number_format($downpayment, 2) }}</strong><br>
+                    Paid: <strong>₱{{ number_format($paidAmount, 2) }}</strong>
+                </div>
             </div>
         </div>
 
-        {{-- Payment Form --}}
-        <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
-            @csrf
+        <div class="i-table-wrap table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:90px;">Month</th>
+                        <th style="width:140px;">Date</th>
+                        <th>Notes</th>
+                        <th style="width:120px;">Method</th>
+                        <th style="width:120px;" class="text-end">Amount</th>
+                        <th style="width:110px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for($i=1; $i <= max(1,$months); $i++)
+                        @php
+                            $due = $startDate ? $startDate->copy()->addMonths($i - 1) : null;
+                            $pay = $paymentsByMonth->get($i);
 
-            <div class="row g-3">
+                            $paidDate = $pay?->payment_date ? Carbon::parse($pay->payment_date) : null;
+                            $showDate = ($paidDate ?? $due);
 
-                {{-- Month --}}
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
-                    <select name="month_number" class="selectx" required>
-                        @for($i = 1; $i <= $plan->months; $i++)
-                            @php $isPaid = isset($paidMonths) && $paidMonths->contains($i); @endphp
-                            <option value="{{ $i }}"
-                                {{ $isPaid ? 'disabled' : '' }}
-                                {{ (int)old('month_number', $nextMonth ?? 1) === $i ? 'selected' : '' }}
-                            >
-                                Month {{ $i }}{{ $isPaid ? ' (paid)' : '' }}
-                            </option>
-                        @endfor
-                    </select>
-                    <div class="helper">Only unpaid months can be selected.</div>
-                </div>
+                            // Downpayment shown on month 1 if no record
+                            if ($i === 1) {
+                                $amount = $pay?->amount ?? $downpayment;
+                            } else {
+                                $amount = $pay?->amount ?? null;
+                            }
 
-                {{-- Amount --}}
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
-                    <input
-                        type="number"
-                        name="amount"
-                        class="inputx"
-                        step="0.01"
-                        min="0"
-                        max="{{ $remainingBalance }}"
-                        value="{{ old('amount') }}"
-                        required
-                    >
-                    <div class="helper">Tip: keep it ≤ remaining balance.</div>
-                </div>
+                            $notes = trim((string)($pay?->notes ?? ''));
+                            if ($notes === '' && $pay?->visit_id) {
+                                $notes = 'Visit #' . $pay->visit_id;
+                            }
 
-                {{-- Payment Date --}}
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
-                    <input type="date" name="payment_date" class="inputx" value="{{ old('payment_date', now()->toDateString()) }}" required>
-                    <div class="helper">This will also be used as the Visit date.</div>
-                </div>
+                            $rowPaid = $pay || ($i === 1 && $downpayment > 0);
+                        @endphp
 
-                {{-- Method --}}
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Payment Method <span class="text-danger">*</span></label>
-                    <select name="method" class="selectx" required>
-                        @php $m = old('method', 'Cash'); @endphp
-                        <option value="Cash" {{ $m === 'Cash' ? 'selected' : '' }}>Cash</option>
-                        <option value="GCash" {{ $m === 'GCash' ? 'selected' : '' }}>GCash</option>
-                        <option value="Card" {{ $m === 'Card' ? 'selected' : '' }}>Card</option>
-                        <option value="Bank Transfer" {{ $m === 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer</option>
-                    </select>
-                </div>
-
-                {{-- Notes --}}
-                <div class="col-12">
-                    <label class="form-labelx">Treatment Notes / Visit Notes</label>
-                    <textarea name="notes" rows="3" class="inputx" placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ old('notes') }}</textarea>
-                    <div class="helper">Shown in Visits and linked to this installment payment.</div>
-                </div>
-
-                <div class="col-12 d-flex gap-2 flex-wrap pt-2">
-                    <button type="submit" class="btn-primaryx">
-                        <i class="fa fa-check"></i> Record Payment
-                    </button>
-
-                    <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
-                        <i class="fa fa-xmark"></i> Cancel
-                    </a>
-                </div>
-
-            </div>
-        </form>
+                        <tr>
+                            <td style="font-weight:900;">{{ $i }}</td>
+                            <td class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
+                            <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
+                            <td class="muted">{{ $pay?->method ?? '—' }}</td>
+                            <td class="text-end" style="font-weight:900;">
+                                {{ $amount ? '₱'.number_format((float)$amount, 2) : '—' }}
+                            </td>
+                            <td>
+                                <span class="i-badge {{ $rowPaid ? 'st-paid' : 'st-pending' }}">
+                                    <span class="i-dot"></span> {{ $rowPaid ? 'PAID' : 'PENDING' }}
+                                </span>
+                            </td>
+                        </tr>
+                    @endfor
+                </tbody>
+            </table>
+        </div>
 
     </div>
 </div>
