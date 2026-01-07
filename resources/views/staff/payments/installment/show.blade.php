@@ -219,17 +219,24 @@
     $totalCost = (float) ($plan->total_cost ?? 0);
     $downpayment = (float) ($plan->downpayment ?? 0);
 
-    $paidInstallments = (float) ($plan->payments?->sum('amount') ?? 0);
-    $paidAmount = $downpayment + $paidInstallments;
+    // ✅ FIX: don’t double count downpayment if Month 1 payment exists
+    $payments = $plan->payments ?? collect();
+    $paymentsTotal = (float) $payments->sum('amount');
+    $hasMonth1Payment = $payments->contains(function ($p) {
+        return (int)($p->month_number ?? 0) === 1;
+    });
+
+    $paidAmount = $paymentsTotal + ($hasMonth1Payment ? 0 : $downpayment);
     $remaining = max(0, $totalCost - $paidAmount);
 
+    // status display
     $status = strtoupper(trim((string)($plan->status ?? 'PENDING')));
-    $isPaid = strtolower(trim((string)($plan->status ?? ''))) === 'fully paid';
+    $isPaid = $remaining <= 0; // use computed remaining, not status text
 
     $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
 
     // helpful lookup by month_number
-    $paymentsByMonth = ($plan->payments ?? collect())->keyBy('month_number');
+    $paymentsByMonth = ($payments)->keyBy('month_number');
 @endphp
 
 <div class="i-head">
@@ -266,7 +273,7 @@
         <div class="i-card-head-left">
             <div class="i-ref"><i class="fa fa-layer-group"></i> {{ $refNo }}</div>
             <span class="i-badge {{ $isPaid ? 'st-paid' : 'st-pending' }}">
-                <span class="i-dot"></span> {{ $status !== '' ? $status : 'PENDING' }}
+                <span class="i-dot"></span> {{ $isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING') }}
             </span>
         </div>
 
@@ -337,7 +344,7 @@
                                 $amount = $pay?->amount ?? null;
                             }
 
-                            $notes = trim((string)($pay?->notes ?? '')); // safe even if column not present
+                            $notes = trim((string)($pay?->notes ?? ''));
                             if ($notes === '' && $pay?->visit_id) {
                                 $notes = 'Visit #' . $pay->visit_id;
                             }
