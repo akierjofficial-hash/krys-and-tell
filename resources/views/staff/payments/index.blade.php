@@ -6,6 +6,15 @@
     :root{
         --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
         --card-border: 1px solid rgba(15, 23, 42, .08);
+
+        --text: #0f172a;
+        --muted: rgba(15, 23, 42, .58);
+        --muted2: rgba(15, 23, 42, .45);
+
+        --soft: rgba(15, 23, 42, .04);
+        --soft2: rgba(15, 23, 42, .06);
+        --brand: #0d6efd;
+        --radius: 16px;
     }
 
     /* Header */
@@ -14,20 +23,20 @@
         align-items:flex-end;
         justify-content:space-between;
         gap: 14px;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
         flex-wrap: wrap;
     }
     .page-title{
-        font-size: 26px;
-        font-weight: 700;
-        letter-spacing: -0.3px;
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: -0.35px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
-        margin: 4px 0 0 0;
+        margin: 6px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
     /* Top actions */
@@ -40,7 +49,7 @@
 
     .search-box{
         position: relative;
-        width: 340px;
+        width: 360px;
         max-width: 100%;
     }
     .search-box i{
@@ -48,7 +57,7 @@
         top: 50%;
         left: 12px;
         transform: translateY(-50%);
-        color: rgba(15, 23, 42, .45);
+        color: var(--muted2);
         font-size: 14px;
         pointer-events: none;
     }
@@ -62,7 +71,7 @@
         outline: none;
         transition: .15s ease;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--text);
     }
     .search-box input:focus{
         border-color: rgba(13,110,253,.55);
@@ -77,7 +86,7 @@
     }
     .sort-box .sort-label{
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 900;
         color: rgba(15, 23, 42, .60);
         white-space: nowrap;
     }
@@ -89,7 +98,7 @@
         background: rgba(255,255,255,.92);
         padding: 11px 12px;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--text);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
@@ -106,7 +115,7 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 700;
+        font-weight: 900;
         font-size: 14px;
         text-decoration: none;
         border: 1px solid transparent;
@@ -129,7 +138,7 @@
         background: linear-gradient(135deg, #0d6efd, #1e90ff);
         padding: 11px 14px;
         color: #fff !important;
-        font-weight: 600;
+        font-weight: 900;
         border-radius: 12px;
         font-size: 14px;
         text-decoration: none;
@@ -147,7 +156,7 @@
         display:inline-flex;
         padding: 6px;
         border-radius: 14px;
-        background: rgba(255,255,255,.9);
+        background: rgba(255,255,255,.92);
         border: var(--card-border);
         box-shadow: var(--card-shadow);
         gap: 6px;
@@ -158,7 +167,7 @@
         background: transparent;
         padding: 10px 14px;
         border-radius: 12px;
-        font-weight: 700;
+        font-weight: 900;
         font-size: 13px;
         color: rgba(15, 23, 42, .65);
         cursor: pointer;
@@ -171,14 +180,14 @@
     .seg-btn.active{
         background: rgba(13,110,253,.10);
         color: #0d6efd;
-        box-shadow: inset 0 0 0 1px rgba(13,110,253,.20);
+        box-shadow: inset 0 0 0 1px rgba(13,110,253,.22);
     }
 
     /* Cards */
     .card-shell{
         background: rgba(255,255,255,.92);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         margin-top: 8px;
@@ -194,48 +203,82 @@
     }
     .card-head .title{
         margin: 0;
-        font-weight: 800;
+        font-weight: 950;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--text);
         display:flex;
         align-items:center;
         gap: 10px;
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 800;
     }
 
     /* Table */
-    .table-wrap{ padding: 8px 10px 10px 10px; }
+    .table-wrap{ padding: 10px 10px 12px 10px; }
+    .table-scroll{
+        max-height: 72vh; /* feels better with long lists */
+        overflow: auto;
+        border-radius: 14px;
+    }
+
     table{
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
+        table-layout: fixed; /* prevents “date column becomes tall” */
     }
+
     thead th{
         font-size: 12px;
         letter-spacing: .3px;
         text-transform: uppercase;
         color: rgba(15, 23, 42, .55);
-        padding: 14px 14px;
+        padding: 13px 14px;
         border-bottom: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248, 250, 252, .9);
+        background: rgba(248, 250, 252, .92);
         position: sticky;
         top: 0;
-        z-index: 1;
+        z-index: 2;
         white-space: nowrap;
     }
+
     tbody td{
         padding: 14px 14px;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--text);
         border-bottom: 1px solid rgba(15, 23, 42, .06);
         vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
+
     tbody tr{ transition: .12s ease; }
-    tbody tr:hover{ background: rgba(13,110,253,.06); }
-    .muted{ color: rgba(15, 23, 42, .55); }
+    tbody tr:hover{ background: rgba(13,110,253,.045); }
+
+    .muted{ color: rgba(15, 23, 42, .55); font-weight: 700; }
+
+    .nowrap{ white-space: nowrap; }
+
+    /* Patient mini avatar */
+    .pwrap{ display:flex; align-items:center; gap: 10px; }
+    .pavatar{
+        width: 34px; height: 34px;
+        border-radius: 999px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        background: rgba(13,110,253,.10);
+        color: rgba(13,110,253,.95);
+        font-weight: 950;
+        font-size: 12px;
+        flex: 0 0 auto;
+        border: 1px solid rgba(13,110,253,.18);
+    }
+    .pname{ font-weight: 900; line-height: 1.1; }
+    .psub{ font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 2px; }
 
     /* Treatment tags */
     .tags{ display:flex; flex-wrap: wrap; gap: 6px; }
@@ -245,11 +288,17 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
         background: rgba(15, 23, 42, .06);
-        color: rgba(15, 23, 42, .75);
+        color: rgba(15, 23, 42, .78);
         border: 1px solid rgba(15, 23, 42, .08);
         white-space: nowrap;
+        max-width: 100%;
+    }
+    .tag.more{
+        background: rgba(13,110,253,.10);
+        color: rgba(13,110,253,.95);
+        border-color: rgba(13,110,253,.20);
     }
 
     /* Status badges */
@@ -260,7 +309,7 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 900;
         border: 1px solid transparent;
         white-space: nowrap;
     }
@@ -285,7 +334,7 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 900;
         border: 1px solid transparent;
         text-decoration: none;
         transition: .12s ease;
@@ -310,7 +359,7 @@
 
     .pill-view{
         background: rgba(107, 114, 128, .12);
-        color: rgba(15, 23, 42, .75) !important;
+        color: rgba(15, 23, 42, .78) !important;
         border-color: rgba(107,114,128,.22);
     }
     .pill-view:hover{ background: rgba(107, 114, 128, .18); }
@@ -323,11 +372,17 @@
     }
     .pill-del:hover{ background: rgba(239, 68, 68, .18); }
 
+    /* Mobile improvements */
     @media (max-width: 768px){
         .search-box{ width: 100%; }
         .sort-select{ width: 100%; min-width: 0; }
         .top-actions{ width: 100%; }
+
         .action-pills{ justify-content:flex-start; }
+
+        /* Icon-only pills on mobile */
+        .pill span{ display:none; }
+        .pill{ padding: 8px 10px; }
     }
 </style>
 
@@ -383,110 +438,140 @@
         <div class="hint">Showing <strong id="cashVisible">{{ $cashPayments->count() }}</strong> / <strong id="cashTotal">{{ $cashPayments->count() }}</strong></div>
     </div>
 
-    <div class="table-wrap table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Patient</th>
-                    <th>Treatment</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
+    <div class="table-wrap">
+        <div class="table-scroll table-responsive">
+            <table>
+                <colgroup>
+                    <col style="width: 210px;">
+                    <col style="width: auto;">
+                    <col style="width: 140px;">
+                    <col style="width: 130px;">
+                    <col style="width: 110px;">
+                    <col style="width: 120px;">
+                    <col style="width: 220px;">
+                </colgroup>
 
-            <tbody id="cashTbody">
-            @forelse ($cashPayments as $payment)
-                @php
-                    $pname = strtolower(trim(($payment->visit?->patient?->last_name ?? '').', '.($payment->visit?->patient?->first_name ?? '')));
-                    $dateTs = $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->timestamp : 0;
-                    $amount = (float)($payment->amount ?? 0);
-                @endphp
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Treatment</th>
+                        <th class="nowrap">Date</th>
+                        <th class="nowrap">Amount</th>
+                        <th class="nowrap">Method</th>
+                        <th class="nowrap">Status</th>
+                        <th class="text-end nowrap">Actions</th>
+                    </tr>
+                </thead>
 
-                <tr class="payment-row cash-row"
-                    data-patient="{{ $pname }}"
-                    data-date="{{ $dateTs }}"
-                    data-amount="{{ $amount }}"
-                >
-                    <td class="fw-semibold">
-                        {{ $payment->visit?->patient?->first_name }} {{ $payment->visit?->patient?->last_name }}
-                    </td>
+                <tbody id="cashTbody">
+                @forelse ($cashPayments as $payment)
+                    @php
+                        $first = $payment->visit?->patient?->first_name ?? '';
+                        $last  = $payment->visit?->patient?->last_name ?? '';
+                        $full  = trim($first.' '.$last);
+                        $initials = strtoupper(mb_substr($first,0,1).mb_substr($last,0,1));
+                        $pname = strtolower(trim(($last ?? '').', '.($first ?? '')));
 
-                    <td>
-                        @php
-                            $procs = $payment->visit?->procedures ?? collect();
-                            $labels = $procs->map(function($p){
-                                $name = $p->service?->name ?? '—';
-                                $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;
-                                $surface = $p->surface ? ($p->surface) : null;
+                        $dateTs = $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->timestamp : 0;
+                        $amount = (float)($payment->amount ?? 0);
+                        $dateLabel = $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') : '—';
+                    @endphp
 
-                                $note = trim((string)($p->notes ?? ''));
-                                if ($note !== '') {
-                                    $name .= ' — ' . \Illuminate\Support\Str::limit($note, 24);
-                                }
-
-                                return trim($name.' '.trim(($tooth ?? '').' '.($surface ?? '')));
-                            })->filter()->values();
-                        @endphp
-
-                        @if($labels->count() > 0)
-                            <div class="tags">
-                                @foreach($labels as $label)
-                                    <span class="tag">{{ $label }}</span>
-                                @endforeach
-                            </div>
-
-                            @php $vnote = trim((string)($payment->visit?->notes ?? '')); @endphp
-                            @if($vnote !== '')
-                                <div class="muted" style="font-size:12px; margin-top:6px;">
-                                    Notes: {{ \Illuminate\Support\Str::limit($vnote, 120) }}
+                    <tr class="payment-row cash-row"
+                        data-patient="{{ $pname }}"
+                        data-date="{{ $dateTs }}"
+                        data-amount="{{ $amount }}"
+                    >
+                        <td>
+                            <div class="pwrap">
+                                <span class="pavatar">{{ $initials ?: 'P' }}</span>
+                                <div>
+                                    <div class="pname">{{ $full ?: '—' }}</div>
+                                    <div class="psub">Cash</div>
                                 </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            @php
+                                $procs = $payment->visit?->procedures ?? collect();
+                                $labels = $procs->map(function($p){
+                                    $name = $p->service?->name ?? '—';
+                                    $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;
+                                    $surface = $p->surface ? ($p->surface) : null;
+
+                                    $note = trim((string)($p->notes ?? ''));
+                                    if ($note !== '') {
+                                        $name .= ' — ' . \Illuminate\Support\Str::limit($note, 24);
+                                    }
+                                    return trim($name.' '.trim(($tooth ?? '').' '.($surface ?? '')));
+                                })->filter()->values();
+
+                                $allLabelsTitle = $labels->implode(' • ');
+                                $shown = $labels->take(2);
+                                $moreCount = max(0, $labels->count() - $shown->count());
+
+                                $vnote = trim((string)($payment->visit?->notes ?? ''));
+                            @endphp
+
+                            @if($labels->count() > 0)
+                                <div class="tags" title="{{ $allLabelsTitle }}">
+                                    @foreach($shown as $label)
+                                        <span class="tag">{{ $label }}</span>
+                                    @endforeach
+                                    @if($moreCount > 0)
+                                        <span class="tag more">+{{ $moreCount }} more</span>
+                                    @endif
+                                </div>
+
+                                @if($vnote !== '')
+                                    <div class="muted" style="font-size:12px; margin-top:6px;">
+                                        Notes: {{ \Illuminate\Support\Str::limit($vnote, 120) }}
+                                    </div>
+                                @endif
+                            @else
+                                <span class="muted">—</span>
                             @endif
-                        @else
-                            <span class="muted">—</span>
-                        @endif
-                    </td>
+                        </td>
 
-                    <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</td>
-                    <td class="fw-semibold">₱{{ number_format($payment->amount, 2) }}</td>
-                    <td class="muted">{{ $payment->method }}</td>
+                        <td class="nowrap">{{ $dateLabel }}</td>
+                        <td class="nowrap" style="font-weight:900;">₱{{ number_format($payment->amount, 2) }}</td>
+                        <td class="muted nowrap">{{ $payment->method }}</td>
 
-                    <td>
-                        <span class="badge-soft st-paid">
-                            <span class="badge-dot"></span> PAID
-                        </span>
-                    </td>
+                        <td class="nowrap">
+                            <span class="badge-soft st-paid">
+                                <span class="badge-dot"></span> PAID
+                            </span>
+                        </td>
 
-                    <td class="text-end">
-                        <div class="action-pills">
-                            <a href="{{ route('staff.payments.edit', $payment->id) }}" class="pill pill-edit">
-                                <i class="fa fa-pen"></i> Edit
-                            </a>
+                        <td class="text-end nowrap">
+                            <div class="action-pills">
+                                <a href="{{ route('staff.payments.edit', $payment->id) }}" class="pill pill-edit" title="Edit">
+                                    <i class="fa fa-pen"></i> <span>Edit</span>
+                                </a>
 
-                            {{-- ✅ changed Receipt -> View --}}
-                            <a href="{{ route('staff.payments.show', $payment->id) }}" class="pill pill-view">
-                                <i class="fa fa-eye"></i> View
-                            </a>
+                                <a href="{{ route('staff.payments.show', $payment->id) }}" class="pill pill-view" title="View">
+                                    <i class="fa fa-eye"></i> <span>View</span>
+                                </a>
 
-                            <form action="{{ route('staff.payments.destroy', $payment->id) }}" method="POST" style="display:inline;"
-                                  onsubmit="return confirm('Delete this payment?');">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="pill pill-del">
-                                    <i class="fa fa-trash"></i> Delete
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No cash payments found.</td>
-                </tr>
-            @endforelse
-            </tbody>
-        </table>
+                                <form action="{{ route('staff.payments.destroy', $payment->id) }}" method="POST" style="display:inline;"
+                                      onsubmit="return confirm('Delete this payment?');">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="pill pill-del" title="Delete">
+                                        <i class="fa fa-trash"></i> <span>Delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No cash payments found.</td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -497,129 +582,162 @@
         <div class="hint">Showing <strong id="insVisible">{{ $installments->count() }}</strong> / <strong id="insTotal">{{ $installments->count() }}</strong></div>
     </div>
 
-    <div class="table-wrap table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Patient</th>
-                    <th>Treatment</th>
-                    <th>Start Date</th>
-                    <th>Total</th>
-                    <th>Down</th>
-                    <th>Balance</th>
-                    <th>Term</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
+    <div class="table-wrap">
+        <div class="table-scroll table-responsive">
+            <table>
+                <colgroup>
+                    <col style="width: 210px;">
+                    <col style="width: auto;">
+                    <col style="width: 140px;">
+                    <col style="width: 130px;">
+                    <col style="width: 120px;">
+                    <col style="width: 130px;">
+                    <col style="width: 95px;">
+                    <col style="width: 140px;">
+                    <col style="width: 240px;">
+                </colgroup>
 
-            <tbody id="insTbody">
-            @forelse ($installments as $plan)
-                @php
-                    $pname2 = strtolower(trim(($plan->patient->last_name ?? '').', '.($plan->patient->first_name ?? '')));
-                    $startTs = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->timestamp : 0;
-                    $totalCost = (float)($plan->total_cost ?? 0);
-                    $balance = (float)($plan->balance ?? 0);
-                @endphp
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Treatment</th>
+                        <th class="nowrap">Start Date</th>
+                        <th class="nowrap">Total</th>
+                        <th class="nowrap">Down</th>
+                        <th class="nowrap">Balance</th>
+                        <th class="nowrap">Term</th>
+                        <th class="nowrap">Status</th>
+                        <th class="text-end nowrap">Actions</th>
+                    </tr>
+                </thead>
 
-                <tr class="payment-row ins-row"
-                    data-patient="{{ $pname2 }}"
-                    data-date="{{ $startTs }}"
-                    data-amount="{{ $totalCost }}"
-                    data-balance="{{ $balance }}"
-                >
-                    <td class="fw-semibold">
-                        {{ $plan->patient->first_name ?? '' }} {{ $plan->patient->last_name ?? '' }}
-                    </td>
+                <tbody id="insTbody">
+                @forelse ($installments as $plan)
+                    @php
+                        $first2 = $plan->patient->first_name ?? '';
+                        $last2  = $plan->patient->last_name ?? '';
+                        $full2  = trim($first2.' '.$last2);
+                        $initials2 = strtoupper(mb_substr($first2,0,1).mb_substr($last2,0,1));
+                        $pname2 = strtolower(trim(($last2 ?? '').', '.($first2 ?? '')));
 
-                    <td>
-                        @php
-                            $tags = collect();
+                        $startTs = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->timestamp : 0;
+                        $totalCost = (float)($plan->total_cost ?? 0);
+                        $balance = (float)($plan->balance ?? 0);
 
-                            if ($plan->service) {
-                                $tags = collect([$plan->service->name]);
-                            } elseif ($plan->visit && $plan->visit->procedures) {
-                                $tags = $plan->visit->procedures->map(function($p){
-                                    $name = $p->service?->name ?? '—';
-                                    $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;
-                                    $surface = $p->surface ? ($p->surface) : null;
+                        $startLabel = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->format('M d, Y') : '—';
+                        $isPaid = strtolower($plan->status ?? '') === 'fully paid';
+                    @endphp
 
-                                    $note = trim((string)($p->notes ?? ''));
-                                    if ($note !== '') {
-                                        $name .= ' — ' . \Illuminate\Support\Str::limit($note, 24);
-                                    }
-
-                                    return trim($name.' '.trim(($tooth ?? '').' '.($surface ?? '')));
-                                })->filter()->values();
-                            }
-                        @endphp
-
-                        @if($tags->count())
-                            <div class="tags">
-                                @foreach($tags as $t)
-                                    <span class="tag">{{ $t }}</span>
-                                @endforeach
-                            </div>
-
-                            @php $vnote2 = trim((string)(optional($plan->visit)->notes ?? '')); @endphp
-                            @if($vnote2 !== '')
-                                <div class="muted" style="font-size:12px; margin-top:6px;">
-                                    Notes: {{ \Illuminate\Support\Str::limit($vnote2, 120) }}
+                    <tr class="payment-row ins-row"
+                        data-patient="{{ $pname2 }}"
+                        data-date="{{ $startTs }}"
+                        data-amount="{{ $totalCost }}"
+                        data-balance="{{ $balance }}"
+                    >
+                        <td>
+                            <div class="pwrap">
+                                <span class="pavatar">{{ $initials2 ?: 'P' }}</span>
+                                <div>
+                                    <div class="pname">{{ $full2 ?: '—' }}</div>
+                                    <div class="psub">Installment</div>
                                 </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            @php
+                                $tags = collect();
+
+                                if ($plan->service) {
+                                    $tags = collect([$plan->service->name]);
+                                } elseif ($plan->visit && $plan->visit->procedures) {
+                                    $tags = $plan->visit->procedures->map(function($p){
+                                        $name = $p->service?->name ?? '—';
+                                        $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;
+                                        $surface = $p->surface ? ($p->surface) : null;
+
+                                        $note = trim((string)($p->notes ?? ''));
+                                        if ($note !== '') {
+                                            $name .= ' — ' . \Illuminate\Support\Str::limit($note, 24);
+                                        }
+                                        return trim($name.' '.trim(($tooth ?? '').' '.($surface ?? '')));
+                                    })->filter()->values();
+                                }
+
+                                $allTagsTitle = $tags->implode(' • ');
+                                $shownTags = $tags->take(2);
+                                $moreTags = max(0, $tags->count() - $shownTags->count());
+
+                                $vnote2 = trim((string)(optional($plan->visit)->notes ?? ''));
+                            @endphp
+
+                            @if($tags->count())
+                                <div class="tags" title="{{ $allTagsTitle }}">
+                                    @foreach($shownTags as $t)
+                                        <span class="tag">{{ $t }}</span>
+                                    @endforeach
+                                    @if($moreTags > 0)
+                                        <span class="tag more">+{{ $moreTags }} more</span>
+                                    @endif
+                                </div>
+
+                                @if($vnote2 !== '')
+                                    <div class="muted" style="font-size:12px; margin-top:6px;">
+                                        Notes: {{ \Illuminate\Support\Str::limit($vnote2, 120) }}
+                                    </div>
+                                @endif
+                            @else
+                                <span class="muted">N/A</span>
                             @endif
-                        @else
-                            <span class="muted">N/A</span>
-                        @endif
-                    </td>
+                        </td>
 
-                    <td>{{ \Carbon\Carbon::parse($plan->start_date)->format('M d, Y') }}</td>
-                    <td class="fw-semibold">₱{{ number_format($plan->total_cost, 2) }}</td>
-                    <td class="muted">₱{{ number_format($plan->downpayment, 2) }}</td>
-                    <td class="fw-semibold">₱{{ number_format($plan->balance, 2) }}</td>
-                    <td class="muted">{{ $plan->months }} mos</td>
+                        <td class="nowrap">{{ $startLabel }}</td>
+                        <td class="nowrap" style="font-weight:900;">₱{{ number_format($plan->total_cost, 2) }}</td>
+                        <td class="muted nowrap">₱{{ number_format($plan->downpayment, 2) }}</td>
+                        <td class="nowrap" style="font-weight:900;">₱{{ number_format($plan->balance, 2) }}</td>
+                        <td class="muted nowrap">{{ $plan->months }} mos</td>
 
-                    <td>
-                        @php $isPaid = strtolower($plan->status ?? '') === 'fully paid'; @endphp
-                        <span class="badge-soft {{ $isPaid ? 'st-paid' : 'st-pending' }}">
-                            <span class="badge-dot"></span> {{ strtoupper($plan->status ?? 'PENDING') }}
-                        </span>
-                    </td>
+                        <td class="nowrap">
+                            <span class="badge-soft {{ $isPaid ? 'st-paid' : 'st-pending' }}">
+                                <span class="badge-dot"></span> {{ strtoupper($plan->status ?? 'PENDING') }}
+                            </span>
+                        </td>
 
-                    <td class="text-end">
-                        <div class="action-pills">
-                            @if(!$isPaid)
-                                <a href="{{ route('staff.installments.pay', $plan->id) }}" class="pill pill-pay">
-                                    <i class="fa fa-circle-dollar-to-slot"></i> Pay
+                        <td class="text-end nowrap">
+                            <div class="action-pills">
+                                @if(!$isPaid)
+                                    <a href="{{ route('staff.installments.pay', $plan->id) }}" class="pill pill-pay" title="Pay">
+                                        <i class="fa fa-circle-dollar-to-slot"></i> <span>Pay</span>
+                                    </a>
+                                @endif
+
+                                <a href="{{ route('staff.installments.edit', $plan->id) }}" class="pill pill-edit" title="Edit">
+                                    <i class="fa fa-pen"></i> <span>Edit</span>
                                 </a>
-                            @endif
 
-                            <a href="{{ route('staff.installments.edit', $plan->id) }}" class="pill pill-edit">
-                                <i class="fa fa-pen"></i> Edit
-                            </a>
+                                <a href="{{ route('staff.installments.show', $plan->id) }}" class="pill pill-view" title="View">
+                                    <i class="fa fa-eye"></i> <span>View</span>
+                                </a>
 
-                            {{-- ✅ changed Receipt -> View --}}
-                            <a href="{{ route('staff.installments.show', $plan->id) }}" class="pill pill-view">
-                                <i class="fa fa-eye"></i> View
-                            </a>
-
-                            <form action="{{ route('staff.installments.destroy', $plan) }}" method="POST" style="display:inline;"
-                                  onsubmit="return confirm('Delete this installment plan?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="pill pill-del">
-                                    <i class="fa fa-trash"></i> Delete
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="9" class="text-center text-muted py-4">No installment plans found.</td>
-                </tr>
-            @endforelse
-            </tbody>
-        </table>
+                                <form action="{{ route('staff.installments.destroy', $plan) }}" method="POST" style="display:inline;"
+                                      onsubmit="return confirm('Delete this installment plan?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="pill pill-del" title="Delete">
+                                        <i class="fa fa-trash"></i> <span>Delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">No installment plans found.</td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -648,32 +766,41 @@
     cashTotalEl.textContent = cashRows.length;
     insTotalEl.textContent  = insRows.length;
 
-    function showCash(){
+    function showCash(save=true){
         tabCash.classList.add('active');
         tabInstallment.classList.remove('active');
         cashTable.style.display = 'block';
         installmentTable.style.display = 'none';
+        if (save) localStorage.setItem('payments_tab', 'cash');
         applyAll();
     }
 
-    function showInstallment(){
+    function showInstallment(save=true){
         tabInstallment.classList.add('active');
         tabCash.classList.remove('active');
         cashTable.style.display = 'none';
         installmentTable.style.display = 'block';
+        if (save) localStorage.setItem('payments_tab', 'installment');
         applyAll();
     }
 
-    tabCash.addEventListener('click', showCash);
-    tabInstallment.addEventListener('click', showInstallment);
+    tabCash.addEventListener('click', () => showCash(true));
+    tabInstallment.addEventListener('click', () => showInstallment(true));
 
-    // Auto-open tab based on URL (?tab=installment)
+    // Auto-open tab:
+    // 1) URL param (?tab=installment) wins
+    // 2) otherwise remember last tab using localStorage
     (function () {
         const params = new URLSearchParams(window.location.search);
         const tab = (params.get('tab') || '').toLowerCase();
 
-        if (tab === 'installment' || tab === 'installments') showInstallment();
-        else showCash();
+        if (tab === 'installment' || tab === 'installments') return showInstallment(false);
+        if (tab === 'cash') return showCash(false);
+
+        const saved = (localStorage.getItem('payments_tab') || '').toLowerCase();
+        if (saved === 'installment') return showInstallment(false);
+
+        return showCash(false);
     })();
 
     function currentTab(){
@@ -733,7 +860,14 @@
         }
     }
 
-    searchInput.addEventListener('keyup', applyAll);
+    // tiny debounce for large tables
+    let t = null;
+    function debounceApply(){
+        clearTimeout(t);
+        t = setTimeout(applyAll, 120);
+    }
+
+    searchInput.addEventListener('input', debounceApply);
     sortSelect.addEventListener('change', applyAll);
 
     resetBtn.addEventListener('click', () => {
@@ -743,7 +877,15 @@
         searchInput.focus();
     });
 
-    // initial apply (after tab auto-open)
+    // Esc clears search (nice UX)
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            applyAll();
+            searchInput.blur();
+        }
+    });
+
     applyAll();
 })();
 </script>
