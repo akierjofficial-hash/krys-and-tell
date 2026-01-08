@@ -199,7 +199,6 @@
     .text-end{ text-align:right; }
     .muted{ color: rgba(15,23,42,.65); font-weight:700; }
 
-    /* Row actions */
     .i-row-actions{
         display:flex;
         gap: 8px;
@@ -235,25 +234,31 @@
     use Carbon\Carbon;
 
     $patient = $plan->patient ?? $plan->visit?->patient ?? null;
-    $patientName = trim(($patient->first_name ?? '').' '.($patient->last_name ?? ''));
-    $patientName = $patientName !== '' ? $patientName : 'N/A';
+    $patientName = trim(($patient->first_name ?? '').' '.($patient->last_name ?? '')) ?: 'N/A';
 
     $serviceName = $plan->service?->name ?? '—';
 
     $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
-    $months = (int) ($plan->months ?? 0);
+    $months = (int)($plan->months ?? 0);
 
-    $totalCost = (float) ($plan->total_cost ?? 0);
-    $downpayment = (float) ($plan->downpayment ?? 0);
+    $totalCost = (float)($plan->total_cost ?? 0);
+    $downpayment = (float)($plan->downpayment ?? 0);
 
-    // ✅ FIX: don’t double count downpayment if Month 1 payment exists
     $payments = $plan->payments ?? collect();
-    $paymentsTotal = (float) $payments->sum('amount');
-    $hasMonth1Payment = $payments->contains(function ($p) {
-        return (int)($p->month_number ?? 0) === 1;
+
+    // ✅ Detect DP record:
+    // - NEW: month_number = 0
+    // - LEGACY: month_number = 1 and notes contains "downpayment"
+    $dpPayment = $payments->first(function ($p) {
+        $m = (int)($p->month_number ?? -1);
+        $notes = strtolower((string)($p->notes ?? ''));
+        return $m === 0 || ($m === 1 && str_contains($notes, 'downpayment'));
     });
 
-    $paidAmount = $paymentsTotal + ($hasMonth1Payment ? 0 : $downpayment);
+    $hasDpRecord = (bool)$dpPayment;
+
+    $paymentsTotal = (float)$payments->sum('amount');
+    $paidAmount = $paymentsTotal + ($hasDpRecord ? 0 : $downpayment);
     $remaining = max(0, $totalCost - $paidAmount);
 
     $status = strtoupper(trim((string)($plan->status ?? 'PENDING')));
@@ -261,7 +266,19 @@
 
     $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
 
-    $paymentsByMonth = ($payments)->keyBy('month_number');
+    // ✅ Only map real monthly payments (month >= 1)
+    $paymentsByMonth = $payments
+        ->filter(fn ($p) => (int)($p->month_number ?? -1) >= 1)
+        ->keyBy('month_number');
+
+    // DP display values (even if no DP payment row exists)
+    $dpAmount = $dpPayment?->amount ?? ($downpayment > 0 ? $downpayment : null);
+    $dpDate = $dpPayment?->payment_date
+        ? Carbon::parse($dpPayment->payment_date)
+        : ($startDate ? $startDate->copy() : null);
+    $dpMethod = $dpPayment?->method ?? '—';
+    $dpNotes = trim((string)($dpPayment?->notes ?? 'Downpayment'));
+    if ($dpNotes === '') $dpNotes = 'Downpayment';
 @endphp
 
 <div class="i-head">
@@ -357,7 +374,47 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @for($i=1; $i <= max(1,$months); $i++)
+
+                    {{-- ✅ Downpayment Row (Month 0) --}}
+                    <tr>
+                        <td style="font-weight:900;">DP</td>
+                        <td class="muted">{{ $dpDate ? $dpDate->format('M d, Y') : '—' }}</td>
+                        <td class="muted">{{ $dpNotes ?: 'Downpayment' }}</td>
+                        <td class="muted">{{ $dpMethod ?: '—' }}</td>
+                        <td class="text-end" style="font-weight:900;">
+                            {{ $dpAmount !== null ? '₱'.number_format((float)$dpAmount, 2) : '—' }}
+                        </td>
+                        <td>
+                            <span class="i-badge {{ ($dpAmount !== null && (float)$dpAmount > 0) ? 'st-paid' : 'st-pending' }}">
+                                <span class="i-dot"></span> {{ ($dpAmount !== null && (float)$dpAmount > 0) ? 'PAID' : 'PENDING' }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="i-row-actions">
+                                @if($dpPayment)
+                                    <a class="i-mini"
+                                       href="{{ route('staff.installments.payments.edit', [$plan->id, $dpPayment->id, 'return' => url()->full()]) }}">
+                                        <i class="fa fa-pen"></i> Edit
+                                    </a>
+
+                                    @if($dpPayment->visit_id)
+                                        <a class="i-mini"
+                                           href="{{ route('staff.visits.show', [$dpPayment->visit_id, 'return' => url()->full()]) }}">
+                                            <i class="fa fa-eye"></i> Visit
+                                        </a>
+                                    @endif
+                                @else
+                                    <a class="i-mini"
+                                       href="{{ route('staff.installments.edit', [$plan->id, 'return' => url()->full()]) }}">
+                                        <i class="fa fa-pen"></i> Edit DP
+                                    </a>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+
+                    {{-- ✅ Monthly Rows (Month 1..N) --}}
+                    @for($i=1; $i <= max(1, $months); $i++)
                         @php
                             $due = $startDate ? $startDate->copy()->addMonths($i - 1) : null;
                             $pay = $paymentsByMonth->get($i);
@@ -365,18 +422,12 @@
                             $paidDate = $pay?->payment_date ? Carbon::parse($pay->payment_date) : null;
                             $showDate = ($paidDate ?? $due);
 
-                            if ($i === 1) {
-                                $amount = $pay?->amount ?? $downpayment;
-                            } else {
-                                $amount = $pay?->amount ?? null;
-                            }
+                            $amount = $pay?->amount ?? null;
 
                             $notes = trim((string)($pay?->notes ?? ''));
-                            if ($notes === '' && $pay?->visit_id) {
-                                $notes = 'Visit #' . $pay->visit_id;
-                            }
+                            if ($notes === '' && $pay?->visit_id) $notes = 'Visit #' . $pay->visit_id;
 
-                            $rowPaid = (bool) $pay || ($i === 1 && $downpayment > 0);
+                            $rowPaid = (bool) $pay;
                         @endphp
 
                         <tr>
@@ -385,7 +436,7 @@
                             <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
                             <td class="muted">{{ $pay?->method ?? '—' }}</td>
                             <td class="text-end" style="font-weight:900;">
-                                {{ $amount ? '₱'.number_format((float)$amount, 2) : '—' }}
+                                {{ $amount !== null ? '₱'.number_format((float)$amount, 2) : '—' }}
                             </td>
                             <td>
                                 <span class="i-badge {{ $rowPaid ? 'st-paid' : 'st-pending' }}">
@@ -408,23 +459,16 @@
                                             </a>
                                         @endif
                                     @else
-                                        @if(!$rowPaid)
-                                            <a class="i-mini i-mini-primary"
-                                               href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
-                                                <i class="fa fa-circle-dollar-to-slot"></i> Pay
-                                            </a>
-                                        @else
-                                            {{-- Month 1 legacy downpayment (no payment record) --}}
-                                            <a class="i-mini"
-                                               href="{{ route('staff.installments.edit', [$plan->id, 'return' => url()->full()]) }}">
-                                                <i class="fa fa-pen"></i> Edit DP
-                                            </a>
-                                        @endif
+                                        <a class="i-mini i-mini-primary"
+                                           href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
+                                            <i class="fa fa-circle-dollar-to-slot"></i> Pay
+                                        </a>
                                     @endif
                                 </div>
                             </td>
                         </tr>
                     @endfor
+
                 </tbody>
             </table>
         </div>
