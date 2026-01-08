@@ -219,7 +219,7 @@
     /* Table */
     .table-wrap{ padding: 10px 10px 12px 10px; }
     .table-scroll{
-        max-height: 72vh; /* feels better with long lists */
+        max-height: 72vh;
         overflow: auto;
         border-radius: 14px;
     }
@@ -228,7 +228,7 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        table-layout: fixed; /* prevents “date column becomes tall” */
+        table-layout: fixed;
     }
 
     thead th{
@@ -259,8 +259,8 @@
     tbody tr:hover{ background: rgba(13,110,253,.045); }
 
     .muted{ color: rgba(15, 23, 42, .55); font-weight: 700; }
-
     .nowrap{ white-space: nowrap; }
+    .money{ font-variant-numeric: tabular-nums; }
 
     /* Patient mini avatar */
     .pwrap{ display:flex; align-items:center; gap: 10px; }
@@ -372,6 +372,58 @@
     }
     .pill-del:hover{ background: rgba(239, 68, 68, .18); }
 
+    /* NEW: Progress (Installments) */
+    .prog{
+        display:flex;
+        flex-direction:column;
+        gap: 6px;
+    }
+    .prog-top{
+        display:flex;
+        align-items:baseline;
+        justify-content:space-between;
+        gap: 10px;
+        font-size: 12px;
+        font-weight: 950;
+        color: var(--text);
+    }
+    .prog-sub{
+        color: var(--muted);
+        font-weight: 900;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .prog-bar{
+        height: 8px;
+        background: rgba(15,23,42,.10);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+    .prog-bar > span{
+        display:block;
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        border-radius: 999px;
+    }
+    .prog-foot{
+        font-size: 11px;
+        color: rgba(15,23,42,.55);
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    /* Row click affordance */
+    .row-link{ cursor: pointer; }
+
+    /* Responsive: hide some heavy columns first */
+    @media (max-width: 1100px){
+        .col-down, .col-term { display:none; }
+    }
+    @media (max-width: 900px){
+        .col-start, .col-progress { display:none; }
+    }
+
     /* Mobile improvements */
     @media (max-width: 768px){
         .search-box{ width: 100%; }
@@ -408,6 +460,10 @@
                 <option value="patient_desc">Patient (Z–A)</option>
                 <option value="amount_desc">Amount (high → low)</option>
                 <option value="amount_asc">Amount (low → high)</option>
+
+                {{-- Installment-only --}}
+                <option value="balance_desc" data-only="installment">Balance (high → low)</option>
+                <option value="balance_asc" data-only="installment">Balance (low → high)</option>
             </select>
         </div>
 
@@ -535,7 +591,7 @@
                         </td>
 
                         <td class="nowrap">{{ $dateLabel }}</td>
-                        <td class="nowrap" style="font-weight:900;">₱{{ number_format($payment->amount, 2) }}</td>
+                        <td class="nowrap money" style="font-weight:900;">₱{{ number_format($payment->amount, 2) }}</td>
                         <td class="muted nowrap">{{ $payment->method }}</td>
 
                         <td class="nowrap">
@@ -594,6 +650,7 @@
                     <col style="width: 130px;">
                     <col style="width: 95px;">
                     <col style="width: 140px;">
+                    <col style="width: 220px;"> {{-- NEW: Progress --}}
                     <col style="width: 240px;">
                 </colgroup>
 
@@ -601,12 +658,13 @@
                     <tr>
                         <th>Patient</th>
                         <th>Treatment</th>
-                        <th class="nowrap">Start Date</th>
+                        <th class="nowrap col-start">Start Date</th>
                         <th class="nowrap">Total</th>
-                        <th class="nowrap">Down</th>
+                        <th class="nowrap col-down">Down</th>
                         <th class="nowrap">Balance</th>
-                        <th class="nowrap">Term</th>
+                        <th class="nowrap col-term">Term</th>
                         <th class="nowrap">Status</th>
+                        <th class="nowrap col-progress">Progress</th>
                         <th class="text-end nowrap">Actions</th>
                     </tr>
                 </thead>
@@ -623,16 +681,22 @@
                         $startTs = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->timestamp : 0;
                         $totalCost = (float)($plan->total_cost ?? 0);
                         $balance = (float)($plan->balance ?? 0);
+                        $paid = max(0, $totalCost - $balance);
+                        $pct = $totalCost > 0 ? (int) round(($paid / $totalCost) * 100) : 0;
+                        $pct = max(0, min(100, $pct));
 
                         $startLabel = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->format('M d, Y') : '—';
                         $isPaid = strtolower($plan->status ?? '') === 'fully paid';
+
+                        $returnUrl = url()->full();
                     @endphp
 
-                    <tr class="payment-row ins-row"
+                    <tr class="payment-row ins-row row-link"
                         data-patient="{{ $pname2 }}"
                         data-date="{{ $startTs }}"
                         data-amount="{{ $totalCost }}"
                         data-balance="{{ $balance }}"
+                        data-href="{{ route('staff.installments.show', [$plan->id, 'return' => $returnUrl]) }}"
                     >
                         <td>
                             <div class="pwrap">
@@ -691,11 +755,21 @@
                             @endif
                         </td>
 
-                        <td class="nowrap">{{ $startLabel }}</td>
-                        <td class="nowrap" style="font-weight:900;">₱{{ number_format($plan->total_cost, 2) }}</td>
-                        <td class="muted nowrap">₱{{ number_format($plan->downpayment, 2) }}</td>
-                        <td class="nowrap" style="font-weight:900;">₱{{ number_format($plan->balance, 2) }}</td>
-                        <td class="muted nowrap">{{ $plan->months }} mos</td>
+                        <td class="nowrap col-start">{{ $startLabel }}</td>
+
+                        <td class="nowrap money" style="font-weight:900;">
+                            ₱{{ number_format($plan->total_cost, 2) }}
+                        </td>
+
+                        <td class="muted nowrap col-down">
+                            ₱{{ number_format($plan->downpayment, 2) }}
+                        </td>
+
+                        <td class="nowrap money" style="font-weight:900;">
+                            ₱{{ number_format($plan->balance, 2) }}
+                        </td>
+
+                        <td class="muted nowrap col-term">{{ $plan->months }} mos</td>
 
                         <td class="nowrap">
                             <span class="badge-soft {{ $isPaid ? 'st-paid' : 'st-pending' }}">
@@ -703,19 +777,33 @@
                             </span>
                         </td>
 
+                        {{-- NEW: Progress --}}
+                        <td class="col-progress">
+                            <div class="prog">
+                                <div class="prog-top">
+                                    <span class="money">₱{{ number_format($paid, 2) }}</span>
+                                    <span class="prog-sub">{{ $pct }}%</span>
+                                </div>
+                                <div class="prog-bar" aria-label="Progress">
+                                    <span style="width: {{ $pct }}%;"></span>
+                                </div>
+                                <div class="prog-foot money">Paid / Total ₱{{ number_format($totalCost, 2) }}</div>
+                            </div>
+                        </td>
+
                         <td class="text-end nowrap">
                             <div class="action-pills">
                                 @if(!$isPaid)
-                                    <a href="{{ route('staff.installments.pay', $plan->id) }}" class="pill pill-pay" title="Pay">
+                                    <a href="{{ route('staff.installments.pay', [$plan->id, 'return' => $returnUrl]) }}" class="pill pill-pay" title="Pay">
                                         <i class="fa fa-circle-dollar-to-slot"></i> <span>Pay</span>
                                     </a>
                                 @endif
 
-                                <a href="{{ route('staff.installments.edit', $plan->id) }}" class="pill pill-edit" title="Edit">
+                                <a href="{{ route('staff.installments.edit', [$plan->id, 'return' => $returnUrl]) }}" class="pill pill-edit" title="Edit">
                                     <i class="fa fa-pen"></i> <span>Edit</span>
                                 </a>
 
-                                <a href="{{ route('staff.installments.show', $plan->id) }}" class="pill pill-view" title="View">
+                                <a href="{{ route('staff.installments.show', [$plan->id, 'return' => $returnUrl]) }}" class="pill pill-view" title="View">
                                     <i class="fa fa-eye"></i> <span>View</span>
                                 </a>
 
@@ -732,7 +820,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">No installment plans found.</td>
+                        <td colspan="10" class="text-center text-muted py-4">No installment plans found.</td>
                     </tr>
                 @endforelse
                 </tbody>
@@ -766,12 +854,31 @@
     cashTotalEl.textContent = cashRows.length;
     insTotalEl.textContent  = insRows.length;
 
+    function currentTab(){
+        return cashTable.style.display !== 'none' ? 'cash' : 'installment';
+    }
+
+    function updateSortOptions(){
+        const tab = currentTab();
+        const opts = Array.from(sortSelect.options);
+
+        opts.forEach(opt => {
+            const only = opt.dataset.only; // e.g. "installment"
+            opt.hidden = !!only && only !== tab;
+        });
+
+        // if currently selected option is hidden, fallback
+        const selected = sortSelect.selectedOptions[0];
+        if (selected && selected.hidden) sortSelect.value = 'date_desc';
+    }
+
     function showCash(save=true){
         tabCash.classList.add('active');
         tabInstallment.classList.remove('active');
         cashTable.style.display = 'block';
         installmentTable.style.display = 'none';
         if (save) localStorage.setItem('payments_tab', 'cash');
+        updateSortOptions();
         applyAll();
     }
 
@@ -781,6 +888,7 @@
         cashTable.style.display = 'none';
         installmentTable.style.display = 'block';
         if (save) localStorage.setItem('payments_tab', 'installment');
+        updateSortOptions();
         applyAll();
     }
 
@@ -803,10 +911,6 @@
         return showCash(false);
     })();
 
-    function currentTab(){
-        return cashTable.style.display !== 'none' ? 'cash' : 'installment';
-    }
-
     function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
 
     function sortRows(rows, tbody, mode){
@@ -820,6 +924,8 @@
             const dateB = Number(db.date || 0);
             const amtA  = Number(da.amount || 0);
             const amtB  = Number(db.amount || 0);
+            const balA  = Number(da.balance || 0);
+            const balB  = Number(db.balance || 0);
 
             switch(mode){
                 case 'date_desc': return dateB - dateA;
@@ -828,6 +934,11 @@
                 case 'patient_desc': return patientB.localeCompare(patientA) || (dateB - dateA);
                 case 'amount_desc': return (amtB - amtA) || (dateB - dateA);
                 case 'amount_asc':  return (amtA - amtB) || (dateB - dateA);
+
+                // installment-only
+                case 'balance_desc': return (balB - balA) || (dateB - dateA);
+                case 'balance_asc':  return (balA - balB) || (dateB - dateA);
+
                 default: return dateB - dateA;
             }
         });
@@ -860,6 +971,20 @@
         }
     }
 
+    // Row click → view installment plan (but not when clicking buttons/links)
+    function enableRowClick(rows){
+        rows.forEach(row => {
+            const href = row.dataset.href;
+            if (!href) return;
+
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('a,button,form,input,select,textarea,label')) return;
+                window.location.href = href;
+            });
+        });
+    }
+    enableRowClick(insRows);
+
     // tiny debounce for large tables
     let t = null;
     function debounceApply(){
@@ -873,6 +998,7 @@
     resetBtn.addEventListener('click', () => {
         searchInput.value = '';
         sortSelect.value = 'date_desc';
+        updateSortOptions();
         applyAll();
         searchInput.focus();
     });
@@ -886,6 +1012,7 @@
         }
     });
 
+    updateSortOptions();
     applyAll();
 })();
 </script>
