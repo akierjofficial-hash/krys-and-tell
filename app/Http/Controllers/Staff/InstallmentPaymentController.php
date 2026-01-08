@@ -20,25 +20,44 @@ class InstallmentPaymentController extends Controller
     }
 
     /**
-     * NEW rule:
-     * - Downpayment is month_number = 0 payment record
-     * Legacy safety:
-     * - If no DP record exists, count plan.downpayment once
+     * Find DP payment record:
+     * - NEW: month_number = 0
+     * - LEGACY: month_number = 1 and looks like downpayment
      */
-    private function hasDownpaymentRecord(InstallmentPlan $plan): bool
+    private function findDownpaymentPayment(InstallmentPlan $plan): ?InstallmentPayment
     {
         $plan->loadMissing('payments');
 
-        return $plan->payments->contains(function ($p) {
+        $down = (float)($plan->downpayment ?? 0);
+        $planStartStr = $plan->start_date
+            ? \Carbon\Carbon::parse($plan->start_date)->toDateString()
+            : null;
+
+        return $plan->payments->first(function ($p) use ($down, $planStartStr) {
             $m = (int)($p->month_number ?? -1);
             $notes = strtolower((string)($p->notes ?? ''));
 
-            if ($m === 0) return true; // new
-            if ($m === 1 && str_contains($notes, 'downpayment')) return true; // legacy
+            if ($m === 0) return true;
+
+            if ($m === 1) {
+                if (str_contains($notes, 'downpayment')) return true;
+
+                // fallback if notes were edited
+                $amt = (float)($p->amount ?? 0);
+                $pd  = $p->payment_date ? \Carbon\Carbon::parse($p->payment_date)->toDateString() : null;
+
+                if ($down > 0 && abs($amt - $down) < 0.01 && $planStartStr && $pd === $planStartStr) {
+                    return true;
+                }
+            }
+
             return false;
         });
     }
 
+    /**
+     * If DP isn't stored anywhere, create month 0 record ONCE (but don't duplicate legacy month 1 DP).
+     */
     private function ensureDownpaymentPayment(InstallmentPlan $plan): void
     {
         $plan->loadMissing('payments');
@@ -46,14 +65,8 @@ class InstallmentPaymentController extends Controller
         $down = (float)($plan->downpayment ?? 0);
         if ($down <= 0) return;
 
-        $hasMonth0 = $plan->payments->contains(fn ($p) => (int)($p->month_number ?? -1) === 0);
-        if ($hasMonth0) return;
-
-        $hasLegacyDp = $plan->payments->contains(function ($p) {
-            return (int)($p->month_number ?? -1) === 1
-                && str_contains(strtolower((string)($p->notes ?? '')), 'downpayment');
-        });
-        if ($hasLegacyDp) return;
+        $dp = $this->findDownpaymentPayment($plan);
+        if ($dp) return;
 
         InstallmentPayment::create([
             'installment_plan_id' => $plan->id,
@@ -68,6 +81,23 @@ class InstallmentPaymentController extends Controller
         $plan->loadMissing('payments');
     }
 
+    /**
+     * If DP is legacy month 1, shift months in UI:
+     * - DB Month 2 => UI Month 1
+     */
+    private function monthShift(InstallmentPlan $plan): int
+    {
+        $plan->loadMissing('payments');
+
+        $dp = $this->findDownpaymentPayment($plan);
+        if (!$dp) return 0;
+
+        $hasMonth0 = $plan->payments->contains(fn($p) => (int)($p->month_number ?? -1) === 0);
+        $isLegacyMonth1 = !$hasMonth0 && (int)($dp->month_number ?? -1) === 1;
+
+        return $isLegacyMonth1 ? 1 : 0;
+    }
+
     private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
         $plan->loadMissing('payments');
@@ -76,7 +106,7 @@ class InstallmentPaymentController extends Controller
         $down      = (float)($plan->downpayment ?? 0);
 
         $paymentsTotal = (float)$plan->payments->sum('amount');
-        $hasDpRecord   = $this->hasDownpaymentRecord($plan);
+        $hasDpRecord = (bool)$this->findDownpaymentPayment($plan);
 
         $paid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
 
@@ -90,9 +120,6 @@ class InstallmentPaymentController extends Controller
         return $plan;
     }
 
-    /**
-     * Pay form: months are ONLY 1..plan.months (downpayment is month 0 and not selectable here)
-     */
     public function create(Request $request, InstallmentPlan $plan)
     {
         $plan->loadMissing(['patient', 'service', 'visit', 'payments']);
@@ -100,25 +127,36 @@ class InstallmentPaymentController extends Controller
         $this->ensureDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
-        // ✅ Only monthly months (>=1). Month 0 DP excluded automatically.
+        $shift = $this->monthShift($plan);
+        $maxMonths = max(0, (int)($plan->months ?? 0) - $shift);
+
+        if ($maxMonths < 1) {
+            return redirect()
+                ->route('staff.installments.show', $plan)
+                ->with('success', 'No monthly installments configured for this plan.');
+        }
+
+        // Paid UI months (exclude DP)
         $paidMonths = $plan->payments
-            ->pluck('month_number')
-            ->filter(fn ($m) => (int)$m >= 1)
+            ->filter(function ($p) use ($shift) {
+                return (int)($p->month_number ?? -1) >= (1 + $shift);
+            })
+            ->map(function ($p) use ($shift) {
+                return (int)($p->month_number ?? 0) - $shift;
+            })
+            ->filter(fn($m) => $m >= 1)
+            ->unique()
+            ->sort()
             ->values();
 
         $requestedMonth = (int)$request->query('month', 0);
-        $maxMonths = (int)($plan->months ?? 0);
 
         $nextMonth = null;
-
         if ($requestedMonth >= 1 && $requestedMonth <= $maxMonths && !$paidMonths->contains($requestedMonth)) {
             $nextMonth = $requestedMonth;
         } else {
             for ($i = 1; $i <= $maxMonths; $i++) {
-                if (!$paidMonths->contains($i)) {
-                    $nextMonth = $i;
-                    break;
-                }
+                if (!$paidMonths->contains($i)) { $nextMonth = $i; break; }
             }
         }
 
@@ -128,7 +166,7 @@ class InstallmentPaymentController extends Controller
                 ->with('success', 'This plan is already fully paid.');
         }
 
-        return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth'));
+        return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths'));
     }
 
     public function store(Request $request, InstallmentPlan $plan)
@@ -146,19 +184,21 @@ class InstallmentPaymentController extends Controller
         $this->ensureDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
-        $monthNumber = (int)$request->month_number;
-        $maxMonths   = (int)($plan->months ?? 0);
+        $shift = $this->monthShift($plan);
+        $maxMonths = max(0, (int)($plan->months ?? 0) - $shift);
 
-        if ($monthNumber > $maxMonths) {
+        $uiMonth = (int)$request->month_number;
+        if ($uiMonth < 1 || $uiMonth > $maxMonths) {
             return back()->withErrors('Invalid month selected.')->withInput();
         }
 
-        if ($plan->payments()->where('month_number', $monthNumber)->exists()) {
+        $dbMonth = $uiMonth + $shift;
+
+        if ($plan->payments()->where('month_number', $dbMonth)->exists()) {
             return back()->withErrors('This month is already paid.')->withInput();
         }
 
         $amount = (float)$request->amount;
-
         if ($amount > (float)($plan->balance ?? 0)) {
             return back()->withErrors('Amount exceeds the remaining balance.')->withInput();
         }
@@ -171,8 +211,8 @@ class InstallmentPaymentController extends Controller
         if ($visitNotes === '') {
             $svc = $plan->service?->name;
             $visitNotes = $svc
-                ? "Installment payment (Month {$monthNumber}) - {$svc}"
-                : "Installment payment (Month {$monthNumber})";
+                ? "Installment payment (Month {$uiMonth}) - {$svc}"
+                : "Installment payment (Month {$uiMonth})";
         }
 
         $visit = Visit::create([
@@ -199,7 +239,7 @@ class InstallmentPaymentController extends Controller
         InstallmentPayment::create([
             'installment_plan_id' => $plan->id,
             'visit_id'            => $visit->id,
-            'month_number'        => $monthNumber,
+            'month_number'        => $dbMonth,
             'amount'              => $amount,
             'method'              => $request->method,
             'payment_date'        => $request->payment_date,
@@ -241,17 +281,18 @@ class InstallmentPaymentController extends Controller
 
         $plan->loadMissing('payments');
 
+        $this->ensureDownpaymentPayment($plan);
+
         $totalCost = (float)($plan->total_cost ?? 0);
+        $down      = (float)($plan->downpayment ?? 0);
 
         $paymentsTotal = (float)$plan->payments->sum('amount');
+        $hasDpRecord = (bool)$this->findDownpaymentPayment($plan);
 
         $old = (float)($payment->amount ?? 0);
         $new = (float)$request->amount;
 
-        // paid without this payment
-        $paidWithoutThis = $paymentsTotal - $old;
-
-        // new total paid
+        $paidWithoutThis = ($paymentsTotal - $old) + ($hasDpRecord ? 0 : $down);
         $newPaid = $paidWithoutThis + $new;
 
         if ($newPaid > $totalCost + 0.0001) {
@@ -265,13 +306,13 @@ class InstallmentPaymentController extends Controller
             'notes'        => $request->notes,
         ]);
 
-        // ✅ If this is Downpayment (month 0), keep plan.downpayment aligned
-        if ((int)($payment->month_number ?? -1) === 0) {
+        // ✅ If this payment is DP (month 0 OR legacy dp month 1), align plan.downpayment
+        $dp = $this->findDownpaymentPayment($plan);
+        if ($dp && (int)$dp->id === (int)$payment->id) {
             $plan->downpayment = $new;
             $plan->save();
         }
 
-        // Update linked visit (if exists)
         if (!empty($payment->visit_id)) {
             $visit = Visit::find($payment->visit_id);
             if ($visit) {

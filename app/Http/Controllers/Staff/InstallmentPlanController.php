@@ -8,31 +8,70 @@ use App\Models\InstallmentPlan;
 use App\Models\InstallmentPayment;
 use App\Models\Visit;
 use App\Models\Appointment;
+use Carbon\Carbon;
 
 class InstallmentPlanController extends Controller
 {
     /**
-     * Detect downpayment record:
+     * Find Downpayment payment record:
      * - NEW: month_number = 0
-     * - LEGACY: month_number = 1 + notes contains "downpayment"
+     * - LEGACY: month_number = 1 and notes contains "downpayment"
+     * - Fallback: month_number = 1 and amount ~= plan.downpayment AND date == plan.start_date
      */
-    private function hasDownpaymentRecord(InstallmentPlan $plan): bool
+    private function findDownpaymentPayment(InstallmentPlan $plan): ?InstallmentPayment
     {
         $plan->loadMissing('payments');
 
-        return $plan->payments->contains(function ($p) {
+        $down = (float)($plan->downpayment ?? 0);
+        $start = $plan->start_date ? Carbon::parse($plan->start_date)->toDateString() : null;
+
+        return $plan->payments->first(function ($p) use ($down, $start) {
             $m = (int)($p->month_number ?? -1);
             $notes = strtolower((string)($p->notes ?? ''));
 
-            if ($m === 0) return true; // ✅ new DP record
-            if ($m === 1 && str_contains($notes, 'downpayment')) return true; // ✅ legacy DP
+            if ($m === 0) return true;
+
+            if ($m === 1) {
+                if (str_contains($notes, 'downpayment')) return true;
+
+                // fallback (if notes were edited/cleared)
+                $amt = (float)($p->amount ?? 0);
+                $pd  = $p->payment_date ? Carbon::parse($p->payment_date)->toDateString() : null;
+
+                if ($down > 0 && abs($amt - $down) < 0.01 && $start && $pd === $start) {
+                    return true;
+                }
+            }
+
             return false;
         });
     }
 
+    private function hasDownpaymentRecord(InstallmentPlan $plan): bool
+    {
+        return (bool) $this->findDownpaymentPayment($plan);
+    }
+
+    /**
+     * If DP is legacy month 1 (and there is no month 0 DP), views/controllers may "shift" months.
+     * This is mainly for UI logic, but we keep the helper here for consistency.
+     */
+    private function monthShift(InstallmentPlan $plan): int
+    {
+        $plan->loadMissing('payments');
+
+        $dp = $this->findDownpaymentPayment($plan);
+        if (!$dp) return 0;
+
+        $hasMonth0 = $plan->payments->contains(fn($p) => (int)($p->month_number ?? -1) === 0);
+        $isLegacyMonth1 = !$hasMonth0 && (int)($dp->month_number ?? -1) === 1;
+
+        return $isLegacyMonth1 ? 1 : 0;
+    }
+
     /**
      * Ensure downpayment payment row exists as month_number=0 (NEW format).
-     * - If legacy DP exists (month 1 "downpayment"), we DO NOT create month 0 to avoid double.
+     * - If legacy DP exists (month 1 "downpayment"), DO NOT create month 0 (avoid double DP).
      */
     private function ensureDownpaymentPayment(InstallmentPlan $plan): void
     {
@@ -41,18 +80,10 @@ class InstallmentPlanController extends Controller
         $down = (float)($plan->downpayment ?? 0);
         if ($down <= 0) return;
 
-        // If new DP exists, ok
-        $hasMonth0 = $plan->payments->contains(fn ($p) => (int)($p->month_number ?? -1) === 0);
-        if ($hasMonth0) return;
+        // If any DP already exists (month 0 or legacy month 1), do nothing
+        $dp = $this->findDownpaymentPayment($plan);
+        if ($dp) return;
 
-        // If legacy DP exists, do nothing (migration will handle shifting)
-        $hasLegacyDp = $plan->payments->contains(function ($p) {
-            return (int)($p->month_number ?? -1) === 1
-                && str_contains(strtolower((string)($p->notes ?? '')), 'downpayment');
-        });
-        if ($hasLegacyDp) return;
-
-        // Create month 0 DP record
         InstallmentPayment::create([
             'installment_plan_id' => $plan->id,
             'visit_id'            => $plan->visit_id,
@@ -94,47 +125,65 @@ class InstallmentPlanController extends Controller
     }
 
     /**
-     * Keep month 0 DP payment synced when plan is edited.
+     * Keep DP payment synced when plan is edited:
+     * - If month 0 DP exists -> update it
+     * - Else if legacy month 1 DP exists -> update it (and keep/restore notes to "Downpayment")
+     * - Else -> create month 0 DP if downpayment > 0
      */
     private function syncDownpaymentPayment(InstallmentPlan $plan): void
     {
         $plan->loadMissing('payments');
 
         $down = (float)($plan->downpayment ?? 0);
+        $dp = $this->findDownpaymentPayment($plan);
 
-        // If legacy DP exists (month 1 downpayment), don't create month 0 here
-        $hasLegacyDp = $plan->payments->contains(function ($p) {
-            return (int)($p->month_number ?? -1) === 1
-                && str_contains(strtolower((string)($p->notes ?? '')), 'downpayment');
-        });
-
-        $dp = $plan->payments()->where('month_number', 0)->first();
-
+        // If downpayment becomes 0, delete month 0 DP safely.
+        // For legacy month 1 DP, we delete ONLY if notes clearly say downpayment.
         if ($down <= 0) {
-            if ($dp) $dp->delete();
-            return;
-        }
+            if ($dp) {
+                $m = (int)($dp->month_number ?? -1);
+                $notes = strtolower((string)($dp->notes ?? ''));
 
-        if ($hasLegacyDp && !$dp) {
-            // leave it for migration to avoid duplicates
+                if ($m === 0 || ($m === 1 && str_contains($notes, 'downpayment'))) {
+                    $dp->delete();
+                }
+            }
             return;
         }
 
         $payload = [
             'visit_id'     => $plan->visit_id,
-            'month_number' => 0,
             'amount'       => $down,
-            'method'       => $dp?->method ?? 'Cash',
             'payment_date' => $plan->start_date,
-            'notes'        => $dp?->notes ?: 'Downpayment',
         ];
 
         if ($dp) {
+            // If legacy month 1 dp, enforce a stable note so DP detection stays correct
+            $m = (int)($dp->month_number ?? -1);
+            if ($m === 1) {
+                $payload['notes'] = 'Downpayment';
+            } else {
+                $payload['notes'] = $dp->notes ?: 'Downpayment';
+            }
+
+            $payload['method'] = $dp->method ?? 'Cash';
+
             $dp->update($payload);
-        } else {
-            $payload['installment_plan_id'] = $plan->id;
-            InstallmentPayment::create($payload);
+            return;
         }
+
+        // No DP payment found, create new month 0 DP
+        InstallmentPayment::create([
+            'installment_plan_id' => $plan->id,
+            'visit_id'            => $plan->visit_id,
+            'month_number'        => 0,
+            'amount'              => $down,
+            'method'              => 'Cash',
+            'payment_date'        => $plan->start_date,
+            'notes'               => 'Downpayment',
+        ]);
+
+        $plan->loadMissing('payments');
     }
 
     public function index(Request $request)
@@ -164,8 +213,6 @@ class InstallmentPlanController extends Controller
         }
 
         $installments = $query->latest()->get();
-
-        // keep the payments.index view happy
         $cashPayments = collect();
 
         return view('staff.payments.index', compact('installments', 'cashPayments'));
@@ -202,13 +249,13 @@ class InstallmentPlanController extends Controller
             'service_id'  => optional($visit->procedures->first()?->service)->id,
             'total_cost'  => (float)$request->total_cost,
             'downpayment' => (float)$request->downpayment,
-            'months'      => (int)$request->months, // ✅ monthly term only
+            'months'      => (int)$request->months, // monthly term only
             'start_date'  => $request->start_date,
             'status'      => 'Partially Paid',
             'balance'     => 0,
         ]);
 
-        // ✅ Downpayment stored as month 0 payment
+        // ✅ For NEW plans: DP is month 0 (never month 1)
         if ((float)$request->downpayment > 0) {
             InstallmentPayment::create([
                 'installment_plan_id' => $plan->id,
@@ -243,9 +290,6 @@ class InstallmentPlanController extends Controller
         return view('staff.payments.installment.show', compact('plan'));
     }
 
-    /**
-     * Optional/legacy route (manual add). Months start at 1..months.
-     */
     public function addPayment(Request $request, $id)
     {
         $plan = InstallmentPlan::with('payments')->findOrFail($id);
@@ -309,10 +353,7 @@ class InstallmentPlanController extends Controller
             'start_date'  => $request->start_date,
         ]);
 
-        // ✅ Sync month 0 DP record if possible
         $this->syncDownpaymentPayment($plan);
-
-        // ✅ keep totals correct
         $this->recomputePlan($plan);
 
         return redirect()->route('staff.payments.index', ['tab' => 'installment'])

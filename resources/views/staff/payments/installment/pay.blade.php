@@ -8,7 +8,6 @@
         --card-border: 1px solid rgba(15, 23, 42, .08);
     }
 
-    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -71,7 +70,6 @@
         color:#fff;
     }
 
-    /* Card */
     .card-shell{
         background: rgba(255,255,255,.92);
         border: var(--card-border);
@@ -95,7 +93,6 @@
     }
     .card-bodyx{ padding: 18px; }
 
-    /* Summary tiles */
     .summary-grid{
         display:grid;
         grid-template-columns: 1fr;
@@ -134,7 +131,6 @@
         font-weight: 1000;
     }
 
-    /* Inputs */
     .form-labelx{
         font-weight: 900;
         font-size: 13px;
@@ -164,7 +160,6 @@
         color: rgba(15, 23, 42, .55);
     }
 
-    /* Tiny badges */
     .badge-soft{
         display:inline-flex;
         align-items:center;
@@ -183,25 +178,48 @@
 </style>
 
 @php
-    /**
-     * ✅ FIX: Remaining balance must NOT rely on $plan->balance because it can go stale
-     * or get inconsistent when downpayment is also stored as Month 1 payment.
-     *
-     * Rule:
-     * - If Month 1 payment exists in plan->payments, that already includes downpayment.
-     * - Otherwise, count downpayment separately.
-     */
+    use Carbon\Carbon;
+
     $payments = $plan->payments ?? collect();
     $paymentsTotal = (float) $payments->sum('amount');
-
-    $hasMonth1Payment = $payments->contains(function ($p) {
-        return (int)($p->month_number ?? 0) === 1;
-    });
 
     $total = (float) ($plan->total_cost ?? 0);
     $down  = (float) ($plan->downpayment ?? 0);
 
-    $totalPaid = $paymentsTotal + ($hasMonth1Payment ? 0 : $down);
+    // ✅ DP detect (month 0 or legacy month 1 downpayment)
+    $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
+    $planStartStr = $startDate ? $startDate->toDateString() : null;
+
+    $dpPayment = $payments->first(function ($p) use ($down, $planStartStr) {
+        $m = (int)($p->month_number ?? -1);
+        $notes = strtolower((string)($p->notes ?? ''));
+
+        if ($m === 0) return true;
+
+        if ($m === 1) {
+            if (str_contains($notes, 'downpayment')) return true;
+
+            $amt = (float)($p->amount ?? 0);
+            $pd  = $p->payment_date ? \Carbon\Carbon::parse($p->payment_date)->toDateString() : null;
+
+            if ($down > 0 && abs($amt - $down) < 0.01 && $planStartStr && $pd === $planStartStr) {
+                return true;
+            }
+        }
+
+        return false;
+    });
+
+    $hasMonth0 = $payments->contains(fn($p) => (int)($p->month_number ?? -1) === 0);
+    $dpIsLegacyMonth1 = (!$hasMonth0 && $dpPayment && (int)($dpPayment->month_number ?? -1) === 1);
+
+    // ✅ UI months count (shift legacy only)
+    $shift = $dpIsLegacyMonth1 ? 1 : 0;
+    $maxMonths = $maxMonths ?? max(0, (int)($plan->months ?? 0) - $shift);
+
+    $hasDpRecord = (bool) $dpPayment;
+    $totalPaid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
+
     $remainingBalance = max(0, $total - $totalPaid);
 @endphp
 
@@ -229,7 +247,6 @@
 
     <div class="card-bodyx">
 
-        {{-- Plan Info --}}
         <div class="summary-grid">
             <div class="tile">
                 <div class="k"><i class="fa fa-user"></i> Patient Name</div>
@@ -254,22 +271,19 @@
 
             <div class="tile">
                 <div class="k"><i class="fa fa-circle-exclamation"></i> Remaining Balance</div>
-                {{-- ✅ show computed remaining --}}
                 <div class="v balance">₱{{ number_format($remainingBalance, 2) }}</div>
             </div>
         </div>
 
-        {{-- Payment Form --}}
         <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
             @csrf
 
             <div class="row g-3">
 
-                {{-- Month --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
                     <select name="month_number" class="selectx" required>
-                        @for($i = 1; $i <= $plan->months; $i++)
+                        @for($i = 1; $i <= $maxMonths; $i++)
                             @php $isPaid = isset($paidMonths) && $paidMonths->contains($i); @endphp
                             <option value="{{ $i }}"
                                 {{ $isPaid ? 'disabled' : '' }}
@@ -282,7 +296,6 @@
                     <div class="helper">Only unpaid months can be selected.</div>
                 </div>
 
-                {{-- Amount --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
                     <input
@@ -298,14 +311,12 @@
                     <div class="helper">Tip: keep it ≤ remaining balance.</div>
                 </div>
 
-                {{-- Payment Date --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
                     <input type="date" name="payment_date" class="inputx" value="{{ old('payment_date', now()->toDateString()) }}" required>
                     <div class="helper">This will also be used as the Visit date.</div>
                 </div>
 
-                {{-- Method --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Method <span class="text-danger">*</span></label>
                     <select name="method" class="selectx" required>
@@ -317,7 +328,6 @@
                     </select>
                 </div>
 
-                {{-- Notes (saved into the auto-created visit) --}}
                 <div class="col-12">
                     <label class="form-labelx">Treatment Notes / Visit Notes</label>
                     <textarea name="notes" rows="3" class="inputx" placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ old('notes') }}</textarea>
