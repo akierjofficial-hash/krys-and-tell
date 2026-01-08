@@ -276,7 +276,7 @@
     $dpIsLegacyMonth1 = (!$hasMonth0 && $dpPayment && (int)($dpPayment->month_number ?? -1) === 1);
 
     $shift = $dpIsLegacyMonth1 ? 1 : 0;
-    $uiMonths = max(0, $months - $shift);
+    $uiMonths = max(0, $months);
 
     // ✅ Balance calculation (DP counted only once)
     $paymentsTotal = (float)$payments->sum('amount');

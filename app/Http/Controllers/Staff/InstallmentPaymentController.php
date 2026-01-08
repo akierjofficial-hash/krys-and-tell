@@ -128,7 +128,7 @@ class InstallmentPaymentController extends Controller
         $this->recomputePlan($plan);
 
         $shift = $this->monthShift($plan);
-        $maxMonths = max(0, (int)($plan->months ?? 0) - $shift);
+        $maxMonths = max(0, (int)($plan->months ?? 0));
 
         if ($maxMonths < 1) {
             return redirect()
@@ -185,7 +185,7 @@ class InstallmentPaymentController extends Controller
         $this->recomputePlan($plan);
 
         $shift = $this->monthShift($plan);
-        $maxMonths = max(0, (int)($plan->months ?? 0) - $shift);
+        $maxMonths = max(0, (int)($plan->months ?? 0));
 
         $uiMonth = (int)$request->month_number;
         if ($uiMonth < 1 || $uiMonth > $maxMonths) {

@@ -215,7 +215,7 @@
 
     // ✅ UI months count (shift legacy only)
     $shift = $dpIsLegacyMonth1 ? 1 : 0;
-    $maxMonths = $maxMonths ?? max(0, (int)($plan->months ?? 0) - $shift);
+    $maxMonths = $maxMonths ?? max(0, (int)($plan->months ?? 0));
 
     $hasDpRecord = (bool) $dpPayment;
     $totalPaid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
