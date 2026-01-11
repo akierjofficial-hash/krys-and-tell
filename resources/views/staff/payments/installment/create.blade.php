@@ -246,35 +246,34 @@
                     <label class="form-labelx">Appointment</label>
                     <select name="appointment_id" id="appointmentSelect" class="selectx">
                         <option value="">-- Select Appointment --</option>
+
                         @foreach($appointments as $app)
-    @php
-        $pFirst = $app->patient?->first_name ?? $app->public_first_name ?? '';
-        $pLast  = $app->patient?->last_name  ?? $app->public_last_name  ?? '';
-        $pName  = trim($pFirst.' '.$pLast) ?: ($app->public_name ?? 'Patient');
+                            @php
+                                $pFirst = $app->patient?->first_name ?? $app->public_first_name ?? '';
+                                $pLast  = $app->patient?->last_name  ?? $app->public_last_name  ?? '';
+                                $pName  = trim($pFirst.' '.$pLast) ?: ($app->public_name ?? 'Patient');
 
-        $svcName  = $app->service?->name ?? '—';
-        $svcPrice = $app->service?->base_price ?? 0;
+                                $svcName  = $app->service?->name ?? '—';
+                                $svcPrice = $app->service?->base_price ?? 0;
 
-        $dateLabel = $app->appointment_date
-            ? \Carbon\Carbon::parse($app->appointment_date)->format('m/d/Y')
-            : '—';
+                                $dateLabel = $app->appointment_date
+                                    ? \Carbon\Carbon::parse($app->appointment_date)->format('m/d/Y')
+                                    : '—';
 
-        $timeLabel = $app->appointment_time
-            ? \Carbon\Carbon::parse($app->appointment_time)->format('h:i A')
-            : '—';
-    @endphp
+                                $timeLabel = $app->appointment_time
+                                    ? \Carbon\Carbon::parse($app->appointment_time)->format('h:i A')
+                                    : '—';
+                            @endphp
 
-    <option value="{{ $app->id }}"
-        data-type="appointment"
-        data-treatments="{{ $svcName }}"
-        data-amount="{{ $svcPrice }}"
-        {{ old('appointment_id') == $app->id ? 'selected' : '' }}
-    >
-        Appointment - {{ $pName }}
-        ({{ $dateLabel }} {{ $timeLabel }})
-    </option>
-@endforeach
-
+                            <option value="{{ $app->id }}"
+                                data-type="appointment"
+                                data-treatments="{{ $svcName }}"
+                                data-amount="{{ $svcPrice }}"
+                                {{ old('appointment_id') == $app->id ? 'selected' : '' }}
+                            >
+                                Appointment - {{ $pName }} ({{ $dateLabel }} {{ $timeLabel }})
+                            </option>
+                        @endforeach
                     </select>
                     <div class="helper">Or select an appointment instead.</div>
                 </div>
@@ -295,10 +294,23 @@
                     <div class="helper">Defaults to 50% of total cost.</div>
                 </div>
 
+                {{-- ✅ Open Contract --}}
+                <div class="col-12">
+                    <div class="form-check" style="margin-top:2px;">
+                        <input class="form-check-input" type="checkbox" id="isOpenContract" name="is_open_contract" value="1"
+                            {{ old('is_open_contract') ? 'checked' : '' }}>
+                        <label class="form-check-label" for="isOpenContract" style="font-weight:900;">
+                            Open Contract (no fixed months — pay any amount until fully paid)
+                        </label>
+                        <div class="helper">If enabled, the system will auto-number payments (Payment #1, #2, #3...).</div>
+                    </div>
+                </div>
+
                 {{-- Payment Term --}}
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6" id="monthsWrap">
                     <label class="form-labelx">Payment Term (months) <span class="text-danger">*</span></label>
-                    <input type="number" name="months" class="inputx" value="{{ old('months', 6) }}" min="1" required>
+                    <input type="number" id="monthsInput" name="months" class="inputx" value="{{ old('months', 6) }}" min="1" required>
+                    <div class="helper">Fixed-term plans only.</div>
                 </div>
 
                 {{-- Start Date --}}
@@ -362,6 +374,24 @@ document.getElementById('appointmentSelect').addEventListener('change', function
     }
 });
 
+// ✅ Open contract toggle
+function toggleMonths() {
+    const cb = document.getElementById('isOpenContract');
+    const wrap = document.getElementById('monthsWrap');
+    const months = document.getElementById('monthsInput');
+
+    const on = cb && cb.checked;
+
+    if (wrap) wrap.style.display = on ? 'none' : '';
+    if (months) {
+        months.required = !on;
+        if (on) months.value = 0;
+        if (!on && (months.value === '' || Number(months.value) <= 0)) months.value = 6;
+    }
+}
+
+document.getElementById('isOpenContract').addEventListener('change', toggleMonths);
+
 // If old values exist, auto-fill on load
 window.addEventListener('load', () => {
     const visitSel = document.getElementById('visitSelect');
@@ -369,6 +399,8 @@ window.addEventListener('load', () => {
 
     if (visitSel.value) updateFields(visitSel.selectedOptions[0]);
     if (appSel.value) updateFields(appSel.selectedOptions[0]);
+
+    toggleMonths();
 });
 </script>
 

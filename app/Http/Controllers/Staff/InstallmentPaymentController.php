@@ -121,53 +121,71 @@ class InstallmentPaymentController extends Controller
     }
 
     public function create(Request $request, InstallmentPlan $plan)
-    {
-        $plan->loadMissing(['patient', 'service', 'visit', 'payments']);
+{
+    $plan->loadMissing(['patient', 'service', 'visit', 'payments']);
 
-        $this->ensureDownpaymentPayment($plan);
-        $this->recomputePlan($plan);
+    $this->ensureDownpaymentPayment($plan);
+    $this->recomputePlan($plan);
 
-        $shift = $this->monthShift($plan);
-        $maxMonths = max(0, (int)($plan->months ?? 0));
+    $shift = $this->monthShift($plan);
+    $isOpen = (bool)($plan->is_open_contract ?? false);
 
-        if ($maxMonths < 1) {
-            return redirect()
-                ->route('staff.installments.show', $plan)
-                ->with('success', 'No monthly installments configured for this plan.');
-        }
+    if ($isOpen) {
+        // next payment number (UI) = last db month excluding DP + 1 (shift-aware)
+        $lastDb = $plan->payments
+            ->filter(fn($p) => (int)($p->month_number ?? -1) >= (1 + $shift))
+            ->max('month_number');
 
-        // Paid UI months (exclude DP)
-        $paidMonths = $plan->payments
-            ->filter(function ($p) use ($shift) {
-                return (int)($p->month_number ?? -1) >= (1 + $shift);
-            })
-            ->map(function ($p) use ($shift) {
-                return (int)($p->month_number ?? 0) - $shift;
-            })
-            ->filter(fn($m) => $m >= 1)
-            ->unique()
-            ->sort()
-            ->values();
+        $lastDb = $lastDb ? (int)$lastDb : (0 + $shift);
+        $nextMonth = ($lastDb + 1) - $shift;
 
-        $requestedMonth = (int)$request->query('month', 0);
-
-        $nextMonth = null;
-        if ($requestedMonth >= 1 && $requestedMonth <= $maxMonths && !$paidMonths->contains($requestedMonth)) {
-            $nextMonth = $requestedMonth;
-        } else {
-            for ($i = 1; $i <= $maxMonths; $i++) {
-                if (!$paidMonths->contains($i)) { $nextMonth = $i; break; }
-            }
-        }
-
-        if ($nextMonth === null) {
-            return redirect()
-                ->route('staff.installments.show', $plan)
-                ->with('success', 'This plan is already fully paid.');
-        }
+        $paidMonths = collect(); // not needed for open
+        $maxMonths = 0;          // not used for open
 
         return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths'));
     }
+
+    // ✅ Fixed-term plan
+    $maxMonths = max(0, (int)($plan->months ?? 0));
+
+    if ($maxMonths < 1) {
+        return redirect()
+            ->route('staff.installments.show', $plan)
+            ->with('success', 'No monthly installments configured for this plan.');
+    }
+
+    $paidMonths = $plan->payments
+        ->filter(function ($p) use ($shift) {
+            return (int)($p->month_number ?? -1) >= (1 + $shift);
+        })
+        ->map(function ($p) use ($shift) {
+            return (int)($p->month_number ?? 0) - $shift;
+        })
+        ->filter(fn($m) => $m >= 1)
+        ->unique()
+        ->sort()
+        ->values();
+
+    $requestedMonth = (int)$request->query('month', 0);
+
+    $nextMonth = null;
+    if ($requestedMonth >= 1 && $requestedMonth <= $maxMonths && !$paidMonths->contains($requestedMonth)) {
+        $nextMonth = $requestedMonth;
+    } else {
+        for ($i = 1; $i <= $maxMonths; $i++) {
+            if (!$paidMonths->contains($i)) { $nextMonth = $i; break; }
+        }
+    }
+
+    if ($nextMonth === null) {
+        return redirect()
+            ->route('staff.installments.show', $plan)
+            ->with('success', 'This plan is already fully paid.');
+    }
+
+    return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths'));
+}
+
 
     public function store(Request $request, InstallmentPlan $plan)
     {
@@ -185,14 +203,27 @@ class InstallmentPaymentController extends Controller
         $this->recomputePlan($plan);
 
         $shift = $this->monthShift($plan);
-        $maxMonths = max(0, (int)($plan->months ?? 0));
+$isOpen = (bool)($plan->is_open_contract ?? false);
 
-        $uiMonth = (int)$request->month_number;
-        if ($uiMonth < 1 || $uiMonth > $maxMonths) {
-            return back()->withErrors('Invalid month selected.')->withInput();
-        }
+if ($isOpen) {
+    $lastDb = $plan->payments
+        ->filter(fn($p) => (int)($p->month_number ?? -1) >= (1 + $shift))
+        ->max('month_number');
 
-        $dbMonth = $uiMonth + $shift;
+    $lastDb = $lastDb ? (int)$lastDb : (0 + $shift);
+    $dbMonth = $lastDb + 1;
+    $uiMonth = $dbMonth - $shift;
+} else {
+    $maxMonths = max(0, (int)($plan->months ?? 0));
+
+    $uiMonth = (int)$request->month_number;
+    if ($uiMonth < 1 || $uiMonth > $maxMonths) {
+        return back()->withErrors('Invalid month selected.')->withInput();
+    }
+
+    $dbMonth = $uiMonth + $shift;
+}
+
 
         if ($plan->payments()->where('month_number', $dbMonth)->exists()) {
             return back()->withErrors('This month is already paid.')->withInput();

@@ -185,11 +185,33 @@
                            value="{{ old('downpayment', $plan->downpayment) }}" required>
                 </div>
 
+                {{-- ✅ Open Contract --}}
+                <div class="col-12">
+                    @php
+                        $openOld = old('is_open_contract');
+                        $isOpen = !is_null($openOld)
+                            ? (bool)$openOld
+                            : (bool)($plan->is_open_contract ?? false);
+                    @endphp
+
+                    <div class="form-check" style="margin-top:2px;">
+                        <input class="form-check-input" type="checkbox" id="isOpenContract" name="is_open_contract" value="1"
+                            {{ $isOpen ? 'checked' : '' }}>
+                        <label class="form-check-label" for="isOpenContract" style="font-weight:900;">
+                            Open Contract (no fixed months — pay any amount until fully paid)
+                        </label>
+                        <div class="helper">
+                            If enabled, the pay form will auto-number payments (Payment #1, #2, #3...) and Month dropdown will be removed.
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Months --}}
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6" id="monthsWrap">
                     <label class="form-labelx">Payment Term (Months)</label>
-                    <input type="number" name="months" class="inputx"
+                    <input type="number" id="monthsInput" name="months" class="inputx"
                            value="{{ old('months', $plan->months) }}" min="1" required>
+                    <div class="helper">Fixed-term plans only.</div>
                 </div>
 
                 {{-- Start Date --}}
@@ -225,5 +247,34 @@
         </form>
     </div>
 </div>
+
+<script>
+function toggleMonthsEdit() {
+    const cb = document.getElementById('isOpenContract');
+    const wrap = document.getElementById('monthsWrap');
+    const months = document.getElementById('monthsInput');
+
+    if (!cb || !wrap || !months) return;
+
+    const on = cb.checked;
+
+    wrap.style.display = on ? 'none' : '';
+    months.required = !on;
+
+    if (on) {
+        months.value = 0;
+    } else {
+        if (months.value === '' || Number(months.value) <= 0) {
+            months.value = 6;
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const cb = document.getElementById('isOpenContract');
+    if (cb) cb.addEventListener('change', toggleMonthsEdit);
+    toggleMonthsEdit();
+});
+</script>
 
 @endsection

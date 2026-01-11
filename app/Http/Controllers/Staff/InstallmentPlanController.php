@@ -9,6 +9,7 @@ use App\Models\InstallmentPayment;
 use App\Models\Visit;
 use App\Models\Appointment;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 
 class InstallmentPlanController extends Controller
 {
@@ -34,7 +35,6 @@ class InstallmentPlanController extends Controller
             if ($m === 1) {
                 if (str_contains($notes, 'downpayment')) return true;
 
-                // fallback (if notes were edited/cleared)
                 $amt = (float)($p->amount ?? 0);
                 $pd  = $p->payment_date ? Carbon::parse($p->payment_date)->toDateString() : null;
 
@@ -52,10 +52,6 @@ class InstallmentPlanController extends Controller
         return (bool) $this->findDownpaymentPayment($plan);
     }
 
-    /**
-     * If DP is legacy month 1 (and there is no month 0 DP), views/controllers may "shift" months.
-     * This is mainly for UI logic, but we keep the helper here for consistency.
-     */
     private function monthShift(InstallmentPlan $plan): int
     {
         $plan->loadMissing('payments');
@@ -69,10 +65,6 @@ class InstallmentPlanController extends Controller
         return $isLegacyMonth1 ? 1 : 0;
     }
 
-    /**
-     * Ensure downpayment payment row exists as month_number=0 (NEW format).
-     * - If legacy DP exists (month 1 "downpayment"), DO NOT create month 0 (avoid double DP).
-     */
     private function ensureDownpaymentPayment(InstallmentPlan $plan): void
     {
         $plan->loadMissing('payments');
@@ -80,7 +72,6 @@ class InstallmentPlanController extends Controller
         $down = (float)($plan->downpayment ?? 0);
         if ($down <= 0) return;
 
-        // If any DP already exists (month 0 or legacy month 1), do nothing
         $dp = $this->findDownpaymentPayment($plan);
         if ($dp) return;
 
@@ -97,11 +88,6 @@ class InstallmentPlanController extends Controller
         $plan->loadMissing('payments');
     }
 
-    /**
-     * Single source of truth:
-     * balance/status = total_cost - paid
-     * paid = sum(payments.amount) + (downpayment only if no DP payment exists)
-     */
     private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
         $plan->loadMissing('payments');
@@ -124,12 +110,6 @@ class InstallmentPlanController extends Controller
         return $plan;
     }
 
-    /**
-     * Keep DP payment synced when plan is edited:
-     * - If month 0 DP exists -> update it
-     * - Else if legacy month 1 DP exists -> update it (and keep/restore notes to "Downpayment")
-     * - Else -> create month 0 DP if downpayment > 0
-     */
     private function syncDownpaymentPayment(InstallmentPlan $plan): void
     {
         $plan->loadMissing('payments');
@@ -137,8 +117,6 @@ class InstallmentPlanController extends Controller
         $down = (float)($plan->downpayment ?? 0);
         $dp = $this->findDownpaymentPayment($plan);
 
-        // If downpayment becomes 0, delete month 0 DP safely.
-        // For legacy month 1 DP, we delete ONLY if notes clearly say downpayment.
         if ($down <= 0) {
             if ($dp) {
                 $m = (int)($dp->month_number ?? -1);
@@ -158,7 +136,6 @@ class InstallmentPlanController extends Controller
         ];
 
         if ($dp) {
-            // If legacy month 1 dp, enforce a stable note so DP detection stays correct
             $m = (int)($dp->month_number ?? -1);
             if ($m === 1) {
                 $payload['notes'] = 'Downpayment';
@@ -172,7 +149,6 @@ class InstallmentPlanController extends Controller
             return;
         }
 
-        // No DP payment found, create new month 0 DP
         InstallmentPayment::create([
             'installment_plan_id' => $plan->id,
             'visit_id'            => $plan->visit_id,
@@ -233,29 +209,57 @@ class InstallmentPlanController extends Controller
 
     public function store(Request $request)
     {
+        $isOpen = $request->boolean('is_open_contract');
+
         $request->validate([
-            'visit_id'     => 'required|exists:visits,id',
-            'total_cost'   => 'required|numeric|min:0',
-            'downpayment'  => 'required|numeric|min:0|lte:total_cost',
-            'months'       => 'required|integer|min:1',
-            'start_date'   => 'required|date',
+            'visit_id'        => 'nullable|exists:visits,id',
+            'appointment_id'  => 'nullable|exists:appointments,id',
+
+            'total_cost'      => 'required|numeric|min:0',
+            'downpayment'     => 'required|numeric|min:0|lte:total_cost',
+
+            'is_open_contract'=> 'nullable|boolean',
+            'months'          => [
+                Rule::requiredIf(!$isOpen),
+                'integer',
+                'min:1',
+            ],
+
+            'start_date'      => 'required|date',
         ]);
 
-        $visit = Visit::with(['patient', 'procedures.service'])->findOrFail($request->visit_id);
+        if (!$request->filled('visit_id') && !$request->filled('appointment_id')) {
+            return back()->withErrors('Please select a Visit or an Appointment.')->withInput();
+        }
+
+        if ($request->filled('visit_id') && $request->filled('appointment_id')) {
+            return back()->withErrors('Please choose only one: Visit or Appointment.')->withInput();
+        }
+
+        $visit = null;
+
+        if ($request->filled('visit_id')) {
+            $visit = Visit::with(['patient', 'procedures.service'])->findOrFail($request->visit_id);
+        } else {
+            // Appointment selected: create plan using appointment details but still requires a visit_id in your schema
+            // If your schema REQUIRES visit_id, you MUST create a visit here.
+            // For now, we’ll block appointment-only if visit_id is required.
+            return back()->withErrors('Appointment installment is not supported unless visit_id can be generated. Please select a Visit.')->withInput();
+        }
 
         $plan = InstallmentPlan::create([
-            'visit_id'    => $visit->id,
-            'patient_id'  => $visit->patient_id,
-            'service_id'  => optional($visit->procedures->first()?->service)->id,
-            'total_cost'  => (float)$request->total_cost,
-            'downpayment' => (float)$request->downpayment,
-            'months'      => (int)$request->months, // monthly term only
-            'start_date'  => $request->start_date,
-            'status'      => 'Partially Paid',
-            'balance'     => 0,
+            'visit_id'          => $visit->id,
+            'patient_id'        => $visit->patient_id,
+            'service_id'        => optional($visit->procedures->first()?->service)->id,
+            'total_cost'        => (float)$request->total_cost,
+            'downpayment'       => (float)$request->downpayment,
+            'is_open_contract'  => $isOpen,
+            'months'            => $isOpen ? 0 : (int)$request->months,
+            'start_date'        => $request->start_date,
+            'status'            => 'Partially Paid',
+            'balance'           => 0,
         ]);
 
-        // ✅ For NEW plans: DP is month 0 (never month 1)
         if ((float)$request->downpayment > 0) {
             InstallmentPayment::create([
                 'installment_plan_id' => $plan->id,
@@ -290,34 +294,6 @@ class InstallmentPlanController extends Controller
         return view('staff.payments.installment.show', compact('plan'));
     }
 
-    public function addPayment(Request $request, $id)
-    {
-        $plan = InstallmentPlan::with('payments')->findOrFail($id);
-
-        $request->validate([
-            'month_number' => 'required|integer|min:1|max:' . (int)($plan->months ?? 1),
-            'payment_date' => 'required|date',
-            'amount'       => 'required|numeric|min:1',
-            'method'       => 'nullable|string|max:50',
-        ]);
-
-        if ($plan->payments()->where('month_number', (int)$request->month_number)->exists()) {
-            return back()->withErrors('This month is already paid.')->withInput();
-        }
-
-        InstallmentPayment::create([
-            'installment_plan_id' => $plan->id,
-            'month_number'        => (int)$request->month_number,
-            'payment_date'        => $request->payment_date,
-            'amount'              => (float)$request->amount,
-            'method'              => $request->method ?? 'Cash',
-        ]);
-
-        $this->recomputePlan($plan);
-
-        return back()->with('success', 'Payment added successfully.');
-    }
-
     public function edit(InstallmentPlan $plan)
     {
         $visits = Visit::with(['patient', 'procedures.service'])->latest()->get();
@@ -339,18 +315,26 @@ class InstallmentPlanController extends Controller
 
     public function update(Request $request, InstallmentPlan $plan)
     {
+        $isOpen = $request->boolean('is_open_contract');
+
         $request->validate([
-            'total_cost'  => 'required|numeric|min:0',
-            'downpayment' => 'required|numeric|min:0|lte:total_cost',
-            'months'      => 'required|integer|min:1',
-            'start_date'  => 'required|date',
+            'total_cost'       => 'required|numeric|min:0',
+            'downpayment'      => 'required|numeric|min:0|lte:total_cost',
+            'is_open_contract' => 'nullable|boolean',
+            'months'           => [
+                Rule::requiredIf(!$isOpen),
+                'integer',
+                'min:1',
+            ],
+            'start_date'       => 'required|date',
         ]);
 
         $plan->update([
-            'total_cost'  => (float)$request->total_cost,
-            'downpayment' => (float)$request->downpayment,
-            'months'      => (int)$request->months,
-            'start_date'  => $request->start_date,
+            'total_cost'       => (float)$request->total_cost,
+            'downpayment'      => (float)$request->downpayment,
+            'is_open_contract' => $isOpen,
+            'months'           => $isOpen ? 0 : (int)$request->months,
+            'start_date'       => $request->start_date,
         ]);
 
         $this->syncDownpaymentPayment($plan);

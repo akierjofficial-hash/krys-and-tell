@@ -19,6 +19,16 @@ class InstallmentPlan extends Model
         'months',
         'start_date',
         'status',
+        'is_open_contract', // ✅ NEW
+    ];
+
+    protected $casts = [
+        'is_open_contract' => 'boolean', // ✅ NEW
+    ];
+
+    protected $attributes = [
+        'status' => 'Pending',
+        'is_open_contract' => false, // ✅ NEW default
     ];
 
     public function visit()
@@ -40,8 +50,4 @@ class InstallmentPlan extends Model
     {
         return $this->hasMany(InstallmentPayment::class, 'installment_plan_id');
     }
-    protected $attributes = [
-    'status' => 'Pending',
-];
-
 }

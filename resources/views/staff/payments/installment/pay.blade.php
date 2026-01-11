@@ -240,7 +240,10 @@
     <div class="card-head">
         <div class="hint">
             <span class="badge-soft"><i class="fa fa-file-invoice"></i> Plan ID: #{{ $plan->id }}</span>
-            <span class="badge-soft"><i class="fa fa-calendar"></i> Term: {{ $plan->months }} months</span>
+            <span class="badge-soft"><i class="fa fa-calendar"></i>
+    Term: {{ ($plan->is_open_contract ?? false) ? 'Open Contract' : ($plan->months.' months') }}
+</span>
+
         </div>
         <div class="hint">Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.</div>
     </div>
@@ -278,23 +281,33 @@
         <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
             @csrf
 
-            <div class="row g-3">
+            @php $isOpen = (bool)($plan->is_open_contract ?? false); @endphp
 
-                <div class="col-12 col-md-6">
-                    <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
-                    <select name="month_number" class="selectx" required>
-                        @for($i = 1; $i <= $maxMonths; $i++)
-                            @php $isPaid = isset($paidMonths) && $paidMonths->contains($i); @endphp
-                            <option value="{{ $i }}"
-                                {{ $isPaid ? 'disabled' : '' }}
-                                {{ (int)old('month_number', $nextMonth ?? 1) === $i ? 'selected' : '' }}
-                            >
-                                Month {{ $i }}{{ $isPaid ? ' (paid)' : '' }}
-                            </option>
-                        @endfor
-                    </select>
-                    <div class="helper">Only unpaid months can be selected.</div>
-                </div>
+@if($isOpen)
+    <div class="col-12 col-md-6">
+        <label class="form-labelx">Payment No.</label>
+        <input class="inputx" value="Payment {{ $nextMonth ?? 1 }}" disabled>
+        <input type="hidden" name="month_number" value="{{ $nextMonth ?? 1 }}">
+        <div class="helper">Open contract: payments auto-increment (no fixed months).</div>
+    </div>
+@else
+    <div class="col-12 col-md-6">
+        <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
+        <select name="month_number" class="selectx" required>
+            @for($i = 1; $i <= $maxMonths; $i++)
+                @php $isPaid = isset($paidMonths) && $paidMonths->contains($i); @endphp
+                <option value="{{ $i }}"
+                    {{ $isPaid ? 'disabled' : '' }}
+                    {{ (int)old('month_number', $nextMonth ?? 1) === $i ? 'selected' : '' }}
+                >
+                    Month {{ $i }}{{ $isPaid ? ' (paid)' : '' }}
+                </option>
+            @endfor
+        </select>
+        <div class="helper">Only unpaid months can be selected.</div>
+    </div>
+@endif
+
 
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
