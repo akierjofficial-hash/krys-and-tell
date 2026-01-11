@@ -8,7 +8,6 @@
         --card-border: 1px solid rgba(15, 23, 42, .08);
     }
 
-    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -72,7 +71,6 @@
         color:#fff;
     }
 
-    /* Error box */
     .error-box{
         background: rgba(239, 68, 68, .10);
         border: 1px solid rgba(239, 68, 68, .22);
@@ -91,7 +89,6 @@
         font-size: 13px;
     }
 
-    /* Card */
     .card-shell{
         background: rgba(255,255,255,.92);
         border: var(--card-border);
@@ -115,7 +112,6 @@
     }
     .card-bodyx{ padding: 18px; }
 
-    /* Inputs */
     .form-labelx{
         font-weight: 900;
         font-size: 13px;
@@ -153,7 +149,6 @@
         color: rgba(15, 23, 42, .55);
     }
 
-    /* Small summary chip */
     .chip{
         display:inline-flex;
         align-items:center;
@@ -202,7 +197,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('staff.payments.store.installment') }}" method="POST">
+        <form action="{{ route('staff.payments.store.installment') }}" method="POST" id="installmentForm">
             @csrf
 
             <div class="row g-3">
@@ -236,7 +231,6 @@
                                 Visit - {{ $visit->patient?->first_name }} {{ $visit->patient?->last_name }}
                             </option>
                         @endforeach
-
                     </select>
                     <div class="helper">Select a visit to set as installment.</div>
                 </div>
@@ -294,7 +288,7 @@
                     <div class="helper">Defaults to 50% of total cost.</div>
                 </div>
 
-                {{-- ✅ Open Contract --}}
+                {{-- Open Contract --}}
                 <div class="col-12">
                     <div class="form-check" style="margin-top:2px;">
                         <input class="form-check-input" type="checkbox" id="isOpenContract" name="is_open_contract" value="1"
@@ -309,7 +303,8 @@
                 {{-- Payment Term --}}
                 <div class="col-12 col-md-6" id="monthsWrap">
                     <label class="form-labelx">Payment Term (months) <span class="text-danger">*</span></label>
-                    <input type="number" id="monthsInput" name="months" class="inputx" value="{{ old('months', 6) }}" min="1" required>
+                    <input type="number" id="monthsInput" name="months" class="inputx"
+                           value="{{ old('months', 6) }}" min="1" required>
                     <div class="helper">Fixed-term plans only.</div>
                 </div>
 
@@ -328,7 +323,7 @@
                 </div>
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
-                    <button type="submit" class="btn-primaryx">
+                    <button type="submit" class="btn-primaryx" id="submitBtn">
                         <i class="fa fa-check"></i> Create Installment Plan
                     </button>
 
@@ -349,11 +344,14 @@ function updateFields(selected) {
 
     const amt = parseFloat(amount || 0);
 
-    document.getElementById('totalCostInput').value = isNaN(amt) ? '0.00' : amt.toFixed(2);
+    document.getElementById('totalCostInput').value = isNaN(amt) ? '' : amt.toFixed(2);
     document.getElementById('treatmentsBox').value = treatments;
 
-    // Default downpayment = 50%
-    document.getElementById('downpaymentInput').value = isNaN(amt) ? '0.00' : (amt / 2).toFixed(2);
+    // Default downpayment = 50% (only if user hasn't typed yet)
+    const dp = document.getElementById('downpaymentInput');
+    if (dp && (dp.value === '' || Number(dp.value) === 0)) {
+        dp.value = isNaN(amt) ? '' : (amt / 2).toFixed(2);
+    }
 }
 
 document.getElementById('visitSelect').addEventListener('change', function() {
@@ -375,6 +373,7 @@ document.getElementById('appointmentSelect').addEventListener('change', function
 });
 
 // ✅ Open contract toggle
+// IMPORTANT: disable months input to avoid browser validation blocking submit
 function toggleMonths() {
     const cb = document.getElementById('isOpenContract');
     const wrap = document.getElementById('monthsWrap');
@@ -383,16 +382,22 @@ function toggleMonths() {
     const on = cb && cb.checked;
 
     if (wrap) wrap.style.display = on ? 'none' : '';
-    if (months) {
-        months.required = !on;
-        if (on) months.value = 0;
-        if (!on && (months.value === '' || Number(months.value) <= 0)) months.value = 6;
+
+    if (!months) return;
+
+    if (on) {
+        months.required = false;
+        months.disabled = true;     // ✅ prevents validation + not sent to server
+        months.value = '';          // ✅ DON'T set 0 (min=1 would block)
+    } else {
+        months.disabled = false;
+        months.required = true;
+        if (months.value === '' || Number(months.value) < 1) months.value = 6;
     }
 }
 
 document.getElementById('isOpenContract').addEventListener('change', toggleMonths);
 
-// If old values exist, auto-fill on load
 window.addEventListener('load', () => {
     const visitSel = document.getElementById('visitSelect');
     const appSel  = document.getElementById('appointmentSelect');

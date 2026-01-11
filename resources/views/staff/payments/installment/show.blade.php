@@ -241,6 +241,8 @@
     $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
     $months = (int)($plan->months ?? 0);
 
+    $isOpen = (bool)($plan->is_open_contract ?? false);
+
     $totalCost = (float)($plan->total_cost ?? 0);
     $downpayment = (float)($plan->downpayment ?? 0);
 
@@ -258,7 +260,6 @@
         if ($m === 1) {
             if (str_contains($notes, 'downpayment')) return true;
 
-            // fallback if someone edited notes:
             $amt = (float)($p->amount ?? 0);
             $pd  = $p->payment_date ? \Carbon\Carbon::parse($p->payment_date)->toDateString() : null;
 
@@ -271,12 +272,8 @@
     });
 
     $hasMonth0 = $payments->contains(fn($p) => (int)($p->month_number ?? -1) === 0);
-
-    // ✅ If DP is stored as Month 1 (legacy), shift months so DB Month 2 => UI Month 1
     $dpIsLegacyMonth1 = (!$hasMonth0 && $dpPayment && (int)($dpPayment->month_number ?? -1) === 1);
-
     $shift = $dpIsLegacyMonth1 ? 1 : 0;
-    $uiMonths = max(0, $months);
 
     // ✅ Balance calculation (DP counted only once)
     $paymentsTotal = (float)$payments->sum('amount');
@@ -289,11 +286,6 @@
 
     $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
 
-    // ✅ Only monthly rows map
-    $paymentsByMonth = $payments
-        ->filter(fn($p) => (int)($p->month_number ?? -1) >= 1)
-        ->keyBy('month_number');
-
     // DP display
     $showDpRow = ($downpayment > 0) || (bool)$dpPayment;
     $dpAmount = $dpPayment?->amount ?? ($downpayment > 0 ? $downpayment : null);
@@ -304,15 +296,24 @@
     $dpNotes = trim((string)($dpPayment?->notes ?? 'Downpayment'));
     if ($dpNotes === '') $dpNotes = 'Downpayment';
 
-    // Due date rule:
-    // If DP exists (or downpayment set), Month 1 due = start_date + 1 month
-    $hasDpForDue = $showDpRow;
+    // Fixed-term map
+    $paymentsByMonth = $payments
+        ->filter(fn($p) => (int)($p->month_number ?? -1) >= 1)
+        ->keyBy('month_number');
+
+    // Open-contract list (exclude DP / legacy shift)
+    $openPayments = $payments
+        ->filter(function($p) use ($shift){
+            return (int)($p->month_number ?? -1) >= (1 + $shift);
+        })
+        ->sortBy(fn($p) => (int)($p->month_number ?? 0))
+        ->values();
 @endphp
 
 <div class="i-head">
     <div>
         <h2 class="i-title">Installment Plan</h2>
-        <p class="i-subtitle">View plan summary and monthly payments. You can edit paid months if needed.</p>
+        <p class="i-subtitle">View plan summary and payments. You can edit payments if needed.</p>
     </div>
 
     <div class="i-actions">
@@ -347,6 +348,12 @@
             <span class="i-badge {{ $isPaid ? 'st-paid' : 'st-pending' }}">
                 <span class="i-dot"></span> {{ $isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING') }}
             </span>
+
+            @if($isOpen)
+                <span class="i-badge st-info">
+                    <span class="i-dot"></span> OPEN CONTRACT
+                </span>
+            @endif
         </div>
 
         <div class="i-meta">
@@ -371,7 +378,9 @@
                     <div class="i-v">{{ $serviceName }}</div>
 
                     <div class="i-k">Term</div>
-                    <div class="i-v">{{ $months }} month(s)</div>
+                    <div class="i-v">
+                        {{ $isOpen ? 'Open Contract (Unlimited)' : ($months . ' month(s)') }}
+                    </div>
                 </div>
             </div>
 
@@ -392,7 +401,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:90px;">Month</th>
+                        <th style="width:120px;">{{ $isOpen ? 'Payment' : 'Month' }}</th>
                         <th style="width:140px;">Date</th>
                         <th>Notes</th>
                         <th style="width:120px;">Method</th>
@@ -443,66 +452,123 @@
                         </tr>
                     @endif
 
-                    {{-- ✅ Monthly Rows (UI Month 1..uiMonths, DB Month = UI + shift if legacy) --}}
-                    @if($uiMonths > 0)
-                        @for($i = 1; $i <= $uiMonths; $i++)
-                            @php
-                                $dbMonth = $i + $shift;
-                                $pay = $paymentsByMonth->get($dbMonth);
-
-                                $due = $startDate
-                                    ? $startDate->copy()->addMonths(($i - 1) + ($hasDpForDue ? 1 : 0))
-                                    : null;
-
-                                $paidDate = $pay?->payment_date ? Carbon::parse($pay->payment_date) : null;
-                                $showDate = ($paidDate ?? $due);
-
-                                $amount = $pay?->amount ?? null;
-
-                                $notes = trim((string)($pay?->notes ?? ''));
-                                if ($notes === '' && $pay?->visit_id) $notes = 'Visit #' . $pay->visit_id;
-
-                                $rowPaid = (bool) $pay;
-                            @endphp
-
+                    {{-- ✅ OPEN CONTRACT: list Payment #1, #2, #3... --}}
+                    @if($isOpen)
+                        @if($openPayments->isEmpty())
                             <tr>
-                                <td style="font-weight:900;">{{ $i }}</td>
-                                <td class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
-                                <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
-                                <td class="muted">{{ $pay?->method ?? '—' }}</td>
-                                <td class="text-end" style="font-weight:900;">
-                                    {{ $amount !== null ? '₱'.number_format((float)$amount, 2) : '—' }}
-                                </td>
-                                <td>
-                                    <span class="i-badge {{ $rowPaid ? 'st-paid' : 'st-pending' }}">
-                                        <span class="i-dot"></span> {{ $rowPaid ? 'PAID' : 'PENDING' }}
-                                    </span>
-                                </td>
-
-                                <td class="text-end">
-                                    <div class="i-row-actions">
-                                        @if($pay)
+                                <td colspan="7" class="muted">No payments yet (besides downpayment).</td>
+                            </tr>
+                        @else
+                            @foreach($openPayments as $p)
+                                @php
+                                    $uiNo = (int)($p->month_number ?? 0) - $shift;
+                                    $pDate = $p->payment_date ? Carbon::parse($p->payment_date) : null;
+                                    $notes = trim((string)($p->notes ?? ''));
+                                    if ($notes === '' && $p->visit_id) $notes = 'Visit #' . $p->visit_id;
+                                @endphp
+                                <tr>
+                                    <td style="font-weight:900;">Payment #{{ $uiNo }}</td>
+                                    <td class="muted">{{ $pDate ? $pDate->format('M d, Y') : '—' }}</td>
+                                    <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
+                                    <td class="muted">{{ $p->method ?? '—' }}</td>
+                                    <td class="text-end" style="font-weight:900;">
+                                        {{ $p->amount !== null ? '₱'.number_format((float)$p->amount, 2) : '—' }}
+                                    </td>
+                                    <td>
+                                        <span class="i-badge st-paid">
+                                            <span class="i-dot"></span> PAID
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="i-row-actions">
                                             <a class="i-mini"
-                                               href="{{ route('staff.installments.payments.edit', [$plan->id, $pay->id, 'return' => url()->full()]) }}">
+                                               href="{{ route('staff.installments.payments.edit', [$plan->id, $p->id, 'return' => url()->full()]) }}">
                                                 <i class="fa fa-pen"></i> Edit
                                             </a>
 
-                                            @if($pay->visit_id)
+                                            @if($p->visit_id)
                                                 <a class="i-mini"
-                                                   href="{{ route('staff.visits.show', [$pay->visit_id, 'return' => url()->full()]) }}">
+                                                   href="{{ route('staff.visits.show', [$p->visit_id, 'return' => url()->full()]) }}">
                                                     <i class="fa fa-eye"></i> Visit
                                                 </a>
                                             @endif
-                                        @else
-                                            <a class="i-mini i-mini-primary"
-                                               href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
-                                                <i class="fa fa-circle-dollar-to-slot"></i> Pay
-                                            </a>
-                                        @endif
-                                    </div>
-                                </td>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @endif
+
+                    {{-- ✅ FIXED TERM: your old Month 1..N table --}}
+                    @else
+                        @php
+                            $uiMonths = max(0, $months);
+                            $hasDpForDue = $showDpRow;
+                        @endphp
+
+                        @if($uiMonths > 0)
+                            @for($i = 1; $i <= $uiMonths; $i++)
+                                @php
+                                    $dbMonth = $i + $shift;
+                                    $pay = $paymentsByMonth->get($dbMonth);
+
+                                    $due = $startDate
+                                        ? $startDate->copy()->addMonths(($i - 1) + ($hasDpForDue ? 1 : 0))
+                                        : null;
+
+                                    $paidDate = $pay?->payment_date ? Carbon::parse($pay->payment_date) : null;
+                                    $showDate = ($paidDate ?? $due);
+
+                                    $amount = $pay?->amount ?? null;
+
+                                    $notes = trim((string)($pay?->notes ?? ''));
+                                    if ($notes === '' && $pay?->visit_id) $notes = 'Visit #' . $pay->visit_id;
+
+                                    $rowPaid = (bool) $pay;
+                                @endphp
+
+                                <tr>
+                                    <td style="font-weight:900;">{{ $i }}</td>
+                                    <td class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
+                                    <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
+                                    <td class="muted">{{ $pay?->method ?? '—' }}</td>
+                                    <td class="text-end" style="font-weight:900;">
+                                        {{ $amount !== null ? '₱'.number_format((float)$amount, 2) : '—' }}
+                                    </td>
+                                    <td>
+                                        <span class="i-badge {{ $rowPaid ? 'st-paid' : 'st-pending' }}">
+                                            <span class="i-dot"></span> {{ $rowPaid ? 'PAID' : 'PENDING' }}
+                                        </span>
+                                    </td>
+
+                                    <td class="text-end">
+                                        <div class="i-row-actions">
+                                            @if($pay)
+                                                <a class="i-mini"
+                                                   href="{{ route('staff.installments.payments.edit', [$plan->id, $pay->id, 'return' => url()->full()]) }}">
+                                                    <i class="fa fa-pen"></i> Edit
+                                                </a>
+
+                                                @if($pay->visit_id)
+                                                    <a class="i-mini"
+                                                       href="{{ route('staff.visits.show', [$pay->visit_id, 'return' => url()->full()]) }}">
+                                                        <i class="fa fa-eye"></i> Visit
+                                                    </a>
+                                                @endif
+                                            @else
+                                                <a class="i-mini i-mini-primary"
+                                                   href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
+                                                    <i class="fa fa-circle-dollar-to-slot"></i> Pay
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endfor
+                        @else
+                            <tr>
+                                <td colspan="7" class="muted">No monthly installments configured.</td>
                             </tr>
-                        @endfor
+                        @endif
                     @endif
 
                 </tbody>

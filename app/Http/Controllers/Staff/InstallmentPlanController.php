@@ -9,16 +9,9 @@ use App\Models\InstallmentPayment;
 use App\Models\Visit;
 use App\Models\Appointment;
 use Carbon\Carbon;
-use Illuminate\Validation\Rule;
 
 class InstallmentPlanController extends Controller
 {
-    /**
-     * Find Downpayment payment record:
-     * - NEW: month_number = 0
-     * - LEGACY: month_number = 1 and notes contains "downpayment"
-     * - Fallback: month_number = 1 and amount ~= plan.downpayment AND date == plan.start_date
-     */
     private function findDownpaymentPayment(InstallmentPlan $plan): ?InstallmentPayment
     {
         $plan->loadMissing('payments');
@@ -144,7 +137,6 @@ class InstallmentPlanController extends Controller
             }
 
             $payload['method'] = $dp->method ?? 'Cash';
-
             $dp->update($payload);
             return;
         }
@@ -212,39 +204,45 @@ class InstallmentPlanController extends Controller
         $isOpen = $request->boolean('is_open_contract');
 
         $request->validate([
-            'visit_id'        => 'nullable|exists:visits,id',
-            'appointment_id'  => 'nullable|exists:appointments,id',
-
+            'visit_id'        => 'nullable|exists:visits,id|required_without:appointment_id',
+            'appointment_id'  => 'nullable|exists:appointments,id|required_without:visit_id',
             'total_cost'      => 'required|numeric|min:0',
             'downpayment'     => 'required|numeric|min:0|lte:total_cost',
-
             'is_open_contract'=> 'nullable|boolean',
-            'months'          => [
-                Rule::requiredIf(!$isOpen),
-                'integer',
-                'min:1',
-            ],
-
+            'months'          => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
             'start_date'      => 'required|date',
         ]);
-
-        if (!$request->filled('visit_id') && !$request->filled('appointment_id')) {
-            return back()->withErrors('Please select a Visit or an Appointment.')->withInput();
-        }
-
-        if ($request->filled('visit_id') && $request->filled('appointment_id')) {
-            return back()->withErrors('Please choose only one: Visit or Appointment.')->withInput();
-        }
 
         $visit = null;
 
         if ($request->filled('visit_id')) {
             $visit = Visit::with(['patient', 'procedures.service'])->findOrFail($request->visit_id);
         } else {
-            // Appointment selected: create plan using appointment details but still requires a visit_id in your schema
-            // If your schema REQUIRES visit_id, you MUST create a visit here.
-            // For now, we’ll block appointment-only if visit_id is required.
-            return back()->withErrors('Appointment installment is not supported unless visit_id can be generated. Please select a Visit.')->withInput();
+            // ✅ Appointment selected -> create a Visit record so plan always has visit_id
+            $app = Appointment::with(['patient', 'service'])->findOrFail($request->appointment_id);
+
+            $visit = Visit::create([
+                'patient_id'   => $app->patient_id,
+                'doctor_id'    => $app->doctor_id ?? null,
+                'dentist_name' => $app->dentist_name ?? null,
+                'visit_date'   => $request->start_date,
+                'status'       => 'completed',
+                'notes'        => 'Installment plan created from appointment',
+                'price'        => null,
+            ]);
+
+            if (!empty($app->service_id)) {
+                $visit->procedures()->create([
+                    'service_id'   => $app->service_id,
+                    'tooth_number' => null,
+                    'surface'      => null,
+                    'shade'        => null,
+                    'notes'        => null,
+                    'price'        => 0,
+                ]);
+            }
+
+            $visit->load(['patient', 'procedures.service']);
         }
 
         $plan = InstallmentPlan::create([
@@ -260,6 +258,7 @@ class InstallmentPlanController extends Controller
             'balance'           => 0,
         ]);
 
+        // ✅ DP is month 0
         if ((float)$request->downpayment > 0) {
             InstallmentPayment::create([
                 'installment_plan_id' => $plan->id,
@@ -321,11 +320,7 @@ class InstallmentPlanController extends Controller
             'total_cost'       => 'required|numeric|min:0',
             'downpayment'      => 'required|numeric|min:0|lte:total_cost',
             'is_open_contract' => 'nullable|boolean',
-            'months'           => [
-                Rule::requiredIf(!$isOpen),
-                'integer',
-                'min:1',
-            ],
+            'months'           => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
             'start_date'       => 'required|date',
         ]);
 

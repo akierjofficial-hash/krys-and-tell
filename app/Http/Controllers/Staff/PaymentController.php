@@ -16,7 +16,6 @@ class PaymentController extends Controller
     // =======================
     private function visitDue(Visit $visit): float
     {
-        // If a visit-level total was set, treat it as authoritative total due
         if ($visit->price !== null) {
             return (float) $visit->price;
         }
@@ -28,12 +27,6 @@ class PaymentController extends Controller
         return (float) $visit->procedures()->sum('price');
     }
 
-    /**
-     * If the visit contains at least one custom-price-allowed service,
-     * allow lowering the total due by setting visits.price.
-     *
-     * Safety: never allow lowering below the sum of fixed-price services.
-     */
     private function maybeApplyCustomTotalOverride(Visit $visit, float $newTotalDue): bool
     {
         $currentDue = $this->visitDue($visit);
@@ -44,7 +37,6 @@ class PaymentController extends Controller
         $hasCustom = $visit->procedures->contains(fn ($p) => (bool) ($p->service?->allow_custom_price ?? false));
         if (!$hasCustom) return false;
 
-        // Don't allow lowering below fixed-price services total
         $fixedMin = (float) $visit->procedures
             ->filter(fn ($p) => !((bool) ($p->service?->allow_custom_price ?? false)))
             ->sum(fn ($p) => (float) ($p->price ?? 0));
@@ -59,7 +51,6 @@ class PaymentController extends Controller
 
     private function visitPaid(Visit $visit): float
     {
-        // Prefer withSum('payments as paid_total', 'amount') when loaded
         if (isset($visit->paid_total)) {
             return (float) ($visit->paid_total ?? 0);
         }
@@ -191,14 +182,10 @@ class PaymentController extends Controller
                 return back()->withErrors('This visit is already fully paid.')->withInput();
             }
 
-            // ✅ KEY FIX:
-            // If staff enters an amount LESS than the computed balance,
-            // treat it as final cash price ONLY if the visit has a custom-price service.
             if ($amount < $balance) {
-                $desiredFinalTotal = $paid + $amount; // total due should become exactly what was paid in cash
+                $desiredFinalTotal = $paid + $amount;
                 $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
 
-                // refresh totals after possible override
                 $visit->refresh();
                 $visit->load(['procedures.service', 'payments']);
             }
@@ -251,14 +238,13 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // ✅ Apply the same custom-final-price logic for appointment → visit
             $visit->load(['procedures.service', 'payments']);
             $due = $this->visitDue($visit);
             $paid = $this->visitPaid($visit);
             $balance = $due - $paid;
 
             if ($amount < $balance) {
-                $desiredFinalTotal = $paid + $amount; // usually just $amount since paid is 0
+                $desiredFinalTotal = $paid + $amount;
                 $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
 
                 $visit->refresh();
@@ -323,13 +309,16 @@ class PaymentController extends Controller
 
     public function storeInstallment(Request $request)
     {
+        $isOpen = $request->boolean('is_open_contract');
+
         $request->validate([
-            'visit_id'       => 'nullable|exists:visits,id',
-            'appointment_id' => 'nullable|exists:appointments,id',
-            'total_cost'     => 'required|numeric|min:0',
-            'downpayment'    => 'required|numeric|min:0',
-            'months'         => 'required|integer|min:1',
-            'start_date'     => 'required|date',
+            'visit_id'          => 'nullable|exists:visits,id',
+            'appointment_id'    => 'nullable|exists:appointments,id',
+            'is_open_contract'  => 'nullable|boolean',
+            'total_cost'        => 'required|numeric|min:0',
+            'downpayment'       => 'required|numeric|min:0|lte:total_cost',
+            'months'            => $isOpen ? 'nullable|integer|min:1' : 'required|integer|min:1',
+            'start_date'        => 'required|date',
         ]);
 
         if (!$request->visit_id && !$request->appointment_id) {
@@ -396,40 +385,50 @@ class PaymentController extends Controller
             }
 
             $visitId = $visit->id;
-
             $appointment->update(['status' => 'completed']);
         }
 
-        $total = (float) $request->total_cost;
-        $down  = (float) $request->downpayment;
-        $balance = $total - $down;
+        $total   = (float) $request->total_cost;
+        $down    = (float) $request->downpayment;
+
+        // Balance is computed from payments later in your newer controllers,
+        // but we'll keep this initial value for convenience.
+        $balance = max(0, $total - $down);
+
+        // If open contract, months should be NULL (recommended).
+        // (If you prefer 0, set to 0 and update all month validations elsewhere.)
+        $months = $isOpen ? null : (int) $request->months;
 
         $plan = InstallmentPlan::create([
-            'visit_id'    => $visitId,
-            'patient_id'  => $patientId,
-            'service_id'  => $serviceId,
-            'total_cost'  => $total,
-            'downpayment' => $down,
-            'balance'     => $balance,
-            'months'      => (int) $request->months,
-            'start_date'  => $request->start_date,
-            'status'      => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
+            'visit_id'          => $visitId,
+            'patient_id'        => $patientId,
+            'service_id'        => $serviceId,
+            'total_cost'        => $total,
+            'downpayment'       => $down,
+            'balance'           => $balance,
+            'months'            => $months,
+            'is_open_contract'  => $isOpen,
+            'start_date'        => $request->start_date,
+            'status'            => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
         ]);
 
+        // ✅ Downpayment stored as month_number = 0 (NEW format)
         if ($down > 0) {
-            $hasMonth1 = $plan->payments()->where('month_number', 1)->exists();
-            if (!$hasMonth1) {
+            $hasMonth0 = $plan->payments()->where('month_number', 0)->exists();
+
+            if (!$hasMonth0) {
                 $plan->payments()->create([
-                    'month_number' => 1,
+                    'month_number' => 0,
                     'amount'       => $down,
                     'method'       => 'Cash',
                     'payment_date' => $request->start_date,
                     'visit_id'     => $visitId,
-                    'notes'        => 'Downpayment (Month 1)',
+                    'notes'        => 'Downpayment',
                 ]);
             }
         }
 
+        // Update visit status
         if ($visitId) {
             $v = Visit::find($visitId);
             if ($v) {

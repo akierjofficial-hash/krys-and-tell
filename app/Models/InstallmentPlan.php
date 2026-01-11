@@ -23,12 +23,12 @@ class InstallmentPlan extends Model
     ];
 
     protected $casts = [
-        'is_open_contract' => 'boolean', // ✅ NEW
+        'is_open_contract' => 'boolean',
     ];
 
     protected $attributes = [
         'status' => 'Pending',
-        'is_open_contract' => false, // ✅ NEW default
+        'is_open_contract' => false,
     ];
 
     public function visit()

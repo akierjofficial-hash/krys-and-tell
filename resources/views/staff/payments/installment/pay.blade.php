@@ -149,6 +149,10 @@
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
+    .readonlyx{
+        background: rgba(248,250,252,.9) !important;
+        color: rgba(15, 23, 42, .75) !important;
+    }
     .inputx:focus, .selectx:focus{
         border-color: rgba(13,110,253,.55);
         box-shadow: 0 0 0 4px rgba(13,110,253,.12);
@@ -174,11 +178,32 @@
         white-space: nowrap;
     }
 
+    /* ✅ Error box */
+    .error-box{
+        background: rgba(239, 68, 68, .10);
+        border: 1px solid rgba(239, 68, 68, .22);
+        color: #b91c1c;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+    }
+    .error-box .title{
+        font-weight: 900;
+        margin-bottom: 6px;
+    }
+    .error-box ul{
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13px;
+    }
+
     .form-max{ max-width: 1100px; }
 </style>
 
 @php
     use Carbon\Carbon;
+
+    $isOpenContract = (bool)($plan->is_open_contract ?? false);
 
     $payments = $plan->payments ?? collect();
     $paymentsTotal = (float) $payments->sum('amount');
@@ -186,7 +211,6 @@
     $total = (float) ($plan->total_cost ?? 0);
     $down  = (float) ($plan->downpayment ?? 0);
 
-    // ✅ DP detect (month 0 or legacy month 1 downpayment)
     $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
     $planStartStr = $startDate ? $startDate->toDateString() : null;
 
@@ -213,14 +237,18 @@
     $hasMonth0 = $payments->contains(fn($p) => (int)($p->month_number ?? -1) === 0);
     $dpIsLegacyMonth1 = (!$hasMonth0 && $dpPayment && (int)($dpPayment->month_number ?? -1) === 1);
 
-    // ✅ UI months count (shift legacy only)
     $shift = $dpIsLegacyMonth1 ? 1 : 0;
-    $maxMonths = $maxMonths ?? max(0, (int)($plan->months ?? 0));
 
     $hasDpRecord = (bool) $dpPayment;
     $totalPaid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
 
     $remainingBalance = max(0, $total - $totalPaid);
+
+    // ✅ clean numeric for HTML attributes (no commas)
+    $remainingBalanceAttr = number_format($remainingBalance, 2, '.', '');
+
+    // ✅ selected month safe-guard (fixed-term)
+    $selectedMonth = (int) old('month_number', $nextMonth ?? 1);
 @endphp
 
 <div class="page-head form-max">
@@ -236,14 +264,28 @@
     />
 </div>
 
+{{-- ✅ show server validation errors --}}
+@if ($errors->any())
+    <div class="error-box form-max">
+        <div class="title"><i class="fa fa-triangle-exclamation"></i> Please fix the following:</div>
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 <div class="card-shell form-max">
     <div class="card-head">
         <div class="hint">
             <span class="badge-soft"><i class="fa fa-file-invoice"></i> Plan ID: #{{ $plan->id }}</span>
-            <span class="badge-soft"><i class="fa fa-calendar"></i>
-    Term: {{ ($plan->is_open_contract ?? false) ? 'Open Contract' : ($plan->months.' months') }}
-</span>
 
+            @if($isOpenContract)
+                <span class="badge-soft"><i class="fa fa-infinity"></i> Term: Open Contract</span>
+            @else
+                <span class="badge-soft"><i class="fa fa-calendar"></i> Term: {{ (int)($plan->months ?? 0) }} months</span>
+            @endif
         </div>
         <div class="hint">Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.</div>
     </div>
@@ -253,7 +295,7 @@
         <div class="summary-grid">
             <div class="tile">
                 <div class="k"><i class="fa fa-user"></i> Patient Name</div>
-                <div class="v">{{ $plan->patient->first_name }} {{ $plan->patient->last_name }}</div>
+                <div class="v">{{ $plan->patient?->first_name }} {{ $plan->patient?->last_name }}</div>
             </div>
 
             <div class="tile">
@@ -264,12 +306,12 @@
 
             <div class="tile">
                 <div class="k"><i class="fa fa-peso-sign"></i> Total Treatment Cost</div>
-                <div class="v">₱{{ number_format($plan->total_cost, 2) }}</div>
+                <div class="v">₱{{ number_format((float)($plan->total_cost ?? 0), 2) }}</div>
             </div>
 
             <div class="tile">
                 <div class="k"><i class="fa fa-arrow-down"></i> Downpayment</div>
-                <div class="v">₱{{ number_format($plan->downpayment, 2) }}</div>
+                <div class="v">₱{{ number_format((float)($plan->downpayment ?? 0), 2) }}</div>
             </div>
 
             <div class="tile">
@@ -281,33 +323,46 @@
         <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
             @csrf
 
-            @php $isOpen = (bool)($plan->is_open_contract ?? false); @endphp
+            <div class="row g-3">
 
-@if($isOpen)
-    <div class="col-12 col-md-6">
-        <label class="form-labelx">Payment No.</label>
-        <input class="inputx" value="Payment {{ $nextMonth ?? 1 }}" disabled>
-        <input type="hidden" name="month_number" value="{{ $nextMonth ?? 1 }}">
-        <div class="helper">Open contract: payments auto-increment (no fixed months).</div>
-    </div>
-@else
-    <div class="col-12 col-md-6">
-        <label class="form-labelx">Month Paid <span class="text-danger">*</span></label>
-        <select name="month_number" class="selectx" required>
-            @for($i = 1; $i <= $maxMonths; $i++)
-                @php $isPaid = isset($paidMonths) && $paidMonths->contains($i); @endphp
-                <option value="{{ $i }}"
-                    {{ $isPaid ? 'disabled' : '' }}
-                    {{ (int)old('month_number', $nextMonth ?? 1) === $i ? 'selected' : '' }}
-                >
-                    Month {{ $i }}{{ $isPaid ? ' (paid)' : '' }}
-                </option>
-            @endfor
-        </select>
-        <div class="helper">Only unpaid months can be selected.</div>
-    </div>
-@endif
+                {{-- Month / Payment # --}}
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">{{ $isOpenContract ? 'Payment #' : 'Month Paid' }} <span class="text-danger">*</span></label>
 
+                    @if($isOpenContract)
+                        @php $val = (int)old('month_number', $nextMonth ?? 1); @endphp
+                        <input type="hidden" name="month_number" value="{{ $val }}">
+                        <input class="inputx readonlyx" value="Payment #{{ $val }}" readonly>
+                        <div class="helper">Open contract: payments are auto-numbered (server will enforce next number).</div>
+                    @else
+                        @php
+                            $maxMonthsLocal = $maxMonths ?? max(0, (int)($plan->months ?? 0));
+
+                            // ✅ If old selected month is already paid AND disabled, force select nextMonth
+                            if (isset($paidMonths) && $paidMonths->contains($selectedMonth)) {
+                                $selectedMonth = (int) ($nextMonth ?? 1);
+                            }
+                        @endphp
+
+                        <select name="month_number" class="selectx" required>
+                            @for($i = 1; $i <= $maxMonthsLocal; $i++)
+                                @php
+                                    $isAlreadyPaid = isset($paidMonths) && $paidMonths->contains($i);
+                                    $shouldDisable = $isAlreadyPaid;
+                                    $shouldSelect  = ($selectedMonth === $i) && !$shouldDisable;
+                                @endphp
+
+                                <option value="{{ $i }}"
+                                    {{ $shouldDisable ? 'disabled' : '' }}
+                                    {{ $shouldSelect ? 'selected' : '' }}
+                                >
+                                    Month {{ $i }}{{ $isAlreadyPaid ? ' (paid)' : '' }}
+                                </option>
+                            @endfor
+                        </select>
+                        <div class="helper">Only unpaid months can be selected.</div>
+                    @endif
+                </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
@@ -317,7 +372,7 @@
                         class="inputx"
                         step="0.01"
                         min="0"
-                        max="{{ $remainingBalance }}"
+                        max="{{ $remainingBalanceAttr }}"
                         value="{{ old('amount') }}"
                         required
                     >
