@@ -197,7 +197,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('staff.payments.store.installment') }}" method="POST" id="installmentForm">
+        <form action="{{ route('staff.payments.store.installment') }}" method="POST">
             @csrf
 
             <div class="row g-3">
@@ -323,7 +323,7 @@
                 </div>
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
-                    <button type="submit" class="btn-primaryx" id="submitBtn">
+                    <button type="submit" class="btn-primaryx">
                         <i class="fa fa-check"></i> Create Installment Plan
                     </button>
 
@@ -347,11 +347,8 @@ function updateFields(selected) {
     document.getElementById('totalCostInput').value = isNaN(amt) ? '' : amt.toFixed(2);
     document.getElementById('treatmentsBox').value = treatments;
 
-    // Default downpayment = 50% (only if user hasn't typed yet)
-    const dp = document.getElementById('downpaymentInput');
-    if (dp && (dp.value === '' || Number(dp.value) === 0)) {
-        dp.value = isNaN(amt) ? '' : (amt / 2).toFixed(2);
-    }
+    // Default downpayment = 50%
+    document.getElementById('downpaymentInput').value = isNaN(amt) ? '' : (amt / 2).toFixed(2);
 }
 
 document.getElementById('visitSelect').addEventListener('change', function() {
@@ -372,8 +369,7 @@ document.getElementById('appointmentSelect').addEventListener('change', function
     }
 });
 
-// ✅ Open contract toggle
-// IMPORTANT: disable months input to avoid browser validation blocking submit
+// ✅ Open contract toggle (disable months input so browser won't block submit)
 function toggleMonths() {
     const cb = document.getElementById('isOpenContract');
     const wrap = document.getElementById('monthsWrap');
@@ -382,13 +378,12 @@ function toggleMonths() {
     const on = cb && cb.checked;
 
     if (wrap) wrap.style.display = on ? 'none' : '';
-
     if (!months) return;
 
     if (on) {
         months.required = false;
-        months.disabled = true;     // ✅ prevents validation + not sent to server
-        months.value = '';          // ✅ DON'T set 0 (min=1 would block)
+        months.disabled = true;   // not sent to server
+        months.value = '';        // do NOT use 0 (min=1)
     } else {
         months.disabled = false;
         months.required = true;

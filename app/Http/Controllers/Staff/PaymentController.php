@@ -162,7 +162,6 @@ class PaymentController extends Controller
 
         $amount = (float) $request->amount;
 
-        // ---- Pay an existing Visit ----
         if ($request->visit_id) {
             $visit = Visit::with(['procedures.service', 'payments'])->findOrFail($request->visit_id);
 
@@ -203,7 +202,6 @@ class PaymentController extends Controller
             return redirect()->route('staff.payments.index')->with('success', 'Cash payment added!');
         }
 
-        // ---- Pay an Appointment (creates a Visit) ----
         if ($request->appointment_id) {
             $payableStatuses = ['scheduled', 'upcoming', 'approved', 'confirmed'];
 
@@ -309,15 +307,14 @@ class PaymentController extends Controller
 
     public function storeInstallment(Request $request)
     {
-        $isOpen = $request->boolean('is_open_contract');
-
+        // ✅ IMPORTANT: months is required UNLESS open contract is enabled
         $request->validate([
             'visit_id'          => 'nullable|exists:visits,id',
             'appointment_id'    => 'nullable|exists:appointments,id',
-            'is_open_contract'  => 'nullable|boolean',
             'total_cost'        => 'required|numeric|min:0',
-            'downpayment'       => 'required|numeric|min:0|lte:total_cost',
-            'months'            => $isOpen ? 'nullable|integer|min:1' : 'required|integer|min:1',
+            'downpayment'       => 'required|numeric|min:0',
+            'is_open_contract'  => 'nullable|boolean',
+            'months'            => 'required_unless:is_open_contract,1|integer|min:1',
             'start_date'        => 'required|date',
         ]);
 
@@ -328,6 +325,9 @@ class PaymentController extends Controller
         if ($request->visit_id && $request->appointment_id) {
             return back()->withErrors('Please select only one source.')->withInput();
         }
+
+        $isOpen = $request->boolean('is_open_contract');
+        $months = $isOpen ? 0 : (int) $request->months; // ✅ never null
 
         $patientId = null;
         $serviceId = null;
@@ -385,38 +385,32 @@ class PaymentController extends Controller
             }
 
             $visitId = $visit->id;
+
             $appointment->update(['status' => 'completed']);
         }
 
         $total   = (float) $request->total_cost;
         $down    = (float) $request->downpayment;
+        $balance = $total - $down;
 
-        // Balance is computed from payments later in your newer controllers,
-        // but we'll keep this initial value for convenience.
-        $balance = max(0, $total - $down);
-
-        // If open contract, months should be NULL (recommended).
-        // (If you prefer 0, set to 0 and update all month validations elsewhere.)
-        $months = $isOpen ? null : (int) $request->months;
-
+        // ✅ KEY FIX: months is always a number (0 for open contract)
         $plan = InstallmentPlan::create([
-            'visit_id'          => $visitId,
-            'patient_id'        => $patientId,
-            'service_id'        => $serviceId,
-            'total_cost'        => $total,
-            'downpayment'       => $down,
-            'balance'           => $balance,
-            'months'            => $months,
-            'is_open_contract'  => $isOpen,
-            'start_date'        => $request->start_date,
-            'status'            => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
+            'visit_id'         => $visitId,
+            'patient_id'       => $patientId,
+            'service_id'       => $serviceId,
+            'total_cost'       => $total,
+            'downpayment'      => $down,
+            'balance'          => $balance,
+            'months'           => $months,
+            'start_date'       => $request->start_date,
+            'status'           => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
+            'is_open_contract' => $isOpen,
         ]);
 
-        // ✅ Downpayment stored as month_number = 0 (NEW format)
+        // ✅ Store downpayment as Month 0 (cleaner for your shift logic)
         if ($down > 0) {
-            $hasMonth0 = $plan->payments()->where('month_number', 0)->exists();
-
-            if (!$hasMonth0) {
+            $hasDp = $plan->payments()->where('month_number', 0)->exists();
+            if (!$hasDp) {
                 $plan->payments()->create([
                     'month_number' => 0,
                     'amount'       => $down,
@@ -428,7 +422,6 @@ class PaymentController extends Controller
             }
         }
 
-        // Update visit status
         if ($visitId) {
             $v = Visit::find($visitId);
             if ($v) {
