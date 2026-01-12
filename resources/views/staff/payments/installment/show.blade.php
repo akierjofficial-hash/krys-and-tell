@@ -5,16 +5,24 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Installment Show (Dark mode compatible)
+       Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                         --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --i-border: 1px solid rgba(15, 23, 42, .10);
-        --i-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --i-text: #0f172a;
-        --i-muted: rgba(15, 23, 42, .58);
-        --i-soft: rgba(15, 23, 42, .05);
+        --i-border: 1px solid var(--kt-border);
+        --i-shadow: var(--kt-shadow);
+        --i-text: var(--kt-text);
+        --i-muted: var(--kt-muted);
+        --i-soft: rgba(148,163,184,.14);
         --i-radius: 16px;
-        --i-brand: #0d6efd;
+    }
+    html[data-theme="dark"]{
+        --i-soft: rgba(148,163,184,.16);
     }
 
+    /* Header */
     .i-head{
         display:flex;
         align-items:flex-end;
@@ -22,10 +30,11 @@
         gap: 14px;
         margin-bottom: 14px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .i-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
         color: var(--i-text);
@@ -34,30 +43,40 @@
         margin: 4px 0 0 0;
         font-size: 13px;
         color: var(--i-muted);
+        font-weight: 700;
     }
     .i-actions{
         display:flex;
         align-items:center;
         gap: 10px;
         flex-wrap: wrap;
+        min-width:0;
     }
 
+    /* Buttons */
     .i-btn{
         display:inline-flex;
         align-items:center;
         gap: 8px;
         padding: 10px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 950;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.88);
-        color: rgba(15, 23, 42, .80);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--kt-text) !important;
         transition: .15s ease;
         white-space: nowrap;
+        user-select:none;
     }
-    .i-btn:hover{ background: rgba(15, 23, 42, .04); }
+    .i-btn:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .i-btn:hover{
+        background: rgba(2,6,23,.35);
+    }
 
     .i-btn-primary{
         border: none;
@@ -65,29 +84,37 @@
         background: linear-gradient(135deg, #0d6efd, #1e90ff);
         box-shadow: 0 10px 18px rgba(13, 110, 253, .18);
     }
-    .i-btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 14px 24px rgba(13, 110, 253, .22); }
+    .i-btn-primary:hover{
+        transform: translateY(-1px);
+        box-shadow: 0 14px 24px rgba(13, 110, 253, .22);
+    }
 
+    /* Card */
     .i-card{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--i-border);
         border-radius: var(--i-radius);
         box-shadow: var(--i-shadow);
         overflow: hidden;
+        width: 100%;
+        min-width:0;
     }
     .i-card-head{
         padding: 14px 16px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--kt-border);
         display:flex;
         align-items:center;
         justify-content:space-between;
         gap: 10px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .i-card-head-left{
         display:flex;
         align-items:center;
         gap: 10px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .i-ref{
         font-weight: 950;
@@ -96,13 +123,16 @@
         display:flex;
         align-items:center;
         gap: 8px;
+        min-width:0;
     }
     .i-meta{
         font-size: 12px;
         color: var(--i-muted);
-        font-weight: 700;
+        font-weight: 800;
+        min-width:0;
     }
 
+    /* Badges */
     .i-badge{
         display:inline-flex;
         align-items:center;
@@ -110,7 +140,7 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         border: 1px solid transparent;
         white-space: nowrap;
     }
@@ -119,47 +149,59 @@
     .st-pending{ background: rgba(245, 158, 11, .12); color:#b45309; border-color: rgba(245,158,11,.25); }
     .st-info{ background: rgba(59, 130, 246, .12); color:#1d4ed8; border-color: rgba(59,130,246,.25); }
 
+    html[data-theme="dark"] .st-paid{ background: rgba(34,197,94,.14); color: rgba(134,239,172,.95); border-color: rgba(34,197,94,.22); }
+    html[data-theme="dark"] .st-pending{ background: rgba(245,158,11,.14); color: rgba(253,230,138,.95); border-color: rgba(245,158,11,.22); }
+    html[data-theme="dark"] .st-info{ background: rgba(59,130,246,.14); color: rgba(191,219,254,.95); border-color: rgba(59,130,246,.22); }
+
     .i-card-body{ padding: 16px; }
 
+    /* Split panels */
     .i-split{
         display:grid;
         grid-template-columns: 1.6fr 1fr;
         gap: 14px;
         align-items:start;
+        min-width:0;
     }
     @media (max-width: 900px){
         .i-split{ grid-template-columns: 1fr; }
     }
 
     .i-panel{
-        border: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248,250,252,.75);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         border-radius: 14px;
         padding: 14px;
+        min-width:0;
     }
 
     .i-section-title{
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         color: rgba(15, 23, 42, .55);
         text-transform: uppercase;
         letter-spacing: .25px;
         margin-bottom: 10px;
     }
+    html[data-theme="dark"] .i-section-title{ color: rgba(226,232,240,.62); }
 
+    /* Key-values */
     .i-kv{
         display:grid;
         grid-template-columns: 140px 1fr;
         gap: 8px 12px;
         font-size: 13px;
         line-height: 1.35;
+        min-width:0;
     }
-    .i-k{ color: rgba(15, 23, 42, .55); font-weight: 800; }
-    .i-v{ color: var(--i-text); font-weight: 800; word-break: break-word; }
+    .i-k{ color: rgba(15, 23, 42, .55); font-weight: 900; }
+    html[data-theme="dark"] .i-k{ color: rgba(226,232,240,.62); }
+
+    .i-v{ color: var(--i-text); font-weight: 900; word-break: break-word; min-width:0; }
 
     .i-amount{
         font-size: 20px;
-        font-weight: 950;
+        font-weight: 1000;
         color: var(--i-text);
         letter-spacing: -0.2px;
     }
@@ -167,16 +209,18 @@
         margin-top: 6px;
         font-size: 12px;
         color: var(--i-muted);
-        font-weight: 700;
+        font-weight: 800;
         line-height: 1.6;
     }
 
+    /* Table */
     .i-table-wrap{
         margin-top: 14px;
-        border: 1px solid rgba(15, 23, 42, .08);
+        border: 1px solid var(--kt-border);
         border-radius: 14px;
         overflow: hidden;
-        background: rgba(255,255,255,.95);
+        background: var(--kt-surface);
+        min-width:0;
     }
     table{ width: 100%; border-collapse: separate; border-spacing: 0; }
     thead th{
@@ -185,20 +229,28 @@
         text-transform: uppercase;
         color: rgba(15, 23, 42, .55);
         padding: 13px 14px;
-        border-bottom: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248, 250, 252, .9);
+        border-bottom: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         white-space: nowrap;
     }
+    html[data-theme="dark"] thead th{ color: rgba(226,232,240,.62); }
+
     tbody td{
         padding: 13px 14px;
         font-size: 14px;
         color: var(--i-text);
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid rgba(148,163,184,.18);
         vertical-align: top;
     }
-    .text-end{ text-align:right; }
-    .muted{ color: rgba(15,23,42,.65); font-weight:700; }
+    html[data-theme="dark"] tbody td{
+        border-bottom: 1px solid rgba(148,163,184,.14);
+    }
 
+    .text-end{ text-align:right; }
+    .muted{ color: rgba(15,23,42,.65); font-weight:800; }
+    html[data-theme="dark"] .muted{ color: rgba(226,232,240,.70); }
+
+    /* Row actions */
     .i-row-actions{
         display:flex;
         gap: 8px;
@@ -212,22 +264,32 @@
         padding: 7px 10px;
         border-radius: 10px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         text-decoration:none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
-        color: rgba(15, 23, 42, .82);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--kt-text) !important;
         white-space: nowrap;
         transition: .15s ease;
     }
-    .i-mini:hover{ background: rgba(15,23,42,.04); }
+    .i-mini:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .i-mini:hover{
+        background: rgba(2,6,23,.35);
+    }
+
     .i-mini-primary{
         border: none;
         color: #fff !important;
         background: linear-gradient(135deg, #0d6efd, #1e90ff);
         box-shadow: 0 8px 14px rgba(13,110,253,.16);
     }
-    .i-mini-primary:hover{ transform: translateY(-1px); box-shadow: 0 12px 18px rgba(13,110,253,.20); }
+    .i-mini-primary:hover{
+        transform: translateY(-1px);
+        box-shadow: 0 12px 18px rgba(13,110,253,.20);
+    }
 </style>
 
 @php
@@ -345,6 +407,7 @@
     <div class="i-card-head">
         <div class="i-card-head-left">
             <div class="i-ref"><i class="fa fa-layer-group"></i> {{ $refNo }}</div>
+
             <span class="i-badge {{ $isPaid ? 'st-paid' : 'st-pending' }}">
                 <span class="i-dot"></span> {{ $isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING') }}
             </span>
@@ -415,11 +478,11 @@
                     {{-- ✅ DP Row --}}
                     @if($showDpRow)
                         <tr>
-                            <td style="font-weight:900;">DP</td>
+                            <td style="font-weight:950;">DP</td>
                             <td class="muted">{{ $dpDate ? $dpDate->format('M d, Y') : '—' }}</td>
                             <td class="muted">{{ $dpNotes }}</td>
                             <td class="muted">{{ $dpMethod ?: '—' }}</td>
-                            <td class="text-end" style="font-weight:900;">
+                            <td class="text-end" style="font-weight:950;">
                                 {{ $dpAmount !== null ? '₱'.number_format((float)$dpAmount, 2) : '—' }}
                             </td>
                             <td>
@@ -467,11 +530,11 @@
                                     if ($notes === '' && $p->visit_id) $notes = 'Visit #' . $p->visit_id;
                                 @endphp
                                 <tr>
-                                    <td style="font-weight:900;">Payment #{{ $uiNo }}</td>
+                                    <td style="font-weight:950;">Payment #{{ $uiNo }}</td>
                                     <td class="muted">{{ $pDate ? $pDate->format('M d, Y') : '—' }}</td>
                                     <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
                                     <td class="muted">{{ $p->method ?? '—' }}</td>
-                                    <td class="text-end" style="font-weight:900;">
+                                    <td class="text-end" style="font-weight:950;">
                                         {{ $p->amount !== null ? '₱'.number_format((float)$p->amount, 2) : '—' }}
                                     </td>
                                     <td>
@@ -498,7 +561,7 @@
                             @endforeach
                         @endif
 
-                    {{-- ✅ FIXED TERM: your old Month 1..N table --}}
+                    {{-- ✅ FIXED TERM --}}
                     @else
                         @php
                             $uiMonths = max(0, $months);
@@ -527,11 +590,11 @@
                                 @endphp
 
                                 <tr>
-                                    <td style="font-weight:900;">{{ $i }}</td>
+                                    <td style="font-weight:950;">{{ $i }}</td>
                                     <td class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
                                     <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
                                     <td class="muted">{{ $pay?->method ?? '—' }}</td>
-                                    <td class="text-end" style="font-weight:900;">
+                                    <td class="text-end" style="font-weight:950;">
                                         {{ $amount !== null ? '₱'.number_format((float)$amount, 2) : '—' }}
                                     </td>
                                     <td>

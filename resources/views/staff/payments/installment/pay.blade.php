@@ -3,11 +3,28 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Installment Pay (Dark mode compatible)
+       Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                         --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+
+        --soft: rgba(148,163,184,.14);
+        --radius: 16px;
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
     }
 
+    .form-max{ max-width: 1100px; min-width: 0; }
+
+    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -15,38 +32,44 @@
         gap: 14px;
         margin-bottom: 16px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .page-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
+    /* Buttons */
     .btn-ghostx{
         display:inline-flex;
         align-items:center;
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 950;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .75);
-        background: rgba(255,255,255,.85);
+        border: 1px solid var(--kt-border);
+        color: var(--text) !important;
+        background: var(--kt-surface-2);
         transition: .15s ease;
         white-space: nowrap;
+        user-select: none;
     }
     .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(2,6,23,.35);
     }
 
     .btn-primaryx{
@@ -55,10 +78,10 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         border: none;
-        color: #fff;
+        color: #fff !important;
         background: linear-gradient(135deg, #16a34a, #22c55e);
         box-shadow: 0 10px 18px rgba(34,197,94,.18);
         transition: .15s ease;
@@ -67,103 +90,133 @@
     .btn-primaryx:hover{
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(34,197,94,.24);
-        color:#fff;
     }
 
+    /* Card */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
+        min-width:0;
     }
     .card-head{
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--kt-border);
         display:flex;
         align-items:center;
         justify-content:space-between;
         flex-wrap: wrap;
         gap: 10px;
+        min-width:0;
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 800;
+        min-width:0;
     }
     .card-bodyx{ padding: 18px; }
 
+    /* Summary tiles */
     .summary-grid{
         display:grid;
         grid-template-columns: 1fr;
         gap: 12px;
         margin-bottom: 14px;
+        min-width:0;
     }
     @media (min-width: 768px){
         .summary-grid{ grid-template-columns: repeat(2, 1fr); }
     }
 
     .tile{
-        border: 1px solid rgba(15,23,42,.10);
+        border: 1px solid var(--kt-border);
         border-radius: 14px;
-        background: rgba(248,250,252,.9);
+        background: var(--kt-surface-2);
         padding: 12px 12px;
+        min-width:0;
     }
     .tile .k{
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: .35px;
         text-transform: uppercase;
-        color: rgba(15,23,42,.58);
+        color: rgba(15,23,42,.55);
         margin-bottom: 6px;
         display:flex;
         align-items:center;
         gap: 8px;
     }
+    html[data-theme="dark"] .tile .k{ color: rgba(226,232,240,.62); }
+
     .tile .v{
         font-size: 14px;
-        font-weight: 900;
-        color: #0f172a;
+        font-weight: 950;
+        color: var(--text);
         word-break: break-word;
     }
     .balance{
         color: #dc2626;
         font-weight: 1000;
     }
+    html[data-theme="dark"] .balance{
+        color: rgba(248,113,113,.95);
+    }
 
+    /* Inputs */
     .form-labelx{
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .75);
+        color: rgba(15, 23, 42, .82);
         margin-bottom: 6px;
     }
-    .inputx, .selectx{
+    html[data-theme="dark"] .form-labelx{
+        color: rgba(226,232,240,.90);
+    }
+
+    .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
+        color: var(--text);
+        background: var(--kt-surface-2);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
+    html[data-theme="dark"] .inputx,
+    html[data-theme="dark"] .selectx,
+    html[data-theme="dark"] .textareax{
+        box-shadow: none;
+    }
+
     .readonlyx{
-        background: rgba(248,250,252,.9) !important;
-        color: rgba(15, 23, 42, .75) !important;
+        background: rgba(148,163,184,.10) !important;
+        color: var(--text) !important;
     }
-    .inputx:focus, .selectx:focus{
+    html[data-theme="dark"] .readonlyx{
+        background: rgba(2,6,23,.35) !important;
+    }
+
+    .inputx:focus, .selectx:focus, .textareax:focus{
         border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        box-shadow: 0 0 0 4px rgba(13,110,253,.14);
+        background: var(--kt-surface-2);
     }
+
     .helper{
         margin-top: 6px;
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 700;
     }
 
+    /* Badges */
     .badge-soft{
         display:inline-flex;
         align-items:center;
@@ -171,14 +224,19 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         border: 1px solid rgba(59,130,246,.22);
         background: rgba(59,130,246,.10);
-        color: rgba(15,23,42,.85);
+        color: var(--text);
         white-space: nowrap;
     }
+    html[data-theme="dark"] .badge-soft{
+        background: rgba(59,130,246,.14);
+        border-color: rgba(59,130,246,.25);
+        color: rgba(226,232,240,.92);
+    }
 
-    /* ✅ Error box */
+    /* Error box */
     .error-box{
         background: rgba(239, 68, 68, .10);
         border: 1px solid rgba(239, 68, 68, .22);
@@ -187,17 +245,21 @@
         padding: 14px 16px;
         margin-bottom: 14px;
     }
+    html[data-theme="dark"] .error-box{
+        background: rgba(239, 68, 68, .12);
+        color: rgba(254, 202, 202, .95);
+        border-color: rgba(239, 68, 68, .25);
+    }
     .error-box .title{
-        font-weight: 900;
+        font-weight: 950;
         margin-bottom: 6px;
     }
     .error-box ul{
         margin: 0;
         padding-left: 18px;
         font-size: 13px;
+        font-weight: 700;
     }
-
-    .form-max{ max-width: 1100px; }
 </style>
 
 @php
@@ -264,7 +326,6 @@
     />
 </div>
 
-{{-- ✅ show server validation errors --}}
 @if ($errors->any())
     <div class="error-box form-max">
         <div class="title"><i class="fa fa-triangle-exclamation"></i> Please fix the following:</div>
@@ -287,7 +348,9 @@
                 <span class="badge-soft"><i class="fa fa-calendar"></i> Term: {{ (int)($plan->months ?? 0) }} months</span>
             @endif
         </div>
-        <div class="hint">Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.</div>
+        <div class="hint">
+            Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.
+        </div>
     </div>
 
     <div class="card-bodyx">
@@ -301,7 +364,7 @@
             <div class="tile">
                 <div class="k"><i class="fa fa-tooth"></i> Service / Treatment</div>
                 <div class="v">{{ $plan->service?->name ?? '—' }}</div>
-                <div class="helper">Use the <strong>Notes</strong> field below for braces details (upper/lower wire, recementation, adjustments, etc.).</div>
+                <div class="helper">Use <strong>Notes</strong> for braces details (upper/lower wire, recementation, adjustments, etc.).</div>
             </div>
 
             <div class="tile">
@@ -398,7 +461,8 @@
 
                 <div class="col-12">
                     <label class="form-labelx">Treatment Notes / Visit Notes</label>
-                    <textarea name="notes" rows="3" class="inputx" placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ old('notes') }}</textarea>
+                    <textarea name="notes" rows="3" class="textareax"
+                        placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ old('notes') }}</textarea>
                     <div class="helper">Shown in Visits and linked to this installment payment.</div>
                 </div>
 

@@ -3,18 +3,34 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Payments Index (Dark mode compatible)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                           --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
 
-        --text: #0f172a;
-        --muted: rgba(15, 23, 42, .58);
-        --muted2: rgba(15, 23, 42, .45);
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+        --muted2: rgba(148,163,184,.70);
 
-        --soft: rgba(15, 23, 42, .04);
-        --soft2: rgba(15, 23, 42, .06);
+        --soft: rgba(148,163,184,.14);
+        --soft2: rgba(148,163,184,.18);
+
         --brand: #0d6efd;
+        --brand2: #1e90ff;
+
         --radius: 16px;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --muted2: rgba(148,163,184,.66);
+        --soft: rgba(148,163,184,.16);
+        --soft2: rgba(148,163,184,.20);
     }
 
     /* Header */
@@ -28,7 +44,7 @@
     }
     .page-title{
         font-size: 28px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.35px;
         margin: 0;
         color: var(--text);
@@ -45,12 +61,14 @@
         align-items:center;
         gap: 10px;
         flex-wrap: wrap;
+        min-width: 0;
     }
 
     .search-box{
         position: relative;
         width: 360px;
         max-width: 100%;
+        min-width: 0;
     }
     .search-box i{
         position: absolute;
@@ -65,48 +83,48 @@
         width: 100%;
         padding: 11px 12px 11px 38px;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         outline: none;
         transition: .15s ease;
         font-size: 14px;
         color: var(--text);
+        min-width: 0;
     }
     .search-box input:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
+        background: var(--kt-surface);
     }
 
     .sort-box{
         display:flex;
         align-items:center;
         gap: 8px;
+        min-width: 0;
     }
     .sort-box .sort-label{
         font-size: 12px;
-        font-weight: 900;
-        color: rgba(15, 23, 42, .60);
+        font-weight: 950;
+        color: var(--muted);
         white-space: nowrap;
     }
     .sort-select{
         min-width: 230px;
         max-width: 100%;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         padding: 11px 12px;
         font-size: 14px;
         color: var(--text);
         outline: none;
         transition: .15s ease;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
     .sort-select:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
+        background: var(--kt-surface);
     }
 
     .btnx{
@@ -115,7 +133,7 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         text-decoration: none;
         border: 1px solid transparent;
@@ -125,20 +143,26 @@
         user-select: none;
     }
     .btn-ghost{
-        background: rgba(15,23,42,.06);
-        border-color: rgba(15,23,42,.10);
-        color: rgba(15,23,42,.75) !important;
+        background: var(--kt-surface-2);
+        border-color: var(--kt-border);
+        color: var(--text) !important;
     }
-    .btn-ghost:hover{ background: rgba(15,23,42,.08); }
+    .btn-ghost:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghost:hover{
+        background: rgba(2,6,23,.35);
+    }
 
     .add-btn{
         display:inline-flex;
         align-items:center;
         gap: 8px;
-        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        background: linear-gradient(135deg, var(--brand), var(--brand2));
         padding: 11px 14px;
         color: #fff !important;
-        font-weight: 900;
+        font-weight: 950;
         border-radius: 12px;
         font-size: 14px;
         text-decoration: none;
@@ -156,41 +180,52 @@
         display:inline-flex;
         padding: 6px;
         border-radius: 14px;
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
         box-shadow: var(--card-shadow);
         gap: 6px;
         margin: 10px 0 14px 0;
+        max-width: 100%;
     }
     .seg-btn{
         border: none;
         background: transparent;
         padding: 10px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .65);
+        color: var(--muted);
         cursor: pointer;
         transition: .15s ease;
         display:flex;
         align-items:center;
         gap: 8px;
         white-space: nowrap;
+        user-select: none;
+    }
+    .seg-btn:hover{
+        background: rgba(148,163,184,.12);
+        color: var(--text);
+    }
+    html[data-theme="dark"] .seg-btn:hover{
+        background: rgba(2,6,23,.35);
     }
     .seg-btn.active{
-        background: rgba(13,110,253,.10);
-        color: #0d6efd;
-        box-shadow: inset 0 0 0 1px rgba(13,110,253,.22);
+        background: rgba(96,165,250,.14);
+        color: #60a5fa;
+        box-shadow: inset 0 0 0 1px rgba(96,165,250,.25);
     }
 
     /* Cards */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         margin-top: 8px;
+        min-width: 0;
+        backdrop-filter: blur(8px);
     }
     .card-head{
         display:flex;
@@ -198,7 +233,7 @@
         justify-content:space-between;
         gap: 12px;
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         flex-wrap: wrap;
     }
     .card-head .title{
@@ -213,7 +248,7 @@
     .card-head .hint{
         font-size: 12px;
         color: var(--muted);
-        font-weight: 800;
+        font-weight: 900;
     }
 
     /* Table */
@@ -222,6 +257,7 @@
         max-height: 72vh;
         overflow: auto;
         border-radius: 14px;
+        -webkit-overflow-scrolling: touch;
     }
 
     table{
@@ -235,70 +271,80 @@
         font-size: 12px;
         letter-spacing: .3px;
         text-transform: uppercase;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
         padding: 13px 14px;
-        border-bottom: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248, 250, 252, .92);
+        border-bottom: 1px solid var(--soft);
+        background: rgba(148,163,184,.12);
         position: sticky;
         top: 0;
         z-index: 2;
         white-space: nowrap;
+    }
+    html[data-theme="dark"] thead th{
+        background: rgba(2,6,23,.35);
     }
 
     tbody td{
         padding: 14px 14px;
         font-size: 14px;
         color: var(--text);
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         vertical-align: middle;
         overflow: hidden;
         text-overflow: ellipsis;
+        min-width: 0;
     }
 
     tbody tr{ transition: .12s ease; }
-    tbody tr:hover{ background: rgba(13,110,253,.045); }
+    tbody tr:hover{ background: rgba(96,165,250,.08); }
 
-    .muted{ color: rgba(15, 23, 42, .55); font-weight: 700; }
+    .muted{ color: var(--muted); font-weight: 800; }
     .nowrap{ white-space: nowrap; }
     .money{ font-variant-numeric: tabular-nums; }
 
     /* Patient mini avatar */
-    .pwrap{ display:flex; align-items:center; gap: 10px; }
+    .pwrap{ display:flex; align-items:center; gap: 10px; min-width:0; }
     .pavatar{
         width: 34px; height: 34px;
         border-radius: 999px;
         display:inline-flex;
         align-items:center;
         justify-content:center;
-        background: rgba(13,110,253,.10);
-        color: rgba(13,110,253,.95);
+        background: rgba(96,165,250,.14);
+        color: #60a5fa;
         font-weight: 950;
         font-size: 12px;
         flex: 0 0 auto;
-        border: 1px solid rgba(13,110,253,.18);
+        border: 1px solid rgba(96,165,250,.22);
     }
-    .pname{ font-weight: 900; line-height: 1.1; }
-    .psub{ font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 2px; }
+    .pname{ font-weight: 950; line-height: 1.1; }
+    .psub{ font-size: 12px; color: var(--muted); font-weight: 800; margin-top: 2px; }
 
     /* Treatment tags */
-    .tags{ display:flex; flex-wrap: wrap; gap: 6px; }
+    .tags{ display:flex; flex-wrap: wrap; gap: 6px; min-width:0; }
     .tag{
         display:inline-flex;
         align-items:center;
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 800;
-        background: rgba(15, 23, 42, .06);
-        color: rgba(15, 23, 42, .78);
-        border: 1px solid rgba(15, 23, 42, .08);
+        font-weight: 900;
+        background: rgba(148,163,184,.12);
+        color: var(--text);
+        border: 1px solid rgba(148,163,184,.18);
         white-space: nowrap;
         max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    html[data-theme="dark"] .tag{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
     }
     .tag.more{
-        background: rgba(13,110,253,.10);
-        color: rgba(13,110,253,.95);
-        border-color: rgba(13,110,253,.20);
+        background: rgba(96,165,250,.14);
+        color: #60a5fa;
+        border-color: rgba(96,165,250,.22);
     }
 
     /* Status badges */
@@ -309,15 +355,15 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         border: 1px solid transparent;
         white-space: nowrap;
     }
     .badge-dot{ width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-    .st-paid{ background: rgba(34, 197, 94, .12); color:#15803d; border-color: rgba(34,197,94,.25); }
-    .st-pending{ background: rgba(245, 158, 11, .12); color:#b45309; border-color: rgba(245,158,11,.25); }
-    .st-info{ background: rgba(59, 130, 246, .12); color:#1d4ed8; border-color: rgba(59,130,246,.25); }
+    .st-paid{ background: rgba(34, 197, 94, .14); color:#22c55e; border-color: rgba(34,197,94,.25); }
+    .st-pending{ background: rgba(245, 158, 11, .14); color:#f59e0b; border-color: rgba(245,158,11,.25); }
+    .st-info{ background: rgba(96,165,250,.14); color:#60a5fa; border-color: rgba(96,165,250,.25); }
 
     /* Actions */
     .action-pills{
@@ -334,7 +380,7 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         border: 1px solid transparent;
         text-decoration: none;
         transition: .12s ease;
@@ -344,39 +390,40 @@
     .pill i{ font-size: 12px; }
 
     .pill-pay{
-        background: rgba(34, 197, 94, .12);
-        color:#15803d !important;
+        background: rgba(34, 197, 94, .14);
+        color:#22c55e !important;
         border-color: rgba(34,197,94,.22);
     }
-    .pill-pay:hover{ background: rgba(34, 197, 94, .18); }
+    .pill-pay:hover{ background: rgba(34, 197, 94, .20); }
 
     .pill-edit{
-        background: rgba(59, 130, 246, .12);
-        color:#1d4ed8 !important;
-        border-color: rgba(59,130,246,.22);
+        background: rgba(96,165,250,.14);
+        color:#60a5fa !important;
+        border-color: rgba(96,165,250,.22);
     }
-    .pill-edit:hover{ background: rgba(59, 130, 246, .18); }
+    .pill-edit:hover{ background: rgba(96,165,250,.20); }
 
     .pill-view{
-        background: rgba(107, 114, 128, .12);
-        color: rgba(15, 23, 42, .78) !important;
-        border-color: rgba(107,114,128,.22);
+        background: rgba(148,163,184,.14);
+        color: var(--text) !important;
+        border-color: rgba(148,163,184,.22);
     }
-    .pill-view:hover{ background: rgba(107, 114, 128, .18); }
+    .pill-view:hover{ background: rgba(148,163,184,.20); }
 
     .pill-del{
-        background: rgba(239, 68, 68, .12);
-        color:#b91c1c !important;
+        background: rgba(239, 68, 68, .14);
+        color:#ef4444 !important;
         border-color: rgba(239,68,68,.22);
         cursor: pointer;
     }
-    .pill-del:hover{ background: rgba(239, 68, 68, .18); }
+    .pill-del:hover{ background: rgba(239, 68, 68, .20); }
 
-    /* NEW: Progress (Installments) */
+    /* Progress (Installments) */
     .prog{
         display:flex;
         flex-direction:column;
         gap: 6px;
+        min-width: 0;
     }
     .prog-top{
         display:flex;
@@ -389,28 +436,33 @@
     }
     .prog-sub{
         color: var(--muted);
-        font-weight: 900;
+        font-weight: 950;
         font-size: 12px;
         white-space: nowrap;
     }
     .prog-bar{
         height: 8px;
-        background: rgba(15,23,42,.10);
+        background: rgba(148,163,184,.22);
         border-radius: 999px;
         overflow: hidden;
+    }
+    html[data-theme="dark"] .prog-bar{
+        background: rgba(148,163,184,.18);
     }
     .prog-bar > span{
         display:block;
         height: 100%;
         width: 0%;
-        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        background: linear-gradient(135deg, var(--brand), var(--brand2));
         border-radius: 999px;
     }
     .prog-foot{
         font-size: 11px;
-        color: rgba(15,23,42,.55);
-        font-weight: 800;
+        color: var(--muted);
+        font-weight: 900;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* Row click affordance */
@@ -541,7 +593,7 @@
                         <td>
                             <div class="pwrap">
                                 <span class="pavatar">{{ $initials ?: 'P' }}</span>
-                                <div>
+                                <div style="min-width:0;">
                                     <div class="pname">{{ $full ?: '—' }}</div>
                                     <div class="psub">Cash</div>
                                 </div>
@@ -573,7 +625,7 @@
                             @if($labels->count() > 0)
                                 <div class="tags" title="{{ $allLabelsTitle }}">
                                     @foreach($shown as $label)
-                                        <span class="tag">{{ $label }}</span>
+                                        <span class="tag" title="{{ $label }}">{{ $label }}</span>
                                     @endforeach
                                     @if($moreCount > 0)
                                         <span class="tag more">+{{ $moreCount }} more</span>
@@ -591,7 +643,7 @@
                         </td>
 
                         <td class="nowrap">{{ $dateLabel }}</td>
-                        <td class="nowrap money" style="font-weight:900;">₱{{ number_format($payment->amount, 2) }}</td>
+                        <td class="nowrap money" style="font-weight:950;">₱{{ number_format($payment->amount, 2) }}</td>
                         <td class="muted nowrap">{{ $payment->method }}</td>
 
                         <td class="nowrap">
@@ -650,7 +702,7 @@
                     <col style="width: 130px;">
                     <col style="width: 95px;">
                     <col style="width: 140px;">
-                    <col style="width: 220px;"> {{-- NEW: Progress --}}
+                    <col style="width: 220px;">
                     <col style="width: 240px;">
                 </colgroup>
 
@@ -701,7 +753,7 @@
                         <td>
                             <div class="pwrap">
                                 <span class="pavatar">{{ $initials2 ?: 'P' }}</span>
-                                <div>
+                                <div style="min-width:0;">
                                     <div class="pname">{{ $full2 ?: '—' }}</div>
                                     <div class="psub">Installment</div>
                                 </div>
@@ -738,7 +790,7 @@
                             @if($tags->count())
                                 <div class="tags" title="{{ $allTagsTitle }}">
                                     @foreach($shownTags as $t)
-                                        <span class="tag">{{ $t }}</span>
+                                        <span class="tag" title="{{ $t }}">{{ $t }}</span>
                                     @endforeach
                                     @if($moreTags > 0)
                                         <span class="tag more">+{{ $moreTags }} more</span>
@@ -757,7 +809,7 @@
 
                         <td class="nowrap col-start">{{ $startLabel }}</td>
 
-                        <td class="nowrap money" style="font-weight:900;">
+                        <td class="nowrap money" style="font-weight:950;">
                             ₱{{ number_format($plan->total_cost, 2) }}
                         </td>
 
@@ -765,7 +817,7 @@
                             ₱{{ number_format($plan->downpayment, 2) }}
                         </td>
 
-                        <td class="nowrap money" style="font-weight:900;">
+                        <td class="nowrap money" style="font-weight:950;">
                             ₱{{ number_format($plan->balance, 2) }}
                         </td>
 
@@ -777,7 +829,6 @@
                             </span>
                         </td>
 
-                        {{-- NEW: Progress --}}
                         <td class="col-progress">
                             <div class="prog">
                                 <div class="prog-top">
@@ -867,7 +918,6 @@
             opt.hidden = !!only && only !== tab;
         });
 
-        // if currently selected option is hidden, fallback
         const selected = sortSelect.selectedOptions[0];
         if (selected && selected.hidden) sortSelect.value = 'date_desc';
     }
@@ -895,9 +945,7 @@
     tabCash.addEventListener('click', () => showCash(true));
     tabInstallment.addEventListener('click', () => showInstallment(true));
 
-    // Auto-open tab:
-    // 1) URL param (?tab=installment) wins
-    // 2) otherwise remember last tab using localStorage
+    // Auto-open tab: URL (?tab=installment) wins, else localStorage
     (function () {
         const params = new URLSearchParams(window.location.search);
         const tab = (params.get('tab') || '').toLowerCase();
@@ -971,7 +1019,7 @@
         }
     }
 
-    // Row click → view installment plan (but not when clicking buttons/links)
+    // Row click → view installment plan (ignore clicks on controls)
     function enableRowClick(rows){
         rows.forEach(row => {
             const href = row.dataset.href;
@@ -1003,7 +1051,7 @@
         searchInput.focus();
     });
 
-    // Esc clears search (nice UX)
+    // Esc clears search
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             searchInput.value = '';

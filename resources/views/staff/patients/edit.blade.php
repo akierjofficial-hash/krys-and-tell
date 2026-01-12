@@ -3,9 +3,30 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Patients Edit (Dark mode compatible)
+       - removes hardcoded #fff / #0f172a
+       - uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2, --kt-border,
+                           --kt-input-bg, --kt-input-border, --kt-shadow
+       ========================================================== */
+
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --soft: rgba(148, 163, 184, .14);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+        --muted2: rgba(148, 163, 184, .72);
+
+        --radius: 16px;
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+
+    html[data-theme="dark"]{
+        --soft: rgba(148, 163, 184, .16);
+        --muted2: rgba(248, 250, 252, .60);
     }
 
     .page-head{
@@ -18,73 +39,96 @@
     }
     .page-title{
         font-size: 26px;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
         margin-bottom: 14px;
+        color: var(--text);
     }
 
     .card-head{
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         display:flex;
         align-items:center;
         justify-content:space-between;
         flex-wrap: wrap;
         gap: 10px;
+        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
     }
+    html[data-theme="dark"] .card-head{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
+    }
+
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
     .card-bodyx{ padding: 18px; }
 
     .form-labelx{
-        font-weight: 700;
+        font-weight: 800;
         font-size: 13px;
-        color: rgba(15, 23, 42, .75);
+        color: rgba(148, 163, 184, .95);
         margin-bottom: 6px;
+    }
+    html[data-theme="dark"] .form-labelx{
+        color: rgba(248, 250, 252, .78);
     }
 
     .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-input-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
+        color: var(--text);
+        background: var(--kt-input-bg);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
 
+    .inputx::placeholder, .textareax::placeholder{
+        color: rgba(148, 163, 184, .85);
+    }
+    html[data-theme="dark"] .inputx::placeholder,
+    html[data-theme="dark"] .textareax::placeholder{
+        color: rgba(248, 250, 252, .52);
+    }
+
     .inputx:focus, .selectx:focus, .textareax:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
+    }
+
+    /* make select options readable in dark mode */
+    html[data-theme="dark"] .selectx,
+    html[data-theme="dark"] .selectx option{
+        background-color: rgba(17,24,39,.98) !important;
+        color: var(--kt-text) !important;
     }
 
     .helper{
         margin-top: 6px;
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
     .btn-primaryx{
@@ -93,7 +137,7 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 700;
+        font-weight: 900;
         font-size: 14px;
         border: none;
         color: #fff;
@@ -114,36 +158,41 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 700;
+        font-weight: 900;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .75);
-        background: rgba(255,255,255,.85);
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        background: var(--kt-surface-2);
         transition: .15s ease;
     }
     .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
+        background: rgba(148,163,184,.14);
+        color: var(--text);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(17,24,39,.75);
     }
 
     .error-box{
-        background: rgba(239, 68, 68, .10);
-        border: 1px solid rgba(239, 68, 68, .22);
-        color: #b91c1c;
+        background: rgba(239, 68, 68, .12);
+        border: 1px solid rgba(239, 68, 68, .28);
+        color: #fecaca;
         border-radius: 14px;
         padding: 14px 16px;
         margin-bottom: 14px;
     }
-    .error-box .title{ font-weight: 800; margin-bottom: 6px; }
+    html:not([data-theme="dark"]) .error-box{ color: #b91c1c; }
+
+    .error-box .title{ font-weight: 950; margin-bottom: 6px; }
     .error-box ul{ margin: 0; padding-left: 18px; font-size: 13px; }
 
     .form-max{ max-width: 1100px; }
 
     .section-title{
         font-size: 14px;
-        font-weight: 900;
-        color: #0f172a;
+        font-weight: 950;
+        color: var(--text);
         display:flex;
         align-items:center;
         gap: 10px;
@@ -156,15 +205,16 @@
         margin-top: 6px;
     }
     .radio-pill{
-        border: 1px solid rgba(15,23,42,.12);
+        border: 1px solid var(--kt-input-border);
         border-radius: 999px;
         padding: 8px 10px;
         display:inline-flex;
         align-items:center;
         gap: 8px;
-        background: rgba(255,255,255,.95);
+        background: var(--kt-input-bg);
         cursor:pointer;
         user-select:none;
+        color: var(--text);
     }
 
     .checks-grid{
@@ -180,13 +230,14 @@
     }
 
     .check-item{
-        border: 1px solid rgba(15,23,42,.10);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-input-border);
+        background: var(--kt-surface-2);
         border-radius: 12px;
         padding: 10px 12px;
         display:flex;
         align-items:flex-start;
         gap: 10px;
+        color: var(--text);
     }
     .check-item input{
         margin-top: 3px;
@@ -194,16 +245,17 @@
     }
     .check-item .txt{
         font-size: 13px;
-        color: rgba(15,23,42,.86);
-        font-weight: 700;
+        color: var(--text);
+        font-weight: 800;
         line-height: 1.25;
     }
 
+    /* Signature */
     .sig-wrap{
-        border:1px solid rgba(15,23,42,.12);
+        border:1px solid var(--kt-input-border);
         border-radius:12px;
         overflow:hidden;
-        background:#fff;
+        background:#fff; /* keep pad clear even in dark mode */
     }
     canvas.sig{
         width:100%;
@@ -215,12 +267,16 @@
     .sig-preview{
         max-width: 520px;
         width: 100%;
-        border: 1px solid rgba(15,23,42,.10);
+        border: 1px solid var(--kt-border);
         border-radius: 12px;
         background: #fff;
         padding: 8px;
         margin-top: 10px;
     }
+
+    /* consent hr */
+    .soft-hr{ border-color: var(--soft) !important; }
+
 </style>
 
 @php
@@ -440,12 +496,11 @@
 
         <div class="card-bodyx">
             <div class="row g-3">
-
                 <div class="col-12">
                     <label class="radio-pill" style="width:100%; justify-content:space-between;">
                         <span style="display:flex; align-items:center; gap:10px;">
                             <input type="checkbox" name="is_minor" id="is_minor" value="1" {{ $isMinorChecked ? 'checked' : '' }}>
-                            <span style="font-weight:900;">Patient is a Minor</span>
+                            <span style="font-weight:950;">Patient is a Minor</span>
                         </span>
                     </label>
                 </div>
@@ -469,7 +524,6 @@
                     <label class="form-labelx">Reason for dental consultation?</label>
                     <input type="text" name="consultation_reason" class="inputx" value="{{ old('consultation_reason', $info?->consultation_reason) }}">
                 </div>
-
             </div>
         </div>
     </div>
@@ -687,84 +741,80 @@
     </div>
 
     {{-- CARD 7: INFORMED CONSENT --}}
-    {{-- CARD 7: INFORMED CONSENT --}}
-<div class="card-shell">
-    <div class="card-head">
-        <div class="section-title"><i class="fa fa-file-signature"></i> Informed Consent</div>
-        <div class="hint">Yes / No per section + optionally re-sign</div>
-    </div>
-
-    <div class="card-bodyx">
-        <div class="helper mb-2">
-            Checked = Yes, unchecked = No. (Old saved “initials” will be treated as Yes.)
+    <div class="card-shell">
+        <div class="card-head">
+            <div class="section-title"><i class="fa fa-file-signature"></i> Informed Consent</div>
+            <div class="hint">Yes / No per section + optionally re-sign</div>
         </div>
 
-        <div class="checks-grid" style="grid-template-columns: 1fr;">
-            @foreach($consentSections as $key => $label)
-                @php
-                    // If old data is initials like "AK", consider that as YES (checked)
-                    $raw = $oldInitials[$key] ?? null;
-                    $rawLower = strtolower((string)$raw);
-                    $checked = !empty($raw) && !in_array($rawLower, ['no','0','false'], true);
-                @endphp
+        <div class="card-bodyx">
+            <div class="helper mb-2">
+                Checked = Yes, unchecked = No. (Old saved “initials” will be treated as Yes.)
+            </div>
 
-                <label class="check-item" for="consent_{{ $key }}" style="align-items:center;">
-                    <input type="hidden" name="consent_initials[{{ $key }}]" value="No">
+            <div class="checks-grid" style="grid-template-columns: 1fr;">
+                @foreach($consentSections as $key => $label)
+                    @php
+                        $raw = $oldInitials[$key] ?? null;
+                        $rawLower = strtolower((string)$raw);
+                        $checked = !empty($raw) && !in_array($rawLower, ['no','0','false'], true);
+                    @endphp
 
-                    <input
-                        type="checkbox"
-                        id="consent_{{ $key }}"
-                        name="consent_initials[{{ $key }}]"
-                        value="Yes"
-                        {{ $checked ? 'checked' : '' }}
-                    >
+                    <label class="check-item" for="consent_{{ $key }}" style="align-items:center;">
+                        <input type="hidden" name="consent_initials[{{ $key }}]" value="No">
+                        <input
+                            type="checkbox"
+                            id="consent_{{ $key }}"
+                            name="consent_initials[{{ $key }}]"
+                            value="Yes"
+                            {{ $checked ? 'checked' : '' }}
+                        >
 
-                    <div class="txt">
-                        {{ $label }}
-                        <div class="helper" style="margin-top:4px;">Yes = checked • No = unchecked</div>
+                        <div class="txt">
+                            {{ $label }}
+                            <div class="helper" style="margin-top:4px;">Yes = checked • No = unchecked</div>
+                        </div>
+                    </label>
+                @endforeach
+            </div>
+
+            <div class="mt-3">
+                <hr class="soft-hr">
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">New Patient/Guardian Signature (optional)</label>
+                    <div class="sig-wrap">
+                        <canvas id="sig_consent_patient" class="sig"></canvas>
                     </div>
-                </label>
-            @endforeach
-        </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_patient">Clear</button>
+                    </div>
 
-        <div class="mt-3">
-            <hr style="border-color:rgba(15,23,42,.10);">
-        </div>
-
-        <div class="row g-3">
-            <div class="col-12 col-md-6">
-                <label class="form-labelx">New Patient/Guardian Signature (optional)</label>
-                <div class="sig-wrap">
-                    <canvas id="sig_consent_patient" class="sig"></canvas>
-                </div>
-                <div class="d-flex gap-2 mt-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_patient">Clear</button>
+                    @if($consent && $consent->patient_signature_path)
+                        <div class="helper">Current saved signature:</div>
+                        <img class="sig-preview" src="{{ asset('storage/'.$consent->patient_signature_path) }}" alt="Current Consent Patient Signature">
+                    @endif
                 </div>
 
-                @if($consent && $consent->patient_signature_path)
-                    <div class="helper">Current saved signature:</div>
-                    <img class="sig-preview" src="{{ asset('storage/'.$consent->patient_signature_path) }}" alt="Current Consent Patient Signature">
-                @endif
-            </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">New Dentist Signature (optional)</label>
+                    <div class="sig-wrap">
+                        <canvas id="sig_consent_dentist" class="sig"></canvas>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_dentist">Clear</button>
+                    </div>
 
-            <div class="col-12 col-md-6">
-                <label class="form-labelx">New Dentist Signature (optional)</label>
-                <div class="sig-wrap">
-                    <canvas id="sig_consent_dentist" class="sig"></canvas>
+                    @if($consent && $consent->dentist_signature_path)
+                        <div class="helper">Current saved signature:</div>
+                        <img class="sig-preview" src="{{ asset('storage/'.$consent->dentist_signature_path) }}" alt="Current Consent Dentist Signature">
+                    @endif
                 </div>
-                <div class="d-flex gap-2 mt-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_sig_consent_dentist">Clear</button>
-                </div>
-
-                @if($consent && $consent->dentist_signature_path)
-                    <div class="helper">Current saved signature:</div>
-                    <img class="sig-preview" src="{{ asset('storage/'.$consent->dentist_signature_path) }}" alt="Current Consent Dentist Signature">
-                @endif
             </div>
         </div>
     </div>
-</div>
-
 
     {{-- SUBMIT --}}
     <div class="card-shell">

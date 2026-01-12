@@ -3,18 +3,37 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Visits Create (Dark mode compatible)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                           --kt-border, --kt-input-bg, --kt-input-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 12px 30px rgba(15, 23, 42, .08);
-        --card-border: 1px solid rgba(15, 23, 42, .10);
-        --soft: rgba(15, 23, 42, .06);
-        --text: #0f172a;
-        --muted: rgba(15, 23, 42, .62);
-        --muted2: rgba(15, 23, 42, .45);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --soft: rgba(148,163,184,.14);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+        --muted2: rgba(148,163,184,.8);
+
         --brand1: #0d6efd;
         --brand2: #1e90ff;
-        --danger: #ef4444;
-        --ok: #16a34a;
+
+        --danger: #f87171;
+        --dangerBg: rgba(248,113,113,.16);
+        --dangerBd: rgba(248,113,113,.25);
+
+        --ok: #34d399;
+
         --radius: 16px;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
+        --muted2: rgba(148,163,184,.72);
     }
 
     /* Layout */
@@ -32,7 +51,7 @@
     }
     .page-title{
         font-size: 28px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -.4px;
         margin: 0;
         color: var(--text);
@@ -59,11 +78,18 @@
         user-select: none;
     }
     .btn-ghostx{
-        border: 1px solid rgba(15, 23, 42, .14);
-        color: rgba(15, 23, 42, .78);
-        background: rgba(255,255,255,.86);
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        background: var(--kt-surface-2);
     }
-    .btn-ghostx:hover{ transform: translateY(-1px); background: #fff; }
+    .btn-ghostx:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(17,24,39,.75);
+    }
+
     .btn-primaryx{
         border: none;
         color: #fff;
@@ -71,25 +97,27 @@
         box-shadow: 0 12px 18px rgba(13, 110, 253, .18);
     }
     .btn-primaryx:hover{ transform: translateY(-1px); filter: brightness(1.02); }
+
     .btn-dangerx{
-        border: 1px solid rgba(239, 68, 68, .22);
-        color: #b91c1c;
-        background: rgba(239, 68, 68, .10);
+        border: 1px solid var(--dangerBd);
+        color: var(--danger);
+        background: var(--dangerBg);
         padding: 8px 10px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
     }
     .btn-dangerx:hover{ transform: translateY(-1px); }
 
     /* Card */
     .card-shell{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
         backdrop-filter: blur(8px);
+        color: var(--text);
     }
     .card-head{
         padding: 16px 18px;
@@ -99,7 +127,12 @@
         align-items:center;
         flex-wrap: wrap;
         gap: 10px;
+        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
     }
+    html[data-theme="dark"] .card-head{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
+    }
+
     .hint{
         font-size: 13px;
         color: var(--muted);
@@ -109,21 +142,26 @@
     }
     .pill{
         font-size: 12px;
-        font-weight: 900;
-        color: rgba(15, 23, 42, .70);
-        background: rgba(15, 23, 42, .06);
-        border: 1px solid rgba(15, 23, 42, .08);
+        font-weight: 950;
+        color: var(--text);
+        background: rgba(148,163,184,.12);
+        border: 1px solid rgba(148,163,184,.18);
         padding: 6px 10px;
         border-radius: 999px;
+    }
+    html[data-theme="dark"] .pill{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
     }
 
     .card-bodyx{ padding: 18px; }
 
     /* Inputs */
     .form-labelx{
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .78);
+        color: var(--text);
+        opacity: .9;
         margin-bottom: 6px;
     }
     .helptext{
@@ -134,32 +172,38 @@
 
     .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-input-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
         color: var(--text);
-        background: rgba(255,255,255,.96);
+        background: var(--kt-input-bg);
         outline: none;
-        transition: box-shadow .15s ease, border-color .15s ease;
+        transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
     }
     .inputx:focus, .selectx:focus, .textareax:focus{
-        border-color: rgba(13,110,253,.40);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
+        background: var(--kt-surface);
     }
     .invalidx{
-        border-color: rgba(239, 68, 68, .55) !important;
-        box-shadow: 0 0 0 4px rgba(239, 68, 68, .12) !important;
+        border-color: rgba(248,113,113,.55) !important;
+        box-shadow: 0 0 0 4px rgba(248,113,113,.16) !important;
     }
 
     /* Error box */
     .error-box{
-        background: rgba(239, 68, 68, .10);
-        border: 1px solid rgba(239, 68, 68, .22);
-        color: #b91c1c;
+        background: rgba(248,113,113,.14);
+        border: 1px solid rgba(248,113,113,.25);
+        color: #fecaca;
         border-radius: 14px;
         padding: 14px 16px;
         margin: 0 0 14px;
+    }
+    html[data-theme="light"] .error-box{
+        color: #b91c1c;
+        background: rgba(239,68,68,.10);
+        border-color: rgba(239,68,68,.22);
     }
 
     /* Section header */
@@ -172,7 +216,7 @@
     }
     .section-title h5{
         margin: 0;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -.2px;
     }
     .divider{
@@ -183,10 +227,13 @@
 
     /* Procedures box */
     .proc-shell{
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(15, 23, 42, .03);
+        border: 1px solid var(--kt-border);
+        background: rgba(148,163,184,.08);
         border-radius: 16px;
         padding: 14px;
+    }
+    html[data-theme="dark"] .proc-shell{
+        background: rgba(2,6,23,.28);
     }
     .proc-grid{
         display:grid;
@@ -200,10 +247,10 @@
 
     /* Table */
     .table-wrap{
-        border: 1px solid rgba(15, 23, 42, .10);
+        border: 1px solid var(--kt-border);
         border-radius: 14px;
         overflow: hidden;
-        background: #fff;
+        background: var(--kt-surface);
         margin-top: 12px;
     }
     table.proc-table{
@@ -212,24 +259,28 @@
         margin: 0;
     }
     .proc-table thead th{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .70);
+        background: rgba(148,163,184,.12);
+        color: var(--muted);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         text-transform: uppercase;
         letter-spacing: .06em;
         padding: 12px 12px;
         border-bottom: 1px solid var(--soft);
+        white-space: nowrap;
+    }
+    html[data-theme="dark"] .proc-table thead th{
+        background: rgba(2,6,23,.35);
     }
     .proc-table tbody td{
         padding: 12px 12px;
         border-bottom: 1px solid var(--soft);
         vertical-align: middle;
-        color: rgba(15, 23, 42, .86);
+        color: var(--text);
         font-size: 14px;
     }
     .proc-table tbody tr:hover td{
-        background: rgba(13, 110, 253, .03);
+        background: rgba(96,165,250,.08);
     }
     .cell-chip{
         display:inline-flex;
@@ -237,13 +288,17 @@
         gap: 6px;
         padding: 7px 10px;
         border-radius: 999px;
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(15, 23, 42, .04);
-        font-weight: 800;
+        border: 1px solid rgba(148,163,184,.18);
+        background: rgba(148,163,184,.10);
+        font-weight: 900;
         font-size: 13px;
-        color: rgba(15, 23, 42, .80);
+        color: var(--text);
     }
-    .muted-dash{ color: rgba(15, 23, 42, .40); font-weight: 800; }
+    html[data-theme="dark"] .cell-chip{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
+    }
+    .muted-dash{ color: rgba(148,163,184,.65); font-weight: 900; }
 
     /* Sticky action bar */
     .sticky-actions{
@@ -254,9 +309,9 @@
         padding: 12px 0 0;
     }
     .sticky-inner{
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(255,255,255,.92);
-        backdrop-filter: blur(8px);
+        border: 1px solid var(--kt-border);
+        background: rgba(255,255,255,.70);
+        backdrop-filter: blur(10px);
         border-radius: 16px;
         box-shadow: 0 16px 35px rgba(15, 23, 42, .10);
         padding: 12px;
@@ -265,7 +320,13 @@
         justify-content:space-between;
         gap: 10px;
         flex-wrap: wrap;
+        color: var(--text);
     }
+    html[data-theme="dark"] .sticky-inner{
+        background: rgba(17,24,39,.72);
+        box-shadow: 0 16px 35px rgba(0,0,0,.35);
+    }
+
     .mini-note{
         font-size: 13px;
         color: var(--muted);
@@ -275,30 +336,34 @@
     }
     .req-dot{
         width: 8px; height: 8px; border-radius: 999px;
-        background: rgba(239,68,68,.85);
-        box-shadow: 0 0 0 4px rgba(239,68,68,.12);
+        background: rgba(248,113,113,.95);
+        box-shadow: 0 0 0 4px rgba(248,113,113,.16);
     }
 
     /* =========================
        ODONTOGRAM (IMAGE + MULTI SELECT)
        ========================= */
     .odonto-card{
-        background: rgba(255,255,255,.92);
-        border: 1px solid rgba(15, 23, 42, .10);
+        background: var(--kt-surface);
+        border: 1px solid var(--kt-border);
         border-radius: 16px;
-        box-shadow: 0 10px 25px rgba(15,23,42,.06);
+        box-shadow: var(--kt-shadow);
         overflow: hidden;
     }
     .odonto-top{
         padding: 14px 16px;
-        border-bottom: 1px solid rgba(15,23,42,.06);
+        border-bottom: 1px solid var(--soft);
         display:flex;
         align-items:flex-start;
         justify-content:space-between;
         gap: 12px;
         flex-wrap: wrap;
-        background: linear-gradient(180deg, rgba(248,250,252,.9), rgba(255,255,255,.9));
+        background: linear-gradient(180deg, rgba(148,163,184,.10), transparent);
     }
+    html[data-theme="dark"] .odonto-top{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
+    }
+
     .odonto-title{
         display:flex;
         gap: 12px;
@@ -310,19 +375,19 @@
         display:grid;
         place-items:center;
         border-radius: 12px;
-        background: rgba(13,110,253,.10);
-        box-shadow: inset 0 0 0 1px rgba(13,110,253,.16);
+        background: rgba(96,165,250,.14);
+        box-shadow: inset 0 0 0 1px rgba(96,165,250,.20);
     }
     .odonto-title .ttl{
-        font-weight: 900;
-        color:#0f172a;
+        font-weight: 950;
+        color: var(--text);
         font-size: 14px;
     }
-    .mutedx{ color: rgba(15,23,42,.55); font-weight: 800; }
+    .mutedx{ color: var(--muted); font-weight: 900; }
     .odonto-title .sub{
         margin-top: 2px;
         font-size: 12px;
-        color: rgba(15,23,42,.55);
+        color: var(--muted);
     }
     .odonto-legend{
         display:flex;
@@ -337,44 +402,57 @@
         gap: 6px;
         padding: 6px 10px;
         border-radius: 999px;
-        border: 1px solid rgba(15,23,42,.10);
-        background: rgba(255,255,255,.85);
+        border: 1px solid rgba(148,163,184,.18);
+        background: rgba(148,163,184,.10);
         font-size: 12px;
-        font-weight: 900;
-        color: rgba(15,23,42,.72);
+        font-weight: 950;
+        color: var(--text);
+        white-space: nowrap;
+    }
+    html[data-theme="dark"] .lg{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
     }
     .dot{ width: 8px; height: 8px; border-radius: 999px; background: currentColor; }
-    .lg-has{ color:#0d6efd; }
-    .lg-sel{ color:#7c3aed; }
+    .lg-has{ color:#60a5fa; }
+    .lg-sel{ color:#a78bfa; }
 
     .btn-mini{
         padding: 9px 12px;
         border-radius: 12px;
-        border: 1px solid rgba(15,23,42,.12);
-        background: rgba(255,255,255,.9);
-        font-weight: 900;
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15,23,42,.75);
+        color: var(--text);
         cursor:pointer;
         transition: .15s ease;
         display:inline-flex;
         align-items:center;
         gap: 8px;
+        white-space: nowrap;
     }
     .btn-mini:hover{
-        background:#fff;
-        border-color: rgba(13,110,253,.35);
+        background: rgba(148,163,184,.14);
+        border-color: rgba(96,165,250,.35);
         box-shadow: 0 10px 18px rgba(15,23,42,.06);
         transform: translateY(-1px);
+    }
+    html[data-theme="dark"] .btn-mini:hover{
+        background: rgba(17,24,39,.75);
+        box-shadow: 0 10px 18px rgba(0,0,0,.25);
     }
 
     .odonto-body{ padding: 14px 16px 16px 16px; }
     .odonto-bottom{
         padding: 10px 16px;
-        border-top: 1px solid rgba(15,23,42,.06);
-        background: rgba(248,250,252,.7);
+        border-top: 1px solid var(--soft);
+        background: rgba(148,163,184,.06);
     }
-    .mini-hint{ font-size: 12px; color: rgba(15,23,42,.55); }
+    html[data-theme="dark"] .odonto-bottom{
+        background: rgba(2,6,23,.22);
+    }
+    .mini-hint{ font-size: 12px; color: var(--muted); }
 
     /* Teeth grid */
     .teeth-grid{
@@ -412,31 +490,39 @@
         transform: translateY(-1px);
         filter: drop-shadow(0 10px 18px rgba(15,23,42,.10));
     }
+    html[data-theme="dark"] .tooth-btn:hover .tooth-icon{
+        filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+    }
+
     .tooth-num{
         font-size: 13px;
-        font-weight: 900;
-        color: rgba(15,23,42,.78);
+        font-weight: 950;
+        color: var(--muted);
     }
 
     .tooth-svg{ width: 44px; height: 54px; }
     .tooth-fill{
-        fill: #ffffff;
-        stroke: rgba(15,23,42,.18);
+        fill: rgba(255,255,255,.92);
+        stroke: rgba(148,163,184,.40);
         stroke-width: 1.2;
     }
-    .tooth-shine{ fill: rgba(13,110,253,.08); }
+    html[data-theme="dark"] .tooth-fill{
+        fill: rgba(17,24,39,.85);
+        stroke: rgba(148,163,184,.34);
+    }
+    .tooth-shine{ fill: rgba(96,165,250,.10); }
 
     .tooth-btn.has-proc .tooth-fill{
-        fill: rgba(13,110,253,.10);
-        stroke: rgba(13,110,253,.45);
+        fill: rgba(96,165,250,.14);
+        stroke: rgba(96,165,250,.45);
     }
-    .tooth-btn.has-proc .tooth-num{ color:#0d6efd; }
+    .tooth-btn.has-proc .tooth-num{ color:#60a5fa; }
 
     .tooth-btn.selected .tooth-fill{
-        fill: rgba(124,58,237,.12);
-        stroke: rgba(124,58,237,.55);
+        fill: rgba(167,139,250,.16);
+        stroke: rgba(167,139,250,.55);
     }
-    .tooth-btn.selected .tooth-num{ color:#5b21b6; }
+    .tooth-btn.selected .tooth-num{ color:#a78bfa; }
 
     .badge-count{
         position:absolute;
@@ -448,13 +534,17 @@
         background: #0d6efd;
         color:#fff;
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 950;
         display:flex;
         align-items:center;
         justify-content:center;
         padding: 0 6px;
-        border: 2px solid #fff;
+        border: 2px solid rgba(255,255,255,.9);
         box-shadow: 0 10px 18px rgba(13,110,253,.25);
+    }
+    html[data-theme="dark"] .badge-count{
+        border-color: rgba(17,24,39,.9);
+        box-shadow: 0 10px 18px rgba(0,0,0,.35);
     }
 
     .tooth-btn.midgap{ margin-left: 10px; }
@@ -464,26 +554,33 @@
        ========================= */
     .ts-wrapper{ width: 100%; }
     .ts-control{
-        border: 1px solid rgba(15, 23, 42, .12) !important;
+        border: 1px solid var(--kt-input-border) !important;
         padding: 11px 12px !important;
         border-radius: 12px !important;
-        background: rgba(255,255,255,.96) !important;
+        background: var(--kt-input-bg) !important;
         font-size: 14px !important;
         color: var(--text) !important;
         box-shadow: none !important;
     }
     .ts-control:focus-within{
-        border-color: rgba(13,110,253,.40) !important;
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12) !important;
+        border-color: var(--focus) !important;
+        box-shadow: 0 0 0 4px var(--focusRing) !important;
+        background: var(--kt-surface) !important;
     }
     .ts-dropdown{
         border-radius: 12px !important;
         overflow: hidden;
-        border: 1px solid rgba(15, 23, 42, .12) !important;
+        border: 1px solid var(--kt-border) !important;
+        background: var(--kt-surface) !important;
+        color: var(--text) !important;
     }
     .ts-dropdown .option{
         padding: 10px 12px !important;
-        font-weight: 700;
+        font-weight: 800;
+    }
+    .ts-dropdown .option.active{
+        background: rgba(96,165,250,.14) !important;
+        color: var(--text) !important;
     }
 </style>
 
@@ -699,7 +796,7 @@
                                 </thead>
                                 <tbody id="proceduresTable">
                                     <tr id="emptyRow">
-                                        <td colspan="6" style="padding: 18px; text-align:center; color: rgba(15,23,42,.55); font-weight:800;">
+                                        <td colspan="6" style="padding: 18px; text-align:center; color: rgba(148,163,184,.85); font-weight:900;">
                                             No procedures yet. Add your first one above.
                                         </td>
                                     </tr>

@@ -3,16 +3,31 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Visits Show (Dark mode compatible)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                           --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 12px 30px rgba(15, 23, 42, .08);
-        --card-border: 1px solid rgba(15, 23, 42, .10);
-        --soft: rgba(15, 23, 42, .06);
-        --text: #0f172a;
-        --muted: rgba(15, 23, 42, .62);
-        --muted2: rgba(15, 23, 42, .45);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --soft: rgba(148,163,184,.14);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+        --muted2: rgba(148,163,184,.72);
+
         --brand1: #0d6efd;
         --brand2: #1e90ff;
+
         --radius: 16px;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
+        --muted2: rgba(148,163,184,.68);
     }
 
     .max-wrap{ max-width: 1100px; }
@@ -28,7 +43,7 @@
     }
     .page-title{
         font-size: 28px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -.4px;
         margin: 0;
         color: var(--text);
@@ -45,7 +60,7 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         text-decoration: none;
         transition: .15s ease;
@@ -53,11 +68,18 @@
         user-select: none;
     }
     .btn-ghostx{
-        border: 1px solid rgba(15, 23, 42, .14);
-        color: rgba(15, 23, 42, .78);
-        background: rgba(255,255,255,.86);
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        background: var(--kt-surface-2);
     }
-    .btn-ghostx:hover{ transform: translateY(-1px); background: #fff; }
+    .btn-ghostx:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(17,24,39,.75);
+    }
+
     .btn-primaryx{
         border: none;
         color: #fff;
@@ -68,13 +90,14 @@
 
     /* Card */
     .card-shell{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
         backdrop-filter: blur(8px);
+        color: var(--text);
     }
     .card-head{
         padding: 16px 18px;
@@ -84,45 +107,57 @@
         justify-content:space-between;
         flex-wrap: wrap;
         gap: 10px;
+        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
     }
+    html[data-theme="dark"] .card-head{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
+    }
+
     .card-title{
         margin: 0;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         color: var(--text);
         display:flex;
         align-items:center;
         gap: 10px;
+        flex-wrap: wrap;
     }
     .card-hint{
         font-size: 12px;
         color: var(--muted2);
-        font-weight: 800;
+        font-weight: 900;
     }
     .card-bodyx{ padding: 18px; }
 
     /* Pills / Chips */
     .pill{
         font-size: 12px;
-        font-weight: 900;
-        color: rgba(15, 23, 42, .75);
-        background: rgba(15, 23, 42, .06);
-        border: 1px solid rgba(15, 23, 42, .08);
+        font-weight: 950;
+        color: var(--text);
+        background: rgba(148,163,184,.12);
+        border: 1px solid rgba(148,163,184,.18);
         padding: 6px 10px;
         border-radius: 999px;
         display:inline-flex;
         align-items:center;
         gap: 8px;
+        white-space: nowrap;
     }
+    html[data-theme="dark"] .pill{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
+    }
+
     .pill-blue{
-        background: rgba(13,110,253,.10);
-        border-color: rgba(13,110,253,.18);
-        color: rgba(13,110,253,.95);
+        background: rgba(96,165,250,.14);
+        border-color: rgba(96,165,250,.22);
+        color: #60a5fa;
     }
     .pill-green{
-        background: rgba(22,163,74,.10);
-        border-color: rgba(22,163,74,.18);
-        color: rgba(22,163,74,.95);
+        background: rgba(34,197,94,.14);
+        border-color: rgba(34,197,94,.22);
+        color: #22c55e;
     }
 
     /* Summary cards */
@@ -139,8 +174,8 @@
     }
 
     .summary-card{
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(248,250,252,.85);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         border-radius: 16px;
         padding: 14px 14px;
         display:flex;
@@ -154,13 +189,14 @@
         border-radius: 14px;
         display:grid;
         place-items:center;
-        background: rgba(13,110,253,.10);
-        border: 1px solid rgba(13,110,253,.16);
+        background: rgba(96,165,250,.14);
+        border: 1px solid rgba(96,165,250,.20);
         flex: 0 0 auto;
+        color: #60a5fa;
     }
     .summary-ttl{
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         color: var(--muted2);
         text-transform: uppercase;
         letter-spacing: .06em;
@@ -168,29 +204,30 @@
     }
     .summary-val{
         font-size: 15px;
-        font-weight: 900;
+        font-weight: 950;
         color: var(--text);
         margin: 0;
         line-height: 1.2;
+        word-break: break-word;
     }
     .summary-sub{
         font-size: 12px;
         color: var(--muted);
         margin-top: 6px;
-        font-weight: 700;
+        font-weight: 800;
     }
 
     /* Notes */
     .notes-box{
         margin-top: 12px;
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface);
         border-radius: 16px;
         padding: 14px;
     }
     .notes-title{
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         color: var(--muted2);
         text-transform: uppercase;
         letter-spacing: .06em;
@@ -201,12 +238,13 @@
     }
     .notes-text{
         font-size: 14px;
-        font-weight: 700;
-        color: rgba(15,23,42,.82);
+        font-weight: 750;
+        color: var(--text);
+        opacity: .92;
         margin: 0;
         white-space: pre-wrap;
     }
-    .muted-dash{ color: rgba(15,23,42,.45); font-weight: 800; }
+    .muted-dash{ color: var(--muted2); font-weight: 900; }
 
     /* Procedures */
     .section-title{
@@ -219,16 +257,16 @@
     }
     .section-title h5{
         margin: 0;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -.2px;
         color: var(--text);
     }
 
     .table-wrap{
-        border: 1px solid rgba(15, 23, 42, .10);
+        border: 1px solid var(--kt-border);
         border-radius: 14px;
         overflow: hidden;
-        background: #fff;
+        background: var(--kt-surface);
     }
     table.proc-table{
         width: 100%;
@@ -236,26 +274,30 @@
         margin: 0;
     }
     .proc-table thead th{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .70);
+        background: rgba(148,163,184,.12);
+        color: var(--muted);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         text-transform: uppercase;
         letter-spacing: .06em;
         padding: 12px 12px;
         border-bottom: 1px solid var(--soft);
         white-space: nowrap;
     }
+    html[data-theme="dark"] .proc-table thead th{
+        background: rgba(2,6,23,.35);
+    }
+
     .proc-table tbody td{
         padding: 12px 12px;
         border-bottom: 1px solid var(--soft);
         vertical-align: middle;
-        color: rgba(15, 23, 42, .86);
+        color: var(--text);
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 750;
     }
     .proc-table tbody tr:hover td{
-        background: rgba(13, 110, 253, .03);
+        background: rgba(96,165,250,.08);
     }
 
     .chip{
@@ -264,17 +306,22 @@
         gap: 6px;
         padding: 7px 10px;
         border-radius: 999px;
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(15, 23, 42, .04);
-        font-weight: 900;
+        border: 1px solid rgba(148,163,184,.18);
+        background: rgba(148,163,184,.10);
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .82);
+        color: var(--text);
         white-space: nowrap;
     }
+    html[data-theme="dark"] .chip{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
+    }
+
     .chip-blue{
-        border-color: rgba(13,110,253,.18);
-        background: rgba(13,110,253,.08);
-        color: rgba(13,110,253,.95);
+        border-color: rgba(96,165,250,.22);
+        background: rgba(96,165,250,.14);
+        color: #60a5fa;
     }
 
     .teeth-chips{
@@ -289,14 +336,12 @@
     $patientName = trim(($visit->patient->first_name ?? '') . ' ' . ($visit->patient->last_name ?? ''));
     $datePretty = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y') : '—';
 
-    $dentistLabel = $visit->dentist_name
-        ?? ($visit->doctor->name ?? null)
-        ?? '—';
+    $dentistLabel = trim((string)($visit->dentist_name ?? '')) !== ''
+        ? $visit->dentist_name
+        : (optional($visit->doctor)->name ?: '—');
 
     $procCount = $visit->procedures->count();
-    $totalCost = $visit->procedures->sum(function($p){
-        return $p->price ?? 0;
-    });
+    $totalCost = (float) $visit->procedures->sum(fn($p) => (float)($p->price ?? 0));
 
     $teeth = $visit->procedures
         ->pluck('tooth_number')
@@ -333,8 +378,14 @@
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
-            <span class="pill"><i class="fa fa-list-check"></i> {{ $procCount }} procedure{{ $procCount === 1 ? '' : 's' }}</span>
-            <span class="pill pill-green"><i class="fa fa-peso-sign"></i> ₱{{ number_format($totalCost, 2) }}</span>
+            <span class="pill">
+                <i class="fa fa-list-check"></i>
+                {{ $procCount }} procedure{{ $procCount === 1 ? '' : 's' }}
+            </span>
+            <span class="pill pill-green">
+                <i class="fa fa-peso-sign"></i>
+                ₱{{ number_format($totalCost, 2) }}
+            </span>
         </div>
     </div>
 
@@ -390,7 +441,7 @@
             <div class="notes-title">
                 <i class="fa fa-note-sticky"></i> Notes
             </div>
-            <p class="notes-text">{{ $visit->notes ?: '—' }}</p>
+            <p class="notes-text">{{ trim((string)$visit->notes) !== '' ? $visit->notes : '—' }}</p>
         </div>
 
         <div class="section-title">
@@ -423,7 +474,7 @@
                                     </td>
 
                                     <td>
-                                        @if($p->tooth_number)
+                                        @if(trim((string)$p->tooth_number) !== '')
                                             <span class="chip chip-blue"><i class="fa fa-tooth"></i> {{ $p->tooth_number }}</span>
                                         @else
                                             <span class="muted-dash">—</span>
@@ -431,7 +482,7 @@
                                     </td>
 
                                     <td>
-                                        @if($p->surface)
+                                        @if(trim((string)$p->surface) !== '')
                                             <span class="chip">{{ $p->surface }}</span>
                                         @else
                                             <span class="muted-dash">—</span>
@@ -439,17 +490,17 @@
                                     </td>
 
                                     <td>
-                                        @if($p->shade)
+                                        @if(trim((string)$p->shade) !== '')
                                             <span class="chip">{{ $p->shade }}</span>
                                         @else
                                             <span class="muted-dash">—</span>
                                         @endif
                                     </td>
 
-                                    <td>{{ $p->notes ?: '—' }}</td>
+                                    <td>{{ trim((string)$p->notes) !== '' ? $p->notes : '—' }}</td>
 
-                                    <td class="text-end" style="font-weight:900;">
-                                        {{ $p->price !== null ? '₱'.number_format($p->price, 2) : '—' }}
+                                    <td class="text-end" style="font-weight:950;">
+                                        {{ $p->price !== null ? '₱'.number_format((float)$p->price, 2) : '—' }}
                                     </td>
                                 </tr>
                             @endforeach

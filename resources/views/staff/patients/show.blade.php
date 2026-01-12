@@ -3,10 +3,27 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Patients Show (Dark mode compatible)
+       - Removes hardcoded light colors (#fff/#0f172a)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2, --kt-border,
+                           --kt-input-bg, --kt-input-border, --kt-shadow
+       ========================================================== */
+
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
-        --muted: rgba(15, 23, 42, .55);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --muted: var(--kt-muted);
+        --soft: rgba(148, 163, 184, .14);
+
+        --text: var(--kt-text);
+        --radius: 16px;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148, 163, 184, .16);
     }
 
     .wrap{ max-width: 1220px; }
@@ -21,10 +38,10 @@
     }
     .page-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
@@ -38,26 +55,30 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 900;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .80);
-        background: rgba(255,255,255,.88);
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        background: var(--kt-surface-2);
         transition: .15s ease;
         white-space: nowrap;
     }
     .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .92);
+        background: rgba(148, 163, 184, .14);
+        color: var(--text);
     }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(17,24,39,.75);
+    }
+
     .btn-primaryx{
         display:inline-flex;
         align-items:center;
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         border: none;
         color: #fff;
@@ -74,28 +95,34 @@
     }
 
     .cardx{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
+        color: var(--text);
     }
     .cardx + .cardx{ margin-top: 14px; }
 
     .cardx-head{
         padding: 14px 16px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         display:flex;
         align-items:center;
         justify-content:space-between;
         gap: 10px;
         flex-wrap: wrap;
+        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
     }
+    html[data-theme="dark"] .cardx-head{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
+    }
+
     .cardx-title{
         margin: 0;
-        font-weight: 1000;
+        font-weight: 950;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--text);
         display:flex;
         align-items:center;
         gap: 10px;
@@ -112,16 +139,17 @@
         border-radius: 16px;
         display:grid;
         place-items:center;
-        font-weight: 1000;
-        color: #0d6efd;
-        background: rgba(13,110,253,.10);
-        border: 1px solid rgba(13,110,253,.18);
+        font-weight: 950;
+        color: #60a5fa;
+        background: rgba(96,165,250,.12);
+        border: 1px solid rgba(96,165,250,.22);
     }
+
     .pname{
         margin: 0;
-        font-weight: 1000;
+        font-weight: 950;
         letter-spacing: -0.2px;
-        color:#0f172a;
+        color: var(--text);
         font-size: 18px;
         line-height: 1.1;
     }
@@ -143,12 +171,12 @@
     .info{
         padding: 12px;
         border-radius: 14px;
-        border: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248,250,252,.86);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
     }
     .info .label{
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 950;
         color: var(--muted);
         text-transform: uppercase;
         letter-spacing: .35px;
@@ -156,8 +184,8 @@
     }
     .info .value{
         font-size: 14px;
-        font-weight: 800;
-        color:#0f172a;
+        font-weight: 850;
+        color: var(--text);
         word-break: break-word;
     }
 
@@ -168,18 +196,19 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 1000;
+        font-weight: 950;
         border: 1px solid transparent;
         white-space: nowrap;
         line-height: 1;
     }
     .chip-dot{ width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    .chip-male{ background: rgba(59,130,246,.12); color:#1d4ed8; border-color: rgba(59,130,246,.25); }
-    .chip-female{ background: rgba(236,72,153,.12); color:#be185d; border-color: rgba(236,72,153,.25); }
-    .chip-other{ background: rgba(107,114,128,.12); color: rgba(15,23,42,.78); border-color: rgba(107,114,128,.25); }
 
-    .chip-yes{ background: rgba(16,185,129,.14); color:#047857; border-color: rgba(16,185,129,.25); }
-    .chip-no{ background: rgba(107,114,128,.12); color: rgba(15,23,42,.70); border-color: rgba(107,114,128,.25); }
+    .chip-male{ background: rgba(59,130,246,.14); color:#60a5fa; border-color: rgba(59,130,246,.25); }
+    .chip-female{ background: rgba(236,72,153,.14); color:#f472b6; border-color: rgba(236,72,153,.25); }
+    .chip-other{ background: rgba(148,163,184,.14); color: rgba(148,163,184,.95); border-color: rgba(148,163,184,.22); }
+
+    .chip-yes{ background: rgba(16,185,129,.16); color:#34d399; border-color: rgba(16,185,129,.25); }
+    .chip-no{ background: rgba(148,163,184,.14); color: rgba(148,163,184,.90); border-color: rgba(148,163,184,.22); }
 
     .svc-pill{
         display:inline-flex;
@@ -188,17 +217,17 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 1000;
-        background: rgba(13,110,253,.10);
-        color: #0d6efd;
-        border: 1px solid rgba(13,110,253,.25);
+        font-weight: 950;
+        background: rgba(96,165,250,.12);
+        color: #60a5fa;
+        border: 1px solid rgba(96,165,250,.22);
         white-space: nowrap;
         line-height: 1;
     }
     .svc-wrap{ display:flex; gap: 6px; flex-wrap: wrap; }
 
     .tabsx{
-        border-bottom: 1px solid rgba(15,23,42,.10);
+        border-bottom: 1px solid var(--soft);
         margin: -6px -6px 12px -6px;
         padding: 6px 6px 0 6px;
         display:flex;
@@ -206,26 +235,34 @@
         flex-wrap: wrap;
     }
     .tabx{
-        border: 1px solid rgba(15,23,42,.12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         padding: 8px 12px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15,23,42,.80);
+        color: var(--text);
         cursor:pointer;
         user-select:none;
+        transition: .12s ease;
     }
+    .tabx:hover{ transform: translateY(-1px); }
+
     .tabx.active{
-        background: rgba(13,110,253,.10);
-        border-color: rgba(13,110,253,.25);
-        color:#0d6efd;
+        background: rgba(96,165,250,.14);
+        border-color: rgba(96,165,250,.28);
+        color:#60a5fa;
     }
 
     .tabpane{ display:none; }
     .tabpane.active{ display:block; }
 
-    .table-wrap{ border-radius: 14px; overflow:hidden; border: 1px solid rgba(15,23,42,.08); }
+    .table-wrap{
+        border-radius: 14px;
+        overflow:hidden;
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface);
+    }
     table{ width:100%; border-collapse: separate; border-spacing:0; }
     thead th{
         font-size: 12px;
@@ -233,58 +270,64 @@
         letter-spacing: .3px;
         color: var(--muted);
         padding: 12px 12px;
-        background: rgba(248,250,252,.95);
-        border-bottom: 1px solid rgba(15,23,42,.08);
+        background: rgba(148,163,184,.10);
+        border-bottom: 1px solid var(--soft);
         white-space: nowrap;
     }
+    html[data-theme="dark"] thead th{
+        background: rgba(2,6,23,.35);
+    }
+
     tbody td{
         padding: 12px 12px;
         font-size: 14px;
-        color:#0f172a;
-        border-bottom: 1px solid rgba(15,23,42,.06);
+        color: var(--text);
+        border-bottom: 1px solid var(--soft);
         vertical-align: middle;
     }
-    tbody tr:hover{ background: rgba(13,110,253,.06); }
+    tbody tr:hover{ background: rgba(96,165,250,.08); }
 
     .sig-img{
         max-width: 520px;
         width: 100%;
-        border: 1px solid rgba(15,23,42,.10);
+        border: 1px solid var(--kt-border);
         border-radius: 12px;
         background: #fff;
         padding: 8px;
     }
+
     .muted{ color: var(--muted); }
 
     .section-title{
-        font-weight: 1000;
+        font-weight: 950;
         margin: 0 0 8px 0;
         font-size: 13px;
-        color: #0f172a;
+        color: var(--text);
         display:flex;
         align-items:center;
         gap: 8px;
     }
 
     .linkx{
-        color:#0d6efd;
-        font-weight:900;
+        color:#60a5fa;
+        font-weight:950;
         text-decoration:none;
     }
     .linkx:hover{ text-decoration:underline; }
 
-    /* ✅ Pagination fix (removes giant Tailwind SVG + styles Bootstrap pager) */
+    /* ✅ Bootstrap pagination styling */
     .pagination { margin: 0; gap: 6px; flex-wrap: wrap; }
     .pagination .page-link{
         border-radius: 10px;
         font-weight: 900;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .80);
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        background: var(--kt-surface-2);
     }
     .pagination .page-item.active .page-link{
-        background: rgba(13,110,253,.10);
-        border-color: rgba(13,110,253,.25);
-        color:#0d6efd;
+        background: rgba(96,165,250,.14);
+        border-color: rgba(96,165,250,.28);
+        color:#60a5fa;
     }
 </style>
 
@@ -322,7 +365,7 @@
         if ($v === '') return false;
         if (in_array($v, ['no','0','false'], true)) return false;
         if (in_array($v, ['yes','1','true'], true)) return true;
-        return true;
+        return true; // treat old initials as YES
     };
 @endphp
 
@@ -434,12 +477,12 @@
 
                         <div class="d-flex justify-content-between">
                             <span class="muted">Total Paid (All)</span>
-                            <span style="font-weight:1000;">₱{{ number_format((float)$grandTotalPaid, 2) }}</span>
+                            <span style="font-weight:950;">₱{{ number_format((float)$grandTotalPaid, 2) }}</span>
                         </div>
 
                         <div class="d-flex justify-content-between">
                             <span class="muted">Installment Plans</span>
-                            <span style="font-weight:1000;">{{ $installmentPlans->count() }}</span>
+                            <span style="font-weight:950;">{{ $installmentPlans->count() }}</span>
                         </div>
                     </div>
                 </div>
@@ -538,7 +581,7 @@
                                                 $yes = $consentYes($val);
                                             @endphp
                                             <tr>
-                                                <td style="font-weight:900;">{{ $label }}</td>
+                                                <td style="font-weight:950;">{{ $label }}</td>
                                                 <td>
                                                     @if($yes)
                                                         <span class="chip chip-yes"><span class="chip-dot"></span> YES</span>
@@ -607,7 +650,7 @@
                                             @endphp
 
                                             <tr>
-                                                <td style="font-weight:900;">
+                                                <td style="font-weight:950;">
                                                     {{ $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y') : '—' }}
                                                 </td>
 
@@ -660,7 +703,7 @@
                                     <tbody>
                                         @foreach($appointments as $appointment)
                                             <tr>
-                                                <td style="font-weight:900;">
+                                                <td style="font-weight:950;">
                                                     {{ $appointment->appointment_date ? \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y') : '—' }}
                                                 </td>
                                                 <td class="muted">
@@ -668,7 +711,7 @@
                                                 </td>
                                                 <td class="muted">{{ optional($appointment->service)->name ?? '—' }}</td>
                                                 <td class="muted">{{ $appointment->dentist_name ?? '—' }}</td>
-                                                <td style="font-weight:900;">{{ $appointment->status ?? '—' }}</td>
+                                                <td style="font-weight:950;">{{ $appointment->status ?? '—' }}</td>
                                                 <td class="muted">{{ $appointment->notes ?? '—' }}</td>
                                             </tr>
                                         @endforeach
@@ -729,12 +772,12 @@
                                         <tbody>
                                             @foreach($installmentPlans as $plan)
                                                 <tr>
-                                                    <td style="font-weight:1000;">
+                                                    <td style="font-weight:950;">
                                                         <a class="linkx" href="{{ route('staff.installments.show', $plan->id) }}">#{{ $plan->id }}</a>
                                                     </td>
                                                     <td class="muted">{{ $plan->service?->name ?? '—' }}</td>
-                                                    <td style="font-weight:1000;">₱{{ number_format((float)$plan->total_cost, 2) }}</td>
-                                                    <td style="font-weight:1000;">₱{{ number_format((float)$plan->balance, 2) }}</td>
+                                                    <td style="font-weight:950;">₱{{ number_format((float)$plan->total_cost, 2) }}</td>
+                                                    <td style="font-weight:950;">₱{{ number_format((float)$plan->balance, 2) }}</td>
                                                     <td class="muted">{{ $plan->status ?? '—' }}</td>
                                                     <td class="muted">{{ $plan->is_open_contract ? 'Open Contract' : 'Fixed Term' }}</td>
                                                 </tr>
@@ -765,7 +808,7 @@
                                         <tbody>
                                             @foreach($payments as $payment)
                                                 <tr>
-                                                    <td style="font-weight:900;">
+                                                    <td style="font-weight:950;">
                                                         {{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') : '—' }}
                                                     </td>
                                                     <td class="muted">
@@ -777,7 +820,7 @@
                                                             —
                                                         @endif
                                                     </td>
-                                                    <td style="font-weight:1000;">₱{{ number_format((float)$payment->amount, 2) }}</td>
+                                                    <td style="font-weight:950;">₱{{ number_format((float)$payment->amount, 2) }}</td>
                                                     <td class="muted">{{ ucfirst($payment->method ?? '—') }}</td>
                                                     <td class="muted">{{ $payment->notes ?? '—' }}</td>
                                                 </tr>
@@ -821,10 +864,10 @@
                                                         : (($ip->plan?->is_open_contract ?? false) ? 'Payment #'.(int)$ip->month_number : 'Month '.(int)$ip->month_number);
                                                 @endphp
                                                 <tr>
-                                                    <td style="font-weight:900;">
+                                                    <td style="font-weight:950;">
                                                         {{ $ip->payment_date ? \Carbon\Carbon::parse($ip->payment_date)->format('M d, Y') : '—' }}
                                                     </td>
-                                                    <td style="font-weight:1000;">
+                                                    <td style="font-weight:950;">
                                                         @if($ip->plan?->id)
                                                             <a class="linkx" href="{{ route('staff.installments.show', $ip->plan->id) }}">#{{ $ip->plan->id }}</a>
                                                         @else
@@ -832,7 +875,7 @@
                                                         @endif
                                                     </td>
                                                     <td class="muted">{{ $label }}</td>
-                                                    <td style="font-weight:1000;">₱{{ number_format((float)$ip->amount, 2) }}</td>
+                                                    <td style="font-weight:950;">₱{{ number_format((float)$ip->amount, 2) }}</td>
                                                     <td class="muted">{{ ucfirst($ip->method ?? '—') }}</td>
                                                     <td class="muted">
                                                         @if($ip->visit_id)
@@ -856,7 +899,6 @@
                         </div>
 
                     </div>
-
                 </div>
             </div>
         </div>

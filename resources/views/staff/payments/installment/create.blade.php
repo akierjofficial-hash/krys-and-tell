@@ -3,11 +3,32 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Installment Create (Dark mode compatible)
+       Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                         --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+
+        --soft: rgba(148,163,184,.14);
+
+        --brand1: #7c3aed;
+        --brand2: #6f42c1;
+
+        --radius: 16px;
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
     }
 
+    .form-max{ max-width: 1100px; }
+
+    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -15,18 +36,19 @@
         gap: 14px;
         margin-bottom: 16px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .page-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
     .btn-ghostx{
@@ -35,18 +57,22 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 950;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .75);
-        background: rgba(255,255,255,.85);
+        border: 1px solid var(--kt-border);
+        color: var(--text) !important;
+        background: var(--kt-surface-2);
         transition: .15s ease;
         white-space: nowrap;
+        user-select: none;
     }
     .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(2,6,23,.35);
     }
 
     .btn-primaryx{
@@ -55,12 +81,12 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         border: none;
-        color: #fff;
+        color: #fff !important;
         text-decoration: none;
-        background: linear-gradient(135deg, #7c3aed, #6f42c1);
+        background: linear-gradient(135deg, var(--brand1), var(--brand2));
         box-shadow: 0 10px 18px rgba(124, 58, 237, .18);
         transition: .15s ease;
         white-space: nowrap;
@@ -68,9 +94,9 @@
     .btn-primaryx:hover{
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(124, 58, 237, .24);
-        color:#fff;
     }
 
+    /* Error box */
     .error-box{
         background: rgba(239, 68, 68, .10);
         border: 1px solid rgba(239, 68, 68, .22);
@@ -79,27 +105,35 @@
         padding: 14px 16px;
         margin-bottom: 14px;
     }
+    html[data-theme="dark"] .error-box{
+        background: rgba(239, 68, 68, .12);
+        color: rgba(254, 202, 202, .95);
+        border-color: rgba(239, 68, 68, .25);
+    }
     .error-box .title{
-        font-weight: 900;
+        font-weight: 950;
         margin-bottom: 6px;
     }
     .error-box ul{
         margin: 0;
         padding-left: 18px;
         font-size: 13px;
+        font-weight: 700;
     }
 
+    /* Card */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
+        min-width:0;
     }
     .card-head{
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--kt-border);
         display:flex;
         align-items:center;
         justify-content:space-between;
@@ -108,45 +142,58 @@
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 800;
     }
     .card-bodyx{ padding: 18px; }
 
+    /* Inputs */
     .form-labelx{
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .75);
+        color: rgba(15, 23, 42, .80);
         margin-bottom: 6px;
+    }
+    html[data-theme="dark"] .form-labelx{
+        color: rgba(226,232,240,.90);
     }
 
     .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
+        color: var(--text);
+        background: var(--kt-surface-2);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
+    html[data-theme="dark"] .inputx,
+    html[data-theme="dark"] .selectx,
+    html[data-theme="dark"] .textareax{
+        box-shadow: none;
+    }
 
     .inputx:focus, .selectx:focus, .textareax:focus{
         border-color: rgba(124,58,237,.55);
-        box-shadow: 0 0 0 4px rgba(124,58,237,.12);
-        background: #fff;
+        box-shadow: 0 0 0 4px rgba(124,58,237,.14);
     }
 
     .readonlyx{
-        background: rgba(248,250,252,.9) !important;
-        color: rgba(15, 23, 42, .75) !important;
+        background: rgba(148,163,184,.10) !important;
+        color: var(--text) !important;
+    }
+    html[data-theme="dark"] .readonlyx{
+        background: rgba(2,6,23,.35) !important;
     }
 
     .helper{
         margin-top: 6px;
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 700;
     }
 
     .chip{
@@ -156,14 +203,47 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 950;
         border: 1px solid rgba(124,58,237,.22);
         background: rgba(124,58,237,.10);
-        color: #0f172a;
+        color: var(--text);
         white-space: nowrap;
     }
+    html[data-theme="dark"] .chip{
+        color: rgba(226,232,240,.92);
+        background: rgba(124,58,237,.14);
+        border-color: rgba(124,58,237,.25);
+    }
 
-    .form-max{ max-width: 1100px; }
+    /* Mini summary */
+    .mini-sum{
+        border: 1px solid var(--kt-border);
+        background: rgba(148,163,184,.10);
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-top: 6px;
+        display:flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items:center;
+        justify-content:space-between;
+    }
+    html[data-theme="dark"] .mini-sum{
+        background: rgba(2,6,23,.30);
+    }
+    .mini-sum .k{
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+    .mini-sum .v{
+        font-size: 14px;
+        font-weight: 950;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+    }
 </style>
 
 <div class="page-head form-max">
@@ -192,47 +272,93 @@
 
 <div class="card-shell form-max">
     <div class="card-head">
-        <div class="hint">Tip: Choose either <strong>Visit</strong> or <strong>Appointment</strong> (not both).</div>
-        <div class="hint"><span class="chip"><i class="fa fa-calculator"></i> Downpayment auto = 50%</span></div>
+        <div class="hint">
+            Tip: Choose either <strong>Visit</strong> or <strong>Appointment</strong> (not both).
+        </div>
+        <div class="hint">
+            <span class="chip"><i class="fa fa-calculator"></i> Downpayment auto = 50%</span>
+        </div>
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('staff.payments.store.installment') }}" method="POST">
+        <form action="{{ route('staff.payments.store.installment') }}" method="POST" id="installmentForm">
             @csrf
 
             <div class="row g-3">
 
                 {{-- Visit --}}
                 <div class="col-12 col-md-6">
-                    <label class="form-labelx">Visit</label>
+                    <label class="form-labelx">Visit (With Balance)</label>
                     <select name="visit_id" id="visitSelect" class="selectx">
                         <option value="">-- Select Visit --</option>
+
+                        @php $shownVisitCount = 0; @endphp
 
                         @foreach($visits as $visit)
                             @php
                                 $procs = $visit->procedures ?? collect();
 
                                 $treatmentsText = $procs->map(function($p){
-                                    $name = $p->service?->name ?? '';
+                                    $name = $p->service?->name ?? '—';
                                     $tooth = $p->tooth_number ? '#'.$p->tooth_number : '';
-                                    $surface = $p->surface ?? '';
-                                    return trim($name.' '.trim($tooth.' '.$surface));
+                                    $surface = $p->surface ? $p->surface : '';
+                                    $note = trim((string)($p->notes ?? ''));
+                                    $noteLabel = $note !== '' ? (' — '.\Illuminate\Support\Str::limit($note, 24)) : '';
+                                    return trim($name.' '.trim($tooth.' '.$surface).$noteLabel);
                                 })->filter()->implode(', ');
 
-                                $amount = $procs->sum('price') ?? 0;
+                                // due: prefer visit->price if present, else sum of procedure prices
+                                $due = $visit->price !== null
+                                    ? (float) $visit->price
+                                    : (float) ($procs->sum('price') ?? 0);
+
+                                // paid: use relation if exists, else fallback query
+                                $paid = 0.0;
+                                if (property_exists($visit, 'total_paid') && $visit->total_paid !== null) {
+                                    $paid = (float) $visit->total_paid;
+                                } else {
+                                    if (method_exists($visit, 'payments')) {
+                                        $paid = (float) $visit->payments()->sum('amount');
+                                    } else {
+                                        $paid = (float) \App\Models\Payment::where('visit_id', $visit->id)->sum('amount');
+                                    }
+                                }
+
+                                // don't allow if already on installment plan
+                                $inInstallment = \App\Models\InstallmentPlan::where('visit_id', $visit->id)->exists();
+
+                                $balance = max($due - $paid, 0);
+
+                                if ($due <= 0 || $balance <= 0 || $inInstallment) {
+                                    continue;
+                                }
+
+                                $shownVisitCount++;
+
+                                $pName = trim(($visit->patient?->first_name ?? '').' '.($visit->patient?->last_name ?? '')) ?: 'Patient';
+                                $dateLabel = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('m/d/Y') : '—';
+                                $dateForInput = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : '';
                             @endphp
 
                             <option value="{{ $visit->id }}"
                                 data-type="visit"
                                 data-treatments="{{ $treatmentsText }}"
-                                data-amount="{{ $amount }}"
+                                data-amount="{{ $balance }}"
+                                data-date="{{ $dateForInput }}"
                                 {{ old('visit_id') == $visit->id ? 'selected' : '' }}
                             >
-                                Visit - {{ $visit->patient?->first_name }} {{ $visit->patient?->last_name }}
+                                Visit - {{ $pName }} ({{ $dateLabel }}) — Balance ₱{{ number_format($balance, 2) }}
                             </option>
                         @endforeach
                     </select>
-                    <div class="helper">Select a visit to set as installment.</div>
+
+                    <div class="helper">
+                        @if($shownVisitCount === 0)
+                            No visits with remaining balance are available (or they’re already in an installment plan).
+                        @else
+                            Shows only visits with remaining balance and not already in an installment plan.
+                        @endif
+                    </div>
                 </div>
 
                 {{-- Appointment --}}
@@ -248,44 +374,78 @@
                                 $pName  = trim($pFirst.' '.$pLast) ?: ($app->public_name ?? 'Patient');
 
                                 $svcName  = $app->service?->name ?? '—';
-                                $svcPrice = $app->service?->base_price ?? 0;
+                                $svcPrice = (float) ($app->service?->base_price ?? 0);
 
                                 $dateLabel = $app->appointment_date
                                     ? \Carbon\Carbon::parse($app->appointment_date)->format('m/d/Y')
                                     : '—';
-
                                 $timeLabel = $app->appointment_time
                                     ? \Carbon\Carbon::parse($app->appointment_time)->format('h:i A')
                                     : '—';
+
+                                $dateForInput = $app->appointment_date
+                                    ? \Carbon\Carbon::parse($app->appointment_date)->format('Y-m-d')
+                                    : '';
                             @endphp
 
                             <option value="{{ $app->id }}"
                                 data-type="appointment"
                                 data-treatments="{{ $svcName }}"
                                 data-amount="{{ $svcPrice }}"
+                                data-date="{{ $dateForInput }}"
                                 {{ old('appointment_id') == $app->id ? 'selected' : '' }}
                             >
                                 Appointment - {{ $pName }} ({{ $dateLabel }} {{ $timeLabel }})
                             </option>
                         @endforeach
                     </select>
-                    <div class="helper">Or select an appointment instead.</div>
+
+                    <div class="helper">
+                        Paying an appointment will create a visit automatically, then attach the installment plan.
+                    </div>
                 </div>
 
-                {{-- Total Cost --}}
+                {{-- Total Cost (ALWAYS required, even for Open Contract) --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Total Cost <span class="text-danger">*</span></label>
-                    <input type="number" id="totalCostInput" name="total_cost" class="inputx"
-                           value="{{ old('total_cost') }}" required>
-                    <div class="helper">Auto-filled from selection (editable if needed).</div>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        id="totalCostInput"
+                        name="total_cost"
+                        class="inputx"
+                        value="{{ old('total_cost') }}"
+                        required
+                    >
+                    <div class="helper">Auto-filled from selection (editable). This stays required even for Open Contract.</div>
+
+                    <div class="mini-sum" id="calcSummary" style="display:none;">
+                        <div>
+                            <div class="k">Balance</div>
+                            <div class="v" id="balanceText">₱0.00</div>
+                        </div>
+                        <div id="monthlyWrap">
+                            <div class="k">Monthly</div>
+                            <div class="v" id="monthlyText">₱0.00</div>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Downpayment --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Downpayment <span class="text-danger">*</span></label>
-                    <input type="number" id="downpaymentInput" name="downpayment" class="inputx"
-                           value="{{ old('downpayment') }}" required>
-                    <div class="helper">Defaults to 50% of total cost.</div>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        id="downpaymentInput"
+                        name="downpayment"
+                        class="inputx"
+                        value="{{ old('downpayment') }}"
+                        required
+                    >
+                    <div class="helper">Defaults to 50% of total cost (you can override).</div>
                 </div>
 
                 {{-- Open Contract --}}
@@ -293,33 +453,50 @@
                     <div class="form-check" style="margin-top:2px;">
                         <input class="form-check-input" type="checkbox" id="isOpenContract" name="is_open_contract" value="1"
                             {{ old('is_open_contract') ? 'checked' : '' }}>
-                        <label class="form-check-label" for="isOpenContract" style="font-weight:900;">
+                        <label class="form-check-label" for="isOpenContract" style="font-weight:950; color:var(--text);">
                             Open Contract (no fixed months — pay any amount until fully paid)
                         </label>
-                        <div class="helper">If enabled, the system will auto-number payments (Payment #1, #2, #3...).</div>
+                        <div class="helper">If enabled, Payment Term is hidden (Total Cost is still required).</div>
                     </div>
                 </div>
 
                 {{-- Payment Term --}}
                 <div class="col-12 col-md-6" id="monthsWrap">
                     <label class="form-labelx">Payment Term (months) <span class="text-danger">*</span></label>
-                    <input type="number" id="monthsInput" name="months" class="inputx"
-                           value="{{ old('months', 6) }}" min="1" required>
+                    <input
+                        type="number"
+                        id="monthsInput"
+                        name="months"
+                        class="inputx"
+                        value="{{ old('months', 6) }}"
+                        min="1"
+                        required
+                    >
                     <div class="helper">Fixed-term plans only.</div>
                 </div>
 
                 {{-- Start Date --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Start Date <span class="text-danger">*</span></label>
-                    <input type="date" name="start_date" class="inputx"
-                           value="{{ old('start_date', date('Y-m-d')) }}" required>
+                    <input
+                        type="date"
+                        id="startDateInput"
+                        name="start_date"
+                        class="inputx"
+                        value="{{ old('start_date', date('Y-m-d')) }}"
+                        required
+                    >
+                    <div class="helper">Auto-fills from Visit/Appointment date when available.</div>
                 </div>
 
                 {{-- Treatments --}}
                 <div class="col-12">
                     <label class="form-labelx">Treatments (auto-filled)</label>
+
+                    <input type="hidden" name="treatments_preview" id="treatmentsHidden" value="{{ old('treatments_preview') }}">
+
                     <textarea id="treatmentsBox" class="textareax readonlyx" rows="3" readonly>{{ old('treatments_preview') }}</textarea>
-                    <div class="helper">This field is readonly and updates based on selection.</div>
+                    <div class="helper">Readonly: updates based on selection.</div>
                 </div>
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
@@ -338,70 +515,190 @@
 </div>
 
 <script>
-function updateFields(selected) {
-    let amount = selected.getAttribute('data-amount') || 0;
-    let treatments = selected.getAttribute('data-treatments') || '';
+(function(){
+    const visitSelect       = document.getElementById('visitSelect');
+    const appointmentSelect = document.getElementById('appointmentSelect');
 
-    const amt = parseFloat(amount || 0);
+    const totalCostInput    = document.getElementById('totalCostInput');
+    const downpaymentInput  = document.getElementById('downpaymentInput');
+    const monthsWrap        = document.getElementById('monthsWrap');
+    const monthsInput       = document.getElementById('monthsInput');
+    const isOpenContract    = document.getElementById('isOpenContract');
 
-    document.getElementById('totalCostInput').value = isNaN(amt) ? '' : amt.toFixed(2);
-    document.getElementById('treatmentsBox').value = treatments;
+    const startDateInput    = document.getElementById('startDateInput');
 
-    // Default downpayment = 50%
-    document.getElementById('downpaymentInput').value = isNaN(amt) ? '' : (amt / 2).toFixed(2);
-}
+    const treatmentsBox     = document.getElementById('treatmentsBox');
+    const treatmentsHidden  = document.getElementById('treatmentsHidden');
 
-document.getElementById('visitSelect').addEventListener('change', function() {
-    if (this.value !== "") {
-        document.getElementById('appointmentSelect').value = "";
-        updateFields(this.selectedOptions[0]);
-    } else {
-        document.getElementById('treatmentsBox').value = "";
+    const calcSummary       = document.getElementById('calcSummary');
+    const balanceText       = document.getElementById('balanceText');
+    const monthlyWrap       = document.getElementById('monthlyWrap');
+    const monthlyText       = document.getElementById('monthlyText');
+
+    let autoDownpayment = true;
+
+    function n(v){
+        const x = parseFloat(v);
+        return isFinite(x) ? x : 0;
     }
-});
-
-document.getElementById('appointmentSelect').addEventListener('change', function() {
-    if (this.value !== "") {
-        document.getElementById('visitSelect').value = "";
-        updateFields(this.selectedOptions[0]);
-    } else {
-        document.getElementById('treatmentsBox').value = "";
+    function money(v){
+        const x = n(v);
+        return '₱' + x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-});
 
-// ✅ Open contract toggle (disable months input so browser won't block submit)
-function toggleMonths() {
-    const cb = document.getElementById('isOpenContract');
-    const wrap = document.getElementById('monthsWrap');
-    const months = document.getElementById('monthsInput');
+    function setFromOption(opt){
+        if(!opt) return;
 
-    const on = cb && cb.checked;
+        const amt = n(opt.getAttribute('data-amount'));
+        const tx  = opt.getAttribute('data-treatments') || '';
+        const dt  = opt.getAttribute('data-date') || '';
+        const type = opt.getAttribute('data-type') || '';
 
-    if (wrap) wrap.style.display = on ? 'none' : '';
-    if (!months) return;
+        // total cost (required always)
+        if (totalCostInput) totalCostInput.value = amt ? amt.toFixed(2) : '0.00';
 
-    if (on) {
-        months.required = false;
-        months.disabled = true;   // not sent to server
-        months.value = '';        // do NOT use 0 (min=1)
-    } else {
-        months.disabled = false;
-        months.required = true;
-        if (months.value === '' || Number(months.value) < 1) months.value = 6;
+        // treatments
+        if (treatmentsBox) treatmentsBox.value = tx;
+        if (treatmentsHidden) treatmentsHidden.value = tx;
+
+        // start date auto-fill if we have a date
+        if (startDateInput && dt) startDateInput.value = dt;
+
+        // default downpayment = 50% (only if we are in auto mode)
+        autoDownpayment = true;
+        if (downpaymentInput) downpaymentInput.value = (amt / 2).toFixed(2);
+
+        recalc();
     }
-}
 
-document.getElementById('isOpenContract').addEventListener('change', toggleMonths);
+    function clearTreatmentsIfNone(){
+        const hasAny = (visitSelect && visitSelect.value) || (appointmentSelect && appointmentSelect.value);
+        if (!hasAny){
+            if (treatmentsBox) treatmentsBox.value = '';
+            if (treatmentsHidden) treatmentsHidden.value = '';
+        }
+    }
 
-window.addEventListener('load', () => {
-    const visitSel = document.getElementById('visitSelect');
-    const appSel  = document.getElementById('appointmentSelect');
+    function toggleMonths(){
+        const on = isOpenContract && isOpenContract.checked;
 
-    if (visitSel.value) updateFields(visitSel.selectedOptions[0]);
-    if (appSel.value) updateFields(appSel.selectedOptions[0]);
+        if (monthsWrap) monthsWrap.style.display = on ? 'none' : '';
+        if (!monthsInput) return;
 
-    toggleMonths();
-});
+        if (on){
+            monthsInput.required = false;
+            monthsInput.disabled = true;
+            monthsInput.value = '';
+        } else {
+            monthsInput.disabled = false;
+            monthsInput.required = true;
+            if (monthsInput.value === '' || Number(monthsInput.value) < 1) monthsInput.value = 6;
+        }
+
+        recalc();
+    }
+
+    function recalc(){
+        const total = n(totalCostInput && totalCostInput.value);
+        let down = n(downpaymentInput && downpaymentInput.value);
+
+        // clamp downpayment
+        if (down > total) down = total;
+
+        const bal = Math.max(total - down, 0);
+
+        const open = isOpenContract && isOpenContract.checked;
+        const months = open ? 0 : Math.max(n(monthsInput && monthsInput.value), 1);
+
+        if (calcSummary){
+            calcSummary.style.display = (totalCostInput && totalCostInput.value !== '') ? '' : 'none';
+        }
+        if (balanceText) balanceText.textContent = money(bal);
+
+        if (monthlyWrap){
+            monthlyWrap.style.display = open ? 'none' : '';
+        }
+        if (!open && monthlyText){
+            monthlyText.textContent = money(months ? (bal / months) : 0);
+        }
+    }
+
+    // Events
+    if (visitSelect){
+        visitSelect.addEventListener('change', function(){
+            if (this.value !== ''){
+                if (appointmentSelect) appointmentSelect.value = '';
+                setFromOption(this.selectedOptions[0]);
+            } else {
+                clearTreatmentsIfNone();
+                recalc();
+            }
+        });
+    }
+
+    if (appointmentSelect){
+        appointmentSelect.addEventListener('change', function(){
+            if (this.value !== ''){
+                if (visitSelect) visitSelect.value = '';
+                setFromOption(this.selectedOptions[0]);
+            } else {
+                clearTreatmentsIfNone();
+                recalc();
+            }
+        });
+    }
+
+    if (downpaymentInput){
+        downpaymentInput.addEventListener('input', () => {
+            autoDownpayment = false;
+            recalc();
+        });
+        downpaymentInput.addEventListener('blur', () => {
+            // clamp on blur
+            const total = n(totalCostInput && totalCostInput.value);
+            let down = n(downpaymentInput.value);
+            if (down > total) down = total;
+            downpaymentInput.value = down.toFixed(2);
+            recalc();
+        });
+    }
+
+    if (totalCostInput){
+        totalCostInput.addEventListener('input', () => {
+            const total = n(totalCostInput.value);
+            if (autoDownpayment && downpaymentInput){
+                downpaymentInput.value = (total / 2).toFixed(2);
+            }
+            recalc();
+        });
+        totalCostInput.addEventListener('blur', () => {
+            const total = n(totalCostInput.value);
+            totalCostInput.value = total.toFixed(2);
+            if (autoDownpayment && downpaymentInput){
+                downpaymentInput.value = (total / 2).toFixed(2);
+            }
+            recalc();
+        });
+    }
+
+    if (monthsInput){
+        monthsInput.addEventListener('input', recalc);
+    }
+
+    if (isOpenContract){
+        isOpenContract.addEventListener('change', toggleMonths);
+    }
+
+    // Init
+    window.addEventListener('load', () => {
+        if (visitSelect && visitSelect.value) setFromOption(visitSelect.selectedOptions[0]);
+        else if (appointmentSelect && appointmentSelect.value) setFromOption(appointmentSelect.selectedOptions[0]);
+        else recalc();
+
+        toggleMonths();
+    });
+
+})();
 </script>
 
 @endsection

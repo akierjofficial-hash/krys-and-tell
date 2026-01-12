@@ -3,11 +3,35 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Payments Create Cash (Dark mode compatible)
+       Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                         --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+
+        --brand1: #0d6efd;
+        --brand2: #1e90ff;
+
+        --radius: 16px;
+        --soft: rgba(148,163,184,.14);
+        --danger: #ef4444;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
     }
 
+    .form-max{ max-width: 1100px; }
+
+    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -15,62 +39,60 @@
         gap: 14px;
         margin-bottom: 16px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .page-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
-    .btn-ghostx{
+    /* Buttons */
+    .btn-ghostx, .btn-primaryx{
         display:inline-flex;
         align-items:center;
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 950;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .75);
-        background: rgba(255,255,255,.85);
         transition: .15s ease;
         white-space: nowrap;
+        user-select: none;
+    }
+    .btn-ghostx{
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--text) !important;
     }
     .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(2,6,23,.35);
     }
 
     .btn-primaryx{
-        display:inline-flex;
-        align-items:center;
-        gap: 8px;
-        padding: 11px 14px;
-        border-radius: 12px;
-        font-weight: 900;
-        font-size: 14px;
         border: none;
-        color: #fff;
-        text-decoration: none;
-        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        color: #fff !important;
+        background: linear-gradient(135deg, var(--brand1), var(--brand2));
         box-shadow: 0 10px 18px rgba(13, 110, 253, .20);
-        transition: .15s ease;
-        white-space: nowrap;
     }
     .btn-primaryx:hover{
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(13, 110, 253, .26);
-        color:#fff;
     }
 
+    /* Error box */
     .error-box{
         background: rgba(239, 68, 68, .10);
         border: 1px solid rgba(239, 68, 68, .22);
@@ -79,9 +101,17 @@
         padding: 14px 16px;
         margin-bottom: 14px;
     }
+    html[data-theme="dark"] .error-box{
+        background: rgba(239, 68, 68, .12);
+        color: rgba(254,202,202,.95);
+        border-color: rgba(239,68,68,.25);
+    }
     .error-box .title{
-        font-weight: 900;
+        font-weight: 950;
         margin-bottom: 6px;
+        display:flex;
+        align-items:center;
+        gap: 8px;
     }
     .error-box ul{
         margin: 0;
@@ -89,17 +119,20 @@
         font-size: 13px;
     }
 
+    /* Card */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
+        backdrop-filter: blur(8px);
+        min-width:0;
     }
     .card-head{
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         display:flex;
         align-items:center;
         justify-content:space-between;
@@ -108,48 +141,55 @@
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 900;
     }
     .card-bodyx{ padding: 18px; }
 
+    /* Inputs */
     .form-labelx{
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .75);
+        color: var(--text);
+        opacity: .85;
         margin-bottom: 6px;
     }
 
     .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
+        color: var(--text);
+        background: var(--kt-surface-2);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
-
     .inputx:focus, .selectx:focus, .textareax:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
     }
 
     .readonlyx{
-        background: rgba(248,250,252,.9) !important;
-        color: rgba(15, 23, 42, .75) !important;
+        background: rgba(148,163,184,.10) !important;
+        color: var(--text) !important;
+        opacity: .85;
+    }
+    html[data-theme="dark"] .readonlyx{
+        background: rgba(2,6,23,.35) !important;
+        opacity: 1;
     }
 
     .helper{
         margin-top: 6px;
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 800;
     }
 
-    .form-max{ max-width: 1100px; }
+    .money{ font-variant-numeric: tabular-nums; }
 </style>
 
 <div class="page-head form-max">
@@ -183,7 +223,7 @@
     </div>
 
     <div class="card-bodyx">
-        <form action="{{ route('staff.payments.store.cash') }}" method="POST">
+        <form action="{{ route('staff.payments.store.cash') }}" method="POST" id="cashPayForm">
             @csrf
 
             <div class="row g-3">
@@ -198,7 +238,6 @@
 
                         @foreach($visits as $visit)
                             @php
-                                // Treatments preview
                                 $treatmentsPreview = $visit->procedures
                                     ->map(function($p){
                                         $svc = $p->service?->name ?? '—';
@@ -210,12 +249,10 @@
                                     })
                                     ->implode(', ');
 
-                                // Total due
                                 $due = $visit->price !== null
                                     ? (float) $visit->price
                                     : (float) ($visit->procedures->sum('price') ?? 0);
 
-                                // Total paid
                                 $paid = 0.0;
                                 if (property_exists($visit, 'total_paid') && $visit->total_paid !== null) {
                                     $paid = (float) $visit->total_paid;
@@ -227,9 +264,7 @@
                                     }
                                 }
 
-                                // If Visit is already tied to an installment plan, do NOT show it in cash dropdown
                                 $inInstallment = \App\Models\InstallmentPlan::where('visit_id', $visit->id)->exists();
-
                                 $balance = max($due - $paid, 0);
 
                                 if ($due <= 0 || $balance <= 0 || $inInstallment) {
@@ -240,8 +275,6 @@
 
                                 $pName = trim(($visit->patient?->first_name ?? '').' '.($visit->patient?->last_name ?? '')) ?: 'Patient';
                                 $dateLabel = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('m/d/Y') : '—';
-
-                                // ✅ date for input[type=date]
                                 $visitDateForInput = $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : '';
                             @endphp
 
@@ -288,12 +321,18 @@
                                 $timeLabel = $app->appointment_time
                                     ? \Carbon\Carbon::parse($app->appointment_time)->format('h:i A')
                                     : '—';
+
+                                // optional: date for payment_date autofill (if you store appointment_date)
+                                $appDateForInput = $app->appointment_date
+                                    ? \Carbon\Carbon::parse($app->appointment_date)->format('Y-m-d')
+                                    : '';
                             @endphp
 
                             <option value="{{ $app->id }}"
                                 data-type="appointment"
                                 data-treatments="{{ $svcName }}"
                                 data-amount="{{ $svcPrice }}"
+                                data-date="{{ $appDateForInput }}"
                                 {{ old('appointment_id') == $app->id ? 'selected' : '' }}
                             >
                                 Appointment - {{ $pName }} ({{ $dateLabel }} {{ $timeLabel }})
@@ -306,8 +345,16 @@
                 {{-- Cost --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Cost <span class="text-danger">*</span></label>
-                    <input type="number" step="0.01" id="amountInput" name="amount" class="inputx"
-                           value="{{ old('amount') }}" required>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        id="amountInput"
+                        name="amount"
+                        class="inputx money"
+                        value="{{ old('amount') }}"
+                        required
+                    >
                     <div class="helper">Auto-filled from selection (balance for visits). You can override if needed.</div>
                 </div>
 
@@ -334,7 +381,7 @@
                         value="{{ old('payment_date', now()->toDateString()) }}"
                         required
                     >
-                    <div class="helper">Auto-fills with the Visit date when a Visit is selected.</div>
+                    <div class="helper">Auto-fills with the selected Visit date (or Appointment date if present).</div>
                 </div>
 
                 {{-- Treatments --}}
@@ -369,59 +416,60 @@
     const amountInput = document.getElementById('amountInput');
     const treatmentsBox = document.getElementById('treatmentsBox');
     const treatmentsHidden = document.getElementById('treatmentsHidden');
-    const paymentDateInput = document.getElementById('paymentDateInput'); // ✅ added
+    const paymentDateInput = document.getElementById('paymentDateInput');
 
-    function updateFields(optionEl) {
+    function setAmount(val){
+        const n = Number(val || 0);
+        if (amountInput) amountInput.value = isFinite(n) ? n.toFixed(2) : '0.00';
+    }
+
+    function updateFromOption(optionEl){
         if (!optionEl) return;
 
-        const amt = parseFloat(optionEl.getAttribute('data-amount') || 0);
-        if (amountInput) amountInput.value = isFinite(amt) ? amt.toFixed(2) : '0.00';
+        setAmount(optionEl.getAttribute('data-amount'));
 
         const tx = optionEl.getAttribute('data-treatments') || '';
         if (treatmentsBox) treatmentsBox.value = tx;
         if (treatmentsHidden) treatmentsHidden.value = tx;
 
-        // ✅ Auto-fill payment date when Visit is selected
-        const type = optionEl.getAttribute('data-type') || '';
+        // Auto-fill payment date from selected item if provided
         const dt = optionEl.getAttribute('data-date') || '';
-        if (paymentDateInput && type === 'visit' && dt) {
-            paymentDateInput.value = dt;
-        }
+        if (paymentDateInput && dt) paymentDateInput.value = dt;
     }
 
-    function clearFieldsIfNone() {
+    function clearPreviewIfNone(){
         const hasAny = (visitSelect && visitSelect.value) || (appointmentSelect && appointmentSelect.value);
-        if (!hasAny) {
+        if (!hasAny){
             if (treatmentsBox) treatmentsBox.value = '';
             if (treatmentsHidden) treatmentsHidden.value = '';
         }
     }
 
-    if (visitSelect) {
-        visitSelect.addEventListener('change', function() {
-            if (this.value !== "") {
-                if (appointmentSelect) appointmentSelect.value = "";
-                updateFields(this.selectedOptions[0]);
+    if (visitSelect){
+        visitSelect.addEventListener('change', function(){
+            if (this.value){
+                if (appointmentSelect) appointmentSelect.value = '';
+                updateFromOption(this.selectedOptions[0]);
             } else {
-                clearFieldsIfNone();
+                clearPreviewIfNone();
             }
         });
     }
 
-    if (appointmentSelect) {
-        appointmentSelect.addEventListener('change', function() {
-            if (this.value !== "") {
-                if (visitSelect) visitSelect.value = "";
-                updateFields(this.selectedOptions[0]);
+    if (appointmentSelect){
+        appointmentSelect.addEventListener('change', function(){
+            if (this.value){
+                if (visitSelect) visitSelect.value = '';
+                updateFromOption(this.selectedOptions[0]);
             } else {
-                clearFieldsIfNone();
+                clearPreviewIfNone();
             }
         });
     }
 
     window.addEventListener('load', () => {
-        if (visitSelect && visitSelect.value) updateFields(visitSelect.selectedOptions[0]);
-        if (appointmentSelect && appointmentSelect.value) updateFields(appointmentSelect.selectedOptions[0]);
+        if (visitSelect && visitSelect.value) return updateFromOption(visitSelect.selectedOptions[0]);
+        if (appointmentSelect && appointmentSelect.value) return updateFromOption(appointmentSelect.selectedOptions[0]);
     });
 })();
 </script>

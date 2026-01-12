@@ -5,20 +5,35 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css">
 
 <style>
+    /* ==========================================================
+       Dashboard CSS (Dark mode compatible)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-border
+       - Removes hardcoded white cards + hardcoded black text
+       ========================================================== */
+
     :root{
-        --card-shadow: 0 14px 36px rgba(15, 23, 42, .10);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
-        --muted: rgba(15, 23, 42, .58);
-        --text: #0f172a;
+        /* tie to staff layout tokens (AUTO adapts when theme switches) */
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --muted: var(--kt-muted);
+        --text: var(--kt-text);
 
         --blue: #2563eb;
         --violet:#7c3aed;
         --green:#22c55e;
         --amber:#f59e0b;
 
+        /* dashboard background accents */
         --bg1: rgba(59,130,246,.14);
         --bg2: rgba(124,58,237,.12);
         --bg3: rgba(34,197,94,.12);
+    }
+
+    /* softer accents in dark mode */
+    html[data-theme="dark"]{
+        --bg1: rgba(96,165,250,.08);
+        --bg2: rgba(167,139,250,.07);
+        --bg3: rgba(34,197,94,.06);
     }
 
     /* Background wrapper */
@@ -56,7 +71,7 @@
 
     /* Welcome bar */
     .welcome{
-        background: rgba(255,255,255,.86);
+        background: var(--kt-surface);
         border: var(--card-border);
         box-shadow: var(--card-shadow);
         border-radius: 20px;
@@ -73,7 +88,12 @@
             radial-gradient(circle at 18% 10%, rgba(37,99,235,.18), transparent 55%),
             radial-gradient(circle at 85% 30%, rgba(124,58,237,.14), transparent 60%);
         pointer-events:none;
+        opacity: .9;
     }
+    html[data-theme="dark"] .welcome::before{
+        opacity: .55;
+    }
+
     .welcome-inner{
         position:relative;
         z-index:1;
@@ -102,11 +122,11 @@
         gap:8px;
         padding: 9px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(37,99,235,.18);
-        background: rgba(37,99,235,.08);
+        border: 1px solid rgba(96,165,250,.25);
+        background: var(--kt-primary-soft);
         font-weight: 800;
         font-size: 12px;
-        color: #1d4ed8;
+        color: var(--kt-primary);
         white-space: nowrap;
         box-shadow: 0 10px 18px rgba(37,99,235,.10);
     }
@@ -117,7 +137,7 @@
     .stat-card{
         padding: 16px 16px;
         border-radius: 20px;
-        background: rgba(255,255,255,.88);
+        background: var(--kt-surface);
         border: var(--card-border);
         box-shadow: var(--card-shadow);
         display:flex;
@@ -128,6 +148,7 @@
         overflow:hidden;
         height:100%;
         backdrop-filter: blur(8px);
+        color: var(--text);
     }
     .stat-card::after{
         content:"";
@@ -140,7 +161,7 @@
     }
     .stat-card:hover{
         transform: translateY(-2px);
-        box-shadow: 0 22px 44px rgba(15, 23, 42, .14);
+        box-shadow: 0 22px 44px rgba(0,0,0,.25);
     }
     .stat-card:hover::after{ opacity: 1; }
 
@@ -184,16 +205,17 @@
 
     /* Universal cards */
     .kt-card{
-        background: rgba(255,255,255,.90);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: 20px;
         box-shadow: var(--card-shadow);
         overflow:hidden;
         backdrop-filter: blur(10px);
+        color: var(--text);
     }
     .kt-card-h{
         padding: 14px 16px;
-        border-bottom: 1px solid rgba(15,23,42,.06);
+        border-bottom: 1px solid rgba(148,163,184,.16);
         display:flex;
         align-items:center;
         justify-content:space-between;
@@ -211,15 +233,16 @@
         border-radius: 999px;
         font-size: 12px;
         font-weight: 900;
-        border: 1px solid rgba(15,23,42,.10);
-        background: rgba(255,255,255,.9);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
         white-space:nowrap;
-        color: rgba(15,23,42,.72);
+        color: var(--muted);
     }
 
     .mini-btn{
-        border: 1px solid rgba(15,23,42,.12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--text);
         padding: 7px 11px;
         border-radius: 12px;
         font-weight: 900;
@@ -228,244 +251,149 @@
     }
     .mini-btn:hover{ transform: translateY(-1px); }
     .mini-btn.active{
-        background: rgba(37,99,235,.10);
-        border-color: rgba(37,99,235,.25);
-        color: rgb(37,99,235);
+        background: var(--kt-primary-soft);
+        border-color: rgba(96,165,250,.35);
+        color: var(--kt-primary);
         box-shadow: 0 10px 18px rgba(37,99,235,.10);
     }
 
     /* List items */
     .list-item{
-        border: 1px solid rgba(15,23,42,.08);
+        border: 1px solid var(--kt-border);
         border-radius: 16px;
         padding: 12px;
-        background: rgba(255,255,255,.95);
+        background: var(--kt-surface-2);
         transition:.15s ease;
+        color: var(--text);
     }
     .list-item:hover{
         transform: translateY(-1px);
-        box-shadow: 0 18px 28px rgba(15,23,42,.08);
+        box-shadow: 0 18px 28px rgba(0,0,0,.18);
     }
 
-    /* Calendar polish */
     /* =========================
-   Calendar — Ultra Modern Skin
-   ========================= */
-#ktCalendar{
-    border-radius: 18px;
-    overflow: hidden;
-    background: rgba(255,255,255,.88);
-    border: 1px solid rgba(15,23,42,.08);
-    box-shadow: 0 18px 34px rgba(15,23,42,.08);
-}
+       FullCalendar — Modern Skin
+       ========================= */
+    #ktCalendar{
+        border-radius: 18px;
+        overflow: hidden;
+        background: var(--kt-surface);
+        border: 1px solid var(--kt-border);
+        box-shadow: 0 18px 34px rgba(0,0,0,.12);
+    }
 
-/* toolbar area */
-.fc .fc-header-toolbar{
-    margin: 0 !important;
-    padding: 14px 14px 12px;
-    background:
-        radial-gradient(900px 280px at 20% 0%, rgba(37,99,235,.10), transparent 55%),
-        radial-gradient(900px 280px at 80% 0%, rgba(124,58,237,.08), transparent 55%),
-        rgba(255,255,255,.90);
-    border-bottom: 1px solid rgba(15,23,42,.06);
-}
+    .fc .fc-header-toolbar{
+        margin: 0 !important;
+        padding: 14px 14px 12px;
+        background:
+            radial-gradient(900px 280px at 20% 0%, rgba(37,99,235,.10), transparent 55%),
+            radial-gradient(900px 280px at 80% 0%, rgba(124,58,237,.08), transparent 55%),
+            var(--kt-surface);
+        border-bottom: 1px solid rgba(148,163,184,.16);
+    }
 
-.fc .fc-toolbar-title{
-    font-weight: 950;
-    letter-spacing: -0.4px;
-    color: var(--text);
-    font-size: 16px;
-}
+    .fc .fc-toolbar-title{
+        font-weight: 950;
+        letter-spacing: -0.4px;
+        color: var(--text);
+        font-size: 16px;
+    }
 
-/* toolbar buttons */
-.fc .fc-button{
-    border-radius: 14px !important;
-    border: 1px solid rgba(15,23,42,.10) !important;
-    background: rgba(255,255,255,.92) !important;
-    color: rgba(15,23,42,.86) !important;
-    font-weight: 900 !important;
-    padding: 8px 12px !important;
-    box-shadow: 0 12px 20px rgba(15,23,42,.06) !important;
-    transition: .15s ease;
-}
-.fc .fc-button:hover{
-    background: rgba(37,99,235,.08) !important;
-    border-color: rgba(37,99,235,.20) !important;
-    transform: translateY(-1px);
-}
-.fc .fc-button-primary:not(:disabled).fc-button-active{
-    background: rgba(37,99,235,.12) !important;
-    border-color: rgba(37,99,235,.25) !important;
-    color: rgb(37,99,235) !important;
-}
+    .fc .fc-button{
+        border-radius: 14px !important;
+        border: 1px solid var(--kt-border) !important;
+        background: var(--kt-surface-2) !important;
+        color: var(--text) !important;
+        font-weight: 900 !important;
+        padding: 8px 12px !important;
+        box-shadow: 0 12px 20px rgba(0,0,0,.10) !important;
+        transition: .15s ease;
+    }
+    .fc .fc-button:hover{
+        background: rgba(96,165,250,.10) !important;
+        border-color: rgba(96,165,250,.35) !important;
+        transform: translateY(-1px);
+    }
+    .fc .fc-button-primary:not(:disabled).fc-button-active{
+        background: rgba(96,165,250,.14) !important;
+        border-color: rgba(96,165,250,.35) !important;
+        color: var(--kt-primary) !important;
+    }
 
-/* grid borders softer */
-.fc-theme-standard td,
-.fc-theme-standard th{
-    border-color: rgba(15,23,42,.06) !important;
-}
-.fc .fc-scrollgrid{
-    border: 0 !important;
-}
+    .fc-theme-standard td,
+    .fc-theme-standard th{
+        border-color: rgba(148,163,184,.16) !important;
+    }
+    .fc .fc-scrollgrid{ border: 0 !important; }
 
-/* day header */
-.fc .fc-col-header-cell{
-    background: rgba(248,250,252,.75);
-}
-.fc .fc-col-header-cell-cushion{
-    padding: 10px 8px !important;
-    font-size: 11px;
-    font-weight: 950;
-    letter-spacing: .35px;
-    text-transform: uppercase;
-    color: rgba(15,23,42,.55);
-}
+    .fc .fc-col-header-cell{ background: rgba(248,250,252,.35); }
+    html[data-theme="dark"] .fc .fc-col-header-cell{ background: rgba(2,6,23,.45) !important; }
 
-/* month cells */
-.fc .fc-daygrid-day{
-    background: rgba(255,255,255,.92);
-}
-.fc .fc-daygrid-day-top{
-    justify-content:flex-end;
-}
-.fc .fc-daygrid-day-number{
-    font-weight: 950;
-    color: rgba(15,23,42,.78);
-    background: rgba(15,23,42,.04);
-    border: 1px solid rgba(15,23,42,.06);
-    border-radius: 999px;
-    padding: 2px 8px !important;
-    margin: 8px 8px 0 0;
-    font-size: 11px;
-}
+    .fc .fc-col-header-cell-cushion{
+        padding: 10px 8px !important;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: .35px;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
 
-/* today highlight with elegant ring */
-.fc .fc-day-today{
-    background: rgba(37,99,235,.06) !important;
-    position: relative;
-}
-.fc .fc-day-today::after{
-    content:"";
-    position:absolute;
-    inset:6px;
-    border-radius: 14px;
-    border: 1px solid rgba(37,99,235,.18);
-    pointer-events:none;
-}
-.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number{
-    background: rgba(37,99,235,.12);
-    border-color: rgba(37,99,235,.22);
-    color: rgb(37,99,235);
-}
+    .fc .fc-daygrid-day{ background: var(--kt-surface); }
+    html[data-theme="dark"] .fc .fc-daygrid-day{ background: rgba(17,24,39,.40) !important; }
 
-/* week/day timegrid polish */
-.fc .fc-timegrid-slot{
-    height: 44px;
-}
-.fc .fc-timegrid-slot-label{
-    font-size: 11px;
-    font-weight: 900;
-    color: rgba(15,23,42,.55);
-}
-.fc .fc-timegrid-axis{
-    background: rgba(248,250,252,.75);
-}
+    .fc .fc-daygrid-day-number{
+        font-weight: 950;
+        color: var(--muted);
+        background: rgba(148,163,184,.10);
+        border: 1px solid rgba(148,163,184,.16);
+        border-radius: 999px;
+        padding: 2px 8px !important;
+        margin: 8px 8px 0 0;
+        font-size: 11px;
+    }
 
-/* now indicator */
-.fc .fc-timegrid-now-indicator-line{
-    border-color: rgba(239,68,68,.70) !important;
-}
-.fc .fc-timegrid-now-indicator-arrow{
-    border-color: rgba(239,68,68,.70) !important;
-}
+    .fc .fc-day-today{
+        background: rgba(96,165,250,.08) !important;
+        position: relative;
+    }
+    .fc .fc-day-today::after{
+        content:"";
+        position:absolute;
+        inset:6px;
+        border-radius: 14px;
+        border: 1px solid rgba(96,165,250,.22);
+        pointer-events:none;
+    }
 
-/* event pill style (modern) */
-.fc .fc-event{
-    border: 0 !important;
-    border-radius: 999px !important;
-    padding: 3px 8px !important;
-    box-shadow: 0 12px 22px rgba(15,23,42,.10);
-    overflow: hidden;
-}
-.fc .fc-event::before{
-    content:"";
-    position:absolute;
-    inset:-40%;
-    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,.35), transparent 60%);
-    transform: rotate(15deg);
-    opacity:.9;
-    pointer-events:none;
-}
-.fc .fc-event .fc-event-main{
-    color: #fff !important;
-    font-weight: 950;
-    font-size: 11px;
-    letter-spacing: .15px;
-}
-.fc .fc-event .fc-event-time{
-    font-weight: 950;
-    opacity: .95;
-}
+    .fc .fc-event{
+        border: 0 !important;
+        border-radius: 999px !important;
+        padding: 3px 8px !important;
+        box-shadow: 0 12px 22px rgba(0,0,0,.20);
+        overflow: hidden;
+    }
+    html[data-theme="dark"] .fc .fc-event{
+        border: 1px solid rgba(255,255,255,.10) !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,.35);
+    }
 
-/* “more” link */
-.fc .fc-daygrid-more-link{
-    font-weight: 950;
-    color: rgb(37,99,235);
-}
+    .fc .fc-event .fc-event-main{
+        color: #fff !important;
+        font-weight: 950;
+        font-size: 11px;
+        letter-spacing: .15px;
+    }
 
-/* remove heavy focus outline */
-.fc .fc-button:focus,
-.fc a:focus{
-    box-shadow: none !important;
-    outline: none !important;
-}
-/* ===== FullCalendar Dark Mode ===== */
-html[data-theme="dark"] .fc{
-  color: var(--text);
-}
+    .fc .fc-daygrid-more-link{
+        font-weight: 950;
+        color: var(--kt-primary);
+    }
 
-html[data-theme="dark"] .fc .fc-scrollgrid,
-html[data-theme="dark"] .fc .fc-scrollgrid td,
-html[data-theme="dark"] .fc .fc-scrollgrid th{
-  border-color: var(--border) !important;
-}
-
-html[data-theme="dark"] .fc .fc-col-header-cell,
-html[data-theme="dark"] .fc .fc-timegrid-axis,
-html[data-theme="dark"] .fc .fc-timegrid-slot-label{
-  background: rgba(17,24,39,.55) !important;
-}
-
-html[data-theme="dark"] .fc .fc-daygrid-day,
-html[data-theme="dark"] .fc .fc-timegrid-col{
-  background: rgba(17,24,39,.35) !important;
-}
-
-html[data-theme="dark"] .fc .fc-day-today{
-  background: rgba(96,165,250,.10) !important;
-}
-
-html[data-theme="dark"] .fc .fc-button{
-  background: rgba(17,24,39,.85) !important;
-  border-color: var(--border) !important;
-  color: var(--text) !important;
-}
-
-html[data-theme="dark"] .fc .fc-button:hover{
-  background: rgba(96,165,250,.12) !important;
-  border-color: rgba(96,165,250,.35) !important;
-}
-
-html[data-theme="dark"] .fc .fc-toolbar-title{
-  color: var(--text) !important;
-}
-
-html[data-theme="dark"] .fc .fc-event{
-  border: 1px solid rgba(255,255,255,.10) !important;
-  box-shadow: 0 10px 24px rgba(0,0,0,.35);
-}
-
-
+    .fc .fc-button:focus,
+    .fc a:focus{
+        box-shadow: none !important;
+        outline: none !important;
+    }
 </style>
 
 <div class="dash-wrap">
@@ -650,13 +578,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!calEl) return;
 
     const calendar = new FullCalendar.Calendar(calEl, {
-        initialView: 'dayGridMonth',          // elegant default
+        initialView: 'dayGridMonth',
         height: 620,
         expandRows: true,
         nowIndicator: true,
         stickyHeaderDates: true,
-        firstDay: 1,                          // Monday start (PH friendly)
-        dayMaxEvents: 3,                      // clean month cells
+        firstDay: 1,
+        dayMaxEvents: 3,
 
         headerToolbar: {
             left: 'prev,next today',
@@ -672,14 +600,9 @@ document.addEventListener('DOMContentLoaded', function () {
         eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
 
         eventDidMount: function(info){
-            // subtle hover
             info.el.style.cursor = "pointer";
-            info.el.addEventListener("mouseenter", () => {
-                info.el.style.transform = "translateY(-1px)";
-            });
-            info.el.addEventListener("mouseleave", () => {
-                info.el.style.transform = "translateY(0px)";
-            });
+            info.el.addEventListener("mouseenter", () => { info.el.style.transform = "translateY(-1px)"; });
+            info.el.addEventListener("mouseleave", () => { info.el.style.transform = "translateY(0px)"; });
         },
 
         eventClick: function(info){
@@ -699,14 +622,12 @@ document.addEventListener('DOMContentLoaded', function () {
         btn?.classList.add('active');
     };
 
-    // default active = month
     setActive(btnMonth);
 
     btnMonth?.addEventListener('click', () => { calendar.changeView('dayGridMonth'); setActive(btnMonth); });
     btnWeek?.addEventListener('click',  () => { calendar.changeView('timeGridWeek'); setActive(btnWeek); });
     btnDay?.addEventListener('click',   () => { calendar.changeView('timeGridDay'); setActive(btnDay); });
 });
-
 </script>
 
 @endsection

@@ -3,10 +3,35 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Payments Edit (Dark mode compatible)
+       Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                         --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+
+        --brand1: #0d6efd;
+        --brand2: #1e90ff;
+
+        --radius: 16px;
+        --soft: rgba(148,163,184,.14);
+        --soft2: rgba(148,163,184,.18);
+
+        --danger: #ef4444;
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
     }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
+        --soft2: rgba(148,163,184,.20);
+    }
+
+    .form-max{ max-width: 1100px; }
 
     /* Header */
     .page-head{
@@ -16,60 +41,59 @@
         gap: 14px;
         margin-bottom: 16px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .page-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
-    .btn-ghostx{
-        display:inline-flex;
-        align-items:center;
-        gap: 8px;
-        padding: 11px 14px;
-        border-radius: 12px;
-        font-weight: 800;
-        font-size: 14px;
-        text-decoration: none;
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: rgba(15, 23, 42, .75);
-        background: rgba(255,255,255,.85);
-        transition: .15s ease;
-        white-space: nowrap;
-    }
-    .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
-    }
-
+    /* Buttons */
+    .btn-ghostx,
     .btn-primaryx{
         display:inline-flex;
         align-items:center;
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
-        border: none;
-        color: #fff;
         text-decoration: none;
-        background: linear-gradient(135deg, #0d6efd, #1e90ff);
-        box-shadow: 0 10px 18px rgba(13, 110, 253, .20);
         transition: .15s ease;
         white-space: nowrap;
+        user-select: none;
+    }
+
+    .btn-ghostx{
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--text) !important;
+    }
+    .btn-ghostx:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(2,6,23,.35);
+    }
+
+    .btn-primaryx{
+        border: none;
+        color: #fff !important;
+        background: linear-gradient(135deg, var(--brand1), var(--brand2));
+        box-shadow: 0 10px 18px rgba(13, 110, 253, .20);
     }
     .btn-primaryx:hover{
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(13, 110, 253, .26);
-        color:#fff;
     }
 
     /* Error box */
@@ -81,9 +105,17 @@
         padding: 14px 16px;
         margin-bottom: 14px;
     }
+    html[data-theme="dark"] .error-box{
+        background: rgba(239, 68, 68, .12);
+        color: rgba(254,202,202,.95);
+        border-color: rgba(239,68,68,.25);
+    }
     .error-box .title{
-        font-weight: 900;
+        font-weight: 950;
         margin-bottom: 6px;
+        display:flex;
+        align-items:center;
+        gap: 8px;
     }
     .error-box ul{
         margin: 0;
@@ -93,16 +125,18 @@
 
     /* Card */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
+        backdrop-filter: blur(8px);
+        min-width:0;
     }
     .card-head{
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         display:flex;
         align-items:center;
         justify-content:space-between;
@@ -111,44 +145,45 @@
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 900;
     }
     .card-bodyx{ padding: 18px; }
 
     /* Inputs */
     .form-labelx{
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
-        color: rgba(15, 23, 42, .75);
+        color: var(--text);
+        opacity: .85;
         margin-bottom: 6px;
     }
 
     .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
+        color: var(--text);
+        background: var(--kt-surface-2);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
-
     .inputx:focus, .selectx:focus, .textareax:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
     }
 
     .helper{
         margin-top: 6px;
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 800;
     }
 
-    .form-max{ max-width: 1100px; }
+    .money{ font-variant-numeric: tabular-nums; }
 </style>
 
 <div class="page-head form-max">
@@ -205,7 +240,16 @@
                 <!-- Amount -->
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount <span class="text-danger">*</span></label>
-                    <input type="number" name="amount" value="{{ old('amount', $payment->amount) }}" class="inputx" required>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="amount"
+                        value="{{ old('amount', $payment->amount) }}"
+                        class="inputx money"
+                        required
+                    >
+                    <div class="helper">Use decimals if needed (e.g., 1500.00).</div>
                 </div>
 
                 <!-- Method -->
@@ -218,18 +262,26 @@
                         <option value="Card" {{ $m == 'Card' ? 'selected' : '' }}>Card</option>
                         <option value="Bank Transfer" {{ $m == 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer</option>
                     </select>
+                    <div class="helper">Choose how the patient paid.</div>
                 </div>
 
                 <!-- Payment Date -->
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
-                    <input type="date" name="payment_date" value="{{ old('payment_date', $payment->payment_date) }}" class="inputx" required>
+                    <input
+                        type="date"
+                        name="payment_date"
+                        value="{{ old('payment_date', $payment->payment_date) }}"
+                        class="inputx"
+                        required
+                    >
+                    <div class="helper">Date the payment was received.</div>
                 </div>
 
                 <!-- Notes -->
                 <div class="col-12">
                     <label class="form-labelx">Notes</label>
-                    <textarea name="notes" rows="3" class="textareax">{{ old('notes', $payment->notes) }}</textarea>
+                    <textarea name="notes" rows="3" class="textareax" placeholder="Optional internal notes...">{{ old('notes', $payment->notes) }}</textarea>
                     <div class="helper">Optional: add internal notes about this payment.</div>
                 </div>
 

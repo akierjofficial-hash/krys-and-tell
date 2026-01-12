@@ -3,16 +3,28 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Visits Index (Dark mode compatible)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                           --kt-border, --kt-input-bg, --kt-input-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 12px 30px rgba(15, 23, 42, .08);
-        --card-border: 1px solid rgba(15, 23, 42, .10);
-        --soft: rgba(15, 23, 42, .06);
-        --text: #0f172a;
-        --muted: rgba(15, 23, 42, .58);
-        --muted2: rgba(15, 23, 42, .45);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --soft: rgba(148, 163, 184, .14);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+
         --brand1: #0d6efd;
         --brand2: #1e90ff;
         --radius: 16px;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148, 163, 184, .16);
     }
 
     .page-head{
@@ -25,7 +37,7 @@
     }
     .page-title{
         font-size: 28px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.4px;
         margin: 0;
         color: var(--text);
@@ -41,6 +53,7 @@
         align-items:center;
         gap: 10px;
         flex-wrap: wrap;
+        min-width: 0;
     }
 
     .toggle-group{
@@ -53,62 +66,68 @@
         position: relative;
         width: 340px;
         max-width: 100%;
+        min-width: 0;
     }
     .search-box i{
         position: absolute;
         top: 50%;
         left: 12px;
         transform: translateY(-50%);
-        color: rgba(15, 23, 42, .45);
+        color: rgba(148,163,184,.9);
         font-size: 14px;
         pointer-events: none;
     }
+    html[data-theme="dark"] .search-box i{
+        color: rgba(148,163,184,.75);
+    }
+
     .search-box input{
         width: 100%;
         padding: 11px 12px 11px 38px;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
+        border: 1px solid var(--kt-input-border);
+        background: var(--kt-input-bg);
+        box-shadow: var(--kt-shadow);
         outline: none;
         transition: .15s ease;
         font-size: 14px;
         color: var(--text);
     }
     .search-box input:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
+        background: var(--kt-surface);
     }
 
     .sort-box{
         display:flex;
         align-items:center;
         gap: 8px;
+        min-width: 0;
     }
     .sort-box .sort-label{
         font-size: 12px;
-        font-weight: 900;
-        color: rgba(15, 23, 42, .60);
+        font-weight: 950;
+        color: var(--muted);
         white-space: nowrap;
     }
     .sort-select{
         min-width: 210px;
         max-width: 100%;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-input-border);
+        background: var(--kt-input-bg);
         padding: 11px 12px;
         font-size: 14px;
         color: var(--text);
         outline: none;
         transition: .15s ease;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
+        box-shadow: var(--kt-shadow);
     }
     .sort-select:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: var(--focus);
+        box-shadow: 0 0 0 4px var(--focusRing);
+        background: var(--kt-surface);
     }
 
     .btnx{
@@ -117,7 +136,7 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 900;
         font-size: 14px;
         text-decoration: none;
         border: 1px solid transparent;
@@ -128,16 +147,21 @@
     }
 
     .btn-ghost{
-        background: rgba(15,23,42,.05);
-        border-color: rgba(15,23,42,.10);
-        color: rgba(15,23,42,.75) !important;
+        background: var(--kt-surface-2);
+        border-color: var(--kt-border);
+        color: var(--text) !important;
     }
-    .btn-ghost:hover{ background: rgba(15,23,42,.07); }
+    .btn-ghost:hover{
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghost:hover{
+        background: rgba(17,24,39,.75);
+    }
 
     .btn-active{
-        background: rgba(13,110,253,.12);
-        border-color: rgba(13,110,253,.25);
-        color: rgba(13,110,253,.95) !important;
+        background: rgba(96,165,250,.14);
+        border-color: rgba(96,165,250,.28);
+        color: #60a5fa !important;
     }
 
     .add-btn{
@@ -147,7 +171,7 @@
         background: linear-gradient(135deg, var(--brand1), var(--brand2));
         padding: 11px 14px;
         color: #fff !important;
-        font-weight: 800;
+        font-weight: 900;
         border-radius: 12px;
         font-size: 14px;
         text-decoration: none;
@@ -161,11 +185,12 @@
     }
 
     .card-shell{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
+        color: var(--text);
     }
 
     .card-head{
@@ -176,6 +201,10 @@
         padding: 16px 18px;
         border-bottom: 1px solid var(--soft);
         flex-wrap: wrap;
+        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
+    }
+    html[data-theme="dark"] .card-head{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
     }
 
     .card-head .hint{
@@ -190,11 +219,14 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 900;
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .75);
+        font-weight: 950;
+        border: 1px solid var(--kt-border);
+        background: rgba(148,163,184,.10);
+        color: var(--text);
         white-space: nowrap;
+    }
+    html[data-theme="dark"] .count-pill{
+        background: rgba(2,6,23,.35);
     }
 
     .table-wrap{ padding: 8px 10px 10px 10px; }
@@ -207,15 +239,19 @@
         font-size: 12px;
         letter-spacing: .3px;
         text-transform: uppercase;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
         padding: 14px 14px;
-        border-bottom: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248, 250, 252, .9);
+        border-bottom: 1px solid var(--soft);
+        background: rgba(148,163,184,.10);
         position: sticky;
         top: 0;
         z-index: 1;
         white-space: nowrap;
     }
+    html[data-theme="dark"] thead th{
+        background: rgba(2,6,23,.35);
+    }
+
     tbody td{
         padding: 14px 14px;
         font-size: 14px;
@@ -224,7 +260,7 @@
         vertical-align: middle;
     }
     tbody tr{ transition: .12s ease; }
-    tbody tr:hover{ background: rgba(13,110,253,.06); }
+    tbody tr:hover{ background: rgba(96,165,250,.08); }
 
     .muted{ color: var(--muted); }
 
@@ -239,11 +275,15 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 700;
-        background: rgba(15, 23, 42, .06);
-        color: rgba(15, 23, 42, .75);
-        border: 1px solid rgba(15, 23, 42, .08);
+        font-weight: 800;
+        background: rgba(148,163,184,.12);
+        color: var(--text);
+        border: 1px solid rgba(148,163,184,.18);
         white-space: nowrap;
+    }
+    html[data-theme="dark"] .tag{
+        background: rgba(148,163,184,.10);
+        border-color: rgba(148,163,184,.20);
     }
 
     .action-pills{
@@ -260,7 +300,7 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 900;
         border: 1px solid transparent;
         text-decoration: none;
         transition: .12s ease;
@@ -270,26 +310,26 @@
     .pill i{ font-size: 12px; }
 
     .pill-view{
-        background: rgba(59, 130, 246, .12);
-        color: #1d4ed8 !important;
-        border-color: rgba(59, 130, 246, .22);
+        background: rgba(96,165,250,.14);
+        color: #60a5fa !important;
+        border-color: rgba(96,165,250,.22);
     }
-    .pill-view:hover{ background: rgba(59, 130, 246, .18); }
+    .pill-view:hover{ background: rgba(96,165,250,.20); }
 
     .pill-edit{
-        background: rgba(34, 197, 94, .12);
-        color: #15803d !important;
-        border-color: rgba(34, 197, 94, .22);
+        background: rgba(52,211,153,.14);
+        color: #34d399 !important;
+        border-color: rgba(52,211,153,.22);
     }
-    .pill-edit:hover{ background: rgba(34, 197, 94, .18); }
+    .pill-edit:hover{ background: rgba(52,211,153,.20); }
 
     .pill-del{
-        background: rgba(239, 68, 68, .12);
-        color: #b91c1c !important;
-        border-color: rgba(239, 68, 68, .22);
+        background: rgba(248,113,113,.14);
+        color: #f87171 !important;
+        border-color: rgba(248,113,113,.22);
         cursor: pointer;
     }
-    .pill-del:hover{ background: rgba(239, 68, 68, .18); }
+    .pill-del:hover{ background: rgba(248,113,113,.20); }
 
     @media (max-width: 768px){
         .search-box{ width: 100%; }
@@ -362,10 +402,8 @@
         </button>
 
         <a href="{{ route('staff.visits.create') }}" class="add-btn">
-    <i class="fa fa-plus"></i> Add Visit
-</a>
-
-
+            <i class="fa fa-plus"></i> Add Visit
+        </a>
     </div>
 </div>
 
@@ -383,7 +421,7 @@
     <div class="table-wrap table-responsive">
         <table>
             @if($isAll)
-                {{-- ✅ ALL VISITS (your original table) --}}
+                {{-- ✅ ALL VISITS --}}
                 <thead>
                     <tr>
                         <th>Patient</th>
@@ -498,7 +536,7 @@
                     @endforelse
                 </tbody>
             @else
-                {{-- ✅ UNIQUE PATIENTS (new default view) --}}
+                {{-- ✅ UNIQUE PATIENTS --}}
                 <thead>
                     <tr>
                         <th>Patient</th>
@@ -608,7 +646,7 @@
     }
 
     function applySort() {
-        if (!sortSelect) return; // just in case
+        if (!sortSelect) return;
 
         const mode = sortSelect.value;
 
@@ -651,7 +689,6 @@
     totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
 
-    // use input so paste/mobile works too
     searchInput.addEventListener('input', applySearch);
     sortSelect && sortSelect.addEventListener('change', applyAll);
 

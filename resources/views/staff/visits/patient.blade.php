@@ -3,15 +3,30 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Visits > Patient (Dark mode compatible)
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                           --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 12px 30px rgba(15, 23, 42, .08);
-        --card-border: 1px solid rgba(15, 23, 42, .10);
-        --soft: rgba(15, 23, 42, .06);
-        --text: #0f172a;
-        --muted: rgba(15, 23, 42, .58);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --soft: rgba(148,163,184,.14);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+        --muted2: rgba(148,163,184,.70);
+
         --brand1: #0d6efd;
         --brand2: #1e90ff;
         --radius: 16px;
+
+        --focus: rgba(96,165,250,.55);
+        --focusRing: rgba(96,165,250,.18);
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
+        --muted2: rgba(148,163,184,.66);
     }
 
     .page-head{
@@ -24,7 +39,7 @@
     }
     .page-title{
         font-size: 28px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.4px;
         margin: 0;
         color: var(--text);
@@ -32,7 +47,7 @@
     .subtitle{
         margin: 6px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .58);
+        color: var(--muted);
     }
 
     .top-actions{
@@ -48,19 +63,24 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 900;
         font-size: 14px;
         text-decoration: none;
-        border: 1px solid transparent;
+        border: 1px solid var(--kt-border);
         transition: .15s ease;
         white-space: nowrap;
         cursor: pointer;
         user-select: none;
-        background: rgba(15,23,42,.05);
-        border-color: rgba(15,23,42,.10);
-        color: rgba(15,23,42,.75) !important;
+        background: var(--kt-surface-2);
+        color: var(--text) !important;
     }
-    .btnx:hover{ background: rgba(15,23,42,.07); }
+    .btnx:hover{
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btnx:hover{
+        background: rgba(17,24,39,.75);
+    }
 
     .add-btn{
         display:inline-flex;
@@ -69,7 +89,7 @@
         background: linear-gradient(135deg, var(--brand1), var(--brand2));
         padding: 11px 14px;
         color: #fff !important;
-        font-weight: 800;
+        font-weight: 900;
         border-radius: 12px;
         font-size: 14px;
         text-decoration: none;
@@ -83,12 +103,15 @@
     }
 
     .card-shell{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
+        backdrop-filter: blur(8px);
+        min-width: 0;
     }
+
     .table-wrap{ padding: 8px 10px 10px 10px; }
     table{ width: 100%; border-collapse: separate; border-spacing: 0; }
 
@@ -96,23 +119,27 @@
         font-size: 12px;
         letter-spacing: .3px;
         text-transform: uppercase;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
         padding: 14px 14px;
-        border-bottom: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248, 250, 252, .9);
+        border-bottom: 1px solid var(--soft);
+        background: rgba(148,163,184,.12);
         position: sticky;
         top: 0;
         z-index: 1;
         white-space: nowrap;
     }
+    html[data-theme="dark"] thead th{
+        background: rgba(2,6,23,.35);
+    }
+
     tbody td{
         padding: 14px 14px;
         font-size: 14px;
         color: var(--text);
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--soft);
         vertical-align: middle;
     }
-    tbody tr:hover{ background: rgba(13,110,253,.06); }
+    tbody tr:hover{ background: rgba(96,165,250,.08); }
     .muted{ color: var(--muted); }
 
     .tags{ display:flex; flex-wrap: wrap; gap: 6px; }
@@ -122,11 +149,15 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 700;
-        background: rgba(15, 23, 42, .06);
-        color: rgba(15, 23, 42, .75);
-        border: 1px solid rgba(15, 23, 42, .08);
+        font-weight: 850;
+        background: rgba(148,163,184,.12);
+        color: var(--text);
+        border: 1px solid rgba(148,163,184,.18);
         white-space: nowrap;
+    }
+    html[data-theme="dark"] .tag{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.20);
     }
 
     .action-pills{
@@ -143,7 +174,7 @@
         padding: 7px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 900;
         border: 1px solid transparent;
         text-decoration: none;
         transition: .12s ease;
@@ -153,32 +184,54 @@
     .pill i{ font-size: 12px; }
 
     .pill-edit{
-        background: rgba(34, 197, 94, .12);
-        color: #15803d !important;
+        background: rgba(34, 197, 94, .14);
+        color: #22c55e !important;
         border-color: rgba(34, 197, 94, .22);
     }
+    .pill-edit:hover{ background: rgba(34,197,94,.20); }
+
     .pill-view{
-        background: rgba(59, 130, 246, .12);
-        color: #1d4ed8 !important;
-        border-color: rgba(59, 130, 246, .22);
+        background: rgba(96,165,250,.14);
+        color: #60a5fa !important;
+        border-color: rgba(96,165,250,.22);
     }
+    .pill-view:hover{ background: rgba(96,165,250,.20); }
+
     .pill-del{
-        background: rgba(239, 68, 68, .12);
-        color: #b91c1c !important;
+        background: rgba(239, 68, 68, .14);
+        color: #ef4444 !important;
         border-color: rgba(239, 68, 68, .22);
         cursor: pointer;
+    }
+    .pill-del:hover{ background: rgba(239,68,68,.20); }
+
+    /* Pagination (bootstrap-5) */
+    .pagination { margin: 0; gap: 6px; flex-wrap: wrap; }
+    .pagination .page-link{
+        border-radius: 10px;
+        font-weight: 900;
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        background: var(--kt-surface-2);
+    }
+    .pagination .page-item.active .page-link{
+        background: rgba(96,165,250,.14);
+        border-color: rgba(96,165,250,.25);
+        color: #60a5fa;
     }
 </style>
 
 @php
     $patientLabel = trim(($patient->last_name ?? '').', '.($patient->first_name ?? ''));
+    // If $visits is paginated, total() exists; otherwise fallback to count()
+    $visitTotal = method_exists($visits, 'total') ? $visits->total() : $visits->count();
 @endphp
 
 <div class="page-head">
     <div>
         <h2 class="page-title">Visit Records</h2>
         <p class="subtitle">
-            {{ $patientLabel }} — {{ $visits->count() }} total visit{{ $visits->count() === 1 ? '' : 's' }}
+            {{ $patientLabel }} — {{ $visitTotal }} total visit{{ $visitTotal === 1 ? '' : 's' }}
         </p>
     </div>
 
@@ -217,7 +270,7 @@
                     @endphp
 
                     <tr>
-                        <td>
+                        <td style="font-weight:900;">
                             {{ $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('m/d/Y') : '—' }}
                         </td>
 
@@ -292,6 +345,12 @@
             </tbody>
         </table>
     </div>
+
+    @if(method_exists($visits, 'hasPages') && $visits->hasPages())
+        <div class="px-3 pb-3">
+            {{ $visits->links('pagination::bootstrap-5') }}
+        </div>
+    @endif
 </div>
 
 @endsection

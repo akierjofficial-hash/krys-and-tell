@@ -1,8 +1,10 @@
+<!-- resources/views/layouts/staff.blade.php -->
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>Krys & Tell</title>
 
@@ -17,92 +19,128 @@
 
     <style>
         /* ==========================================================
-           THEME TOKENS (GLOBAL) — + LEGACY VARIABLE OVERRIDES
+           Krys & Tell — Staff Layout (Dark mode FIXED FOR REAL)
+           Fixes:
+           - labels/text going black (disappearing) in dark mode
+           - inputs/selects staying white (so typed text disappears)
+           - “cards” staying light in installment/payments/visits/patients
+           - dropdown menus/options unreadable in dark mode
            ========================================================== */
-           body { overflow-x: hidden; }
 
-        html {
-            /* NEW TOKENS (recommended) */
+        body { overflow-x: hidden; }
+
+        /* ---------- Theme Tokens (LOCKED) ---------- */
+        html{
             --kt-bg: #eef3fa !important;
-            --kt-surface: rgba(255, 255, 255, .90) !important;
-            --kt-surface-2: rgba(255, 255, 255, .96) !important;
+            --kt-surface: rgba(255,255,255,.92) !important;
+            --kt-surface-2: rgba(255,255,255,.98) !important;
             --kt-text: #0f172a !important;
             --kt-muted: rgba(15, 23, 42, .62) !important;
-            --kt-border: rgba(15, 23, 42, .10) !important;
+            --kt-border: rgba(15, 23, 42, .12) !important;
             --kt-shadow: 0 14px 36px rgba(15, 23, 42, .10) !important;
-            --kt-primary: #2563eb !important;
+            --kt-primary: #0d6efd !important;
+            --kt-primary-soft: rgba(13,110,253,.12) !important;
 
-            --kt-input-bg: rgba(255, 255, 255, .92) !important;
-            --kt-input-border: rgba(15, 23, 42, .14) !important;
+            --kt-input-bg: rgba(255,255,255,.92) !important;
+            --kt-input-border: rgba(15, 23, 42, .16) !important;
 
             --kt-sidebar-bg: linear-gradient(180deg, #0d6efd 0%, #084298 100%) !important;
             --kt-sidebar-shadow: 0 12px 30px rgba(2, 117, 255, 0.25) !important;
 
-            /* LEGACY TOKENS (your pages use these a lot) */
-            --text: #0f172a !important;
-            --muted: rgba(15, 23, 42, .58) !important;
-            --card-border: 1px solid rgba(15, 23, 42, .08) !important;
-            --card-shadow: 0 12px 28px rgba(15, 23, 42, .08) !important;
+            --kt-radius: 16px !important;
+            --kt-radius-sm: 12px !important;
+
+            /* Legacy vars used across blades */
+            --text: var(--kt-text) !important;
+            --muted: var(--kt-muted) !important;
+            --card-border: 1px solid var(--kt-border) !important;
+            --card-shadow: var(--kt-shadow) !important;
+            --card-bg: var(--kt-surface) !important;
+
+            /* Bootstrap bridge (helps components that rely on BS vars) */
+            --bs-body-bg: var(--kt-bg) !important;
+            --bs-body-color: var(--kt-text) !important;
+            --bs-border-color: var(--kt-border) !important;
+            --bs-secondary-color: var(--kt-muted) !important;
+            --bs-tertiary-color: var(--kt-muted) !important;
+            --bs-secondary-bg: var(--kt-surface) !important;
+            --bs-tertiary-bg: var(--kt-surface) !important;
         }
 
-        html[data-theme="dark"] {
-            /* Dark theme (NO galaxy, just clean dark) */
-            --kt-bg: #0b1220 !important;
-            --kt-surface: rgba(17, 24, 39, .78) !important;
-            --kt-surface-2: rgba(17, 24, 39, .92) !important;
+        html[data-theme="dark"]{
+            color-scheme: dark;
 
-            /* YOU REQUESTED: all text white */
+            --kt-bg: #0b1220 !important;
+            --kt-surface: rgba(17, 24, 39, .90) !important;
+            --kt-surface-2: rgba(17, 24, 39, .96) !important;
+
             --kt-text: #f8fafc !important;
-            --kt-muted: rgba(248, 250, 252, .72) !important;
+            --kt-muted: rgba(248, 250, 252, .74) !important;
 
             --kt-border: rgba(148, 163, 184, .18) !important;
             --kt-shadow: 0 18px 48px rgba(0, 0, 0, .55) !important;
+
             --kt-primary: #60a5fa !important;
+            --kt-primary-soft: rgba(96,165,250,.14) !important;
 
             --kt-input-bg: rgba(17, 24, 39, .92) !important;
-            --kt-input-border: rgba(148, 163, 184, .22) !important;
+            --kt-input-border: rgba(148, 163, 184, .24) !important;
 
             --kt-sidebar-bg: linear-gradient(180deg, #0b1220 0%, #0b162d 100%) !important;
             --kt-sidebar-shadow: 0 18px 48px rgba(0, 0, 0, .55) !important;
 
-            /* LEGACY OVERRIDES (THIS FIXES YOUR “BAD” LOOK) */
-            --text: #f8fafc !important;
-            --muted: rgba(248, 250, 252, .72) !important;
-            --card-border: 1px solid rgba(148, 163, 184, .18) !important;
-            --card-shadow: 0 18px 48px rgba(0, 0, 0, .55) !important;
+            --text: var(--kt-text) !important;
+            --muted: var(--kt-muted) !important;
+            --card-border: 1px solid var(--kt-border) !important;
+            --card-shadow: var(--kt-shadow) !important;
+            --card-bg: var(--kt-surface) !important;
+
+            --bs-body-bg: var(--kt-bg) !important;
+            --bs-body-color: var(--kt-text) !important;
+            --bs-border-color: var(--kt-border) !important;
+            --bs-secondary-color: var(--kt-muted) !important;
+            --bs-tertiary-color: var(--kt-muted) !important;
+            --bs-secondary-bg: var(--kt-surface) !important;
+            --bs-tertiary-bg: var(--kt-surface) !important;
         }
 
-        body {
+        /* ---------- Base ---------- */
+        *{ box-sizing:border-box; }
+        body{
             font-family: 'Poppins', sans-serif;
-            background: var(--kt-bg) !important;
-            color: var(--kt-text) !important;
+            background: var(--kt-bg);
+            color: var(--kt-text);
             margin: 0;
         }
+        a{ color: var(--kt-primary); }
+        a:hover{ opacity: .92; }
+        .text-muted, small, .small{ color: var(--kt-muted) !important; }
+        hr{ border-color: var(--kt-border) !important; opacity: 1; }
 
-        /* Make all common “muted” text readable */
-        .text-muted,
-        small,
-        .small {
-            color: var(--kt-muted) !important;
+        /* If any page uses text-dark/text-black utilities, force readable in dark mode */
+        html[data-theme="dark"] .content .text-dark,
+        html[data-theme="dark"] .content .text-black,
+        html[data-theme="dark"] .content .text-body{
+            color: var(--kt-text) !important;
         }
 
-        /* MAIN FLEX WRAPPER */
-        .layout {
-            display: flex;
-            min-height: 100vh;
-            width: 100%;
+        /* ---------- Layout ---------- */
+        .layout{
+            display:flex;
+            min-height:100vh;
+            width:100%;
         }
 
-        /* SIDEBAR */
-        .sidebar {
-            width: 245px;
-            color: white;
-            padding: 22px 14px;
-            display: flex;
-            flex-direction: column;
+        /* ---------- Sidebar ---------- */
+        .sidebar{
+            width:245px;
+            color:#fff;
+            padding:22px 14px;
+            display:flex;
+            flex-direction:column;
             background: var(--kt-sidebar-bg);
             box-shadow: var(--kt-sidebar-shadow);
-            flex-shrink: 0;
+            flex-shrink:0;
 
             position: sticky;
             top: 0;
@@ -110,41 +148,238 @@
             overflow: hidden;
         }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 10px 10px 18px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, .15);
-            margin-bottom: 14px;
+        .brand{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            padding:10px 10px 18px 10px;
+            border-bottom:1px solid rgba(255,255,255,.15);
+            margin-bottom:14px;
         }
-
-        .brand-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
+        .brand-left{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            min-width:0;
         }
-
-        .brand .logo {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, .18);
-            display: grid;
-            place-items: center;
-            overflow: hidden;
+        .brand .logo{
+            width:44px;
+            height:44px;
+            border-radius:12px;
+            background: rgba(255,255,255,.18);
+            display:grid;
+            place-items:center;
+            overflow:hidden;
             flex: 0 0 auto;
         }
-
-        .brand .logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
-            display: block;
+        .brand .logo img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            display:block;
         }
+        .brand h4{
+            margin:0;
+            font-weight:800;
+            font-size:16px;
+            line-height:1.1;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        .brand small{
+            display:block;
+            font-size:12px;
+            color: rgba(255,255,255,.75) !important;
+            margin-top:2px;
+        }
+
+        .theme-toggle{
+            border:1px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.10);
+            color:#fff;
+            width:40px;
+            height:40px;
+            border-radius:12px;
+            display:grid;
+            place-items:center;
+            cursor:pointer;
+            transition:.18s ease;
+            flex: 0 0 auto;
+        }
+        .theme-toggle:hover{
+            background: rgba(255,255,255,.16);
+            transform: translateY(-1px);
+        }
+
+        .sidebar-menu{
+            margin-top:12px;
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+            flex:1;
+            overflow-y:auto;
+            padding-right:6px;
+        }
+        .sidebar-menu::-webkit-scrollbar{ width:8px; }
+        .sidebar-menu::-webkit-scrollbar-thumb{
+            background: rgba(255,255,255,.18);
+            border-radius:999px;
+        }
+        .sidebar-menu::-webkit-scrollbar-track{ background: rgba(255,255,255,.06); }
+
+        .sidebar-menu a{
+            padding:12px;
+            font-size:14px;
+            display:flex;
+            align-items:center;
+            gap:12px;
+            color: rgba(255,255,255,.9);
+            text-decoration:none;
+            border-radius:12px;
+            transition:.18s ease;
+        }
+        .sidebar-menu a:hover{
+            background: rgba(255,255,255,.14);
+            transform: translateX(2px);
+            color:#fff;
+        }
+        .sidebar-menu a.active{
+            background: rgba(255,255,255,.18);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+            color:#fff;
+        }
+
+        .sidebar-footer{
+            margin-top:auto;
+            padding-top:14px;
+            border-top:1px solid rgba(255,255,255,.15);
+        }
+        .logout-btn{
+            width:100%;
+            border:none;
+            padding:12px;
+            border-radius:12px;
+            background: rgba(255,255,255,.14);
+            color:#fff;
+            font-weight:700;
+            display:flex;
+            align-items:center;
+            gap:12px;
+            transition:.18s ease;
+        }
+        .logout-btn:hover{
+            background: rgba(220, 53, 69, 0.95);
+            transform: translateY(-1px);
+        }
+
+        /* ---------- Content ---------- */
+        .content{
+            flex:1;
+            width:100%;
+            min-width:0;
+            overflow-x:hidden;
+            padding:16px;
+            color: var(--kt-text);
+        }
+        @media (min-width: 768px){ .content{ padding:22px; } }
+        @media (min-width: 1200px){ .content{ padding:28px; } }
+
+        html[data-theme="dark"] .content{
+            background:
+                radial-gradient(900px 420px at 15% 0%, rgba(96, 165, 250, .06), transparent 55%),
+                radial-gradient(900px 420px at 95% 10%, rgba(167, 139, 250, .05), transparent 55%);
+            border-radius: 18px;
+        }
+
+        /* ---------- Global Surfaces ---------- */
+        .card,
+        .kt-card,
+        .section-box,
+        .welcome,
+        .stat-card,
+        .list-item,
+        .receipt-container,
+        .modal-content,
+        .dropdown-menu,
+        .toast,
+        .offcanvas,
+        .list-group-item{
+            background: var(--kt-surface);
+            border: 1px solid var(--kt-border);
+            box-shadow: var(--kt-shadow);
+            color: var(--kt-text);
+            border-radius: var(--kt-radius);
+        }
+
+        /* ---------- Tables ---------- */
+        .table, table{ color: var(--kt-text); }
+        .table td, .table th{ border-color: var(--kt-border) !important; }
+
+        .table thead th{
+            background: rgba(248,250,252,.95);
+            color: var(--kt-muted) !important;
+            font-weight: 800;
+            letter-spacing: .02em;
+            border-bottom: 1px solid var(--kt-border) !important;
+            white-space: nowrap;
+        }
+        html[data-theme="dark"] .table thead th{
+            background: rgba(2, 6, 23, .55) !important;
+            color: var(--kt-muted) !important;
+        }
+
+        .table tbody td{ color: var(--kt-text); vertical-align: middle; }
+        html[data-theme="dark"] .table tbody td{
+            border-color: rgba(148,163,184,.18) !important;
+        }
+
+        .table tbody tr:hover{ background: rgba(13,110,253,.06) !important; }
+        html[data-theme="dark"] .table tbody tr:hover{ background: rgba(96,165,250,.08) !important; }
+
+        .table-responsive{
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+        }
+
+        /* ---------- Inputs (Bootstrap baseline) ---------- */
+        .form-control,
+        .form-select,
+        .input-group-text{
+            background: var(--kt-input-bg) !important;
+            color: var(--kt-text) !important;
+            border-color: var(--kt-input-border) !important;
+            border-radius: 12px !important;
+        }
+        .form-control:focus,
+        .form-select:focus{
+            border-color: rgba(96,165,250,.55) !important;
+            box-shadow: 0 0 0 3px rgba(96,165,250,.18) !important;
+        }
+        html[data-theme="dark"] .form-control::placeholder,
+        html[data-theme="dark"] textarea::placeholder{
+            color: rgba(248,250,252,.58) !important;
+        }
+
+        /* ---------- Buttons (Bootstrap “light” variants) ---------- */
+        html[data-theme="dark"] .btn-light,
+        html[data-theme="dark"] .btn-secondary,
+        html[data-theme="dark"] .btn-outline-secondary,
+        html[data-theme="dark"] .btn-outline-dark{
+            background: rgba(2, 6, 23, .62) !important;
+            color: var(--kt-text) !important;
+            border-color: var(--kt-border) !important;
+        }
+        html[data-theme="dark"] .btn-light:hover,
+        html[data-theme="dark"] .btn-secondary:hover,
+        html[data-theme="dark"] .btn-outline-secondary:hover,
+        html[data-theme="dark"] .btn-outline-dark:hover{
+            background: rgba(17, 24, 39, .92) !important;
+        }
+
+        /* ---------- Top bar icons + approval popover ---------- */
         .kt-top-icon{
             width:42px;
             height:42px;
@@ -152,15 +387,12 @@
             align-items:center;
             justify-content:center;
             border-radius:14px;
-
-            /* LIGHT MODE defaults */
-            border: 1px solid var(--kt-border) !important;
-            background: var(--kt-surface) !important;
-            color: var(--kt-text) !important;
+            border: 1px solid var(--kt-border);
+            background: var(--kt-surface);
+            color: var(--kt-text);
+            transition: .15s ease;
         }
-        .kt-top-icon:hover{
-            background: var(--kt-surface-2) !important;
-        }
+        .kt-top-icon:hover{ background: var(--kt-surface-2); }
 
         .kt-dot{
             position:absolute;
@@ -170,13 +402,15 @@
             height:10px;
             border-radius:999px;
             background:#ef4444;
-            box-shadow: 0 0 0 2px rgba(255,255,255,.95); /* light mode ring */
+            box-shadow: 0 0 0 2px rgba(255,255,255,.95);
+        }
+        html[data-theme="dark"] .kt-dot{
+            box-shadow: 0 0 0 2px rgba(2,6,23,.85);
         }
 
-        /* ===== Approval popover (bell dropdown card) ===== */
         .kt-popover{
             position:absolute;
-            top:54px;           /* distance below the top bar */
+            top:54px;
             right:0;
             width:380px;
             max-width: calc(100vw - 24px);
@@ -188,7 +422,6 @@
             z-index: 2500;
             overflow:hidden;
         }
-
         .kt-popover.show{ display:block; }
 
         .kt-popover .kt-pop-h{
@@ -199,27 +432,24 @@
             justify-content: space-between;
             gap: 10px;
         }
-
         .kt-popover .kt-pop-title{
-            font-weight: 800;
+            font-weight: 900;
             font-size: 14px;
             margin: 0;
         }
-
         .kt-popover .kt-badge{
             font-size: 12px;
             padding: 4px 10px;
             border-radius: 999px;
-            background: rgba(37,99,235,.15);
+            background: var(--kt-primary-soft);
             border: 1px solid rgba(37,99,235,.25);
+            color: var(--kt-text);
         }
-
         .kt-popover .kt-pop-body{
             padding: 10px;
             max-height: 360px;
             overflow:auto;
         }
-
         .kt-popover .kt-item{
             border: 1px solid var(--kt-border);
             background: var(--kt-surface);
@@ -227,44 +457,37 @@
             padding: 10px 12px;
             margin-bottom: 10px;
         }
-
         .kt-popover .kt-item:last-child{ margin-bottom: 0; }
-
         .kt-popover .kt-item .top{
             display:flex;
             align-items:flex-start;
             justify-content: space-between;
             gap: 10px;
         }
-
         .kt-popover .kt-item .name{
-            font-weight: 800;
+            font-weight: 900;
             font-size: 13px;
             margin: 0;
             line-height: 1.2;
         }
-
         .kt-popover .kt-item .meta{
             font-size: 12px;
-            opacity: .9;
+            opacity: .95;
             margin-top: 4px;
         }
-
         .kt-popover .kt-actions{
             display:flex;
             gap: 8px;
             margin-top: 10px;
         }
-
         .kt-popover .kt-actions form{ margin:0; }
 
         .kt-popover .btn-mini{
             padding: 6px 10px;
             border-radius: 10px;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 12px;
         }
-
         .kt-popover .btn-approve{
             background: rgba(34,197,94,.15);
             border: 1px solid rgba(34,197,94,.25);
@@ -276,1181 +499,159 @@
             color: #ef4444 !important;
         }
 
-
-
-        .brand h4 {
-            margin: 0;
-            font-weight: 700;
-            font-size: 16px;
-            line-height: 1.1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        /* ---------- Mobile Sidebar Drawer ---------- */
+        .side-overlay{
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.35);
+            z-index: 1999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .18s ease;
+        }
+        .side-overlay.show{
+            opacity: 1;
+            pointer-events: auto;
         }
 
-        .brand small {
-            display: block;
-            font-size: 12px;
-            color: rgba(255, 255, 255, .75);
-            margin-top: 2px;
-        }
-
-        /* Theme toggle */
-        .theme-toggle {
-            border: 1px solid rgba(255, 255, 255, .18);
-            background: rgba(255, 255, 255, .10);
-            color: #fff;
-            width: 40px;
-            height: 40px;
+        .menu-toggle{
+            display:none;
+            width: 42px;
+            height: 42px;
             border-radius: 12px;
-            display: grid;
-            place-items: center;
-            cursor: pointer;
-            transition: .18s ease;
-            flex: 0 0 auto;
+            border: 1px solid var(--kt-border);
+            background: var(--kt-surface);
+            box-shadow: var(--kt-shadow);
+            place-items:center;
+            cursor:pointer;
+            color: var(--kt-text);
         }
+        .menu-toggle:hover{ background: var(--kt-surface-2); }
 
-        .theme-toggle:hover {
-            background: rgba(255, 255, 255, .16);
-            transform: translateY(-1px);
-        }
+        @media (max-width: 900px){
+            .menu-toggle{ display:grid; }
 
-        .sidebar-menu {
-            margin-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 6px;
-        }
-
-        .sidebar-menu::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .sidebar-menu::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .18);
-            border-radius: 999px;
-        }
-
-        .sidebar-menu::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, .06);
-        }
-
-        .sidebar-menu a {
-            padding: 12px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: rgba(255, 255, 255, .9);
-            text-decoration: none;
-            border-radius: 12px;
-            transition: .18s ease;
-        }
-
-        .sidebar-menu a:hover {
-            background: rgba(255, 255, 255, .14);
-            transform: translateX(2px);
-            color: #fff;
-        }
-
-        .sidebar-menu a.active {
-            background: rgba(255, 255, 255, .18);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
-            color: #fff;
-        }
-
-        /* LOGOUT pinned bottom */
-        .sidebar-footer {
-            margin-top: auto;
-            padding-top: 14px;
-            border-top: 1px solid rgba(255, 255, 255, .15);
-        }
-
-        .logout-btn {
-            width: 100%;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, .14);
-            color: #fff;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: .18s ease;
-        }
-
-        .logout-btn:hover {
-            background: rgba(220, 53, 69, 0.95);
-            transform: translateY(-1px);
-        }
-
-        /* CONTENT */
-        /* CONTENT */
-.content {
-    flex: 1;
-    width: 100%;
-
-    /* ✅ IMPORTANT: allow the flex item to shrink */
-    min-width: 0;
-
-    /* ✅ prevent page-level horizontal scroll (tables should scroll inside their wrapper) */
-    overflow-x: hidden;
-
-    padding: 16px;
-    color: var(--kt-text);
-}
-
-
-        @media (min-width: 768px) {
-            .content {
-                padding: 22px;
+            .sidebar{
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100dvh;
+                z-index: 2000;
+                transform: translateX(-105%);
+                transition: transform .18s ease;
             }
-        }
+            .sidebar.open{ transform: translateX(0); }
 
-        @media (min-width: 1200px) {
-            .content {
-                padding: 28px;
-            }
-        }
-
-        /* Clean dark content backdrop (still "just dark") */
-        html[data-theme="dark"] .content {
-            background:
-                radial-gradient(900px 420px at 15% 0%, rgba(96, 165, 250, .06), transparent 55%),
-                radial-gradient(900px 420px at 95% 10%, rgba(167, 139, 250, .05), transparent 55%);
-            border-radius: 18px;
+            .content{ padding: 14px; }
         }
 
         /* ==========================================================
-           GLOBAL SURFACE FIXES (Dark cards + white text)
+           ✅ DARK MODE HAMMER (beats page-level CSS that breaks dark)
+           - This is what fixes your “letters disappear” issue.
            ========================================================== */
-        .card,
-        .kt-card,
-        .section-box,
-        .welcome,
-        .stat-card,
-        .list-item,
-        .receipt-container,
-        .modal-content,
-        .dropdown-menu,
-        .table-responsive,
-        .toast,
-        .offcanvas,
-        .list-group-item {
-            background: var(--kt-surface) !important;
-            border-color: var(--kt-border) !important;
-            box-shadow: var(--kt-shadow) !important;
+
+        /* Make sure content baseline text is white in dark mode */
+        html[data-theme="dark"] body .content{
             color: var(--kt-text) !important;
         }
 
-        /* Bootstrap helpers (a LOT of pages use these) */
-        html[data-theme="dark"] .bg-white,
-        html[data-theme="dark"] .bg-light,
-        html[data-theme="dark"] .table-light {
-            background: var(--kt-surface-2) !important;
-            color: var(--kt-text) !important;
-        }
-
-        /* Tables – force readable */
-        .table {
-            color: var(--kt-text) !important;
-        }
-
-        .table td,
-        .table th {
-            border-color: var(--kt-border) !important;
-        }
-
-        html[data-theme="dark"] .table thead th {
-            background: rgba(17, 24, 39, .92) !important;
-            color: var(--kt-muted) !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        html[data-theme="dark"] .table tbody td {
-            color: var(--kt-text) !important;
-        }
-
-        html[data-theme="dark"] .table tbody tr:hover {
-            background: rgba(148, 163, 184, .08) !important;
-        }
-
-        /* Inputs */
-        .form-control,
-        .form-select,
-        .input-group-text {
+        /* 1) FORCE ALL INPUTS/SELECTS/TEXTAREAS TO BE DARK (even custom ones) */
+        html[data-theme="dark"] body .content :is(
+            input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+            textarea,
+            select
+        ){
             background: var(--kt-input-bg) !important;
             color: var(--kt-text) !important;
             border-color: var(--kt-input-border) !important;
         }
 
-        html[data-theme="dark"] .form-control::placeholder {
-            color: rgba(248, 250, 252, .55) !important;
+        html[data-theme="dark"] body .content :is(input, textarea, select)::placeholder{
+            color: rgba(248,250,252,.58) !important;
         }
 
-        /* FullCalendar dark-safe */
-        html[data-theme="dark"] .fc,
-        html[data-theme="dark"] .fc .fc-scrollgrid,
-        html[data-theme="dark"] .fc .fc-view-harness {
-            background: transparent !important;
-            color: var(--kt-text) !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        html[data-theme="dark"] .fc-theme-standard td,
-        html[data-theme="dark"] .fc-theme-standard th {
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .fc .fc-toolbar-title {
+        /* Make native select dropdown options readable */
+        html[data-theme="dark"] body .content select,
+        html[data-theme="dark"] body .content select option,
+        html[data-theme="dark"] body .content datalist option{
+            background-color: rgba(17, 24, 39, .98) !important;
             color: var(--kt-text) !important;
         }
 
-        html[data-theme="dark"] .fc .fc-button {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .22) !important;
-            color: var(--kt-text) !important;
-            border-radius: 12px !important;
-            font-weight: 800 !important;
+        /* Date/time picker icon visibility */
+        html[data-theme="dark"] body .content input[type="date"]::-webkit-calendar-picker-indicator,
+        html[data-theme="dark"] body .content input[type="time"]::-webkit-calendar-picker-indicator{
+            filter: invert(1);
+            opacity: .85;
         }
 
-        html[data-theme="dark"] .fc .fc-button:hover {
-            background: rgba(96, 165, 250, .10) !important;
-            border-color: rgba(96, 165, 250, .25) !important;
-        }
-
-        html[data-theme="dark"] .fc .fc-day-today {
-            background: rgba(96, 165, 250, .10) !important;
-        }
-
-        /* ==========================================================
-           BOOTSTRAP DARK MODE HARD OVERRIDES (FINAL FIX)
-           ========================================================== */
-
-        /* MODALS */
-        html[data-theme="dark"] .modal-content {
-            background: var(--kt-surface-2) !important;
+        /* 2) FORCE LABELS + FORM TEXT TO BE WHITE (this is your missing text) */
+        html[data-theme="dark"] body .content :is(
+            label,
+            legend,
+            .form-label,
+            .col-form-label,
+            .form-check-label,
+            .input-group-text
+        ){
             color: var(--kt-text) !important;
         }
-
-        html[data-theme="dark"] .modal-header,
-        html[data-theme="dark"] .modal-footer {
-            border-color: var(--kt-border) !important;
-            background: transparent !important;
-        }
-
-        /* TABLE VARIANTS */
-        html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
-            background: rgba(148, 163, 184, .06) !important;
-        }
-
-        html[data-theme="dark"] .table-hover > tbody > tr:hover {
-            background: rgba(148, 163, 184, .10) !important;
-        }
-
-        html[data-theme="dark"] .table-bordered td,
-        html[data-theme="dark"] .table-bordered th {
-            border-color: var(--kt-border) !important;
-        }
-
-        /* PAGINATION */
-        html[data-theme="dark"] .page-link {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: var(--kt-border) !important;
-            color: var(--kt-text) !important;
-        }
-
-        html[data-theme="dark"] .page-item.active .page-link {
-            background: rgba(96, 165, 250, .25) !important;
-            border-color: rgba(96, 165, 250, .35) !important;
-            color: #fff !important;
-        }
-
-        html[data-theme="dark"] .page-link:hover {
-            background: rgba(96, 165, 250, .15) !important;
-        }
-
-        /* ALERTS */
-        html[data-theme="dark"] .alert {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: var(--kt-border) !important;
-            color: var(--kt-text) !important;
-        }
-
-        /* DROPDOWNS */
-        html[data-theme="dark"] .dropdown-item {
-            color: var(--kt-text) !important;
-        }
-
-        html[data-theme="dark"] .dropdown-item:hover {
-            background: rgba(96, 165, 250, .12) !important;
-        }
-
-        /* BUTTON FIXES */
-        html[data-theme="dark"] .btn-light {
-            background: rgba(17, 24, 39, .92) !important;
-            color: var(--kt-text) !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        html[data-theme="dark"] .btn-outline-secondary {
-            color: var(--kt-text) !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        /* BAD LEGACY TEXT FIX */
-        html[data-theme="dark"] .text-dark {
-            color: var(--kt-text) !important;
-        }
-
-        /* LIST GROUP */
-        html[data-theme="dark"] .list-group-item {
-            background: var(--kt-surface) !important;
-            color: var(--kt-text) !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        /* ==========================================================
-           FORCE DARK MODE FOR ALL CARDS (FINAL OVERRIDE)
-           ========================================================== */
-
-        /* Every possible card container */
-        html[data-theme="dark"] .card,
-        html[data-theme="dark"] .card-body,
-        html[data-theme="dark"] .card-header,
-        html[data-theme="dark"] .card-footer,
-        html[data-theme="dark"] .stat-card,
-        html[data-theme="dark"] .info-card,
-        html[data-theme="dark"] .summary-card,
-        html[data-theme="dark"] .welcome,
-        html[data-theme="dark"] .section-box,
-        html[data-theme="dark"] .dashboard-card,
-        html[data-theme="dark"] [class*="card"] {
-            background: var(--kt-surface) !important;
-            color: var(--kt-text) !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        /* Kill Bootstrap bg utilities */
-        html[data-theme="dark"] .bg-white,
-        html[data-theme="dark"] .bg-light {
-            background: var(--kt-surface) !important;
-            color: var(--kt-text) !important;
-        }
-
-        /* Card titles & text */
-        html[data-theme="dark"] .card-title,
-        html[data-theme="dark"] .card h1,
-        html[data-theme="dark"] .card h2,
-        html[data-theme="dark"] .card h3,
-        html[data-theme="dark"] .card h4,
-        html[data-theme="dark"] .card h5,
-        html[data-theme="dark"] .card h6,
-        html[data-theme="dark"] .card p,
-        html[data-theme="dark"] .card span {
-            color: var(--kt-text) !important;
-        }
-
-        /* Card headers (Bootstrap default is light) */
-        html[data-theme="dark"] .card-header {
-            background: rgba(17, 24, 39, .92) !important;
-            border-bottom: 1px solid var(--kt-border) !important;
-        }
-
-        /* Card footers */
-        html[data-theme="dark"] .card-footer {
-            background: rgba(17, 24, 39, .75) !important;
-            border-top: 1px solid var(--kt-border) !important;
-        }
-
-        /* ==========================================================
-           ABSOLUTE DARK MODE TEXT OVERRIDE (GLOBAL)
-           ========================================================== */
-        html[data-theme="dark"],
-        html[data-theme="dark"] body,
-        html[data-theme="dark"] * {
-            color: #f8fafc !important;
-        }
-
-        /* Keep muted text readable but still white */
-        html[data-theme="dark"] .text-muted,
-        html[data-theme="dark"] small,
-        html[data-theme="dark"] .small {
-            color: rgba(248, 250, 252, .85) !important;
-        }
-
-        /* Headings must stay bright */
-        html[data-theme="dark"] h1,
-        html[data-theme="dark"] h2,
-        html[data-theme="dark"] h3,
-        html[data-theme="dark"] h4,
-        html[data-theme="dark"] h5,
-        html[data-theme="dark"] h6 {
-            color: #ffffff !important;
-        }
-
-        /* Form labels */
-        html[data-theme="dark"] label,
-        html[data-theme="dark"] .form-label {
-            color: #ffffff !important;
-        }
-
-        /* Inputs text */
-        html[data-theme="dark"] input,
-        html[data-theme="dark"] textarea,
-        html[data-theme="dark"] select {
-            color: #ffffff !important;
-        }
-
-        /* Placeholders */
-        html[data-theme="dark"] ::placeholder {
-            color: rgba(248, 250, 252, .65) !important;
-        }
-
-        /* Table text */
-        html[data-theme="dark"] table,
-        html[data-theme="dark"] th,
-        html[data-theme="dark"] td {
-            color: #ffffff !important;
-        }
-
-        /* Dropdowns & modals */
-        html[data-theme="dark"] .dropdown-menu *,
-        html[data-theme="dark"] .modal *,
-        html[data-theme="dark"] .offcanvas * {
-            color: #ffffff !important;
-        }
-
-        /* Validation & alerts */
-        html[data-theme="dark"] .invalid-feedback,
-        html[data-theme="dark"] .valid-feedback,
-        html[data-theme="dark"] .alert {
-            color: #ffffff !important;
-        }
-
-        /* Links */
-        html[data-theme="dark"] a {
-            color: #93c5fd !important;
-        }
-
-        html[data-theme="dark"] a:hover {
-            color: #bfdbfe !important;
-        }
-
-        /* ==========================================================
-           DARK MODE INPUTS (FIX WHITE INPUT ISSUE)
-           ========================================================== */
-        html[data-theme="dark"] input,
-        html[data-theme="dark"] textarea,
-        html[data-theme="dark"] select {
-            background-color: #111827 !important; /* dark slate */
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .35) !important;
-        }
-
-        html[data-theme="dark"] input:focus,
-        html[data-theme="dark"] textarea:focus,
-        html[data-theme="dark"] select:focus {
-            background-color: #111827 !important;
-            color: #ffffff !important;
-            border-color: #60a5fa !important;
-            box-shadow: 0 0 0 2px rgba(96, 165, 250, .25) !important;
-        }
-
-        /* Placeholder text */
-        html[data-theme="dark"] ::placeholder {
-            color: rgba(255, 255, 255, .55) !important;
-        }
-
-        /* ==========================================================
-           DARK MODE TABLE HEADERS
-           ========================================================== */
-        html[data-theme="dark"] thead,
-        html[data-theme="dark"] thead th {
-            background-color: #0f172a !important;
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .25) !important;
-        }
-
-        /* Table rows */
-        html[data-theme="dark"] tbody tr {
-            background-color: rgba(17, 24, 39, .75) !important;
-        }
-
-        html[data-theme="dark"] tbody tr:hover {
-            background-color: rgba(148, 163, 184, .12) !important;
-        }
-
-        /* Table borders */
-        html[data-theme="dark"] table,
-        html[data-theme="dark"] th,
-        html[data-theme="dark"] td {
-            border-color: rgba(148, 163, 184, .25) !important;
-        }
-
-        /* ==========================================================
-           FULLCALENDAR HEADER + TOGGLES (DARK MODE)
-           ========================================================== */
-        html[data-theme="dark"] .fc-toolbar,
-        html[data-theme="dark"] .fc-header-toolbar {
-            background: transparent !important;
-            color: #ffffff !important;
-        }
-
-        /* Calendar title */
-        html[data-theme="dark"] .fc-toolbar-title {
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-
-        /* Calendar view toggle buttons */
-        html[data-theme="dark"] .fc .fc-button {
-            background-color: #111827 !important;
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .35) !important;
-        }
-
-        html[data-theme="dark"] .fc .fc-button:hover {
-            background-color: rgba(96, 165, 250, .15) !important;
-            border-color: #60a5fa !important;
-        }
-
-        html[data-theme="dark"] .fc .fc-button.fc-button-active {
-            background-color: #1e40af !important;
-            border-color: #60a5fa !important;
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           TOGGLES / SWITCHES / CHECKBOXES (DARK MODE)
-           ========================================================== */
-        html[data-theme="dark"] .form-check-input {
-            background-color: #111827 !important;
-            border-color: rgba(148, 163, 184, .45) !important;
-        }
-
-        html[data-theme="dark"] .form-check-input:checked {
-            background-color: #2563eb !important;
-            border-color: #2563eb !important;
-        }
-
-        html[data-theme="dark"] .form-check-label {
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           CANCEL / SECONDARY BUTTONS (DARK MODE)
-           ========================================================== */
-        html[data-theme="dark"] .btn-secondary,
-        html[data-theme="dark"] .btn-light,
-        html[data-theme="dark"] .btn-cancel {
-            background-color: #020617 !important; /* near-black */
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .35) !important;
-        }
-
-        html[data-theme="dark"] .btn-secondary:hover,
-        html[data-theme="dark"] .btn-light:hover,
-        html[data-theme="dark"] .btn-cancel:hover {
-            background-color: #111827 !important;
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           UNIVERSAL BOXES / STRIPS / FOOTERS (DARK MODE)
-           ========================================================== */
-        html[data-theme="dark"] .bg-white,
-        html[data-theme="dark"] .bg-light,
-        html[data-theme="dark"] .bg-body,
-        html[data-theme="dark"] .rounded,
-        html[data-theme="dark"] .rounded-lg,
-        html[data-theme="dark"] .rounded-xl {
-            background: var(--kt-surface) !important;
-            color: var(--kt-text) !important;
-        }
-
-        /* Odontogram header / footer strip */
-        html[data-theme="dark"] .odontogram-header,
-        html[data-theme="dark"] .odontogram-footer,
-        html[data-theme="dark"] .odontogram-container,
-        html[data-theme="dark"] .tooth-chart,
-        html[data-theme="dark"] .tooth-chart-header,
-        html[data-theme="dark"] .tooth-chart-footer {
-            background: var(--kt-surface-2) !important;
-            color: #ffffff !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        html[data-theme="dark"] .table tbody tr td {
-            background: transparent !important;
-            color: #ffffff !important;
-        }
-
-        html[data-theme="dark"] .table .empty-state,
-        html[data-theme="dark"] .table tbody tr.empty td {
-            background: rgba(148, 163, 184, .08) !important;
-            color: #ffffff !important;
-        }
-
-        /* Calendar view toggle cards */
-        html[data-theme="dark"] .fc-toolbar-chunk .fc-button-group,
-        html[data-theme="dark"] .fc-toolbar-chunk button {
-            background: transparent !important;
-        }
-
-        html[data-theme="dark"] .fc .fc-button {
-            background: #020617 !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(148, 163, 184, .35) !important;
-            border-radius: 12px !important;
-        }
-
-        html[data-theme="dark"] .fc .fc-button.fc-button-active {
-            background: #1e40af !important;
-            border-color: #60a5fa !important;
-            color: #ffffff !important;
-        }
-
-        /* CANCEL BUTTON — GLOBAL */
-        html[data-theme="dark"] .btn-cancel,
-        html[data-theme="dark"] .btn-outline-secondary,
-        html[data-theme="dark"] .btn-light {
-            background: #020617 !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(148, 163, 184, .35) !important;
-        }
-
-        html[data-theme="dark"] .btn-cancel:hover,
-        html[data-theme="dark"] .btn-outline-secondary:hover,
-        html[data-theme="dark"] .btn-light:hover {
-            background: #111827 !important;
-            color: #ffffff !important;
-        }
-
-        html[data-theme="dark"] [class*="card"],
-        html[data-theme="dark"] [class*="panel"],
-        html[data-theme="dark"] [class*="box"] {
-            background: var(--kt-surface) !important;
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           MINI BUTTONS (Month / Week / Day) — DARK MODE
-           ========================================================== */
-        html[data-theme="dark"] .mini-btn {
-            background-color: #020617 !important; /* dark */
-            color: #ffffff !important;
-            border: 1px solid rgba(148, 163, 184, .35) !important;
-            border-radius: 12px;
-            padding: 6px 14px;
-            font-weight: 600;
-            transition: all .15s ease;
-        }
-
-        /* Hover */
-        html[data-theme="dark"] .mini-btn:hover {
-            background-color: #111827 !important;
-            color: #ffffff !important;
-        }
-
-        /* ACTIVE STATE */
-        html[data-theme="dark"] .mini-btn.active {
-            background-color: #1e40af !important; /* blue active */
-            border-color: #60a5fa !important;
-            color: #ffffff !important;
-        }
-
-        /* Ensure text never turns dark */
-        html[data-theme="dark"] .mini-btn *,
-        html[data-theme="dark"] .mini-btn span {
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           GLOBAL TEXT — FORCE WHITE IN DARK MODE
-           ========================================================== */
-        html[data-theme="dark"] {
-            color-scheme: dark;
-        }
-
-        html[data-theme="dark"] *,
-        html[data-theme="dark"] body {
-            color: #f8fafc;
-        }
-
-        /* ==========================================================
-           kt-card titles (e.g. "Today's Schedule")
-           ========================================================== */
-        html[data-theme="dark"] .kt-card-title {
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           ICONS: cancel, back, xmark, arrow-left, eraser, etc.
-           ========================================================== */
-        html[data-theme="dark"] .fa,
-        html[data-theme="dark"] .fa-solid,
-        html[data-theme="dark"] .fa-regular,
-        html[data-theme="dark"] .fa-xmark,
-        html[data-theme="dark"] .fa-arrow-left,
-        html[data-theme="dark"] .fa-eraser {
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           TITLES / SUBTEXT (Tooth Chart / Odontogram)
-           ========================================================== */
-        html[data-theme="dark"] .ttl {
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-
-        html[data-theme="dark"] .ttl .mutedx {
-            color: rgba(248, 250, 252, .75) !important;
-        }
-
-        html[data-theme="dark"] .sub {
-            color: rgba(248, 250, 252, .70) !important;
-        }
-
-        /* ==========================================================
-           ODONTO CARD (Tooth Chart container)
-           ========================================================== */
-        html[data-theme="dark"] .odonto-card,
-        html[data-theme="dark"] .odonto-top {
-            background: rgba(17, 24, 39, .92) !important;
-            border: 1px solid rgba(148, 163, 184, .18) !important;
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           ODONTO LEGEND (Has procedure / Selected / Clear button)
-           ========================================================== */
-        html[data-theme="dark"] .odonto-legend {
-            color: #ffffff !important;
-        }
-
-        html[data-theme="dark"] .odonto-legend .lg {
-            color: rgba(248, 250, 252, .85) !important;
-        }
-
-        html[data-theme="dark"] .odonto-legend .dot {
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, .15);
-        }
-
-        /* Clear selection button */
-        html[data-theme="dark"] .btn-mini {
-            background: #020617 !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(148, 163, 184, .35) !important;
-        }
-
-        html[data-theme="dark"] .btn-mini:hover {
-            background: #111827 !important;
-        }
-
-        /* ==========================================================
-           STICKY INNER / MINI NOTE
-           ========================================================== */
-        html[data-theme="dark"] .sticky-inner,
-        html[data-theme="dark"] .mini-note {
-            background: rgba(17, 24, 39, .92) !important;
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        /* ==========================================================
-           SEGMENTED TABS (Cash / Installments)
-           ========================================================== */
-        html[data-theme="dark"] .segmented {
-            background: #020617 !important;
-            border: 1px solid rgba(148, 163, 184, .22) !important;
-            border-radius: 14px;
-            padding: 4px;
-        }
-
-        /* Buttons */
-        html[data-theme="dark"] .seg-btn {
-            background: transparent !important;
-            color: #ffffff !important;
-            border: none !important;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-
-        /* Hover */
-        html[data-theme="dark"] .seg-btn:hover {
-            background: rgba(148, 163, 184, .15) !important;
-        }
-
-        /* Active */
-        html[data-theme="dark"] .seg-btn.active {
-            background: #1e40af !important;
-            color: #ffffff !important;
-        }
-
-        /* Icons inside segmented buttons */
-        html[data-theme="dark"] .seg-btn i {
-            color: #ffffff !important;
-        }
-
-        /* ==========================================================
-           KT CARD HEADER (Today’s Schedule, Overdue Payments, etc.)
-           ========================================================== */
-        html[data-theme="dark"] .kt-card {
-            background: rgba(17, 24, 39, .92) !important;
-            border: 1px solid rgba(148, 163, 184, .18) !important;
-            box-shadow: 0 18px 48px rgba(0, 0, 0, .55) !important;
-        }
-
-        /* Header row inside card */
-        html[data-theme="dark"] .kt-card-h {
-            background: rgba(2, 6, 23, .85) !important;
-            border-bottom: 1px solid rgba(148, 163, 184, .18) !important;
-        }
-
-        /* Card title */
-        html[data-theme="dark"] .kt-card-title {
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-
-        /* Date pill / badge */
-        html[data-theme="dark"] .pill {
-            background: rgba(148, 163, 184, .18) !important;
-            font-weight: 600;
-        }
-
-        /* Optional hover polish */
-        html[data-theme="dark"] .pill:hover {
-            background: rgba(96, 165, 250, .25) !important;
-        }
-
-        /* Odontogram legend: "Has procedure" — DARK MODE */
-        html[data-theme="dark"] .lg.lg-has {
-            background: rgba(17, 24, 39, .92) !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(148, 163, 184, .18) !important;
-            border-radius: 999px;
-            padding: 6px 12px;
-        }
-
-        /* Odontogram legend: "Selected" — DARK MODE */
-        html[data-theme="dark"] .lg.lg-sel {
-            background: #1e40af !important; /* blue selected */
-            color: #ffffff !important;
-            border: 1px solid #60a5fa !important;
-            border-radius: 999px;
-            padding: 6px 12px;
-        }
-
-        /* Ghost button — DARK MODE */
-        html[data-theme="dark"] .btn-ghostx {
-            background: rgba(17, 24, 39, .75) !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(148, 163, 184, .35) !important;
-            border-radius: 12px;
-        }
-
-        /* Hover */
-        html[data-theme="dark"] .btn-ghostx:hover {
-            background: rgba(96, 165, 250, .15) !important;
-            border-color: #60a5fa !important;
-            color: #ffffff !important;
-        }
-
-        /* Icon inside */
-        html[data-theme="dark"] .btn-ghostx i {
-            color: #ffffff !important;
-        }
-
-        html[data-theme="dark"] .odonto-bottom {
-            background: var(--kt-surface-2) !important;
-            color: #ffffff !important;
-            border-color: var(--kt-border) !important;
-        }
-
-        /* ==========================================================
-           INFO GRID + INFO BOXES — DARK MODE FIX
-           ========================================================== */
-
-        /* Grid container */
-        html[data-theme="dark"] .info-grid {
-            background: transparent !important; /* grid itself has no card bg */
-        }
-
-        /* Each info box (THIS is the light part) */
-        html[data-theme="dark"] .info-grid .info {
-            background: var(--kt-surface) !important;
-            border: 1px solid var(--kt-border) !important;
-            box-shadow: var(--kt-shadow) !important;
-            color: var(--kt-text) !important;
-            border-radius: 14px;
-        }
-
-        /* Labels inside info box */
-        html[data-theme="dark"] .info-grid .label {
+        html[data-theme="dark"] body .content :is(
+            .form-text,
+            .help-text,
+            .hint,
+            .subtitle,
+            .muted,
+            small,
+            .small
+        ){
             color: var(--kt-muted) !important;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: .04em;
         }
 
-        /* Values inside info box */
-        html[data-theme="dark"] .info-grid .value {
-            color: var(--kt-text) !important;
-            font-weight: 600;
-        }
-
-        /* ==========================================================
-           CARD-B DETAILS GRID — DARK MODE
-           ========================================================== */
-
-        /* Main container */
-        html[data-theme="dark"] .card-b {
+        /* 3) FORCE “CARD-LIKE” CONTAINERS DARK (installments/payments/visits/patients) */
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class*="card"],
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class*="-card"],
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class^="card"],
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class*="panel"],
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class*="box"],
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class*="shell"],
+        html[data-theme="dark"] body .content :is(div,section,article,aside,form)[class*="container-card"]{
             background: var(--kt-surface) !important;
-            border: 1px solid var(--kt-border) !important;
-            box-shadow: var(--kt-shadow) !important;
+            border-color: var(--kt-border) !important;
             color: var(--kt-text) !important;
-            border-radius: 18px;
         }
 
-        /* Grid wrapper (layout only) */
-        html[data-theme="dark"] .card-b .grid {
-            background: transparent !important;
+        /* Don’t accidentally recolor chips/pills/badges that intentionally have colors */
+        html[data-theme="dark"] body .content :is(.badge, .chip, .pill, .status, .alert, .btn, .btn *){
+            /* keep their own styles */
         }
 
-        /* Individual field cards */
-        html[data-theme="dark"] .card-b .field {
-            background: rgba(17, 24, 39, .92) !important;
-            border: 1px solid rgba(148, 163, 184, .18) !important;
-            border-radius: 14px;
-            color: #ffffff !important;
+        /* 4) Dropdown menus */
+        html[data-theme="dark"] body .content .dropdown-menu{
+            background: var(--kt-surface-2) !important;
+            border-color: var(--kt-border) !important;
+            box-shadow: var(--kt-shadow) !important;
+        }
+        html[data-theme="dark"] body .content .dropdown-item{
+            color: var(--kt-text) !important;
+        }
+        html[data-theme="dark"] body .content .dropdown-item:hover{
+            background: rgba(96,165,250,.10) !important;
         }
 
-        /* Labels */
-        html[data-theme="dark"] .card-b .label {
-            color: rgba(248, 250, 252, .70) !important;
-            font-weight: 600;
-            letter-spacing: .04em;
-            text-transform: uppercase;
+        /* 5) Readonly fields some pages paint white */
+        html[data-theme="dark"] body .content :is(input[readonly], textarea[readonly]){
+            background: rgba(2, 6, 23, .55) !important;
+            color: rgba(248,250,252,.86) !important;
         }
-
-        /* Main value */
-        html[data-theme="dark"] .card-b .value {
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-
-        /* Subvalue (muted line) */
-        html[data-theme="dark"] .card-b .subvalue {
-            color: rgba(248, 250, 252, .65) !important;
-        }
-
-        /* SUMMARY GRID — DARK ONLY (NO SIZE CHANGE) */
-        html[data-theme="dark"] .summary-grid .tile {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-            color: #ffffff !important;
-        }
-
-        /* Text */
-        html[data-theme="dark"] .summary-grid .k,
-        html[data-theme="dark"] .summary-grid .v {
-            color: #ffffff !important;
-        }
-
-        /* Icons */
-        html[data-theme="dark"] .summary-grid .k i {
-            color: #ffffff !important;
-        }
-
-        /* Balance highlight stays readable */
-        html[data-theme="dark"] .summary-grid .v.balance {
-            color: #f87171 !important;
-        }
-
-        /* ==========================================================
-           INSTALLMENT RECEIPT — DARK MODE ONLY
-           (NO SIZE / LAYOUT CHANGES)
-           ========================================================== */
-
-        /* Main receipt card */
-        html[data-theme="dark"] .receipt-container {
-            background: rgba(2, 6, 23, .92) !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-            box-shadow: 0 18px 48px rgba(0, 0, 0, .6) !important;
-            color: #ffffff !important;
-        }
-
-        /* Disable light blobs visually (keep structure) */
-        html[data-theme="dark"] .receipt-container::before,
-        html[data-theme="dark"] .receipt-container::after,
-        html[data-theme="dark"] .kt-wave {
-            opacity: .12 !important;
-        }
-
-        /* Header */
-        html[data-theme="dark"] .receipt-header {
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .brand-title .clinic,
-        html[data-theme="dark"] .brand-title .sub,
-        html[data-theme="dark"] .header-right,
-        html[data-theme="dark"] .header-right b {
-            color: #ffffff !important;
-        }
-
-        /* Meta pills */
-        html[data-theme="dark"] .meta-pill {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .22) !important;
-            color: #ffffff !important;
-        }
-
-        /* Section titles */
-        html[data-theme="dark"] .section-title {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .22) !important;
-            color: #ffffff !important;
-        }
-
-        /* Info table */
-        html[data-theme="dark"] .info-table {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .info-table td {
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .info-table td:first-child {
-            background: rgba(2, 6, 23, .85) !important;
-            color: #ffffff !important;
-        }
-
-        /* Receipt table */
-        html[data-theme="dark"] .receipt-table {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .receipt-table thead th {
-            background: rgba(2, 6, 23, .92) !important;
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .receipt-table td {
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .receipt-table tbody tr:nth-child(even) {
-            background: rgba(148, 163, 184, .08) !important;
-        }
-
-        /* Totals boxes */
-        html[data-theme="dark"] .left-details,
-        html[data-theme="dark"] .right-details {
-            background: rgba(17, 24, 39, .92) !important;
-            border-color: rgba(148, 163, 184, .18) !important;
-            color: #ffffff !important;
-        }
-
-        html[data-theme="dark"] .right-details .row {
-            border-color: rgba(148, 163, 184, .18) !important;
-        }
-
-        html[data-theme="dark"] .right-details .row.total {
-            background: rgba(30, 64, 175, .85) !important;
-        }
-
-        /* Footer */
-        html[data-theme="dark"] .receipt-footer {
-            border-color: rgba(148, 163, 184, .18) !important;
-            color: #ffffff !important;
-        }
-
-        html[data-theme="dark"] .signature,
-        html[data-theme="dark"] .signature-line {
-            color: #ffffff !important;
-            border-color: #ffffff !important;
-        }
-
-        /* Buttons (screen only, NOT print) */
-        html[data-theme="dark"] .back-btn {
-            background: #020617 !important;
-            color: #ffffff !important;
-            border-color: rgba(148, 163, 184, .35) !important;
-        }
-
-        html[data-theme="dark"] .print-btn {
-            filter: brightness(1.1);
-        }
-
-        /* Icons */
-        html[data-theme="dark"] .receipt-container i {
-            color: #ffffff !important;
-        }
-        /* ===== Mobile Responsive Sidebar Drawer (Staff) ===== */
-.side-overlay{
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.35);
-    z-index: 1999;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .18s ease;
-}
-.side-overlay.show{
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.menu-toggle{
-    display:none;
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    border: 1px solid var(--kt-border);
-    background: var(--kt-surface);
-    box-shadow: var(--kt-shadow);
-    place-items:center;
-    cursor:pointer;
-}
-
-@media (max-width: 900px){
-    .menu-toggle{ display:grid; }
-
-    .sidebar{
-        position: fixed;
-        left: 0;
-        top: 0;
-        height: 100dvh;
-        z-index: 2000;
-        transform: translateX(-105%);
-        transition: transform .18s ease;
-    }
-    .sidebar.open{ transform: translateX(0); }
-
-    .content{ padding: 14px; }
-}
-
     </style>
 </head>
 
-{{-- layouts/app.blade.php (BODY PART UPDATED) --}}
-<body>
+@php
+    $routeName = request()->route() ? request()->route()->getName() : '';
+@endphp
+
+<body data-page="{{ $routeName }}">
 <div class="layout">
 
     <!-- mobile overlay -->
@@ -1543,9 +744,9 @@
                 <i class="fa fa-bars"></i>
             </button>
 
-            {{-- ✅ Right side --}}
+            {{-- Right side --}}
             <div class="ms-auto d-flex align-items-center gap-2 position-relative">
-                {{-- Bell button (no page redirect) --}}
+                {{-- Bell button --}}
                 <button type="button"
                         id="approvalBell"
                         class="kt-top-icon position-relative border-0"
@@ -1553,8 +754,6 @@
                         aria-haspopup="true"
                         aria-expanded="false">
                     <i class="fa-solid fa-bell"></i>
-
-                    {{-- ✅ dot always exists; JS toggles it --}}
                     <span id="approvalDot" class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
                 </button>
 
@@ -1567,7 +766,7 @@
                         </span>
                     </div>
 
-                    {{-- ✅ Flash message INSIDE the dropdown card --}}
+                    {{-- Flash message --}}
                     <div id="approvalFlash" class="px-3 pt-3 d-none"></div>
 
                     <div class="kt-pop-body" id="approvalList">
@@ -1636,6 +835,7 @@
                         @endif
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -1689,7 +889,7 @@
         if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
     });
 
-    // ✅ approval popover (bell) + AJAX approve/decline
+    // approval popover (bell) + AJAX approve/decline
     const bell = document.getElementById('approvalBell');
     const pop  = document.getElementById('approvalPopover');
 
@@ -1763,7 +963,6 @@
         const item = form.closest('.kt-item');
         const action = form.dataset.action || 'approve';
 
-        // disable buttons for this item
         const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
         btns.forEach(b => b.disabled = true);
 
@@ -1776,7 +975,7 @@
                     'X-CSRF-TOKEN': csrf,
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: '' // no payload
+                body: ''
             });
 
             const ct = res.headers.get('content-type') || '';
@@ -1793,10 +992,8 @@
                 : (action === 'approve' ? 'Booking approved.' : 'Booking declined.')
             );
 
-            // remove the item
             if (item) item.remove();
 
-            // update count
             if (data && typeof data.pendingCount !== 'undefined') {
                 setCount(data.pendingCount);
             } else {
@@ -1811,7 +1008,6 @@
         }
     }
 
-    // intercept approve/decline forms in the popover
     pop?.addEventListener('submit', function(e){
         const form = e.target.closest('form.approval-form');
         if (!form) return;
@@ -1836,7 +1032,6 @@
             .replaceAll('"','&quot;')
             .replaceAll("'",'&#039;');
     }
-
 })();
 </script>
 

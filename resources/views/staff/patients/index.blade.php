@@ -3,16 +3,29 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Patients Index (Dark mode compatible)
+       - Removes hardcoded white backgrounds & black text vars
+       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-border, --kt-input-bg
+       ========================================================== */
+
     :root{
-        --card-shadow: 0 12px 30px rgba(15, 23, 42, .08);
-        --card-border: 1px solid rgba(15, 23, 42, .10);
-        --soft: rgba(15, 23, 42, .06);
-        --text: #0f172a;
-        --muted: rgba(15, 23, 42, .58);
-        --muted2: rgba(15, 23, 42, .45);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+        --soft: rgba(148, 163, 184, .14);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+        --muted2: rgba(148, 163, 184, .75);
+
         --brand1: #0d6efd;
         --brand2: #1e90ff;
         --radius: 16px;
+    }
+
+    html[data-theme="dark"]{
+        --soft: rgba(148, 163, 184, .16);
+        --muted2: rgba(248, 250, 252, .62);
     }
 
     .page-head{
@@ -45,6 +58,7 @@
         flex-wrap: wrap;
     }
 
+    /* Search */
     .search-box{
         position: relative;
         width: 340px;
@@ -55,28 +69,35 @@
         top: 50%;
         left: 12px;
         transform: translateY(-50%);
-        color: rgba(15, 23, 42, .45);
+        color: var(--muted);
         font-size: 14px;
         pointer-events: none;
+        opacity: .85;
     }
     .search-box input{
         width: 100%;
         padding: 11px 12px 11px 38px;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-input-border);
+        background: var(--kt-input-bg);
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
         outline: none;
         transition: .15s ease;
         font-size: 14px;
         color: var(--text);
     }
+    .search-box input::placeholder{
+        color: rgba(148, 163, 184, .85);
+    }
+    html[data-theme="dark"] .search-box input::placeholder{
+        color: rgba(248, 250, 252, .55);
+    }
     .search-box input:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: rgba(96,165,250,.55);
+        box-shadow: 0 0 0 4px rgba(96,165,250,.18);
     }
 
+    /* Sort */
     .sort-box{
         display:flex;
         align-items:center;
@@ -86,7 +107,7 @@
     .sort-box .sort-label{
         font-size: 12px;
         font-weight: 900;
-        color: rgba(15, 23, 42, .60);
+        color: var(--muted);
         letter-spacing: .02em;
         white-space: nowrap;
     }
@@ -94,8 +115,8 @@
         min-width: 210px;
         max-width: 100%;
         border-radius: 12px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.92);
+        border: 1px solid var(--kt-input-border);
+        background: var(--kt-input-bg);
         padding: 11px 12px;
         font-size: 14px;
         color: var(--text);
@@ -104,11 +125,18 @@
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
     .sort-select:focus{
-        border-color: rgba(13,110,253,.55);
-        box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-        background: #fff;
+        border-color: rgba(96,165,250,.55);
+        box-shadow: 0 0 0 4px rgba(96,165,250,.18);
     }
 
+    /* make options readable in dark mode */
+    html[data-theme="dark"] .sort-select,
+    html[data-theme="dark"] .sort-select option{
+        background-color: rgba(17,24,39,.98) !important;
+        color: var(--kt-text) !important;
+    }
+
+    /* Buttons */
     .btnx{
         display:inline-flex;
         align-items:center;
@@ -150,19 +178,26 @@
     .btn-purple:hover{ background: rgba(124, 58, 237, .18); }
 
     .btn-ghost{
-        background: rgba(15,23,42,.05);
-        border-color: rgba(15,23,42,.10);
-        color: rgba(15,23,42,.75) !important;
+        background: rgba(148,163,184,.12);
+        border-color: rgba(148,163,184,.22);
+        color: var(--text) !important;
     }
-    .btn-ghost:hover{ background: rgba(15,23,42,.07); }
+    html[data-theme="dark"] .btn-ghost{
+        background: rgba(2,6,23,.45);
+        border-color: rgba(148,163,184,.22);
+        color: var(--kt-text) !important;
+    }
+    .btn-ghost:hover{ background: rgba(148,163,184,.16); }
+    html[data-theme="dark"] .btn-ghost:hover{ background: rgba(17,24,39,.85); }
 
     /* Card */
     .card-shell{
-        background: rgba(255,255,255,.94);
+        background: var(--kt-surface);
         border: var(--card-border);
         border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
+        color: var(--text);
     }
 
     .card-head{
@@ -173,6 +208,10 @@
         padding: 16px 18px;
         border-bottom: 1px solid var(--soft);
         flex-wrap: wrap;
+        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
+    }
+    html[data-theme="dark"] .card-head{
+        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
     }
 
     .card-head .hint{
@@ -188,9 +227,9 @@
         border-radius: 999px;
         font-size: 12px;
         font-weight: 900;
-        border: 1px solid rgba(15, 23, 42, .10);
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .75);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--text);
         white-space: nowrap;
     }
 
@@ -205,15 +244,21 @@
         font-size: 12px;
         letter-spacing: .3px;
         text-transform: uppercase;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
         padding: 14px 14px;
-        border-bottom: 1px solid rgba(15, 23, 42, .08);
-        background: rgba(248, 250, 252, .9);
+        border-bottom: 1px solid var(--soft);
+        background: rgba(248, 250, 252, .85);
         position: sticky;
         top: 0;
         z-index: 1;
         white-space: nowrap;
     }
+    html[data-theme="dark"] thead th{
+        background: rgba(2, 6, 23, .55);
+        border-bottom-color: rgba(148,163,184,.16);
+        color: var(--kt-muted);
+    }
+
     tbody td{
         padding: 14px 14px;
         font-size: 14px;
@@ -224,6 +269,8 @@
     }
     tbody tr{ transition: .12s ease; }
     tbody tr:hover{ background: rgba(13,110,253,.06); }
+    html[data-theme="dark"] tbody tr:hover{ background: rgba(96,165,250,.08); }
+
     .muted{ color: var(--muted); }
 
     .name-cell{
@@ -470,11 +517,7 @@
             if (show) visible++;
         });
 
-        // Update visible count
         visibleCountEl.textContent = visible;
-
-        // Show an empty-state row if everything hidden (optional)
-        // (We won't inject rows, but you can add one if you want.)
     }
 
     function getComparable(row, mode){
@@ -495,17 +538,14 @@
     function applySort() {
         const mode = sortSelect.value;
 
-        // Sort only by DOM order; search visibility stays as is
         const sorted = [...rowsAll].sort((a, b) => {
             const va = getComparable(a, mode);
             const vb = getComparable(b, mode);
 
-            // string compare
             if (typeof va === 'string' || typeof vb === 'string') {
                 const A = String(va), B = String(vb);
                 if (A < B) return (mode.endsWith('_desc') ? 1 : -1);
                 if (A > B) return (mode.endsWith('_desc') ? -1 : 1);
-                // tie-breaker: first name, then created desc
                 const ta = a.dataset.fname || '';
                 const tb = b.dataset.fname || '';
                 if (ta < tb) return -1;
@@ -513,17 +553,12 @@
                 return Number(b.dataset.created || 0) - Number(a.dataset.created || 0);
             }
 
-            // numeric compare
-            if (va === vb) {
-                // tie-breaker
-                return Number(b.dataset.created || 0) - Number(a.dataset.created || 0);
-            }
+            if (va === vb) return Number(b.dataset.created || 0) - Number(a.dataset.created || 0);
 
             const asc = mode.endsWith('_asc');
             return asc ? (va - vb) : (vb - va);
         });
 
-        // Re-append in sorted order
         sorted.forEach(r => tbody.appendChild(r));
     }
 
@@ -532,11 +567,9 @@
         applySearch();
     }
 
-    // init counts
     totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
 
-    // events
     searchInput.addEventListener('keyup', applySearch);
     sortSelect.addEventListener('change', applyAll);
 
@@ -547,7 +580,6 @@
         searchInput.focus();
     });
 
-    // Import button -> open file picker -> auto submit
     const importBtn = document.getElementById('importBtn');
     const patientFile = document.getElementById('patientFile');
     const importForm = document.getElementById('importForm');
@@ -557,7 +589,6 @@
         if (patientFile.files && patientFile.files.length > 0) importForm.submit();
     });
 
-    // first load
     applyAll();
 })();
 </script>

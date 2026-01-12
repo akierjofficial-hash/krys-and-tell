@@ -3,11 +3,31 @@
 @section('content')
 
 <style>
+    /* ==========================================================
+       Installment Plan Edit (Dark mode compatible)
+       Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
+                         --kt-border, --kt-shadow
+       ========================================================== */
     :root{
-        --card-shadow: 0 10px 25px rgba(15, 23, 42, .06);
-        --card-border: 1px solid rgba(15, 23, 42, .08);
+        --card-shadow: var(--kt-shadow);
+        --card-border: 1px solid var(--kt-border);
+
+        --text: var(--kt-text);
+        --muted: var(--kt-muted);
+
+        --soft: rgba(148,163,184,.14);
+        --brand1:#0d6efd;
+        --brand2:#1e90ff;
+
+        --radius: 16px;
+    }
+    html[data-theme="dark"]{
+        --soft: rgba(148,163,184,.16);
     }
 
+    .form-max{ max-width: 1100px; min-width: 0; }
+
+    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -15,38 +35,44 @@
         gap: 14px;
         margin-bottom: 16px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .page-title{
         font-size: 26px;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: -0.3px;
         margin: 0;
-        color: #0f172a;
+        color: var(--text);
     }
     .subtitle{
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
     }
 
+    /* Buttons */
     .btn-ghostx{
         display:inline-flex;
         align-items:center;
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 950;
         font-size: 14px;
-        border: 1px solid rgba(15, 23, 42, .12);
-        background: rgba(255,255,255,.85);
-        color: rgba(15, 23, 42, .75);
+        border: 1px solid var(--kt-border);
+        background: var(--kt-surface-2);
+        color: var(--text) !important;
         text-decoration: none;
         transition: .15s ease;
         white-space: nowrap;
+        user-select: none;
     }
     .btn-ghostx:hover{
-        background: rgba(15, 23, 42, .04);
-        color: rgba(15, 23, 42, .85);
+        transform: translateY(-1px);
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .btn-ghostx:hover{
+        background: rgba(2,6,23,.35);
     }
 
     .btn-primaryx{
@@ -55,11 +81,11 @@
         gap: 8px;
         padding: 11px 14px;
         border-radius: 12px;
-        font-weight: 900;
+        font-weight: 950;
         font-size: 14px;
         border: none;
-        color: #fff;
-        background: linear-gradient(135deg, #0d6efd, #1e90ff);
+        color: #fff !important;
+        background: linear-gradient(135deg, var(--brand1), var(--brand2));
         box-shadow: 0 10px 18px rgba(13,110,253,.18);
         text-decoration: none;
         transition: .15s ease;
@@ -68,9 +94,9 @@
     .btn-primaryx:hover{
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(13,110,253,.24);
-        color:#fff;
     }
 
+    /* Error box */
     .error-box{
         background: rgba(239, 68, 68, .10);
         border: 1px solid rgba(239, 68, 68, .22);
@@ -79,89 +105,124 @@
         padding: 14px 16px;
         margin-bottom: 14px;
     }
+    html[data-theme="dark"] .error-box{
+        background: rgba(239, 68, 68, .12);
+        color: rgba(254, 202, 202, .95);
+        border-color: rgba(239, 68, 68, .25);
+    }
     .error-box .title{
-        font-weight: 900;
+        font-weight: 950;
         margin-bottom: 6px;
     }
     .error-box ul{
         margin: 0;
         padding-left: 18px;
         font-size: 13px;
+        font-weight: 700;
     }
 
+    /* Card */
     .card-shell{
-        background: rgba(255,255,255,.92);
+        background: var(--kt-surface);
         border: var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         overflow: hidden;
         width: 100%;
+        min-width:0;
     }
 
     .card-head{
         padding: 16px 18px;
-        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        border-bottom: 1px solid var(--kt-border);
         display:flex;
         justify-content:space-between;
         gap: 10px;
         flex-wrap: wrap;
+        min-width:0;
     }
     .card-head .hint{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
+        font-weight: 800;
+        min-width:0;
     }
 
     .card-bodyx{ padding: 18px; }
 
+    /* Inputs */
     .form-labelx{
-        font-weight: 900;
+        font-weight: 950;
         font-size: 13px;
         margin-bottom: 6px;
-        color: rgba(15, 23, 42, .75);
+        color: rgba(15, 23, 42, .82);
+    }
+    html[data-theme="dark"] .form-labelx{
+        color: rgba(226,232,240,.90);
     }
 
     .inputx, .selectx, .textareax{
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, .12);
+        border: 1px solid var(--kt-border);
         padding: 11px 12px;
         border-radius: 12px;
         font-size: 14px;
-        color: #0f172a;
-        background: rgba(255,255,255,.95);
+        color: var(--text);
+        background: var(--kt-surface-2);
         outline: none;
         transition: .15s ease;
         box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
     }
+    html[data-theme="dark"] .inputx,
+    html[data-theme="dark"] .selectx,
+    html[data-theme="dark"] .textareax{
+        box-shadow: none;
+    }
 
     .inputx:focus, .selectx:focus, .textareax:focus{
-        border-color: rgba(124,58,237,.55);
-        box-shadow: 0 0 0 4px rgba(124,58,237,.12);
-        background: #fff;
+        border-color: rgba(13,110,253,.55);
+        box-shadow: 0 0 0 4px rgba(13,110,253,.14);
+        background: var(--kt-surface-2);
     }
 
     .readonlyx{
-        background: rgba(248,250,252,.9) !important;
-        color: rgba(15, 23, 42, .75) !important;
+        background: rgba(148,163,184,.10) !important;
+        color: var(--text) !important;
+    }
+    html[data-theme="dark"] .readonlyx{
+        background: rgba(2,6,23,.35) !important;
     }
 
     .helper{
         font-size: 12px;
-        color: rgba(15, 23, 42, .55);
+        color: var(--muted);
         margin-top: 6px;
+        font-weight: 700;
     }
 
+    /* Treatment tags */
+    .tags{
+        display:flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-top: 2px;
+    }
     .tag{
-        display:inline-block;
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 800;
-        background: rgba(15,23,42,.06);
-        border: 1px solid rgba(15,23,42,.10);
-        margin: 4px 4px 0 0;
+        font-weight: 900;
+        background: rgba(148,163,184,.10);
+        border: 1px solid var(--kt-border);
+        color: var(--text);
+        white-space: nowrap;
     }
-
-    .form-max{ max-width: 1100px; }
+    html[data-theme="dark"] .tag{
+        background: rgba(2,6,23,.30);
+    }
 </style>
 
 <div class="page-head form-max">
@@ -211,38 +272,43 @@
                     <input class="inputx readonlyx" value="{{ $plan->patient->first_name }} {{ $plan->patient->last_name }}" readonly>
                 </div>
 
-                {{-- Treatments (from VISIT PROCEDURES) --}}
+                {{-- Treatments --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Treatments</label>
 
                     @if($plan->visit && $plan->visit->procedures->count())
-                        <div>
+                        <div class="tags">
                             @foreach($plan->visit->procedures as $proc)
-                                <span class="tag">{{ $proc->service->name ?? 'Service' }}</span>
+                                <span class="tag">
+                                    <i class="fa fa-stethoscope"></i>
+                                    {{ $proc->service->name ?? 'Service' }}
+                                </span>
                             @endforeach
                         </div>
                     @elseif($plan->service)
-                        <span class="tag">{{ $plan->service->name }}</span>
+                        <div class="tags">
+                            <span class="tag"><i class="fa fa-stethoscope"></i> {{ $plan->service->name }}</span>
+                        </div>
                     @else
-                        <span class="text-muted">N/A</span>
+                        <div class="helper">N/A</div>
                     @endif
                 </div>
 
                 {{-- Total Cost --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Total Cost <span class="text-danger">*</span></label>
-                    <input type="number" name="total_cost" class="inputx"
+                    <input type="number" step="0.01" min="0" name="total_cost" class="inputx"
                            value="{{ old('total_cost', $plan->total_cost) }}" required>
                 </div>
 
                 {{-- Downpayment --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Downpayment <span class="text-danger">*</span></label>
-                    <input type="number" name="downpayment" class="inputx"
+                    <input type="number" step="0.01" min="0" name="downpayment" class="inputx"
                            value="{{ old('downpayment', $plan->downpayment) }}" required>
                 </div>
 
-                {{-- ✅ Open Contract --}}
+                {{-- Open Contract --}}
                 <div class="col-12">
                     @php
                         $openOld = old('is_open_contract');
@@ -254,11 +320,11 @@
                     <div class="form-check" style="margin-top:2px;">
                         <input class="form-check-input" type="checkbox" id="isOpenContract" name="is_open_contract" value="1"
                             {{ $isOpen ? 'checked' : '' }}>
-                        <label class="form-check-label" for="isOpenContract" style="font-weight:900;">
+                        <label class="form-check-label" for="isOpenContract" style="font-weight:950; color:var(--text);">
                             Open Contract (no fixed months — pay any amount until fully paid)
                         </label>
                         <div class="helper">
-                            If enabled, the pay form will auto-number payments (Payment #1, #2, #3...) and Month dropdown will be removed.
+                            If enabled, months will be removed (no fixed schedule). Payments will be auto-numbered (Payment #1, #2, #3...).
                         </div>
                     </div>
                 </div>
@@ -281,7 +347,7 @@
                 {{-- Balance --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Remaining Balance</label>
-                    <input class="inputx readonlyx" value="{{ $plan->balance }}" readonly>
+                    <input class="inputx readonlyx" value="{{ number_format((float)($plan->balance ?? 0), 2) }}" readonly>
                 </div>
 
                 {{-- Status --}}
@@ -296,7 +362,7 @@
                     </button>
 
                     <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn-ghostx">
-                        Cancel
+                        <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>
 
@@ -319,8 +385,8 @@ function toggleMonthsEdit() {
 
     if (on) {
         months.required = false;
-        months.disabled = true;  // ✅ not sent to server + no HTML5 validation
-        months.value = '';       // ✅ do NOT use 0 (min=1)
+        months.disabled = true;  // not sent to server + no HTML5 validation
+        months.value = '';       // do NOT use 0 (min=1)
     } else {
         months.disabled = false;
         months.required = true;

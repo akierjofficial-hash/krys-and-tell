@@ -6,7 +6,9 @@
     :root{
         --card-shadow: var(--kt-shadow, 0 10px 25px rgba(15, 23, 42, .06));
         --card-border: 1px solid var(--kt-border, rgba(15, 23, 42, .10));
-        --sticky-bg: var(--kt-surface-2, rgba(255,255,255,.98));
+
+        /* ✅ FIX: make sticky actions bg match the page/card surface (not extra-white) */
+        --sticky-bg: var(--kt-surface, rgba(255,255,255,.92));
     }
 
     /* Header */
@@ -51,7 +53,7 @@
         top: 50%;
         left: 12px;
         transform: translateY(-50%);
-        color: rgba(15, 23, 42, .45);
+        color: var(--kt-muted, rgba(15, 23, 42, .45));
         font-size: 14px;
         pointer-events: none;
     }
@@ -116,7 +118,7 @@
         text-decoration: none;
         border: 1px solid var(--kt-border, rgba(15,23,42,.10));
         background: rgba(15,23,42,.06);
-        color: rgba(15,23,42,.78);
+        color: var(--kt-text, rgba(15,23,42,.78));
         transition: .15s ease;
         white-space: nowrap;
         cursor: pointer;
@@ -181,21 +183,22 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        table-layout: fixed; /* keep Actions visible */
+        table-layout: fixed;
         background: transparent;
+        min-width: 880px;
     }
 
     thead th{
         font-size: 12px;
         letter-spacing: .3px;
         text-transform: uppercase;
-        color: rgba(15, 23, 42, .55);
+        color: var(--kt-muted, rgba(15, 23, 42, .55));
         padding: 14px 14px;
         border-bottom: 1px solid rgba(15, 23, 42, .08);
         background: rgba(248, 250, 252, .9);
         position: sticky;
         top: 0;
-        z-index: 2;
+        z-index: 4;
         white-space: nowrap;
     }
 
@@ -218,7 +221,7 @@
 
     .muted{ color: var(--kt-muted, rgba(15, 23, 42, .55)); }
 
-    /* Yes/No chips (use !important to survive your global dark-mode “white text” rule) */
+    /* Chips */
     .chip{
         display:inline-flex;
         align-items:center;
@@ -274,7 +277,6 @@
     }
     .pill-edit:hover{ background: rgba(59, 130, 246, .18); }
 
-    /* ✅ Patients folder pill (missing before) */
     .pill-view{
         background: rgba(124, 58, 237, .12);
         color:#5b21b6 !important;
@@ -301,15 +303,23 @@
         line-height: 1.35;
     }
 
-    /* Sticky Actions column */
+    /* ✅ Sticky Actions column — FIXED (no “too white cover”) */
     thead th:last-child,
     tbody td:last-child{
         position: sticky;
         right: 0;
         background: var(--sticky-bg);
-        z-index: 3;
-        box-shadow: -8px 0 16px rgba(15,23,42,.06);
+        z-index: 5;
+
+        /* smaller, softer separation (not a big white slab) */
+        border-left: 1px solid rgba(15,23,42,.08);
+        box-shadow: -6px 0 14px rgba(15,23,42,.05);
+
+        /* optional polish */
+        backdrop-filter: blur(4px);
     }
+
+    /* Hover row: keep actions cell matching hover */
     tbody tr:hover td:last-child{
         background: rgba(13,110,253,.06);
     }
@@ -320,6 +330,47 @@
         text-align:center;
         color: var(--kt-muted, rgba(15,23,42,.55));
         font-weight: 800;
+    }
+
+    /* ---------- Dark mode tweaks (no harsh whites) ---------- */
+    html[data-theme="dark"] .card-head{
+        border-bottom-color: rgba(148,163,184,.16);
+        background: linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,0));
+    }
+    html[data-theme="dark"] thead th{
+        background: rgba(2, 6, 23, .55);
+        border-bottom-color: rgba(148,163,184,.18);
+        color: var(--kt-muted);
+    }
+    html[data-theme="dark"] tbody td{
+        border-bottom-color: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] tbody tr:hover{
+        background: rgba(96,165,250,.08);
+    }
+    html[data-theme="dark"] tbody tr:hover td:last-child{
+        background: rgba(96,165,250,.08);
+    }
+    html[data-theme="dark"] thead th:last-child,
+    html[data-theme="dark"] tbody td:last-child{
+        border-left-color: rgba(148,163,184,.18);
+        box-shadow: -6px 0 16px rgba(0,0,0,.28);
+    }
+    html[data-theme="dark"] .btnx{
+        background: rgba(148,163,184,.10);
+        border-color: rgba(148,163,184,.18);
+        color: var(--kt-text);
+    }
+    html[data-theme="dark"] .btnx:hover{
+        background: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] .chip-no{
+        color: rgba(248,250,252,.86) !important;
+        border-color: rgba(148,163,184,.22);
+        background: rgba(148,163,184,.10);
+    }
+    html[data-theme="dark"] .search-box i{
+        color: rgba(248,250,252,.55);
     }
 
     @media (max-width: 768px){
@@ -333,6 +384,8 @@
         th:nth-child(2), td:nth-child(2){ width: 120px; }
         th:nth-child(3), td:nth-child(3){ width: 130px; }
         th:nth-child(5), td:nth-child(5){ width: 220px; }
+
+        table{ min-width: 760px; }
     }
 </style>
 
@@ -543,7 +596,6 @@
         });
 
         sorted.forEach(r => tbody.appendChild(r));
-        // keep noResultsRow at the end
         if (rowsAll.length) tbody.appendChild(noResultsRow);
     }
 
