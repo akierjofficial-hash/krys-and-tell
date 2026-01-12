@@ -6,9 +6,6 @@
     :root{
         --card-shadow: var(--kt-shadow, 0 10px 25px rgba(15, 23, 42, .06));
         --card-border: 1px solid var(--kt-border, rgba(15, 23, 42, .10));
-
-        /* ✅ FIX: make sticky actions bg match the page/card surface (not extra-white) */
-        --sticky-bg: var(--kt-surface, rgba(255,255,255,.92));
     }
 
     /* Header */
@@ -303,25 +300,21 @@
         line-height: 1.35;
     }
 
-    /* ✅ Sticky Actions column — FIXED (no “too white cover”) */
-    thead th:last-child,
-    tbody td:last-child{
+    /* ✅ Sticky Actions column (NO overlay slab) */
+    thead th.actions-sticky{
+        right: 0;
+        z-index: 6; /* keep above body cells */
+        background: rgba(248, 250, 252, .9); /* match other headers */
+    }
+    tbody td.actions-sticky{
         position: sticky;
         right: 0;
-        background: var(--sticky-bg);
-        z-index: 5;
-
-        /* smaller, softer separation (not a big white slab) */
-        border-left: 1px solid rgba(15,23,42,.08);
-        box-shadow: -6px 0 14px rgba(15,23,42,.05);
-
-        /* optional polish */
-        backdrop-filter: blur(4px);
+        z-index: 3;
+        background: var(--kt-surface, rgba(255,255,255,.92)); /* blend with table surface */
+        /* removed: box-shadow, border-left, backdrop-filter */
     }
-
-    /* Hover row: keep actions cell matching hover */
-    tbody tr:hover td:last-child{
-        background: rgba(13,110,253,.06);
+    tbody tr:hover td.actions-sticky{
+        background: rgba(13,110,253,.06); /* match row hover */
     }
 
     /* “No results” row */
@@ -332,7 +325,7 @@
         font-weight: 800;
     }
 
-    /* ---------- Dark mode tweaks (no harsh whites) ---------- */
+    /* ---------- Dark mode tweaks ---------- */
     html[data-theme="dark"] .card-head{
         border-bottom-color: rgba(148,163,184,.16);
         background: linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,0));
@@ -342,19 +335,20 @@
         border-bottom-color: rgba(148,163,184,.18);
         color: var(--kt-muted);
     }
+    html[data-theme="dark"] thead th.actions-sticky{
+        background: rgba(2, 6, 23, .55); /* same as other headers */
+    }
     html[data-theme="dark"] tbody td{
         border-bottom-color: rgba(148,163,184,.14);
+    }
+    html[data-theme="dark"] tbody td.actions-sticky{
+        background: var(--kt-surface, rgba(2, 6, 23, .55));
     }
     html[data-theme="dark"] tbody tr:hover{
         background: rgba(96,165,250,.08);
     }
-    html[data-theme="dark"] tbody tr:hover td:last-child{
+    html[data-theme="dark"] tbody tr:hover td.actions-sticky{
         background: rgba(96,165,250,.08);
-    }
-    html[data-theme="dark"] thead th:last-child,
-    html[data-theme="dark"] tbody td:last-child{
-        border-left-color: rgba(148,163,184,.18);
-        box-shadow: -6px 0 16px rgba(0,0,0,.28);
     }
     html[data-theme="dark"] .btnx{
         background: rgba(148,163,184,.10);
@@ -445,7 +439,7 @@
                     <th>Base Price</th>
                     <th>Custom Price</th>
                     <th>Description</th>
-                    <th class="text-end">Actions</th>
+                    <th class="text-end actions-sticky">Actions</th>
                 </tr>
             </thead>
 
@@ -486,7 +480,7 @@
                             </span>
                         </td>
 
-                        <td class="text-end">
+                        <td class="text-end actions-sticky">
                             <div class="action-pills">
                                 <a href="{{ route('staff.services.edit', $service->id) }}" class="pill pill-edit">
                                     <i class="fa fa-pen"></i> Edit
