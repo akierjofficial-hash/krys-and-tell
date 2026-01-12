@@ -272,6 +272,20 @@
         text-decoration:none;
     }
     .linkx:hover{ text-decoration:underline; }
+
+    /* ✅ Pagination fix (removes giant Tailwind SVG + styles Bootstrap pager) */
+    .pagination { margin: 0; gap: 6px; flex-wrap: wrap; }
+    .pagination .page-link{
+        border-radius: 10px;
+        font-weight: 900;
+        border: 1px solid rgba(15, 23, 42, .12);
+        color: rgba(15, 23, 42, .80);
+    }
+    .pagination .page-item.active .page-link{
+        background: rgba(13,110,253,.10);
+        border-color: rgba(13,110,253,.25);
+        color:#0d6efd;
+    }
 </style>
 
 @php
@@ -621,7 +635,7 @@
 
                         @if($visits->hasPages())
                             <div class="mt-3">
-                                {{ $visits->appends(array_merge(request()->except('visits_page'), ['tab' => 'tab-visits']))->links() }}
+                                {{ $visits->appends(array_merge(request()->except('visits_page'), ['tab' => 'tab-visits']))->links('pagination::bootstrap-5') }}
                             </div>
                         @endif
                     </div>
@@ -665,7 +679,7 @@
 
                         @if($appointments->hasPages())
                             <div class="mt-3">
-                                {{ $appointments->appends(array_merge(request()->except('appointments_page'), ['tab' => 'tab-appts']))->links() }}
+                                {{ $appointments->appends(array_merge(request()->except('appointments_page'), ['tab' => 'tab-appts']))->links('pagination::bootstrap-5') }}
                             </div>
                         @endif
                     </div>
@@ -775,7 +789,7 @@
 
                             @if($payments->hasPages())
                                 <div class="mt-3">
-                                    {{ $payments->appends(array_merge(request()->except('payments_page'), ['tab' => 'tab-payments']))->links() }}
+                                    {{ $payments->appends(array_merge(request()->except('payments_page'), ['tab' => 'tab-payments']))->links('pagination::bootstrap-5') }}
                                 </div>
                             @endif
                         </div>
@@ -836,7 +850,7 @@
 
                             @if($installmentPayments->hasPages())
                                 <div class="mt-3">
-                                    {{ $installmentPayments->appends(array_merge(request()->except('installment_payments_page'), ['tab' => 'tab-payments']))->links() }}
+                                    {{ $installmentPayments->appends(array_merge(request()->except('installment_payments_page'), ['tab' => 'tab-payments']))->links('pagination::bootstrap-5') }}
                                 </div>
                             @endif
                         </div>
