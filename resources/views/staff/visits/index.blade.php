@@ -401,11 +401,49 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
+        {{-- ✅ NEW: Visits template download --}}
+        <a href="{{ route('staff.visits.template') }}" class="btnx btn-ghost" title="Download Excel template">
+            <i class="fa fa-file-excel"></i> Template
+        </a>
+
+        {{-- ✅ NEW: Visits import --}}
+        <form id="visitImportForm" action="{{ route('staff.visits.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
+            @csrf
+            <input id="visitImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
+            <button type="button" id="visitImportBtn" class="btnx btn-ghost" title="Import Excel file">
+                <i class="fa fa-cloud-arrow-up"></i> Import
+            </button>
+        </form>
+
         <a href="{{ route('staff.visits.create') }}" class="add-btn">
             <i class="fa fa-plus"></i> Add Visit
         </a>
     </div>
 </div>
+
+{{-- ✅ Flash messages --}}
+@if(session('success'))
+    <div class="alert alert-success" style="border-radius:12px; font-weight:800;">
+        {{ session('success') }}
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger" style="border-radius:12px; font-weight:800;">
+        {{ session('error') }}
+    </div>
+@endif
+
+@if(session('import_warnings') && is_array(session('import_warnings')))
+    <div class="alert alert-warning" style="border-radius:12px;">
+        <div style="font-weight:900; margin-bottom:6px;">Import warnings (some rows skipped):</div>
+        <ul style="margin:0; padding-left:18px;">
+            @foreach(session('import_warnings') as $w)
+                <li style="font-weight:800;">{{ $w }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 <div class="card-shell">
     <div class="card-head">
@@ -602,6 +640,18 @@
 
 <script>
 (() => {
+    // ✅ Import button wiring
+    const importBtn = document.getElementById('visitImportBtn');
+    const importFile = document.getElementById('visitImportFile');
+    const importForm = document.getElementById('visitImportForm');
+
+    importBtn?.addEventListener('click', () => importFile?.click());
+    importFile?.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            importForm?.submit();
+        }
+    });
+
     const searchInput = document.getElementById('visitSearch');
     const sortSelect  = document.getElementById('visitSort');
     const tbody       = document.getElementById('visitTableBody');

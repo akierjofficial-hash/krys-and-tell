@@ -481,10 +481,7 @@
         .search-box{ width: 100%; }
         .sort-select{ width: 100%; min-width: 0; }
         .top-actions{ width: 100%; }
-
         .action-pills{ justify-content:flex-start; }
-
-        /* Icon-only pills on mobile */
         .pill span{ display:none; }
         .pill{ padding: 8px 10px; }
     }
@@ -528,6 +525,23 @@
         </a>
     </div>
 </div>
+
+{{-- Flash messages (kept for normal actions) --}}
+@if(session('success'))
+    <div class="alert alert-success" style="border-radius:12px; font-weight:800;">
+        {{ session('success') }}
+    </div>
+@endif
+
+@if($errors->any())
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <ul style="margin:0; padding-left:18px;">
+            @foreach($errors->all() as $e)
+                <li style="font-weight:800;">{{ $e }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 {{-- Segmented tabs --}}
 <div class="segmented">
@@ -914,7 +928,7 @@
         const opts = Array.from(sortSelect.options);
 
         opts.forEach(opt => {
-            const only = opt.dataset.only; // e.g. "installment"
+            const only = opt.dataset.only;
             opt.hidden = !!only && only !== tab;
         });
 
@@ -945,7 +959,6 @@
     tabCash.addEventListener('click', () => showCash(true));
     tabInstallment.addEventListener('click', () => showInstallment(true));
 
-    // Auto-open tab: URL (?tab=installment) wins, else localStorage
     (function () {
         const params = new URLSearchParams(window.location.search);
         const tab = (params.get('tab') || '').toLowerCase();
@@ -983,7 +996,6 @@
                 case 'amount_desc': return (amtB - amtA) || (dateB - dateA);
                 case 'amount_asc':  return (amtA - amtB) || (dateB - dateA);
 
-                // installment-only
                 case 'balance_desc': return (balB - balA) || (dateB - dateA);
                 case 'balance_asc':  return (balA - balB) || (dateB - dateA);
 
@@ -1019,7 +1031,6 @@
         }
     }
 
-    // Row click → view installment plan (ignore clicks on controls)
     function enableRowClick(rows){
         rows.forEach(row => {
             const href = row.dataset.href;
@@ -1033,7 +1044,6 @@
     }
     enableRowClick(insRows);
 
-    // tiny debounce for large tables
     let t = null;
     function debounceApply(){
         clearTimeout(t);
@@ -1051,7 +1061,6 @@
         searchInput.focus();
     });
 
-    // Esc clears search
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             searchInput.value = '';

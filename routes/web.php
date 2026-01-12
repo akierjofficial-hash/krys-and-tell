@@ -16,6 +16,9 @@ use App\Http\Controllers\Staff\InstallmentPaymentController;
 use App\Http\Controllers\Staff\PatientImportExportController;
 use App\Http\Controllers\Staff\ApprovalRequestController;
 
+// ✅ Visit import/export
+use App\Http\Controllers\Staff\VisitImportExportController;
+
 // Admin controllers
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -74,9 +77,9 @@ Route::middleware('auth')->group(function () {
     })->name('portal');
 
     /*
-    |--------------------------------------------------------------------------
+    |----------------------------------------------------------------------
     | ADMIN ROUTES
-    |--------------------------------------------------------------------------
+    |----------------------------------------------------------------------
     */
     Route::middleware('role:admin')
         ->prefix('admin')
@@ -97,7 +100,7 @@ Route::middleware('auth')->group(function () {
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
 
-            // ✅ NEW: Activity Log per user
+            // ✅ Activity Log per user
             Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');
 
             // Analytics
@@ -120,12 +123,12 @@ Route::middleware('auth')->group(function () {
         });
 
     /*
-    |--------------------------------------------------------------------------
+    |----------------------------------------------------------------------
     | STAFF ROUTES
-    |--------------------------------------------------------------------------
+    |----------------------------------------------------------------------
     | ✅ URL prefix: /staff/...
     | ✅ Name prefix: staff....
-    |--------------------------------------------------------------------------
+    |----------------------------------------------------------------------
     */
     Route::middleware('role:staff')
         ->prefix('staff')
@@ -152,6 +155,14 @@ Route::middleware('auth')->group(function () {
             // ✅ PRINT Patient Information Record (PDF)
             Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])
                 ->name('patients.printInfo');
+
+            /*
+            |------------------------------------------------------------------
+            | ✅ VISITS IMPORT/TEMPLATE (MUST be before /visits/{visit})
+            |------------------------------------------------------------------
+            */
+            Route::get('/visits/template', [VisitImportExportController::class, 'template'])->name('visits.template');
+            Route::post('/visits/import', [VisitImportExportController::class, 'import'])->name('visits.import');
 
             // Resources
             Route::resource('patients', PatientController::class);
@@ -198,7 +209,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{plan}/pay', [InstallmentPaymentController::class, 'create'])->name('pay');
                 Route::post('/{plan}/pay', [InstallmentPaymentController::class, 'store'])->name('pay.store');
 
-                // ✅ NEW: Edit / Update an installment payment (per-month)
+                // ✅ Edit / Update an installment payment (per-month)
                 Route::get('/{plan}/payments/{payment}/edit', [InstallmentPaymentController::class, 'edit'])
                     ->name('payments.edit');
                 Route::put('/{plan}/payments/{payment}', [InstallmentPaymentController::class, 'update'])

@@ -332,7 +332,7 @@
 
 <div class="p-head">
     <div>
-        <h2 class="p-title">Payment Details</h2>
+        <h2 class="p-title">Payment1 Details</h2>
         <p class="p-subtitle">Simple view of payment, visit, and treatments.</p>
     </div>
 
