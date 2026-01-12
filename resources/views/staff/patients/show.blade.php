@@ -9,11 +9,8 @@
         --muted: rgba(15, 23, 42, .55);
     }
 
-    .wrap{
-        max-width: 1220px;
-    }
+    .wrap{ max-width: 1220px; }
 
-    /* Header */
     .page-head{
         display:flex;
         align-items:flex-end;
@@ -76,7 +73,6 @@
         color:#fff;
     }
 
-    /* Cards */
     .cardx{
         background: rgba(255,255,255,.94);
         border: var(--card-border);
@@ -108,11 +104,8 @@
         font-size: 12px;
         color: var(--muted);
     }
-    .cardx-body{
-        padding: 16px;
-    }
+    .cardx-body{ padding: 16px; }
 
-    /* Left profile */
     .avatar{
         width: 56px;
         height: 56px;
@@ -168,7 +161,6 @@
         word-break: break-word;
     }
 
-    /* Chips */
     .chip{
         display:inline-flex;
         align-items:center;
@@ -189,7 +181,6 @@
     .chip-yes{ background: rgba(16,185,129,.14); color:#047857; border-color: rgba(16,185,129,.25); }
     .chip-no{ background: rgba(107,114,128,.12); color: rgba(15,23,42,.70); border-color: rgba(107,114,128,.25); }
 
-    /* Visit services pills */
     .svc-pill{
         display:inline-flex;
         align-items:center;
@@ -206,7 +197,6 @@
     }
     .svc-wrap{ display:flex; gap: 6px; flex-wrap: wrap; }
 
-    /* Tabs */
     .tabsx{
         border-bottom: 1px solid rgba(15,23,42,.10);
         margin: -6px -6px 12px -6px;
@@ -235,7 +225,6 @@
     .tabpane{ display:none; }
     .tabpane.active{ display:block; }
 
-    /* Tables */
     .table-wrap{ border-radius: 14px; overflow:hidden; border: 1px solid rgba(15,23,42,.08); }
     table{ width:100%; border-collapse: separate; border-spacing:0; }
     thead th{
@@ -266,6 +255,23 @@
         padding: 8px;
     }
     .muted{ color: var(--muted); }
+
+    .section-title{
+        font-weight: 1000;
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        color: #0f172a;
+        display:flex;
+        align-items:center;
+        gap: 8px;
+    }
+
+    .linkx{
+        color:#0d6efd;
+        font-weight:900;
+        text-decoration:none;
+    }
+    .linkx:hover{ text-decoration:underline; }
 </style>
 
 @php
@@ -296,16 +302,12 @@
         'disclaimer'  => 'Acknowledgement / disclaimer',
     ];
 
-    // Consent YES/NO resolver:
-    // - New system saves "Yes"/"No"
-    // - Old system may have initials like "AK" -> treat as YES
     $consentYes = function($val){
         if ($val === null) return false;
         $v = strtolower(trim((string)$val));
         if ($v === '') return false;
         if (in_array($v, ['no','0','false'], true)) return false;
         if (in_array($v, ['yes','1','true'], true)) return true;
-        // any initials/text = YES
         return true;
     };
 @endphp
@@ -313,7 +315,7 @@
 <div class="page-head wrap">
     <div>
         <h2 class="page-title">Patient Details</h2>
-        <p class="subtitle">Organized view of profile, information record, consent, visits, appointments, and payments</p>
+        <p class="subtitle">Profile, records, visits, appointments, and payments — in one simple view</p>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
@@ -336,7 +338,7 @@
 <div class="wrap">
     <div class="row g-3">
 
-        {{-- LEFT: PROFILE SUMMARY --}}
+        {{-- LEFT --}}
         <div class="col-12 col-lg-4">
             <div class="cardx">
                 <div class="cardx-head">
@@ -392,10 +394,9 @@
                 </div>
             </div>
 
-            {{-- QUICK STATUS --}}
             <div class="cardx mt-3">
                 <div class="cardx-head">
-                    <div class="cardx-title"><i class="fa fa-circle-info"></i> Record Status</div>
+                    <div class="cardx-title"><i class="fa fa-circle-info"></i> Quick Summary</div>
                 </div>
                 <div class="cardx-body">
                     <div class="d-flex flex-column gap-2">
@@ -418,33 +419,38 @@
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            <span class="muted">Total Paid</span>
-                            <span style="font-weight:1000;">₱{{ number_format((float) $totalPaid, 2) }}</span>
+                            <span class="muted">Total Paid (All)</span>
+                            <span style="font-weight:1000;">₱{{ number_format((float)$grandTotalPaid, 2) }}</span>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <span class="muted">Installment Plans</span>
+                            <span style="font-weight:1000;">{{ $installmentPlans->count() }}</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- RIGHT: TABS CONTENT --}}
+        {{-- RIGHT --}}
         <div class="col-12 col-lg-8">
             <div class="cardx">
                 <div class="cardx-head">
                     <div class="cardx-title"><i class="fa fa-layer-group"></i> Patient Records</div>
-                    <div class="cardx-hint">Everything in one place (clean)</div>
+                    <div class="cardx-hint">Tabs stay selected even after pagination</div>
                 </div>
 
                 <div class="cardx-body">
                     <div class="tabsx" id="tabsx">
-                        <div class="tabx active" data-tab="tab-info">Info Record</div>
-                        <div class="tabx" data-tab="tab-consent">Consent</div>
-                        <div class="tabx" data-tab="tab-visits">Visits ({{ $visits->total() }})</div>
-                        <div class="tabx" data-tab="tab-appts">Appointments ({{ $appointments->total() }})</div>
-                        <div class="tabx" data-tab="tab-payments">Payments ({{ $payments->total() }})</div>
+                        <div class="tabx {{ $activeTab === 'tab-info' ? 'active' : '' }}" data-tab="tab-info">Info Record</div>
+                        <div class="tabx {{ $activeTab === 'tab-consent' ? 'active' : '' }}" data-tab="tab-consent">Consent</div>
+                        <div class="tabx {{ $activeTab === 'tab-visits' ? 'active' : '' }}" data-tab="tab-visits">Visits ({{ $visits->total() }})</div>
+                        <div class="tabx {{ $activeTab === 'tab-appts' ? 'active' : '' }}" data-tab="tab-appts">Appointments ({{ $appointments->total() }})</div>
+                        <div class="tabx {{ $activeTab === 'tab-payments' ? 'active' : '' }}" data-tab="tab-payments">Payments ({{ $paymentsAllCount }})</div>
                     </div>
 
-                    {{-- INFO RECORD --}}
-                    <div class="tabpane active" id="tab-info">
+                    {{-- INFO --}}
+                    <div class="tabpane {{ $activeTab === 'tab-info' ? 'active' : '' }}" id="tab-info">
                         @if(!$info)
                             <div class="muted">No Patient Information Record saved yet.</div>
                         @else
@@ -474,79 +480,6 @@
                                     </div>
                                 </div>
 
-                                <div class="col-12 col-md-4">
-                                    <div class="info">
-                                        <div class="label">Home No.</div>
-                                        <div class="value">{{ $info->home_no ?? '—' }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <div class="info">
-                                        <div class="label">Office No.</div>
-                                        <div class="value">{{ $info->office_no ?? '—' }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <div class="info">
-                                        <div class="label">Fax No.</div>
-                                        <div class="value">{{ $info->fax_no ?? '—' }}</div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <div class="info">
-                                        <div class="label">Minor?</div>
-                                        <div class="value">{{ $info->is_minor ? 'Yes' : 'No' }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="info">
-                                        <div class="label">Guardian</div>
-                                        <div class="value">
-                                            {{ $info->guardian_name ?? '—' }}
-                                            @if($info->guardian_occupation)
-                                                <div class="muted" style="margin-top:4px;">Occupation: {{ $info->guardian_occupation }}</div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="info">
-                                        <div class="label">Allergies</div>
-                                        <div class="value">
-                                            @php $all = $info->allergies ?? []; @endphp
-                                            @if(!empty($all))
-                                                {{ implode(', ', $all) }}
-                                            @else
-                                                —
-                                            @endif
-
-                                            @if($info->allergies_other)
-                                                <div class="muted" style="margin-top:6px;">Other: {{ $info->allergies_other }}</div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="info">
-                                        <div class="label">Medical Conditions</div>
-                                        <div class="value">
-                                            @php $conds = $info->medical_conditions ?? []; @endphp
-                                            @if(!empty($conds))
-                                                {{ implode(', ', $conds) }}
-                                            @else
-                                                —
-                                            @endif
-
-                                            @if($info->medical_conditions_other)
-                                                <div class="muted" style="margin-top:6px;">Other: {{ $info->medical_conditions_other }}</div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <div class="col-12">
                                     <div class="info">
                                         <div class="label">Signature</div>
@@ -564,7 +497,7 @@
                     </div>
 
                     {{-- CONSENT --}}
-                    <div class="tabpane" id="tab-consent">
+                    <div class="tabpane {{ $activeTab === 'tab-consent' ? 'active' : '' }}" id="tab-consent">
                         @if(!$consent)
                             <div class="muted">No Informed Consent saved yet.</div>
                         @else
@@ -636,7 +569,7 @@
                     </div>
 
                     {{-- VISITS --}}
-                    <div class="tabpane" id="tab-visits">
+                    <div class="tabpane {{ $activeTab === 'tab-visits' ? 'active' : '' }}" id="tab-visits">
                         @if($visits->isEmpty())
                             <div class="muted">No visits found.</div>
                         @else
@@ -646,7 +579,7 @@
                                         <tr>
                                             <th>Visit Date</th>
                                             <th>Services</th>
-                                            <th>Notes / Description</th>
+                                            <th>Notes</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -688,13 +621,13 @@
 
                         @if($visits->hasPages())
                             <div class="mt-3">
-                                {{ $visits->appends(request()->except('visits_page'))->links() }}
+                                {{ $visits->appends(array_merge(request()->except('visits_page'), ['tab' => 'tab-visits']))->links() }}
                             </div>
                         @endif
                     </div>
 
                     {{-- APPOINTMENTS --}}
-                    <div class="tabpane" id="tab-appts">
+                    <div class="tabpane {{ $activeTab === 'tab-appts' ? 'active' : '' }}" id="tab-appts">
                         @if($appointments->isEmpty())
                             <div class="muted">No appointments found.</div>
                         @else
@@ -732,51 +665,182 @@
 
                         @if($appointments->hasPages())
                             <div class="mt-3">
-                                {{ $appointments->appends(request()->except('appointments_page'))->links() }}
+                                {{ $appointments->appends(array_merge(request()->except('appointments_page'), ['tab' => 'tab-appts']))->links() }}
                             </div>
                         @endif
                     </div>
 
                     {{-- PAYMENTS --}}
-                    <div class="tabpane" id="tab-payments">
-                        @if($payments->isEmpty())
-                            <div class="muted">No payments found.</div>
-                        @else
-                            <div class="table-wrap table-responsive">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Payment Date</th>
-                                            <th>Visit Date</th>
-                                            <th>Amount</th>
-                                            <th>Method</th>
-                                            <th>Notes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($payments as $payment)
-                                            <tr>
-                                                <td style="font-weight:900;">
-                                                    {{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') : '—' }}
-                                                </td>
-                                                <td class="muted">
-                                                    {{ optional($payment->visit)->visit_date ? \Carbon\Carbon::parse($payment->visit->visit_date)->format('M d, Y') : '—' }}
-                                                </td>
-                                                <td style="font-weight:1000;">₱{{ number_format((float) $payment->amount, 2) }}</td>
-                                                <td class="muted">{{ ucfirst($payment->method ?? '—') }}</td>
-                                                <td class="muted">{{ $payment->notes ?? '—' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
+                    <div class="tabpane {{ $activeTab === 'tab-payments' ? 'active' : '' }}" id="tab-payments">
 
-                        @if($payments->hasPages())
-                            <div class="mt-3">
-                                {{ $payments->appends(request()->except('payments_page'))->links() }}
+                        <div class="row g-2 mb-2">
+                            <div class="col-12 col-md-6">
+                                <div class="info">
+                                    <div class="label">Cash Payments</div>
+                                    <div class="value">
+                                        ₱{{ number_format((float)$cashTotalPaid, 2) }}
+                                        <div class="muted" style="margin-top:4px;">Records: {{ (int)$cashPaymentsCount }}</div>
+                                    </div>
+                                </div>
                             </div>
-                        @endif
+                            <div class="col-12 col-md-6">
+                                <div class="info">
+                                    <div class="label">Installment Payments</div>
+                                    <div class="value">
+                                        ₱{{ number_format((float)$installmentTotalPaid, 2) }}
+                                        <div class="muted" style="margin-top:4px;">Records: {{ (int)$installmentPaymentsCount }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:10px;">
+                            <div class="section-title"><i class="fa fa-file-contract"></i> Installment Plans</div>
+
+                            @if($installmentPlans->isEmpty())
+                                <div class="muted">No installment plans found.</div>
+                            @else
+                                <div class="table-wrap table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Plan</th>
+                                                <th>Service</th>
+                                                <th>Total</th>
+                                                <th>Balance</th>
+                                                <th>Status</th>
+                                                <th>Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($installmentPlans as $plan)
+                                                <tr>
+                                                    <td style="font-weight:1000;">
+                                                        <a class="linkx" href="{{ route('staff.installments.show', $plan->id) }}">#{{ $plan->id }}</a>
+                                                    </td>
+                                                    <td class="muted">{{ $plan->service?->name ?? '—' }}</td>
+                                                    <td style="font-weight:1000;">₱{{ number_format((float)$plan->total_cost, 2) }}</td>
+                                                    <td style="font-weight:1000;">₱{{ number_format((float)$plan->balance, 2) }}</td>
+                                                    <td class="muted">{{ $plan->status ?? '—' }}</td>
+                                                    <td class="muted">{{ $plan->is_open_contract ? 'Open Contract' : 'Fixed Term' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div style="margin-top:14px;">
+                            <div class="section-title"><i class="fa fa-receipt"></i> Cash Payments</div>
+
+                            @if($payments->isEmpty())
+                                <div class="muted">No cash payments found.</div>
+                            @else
+                                <div class="table-wrap table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Payment Date</th>
+                                                <th>Visit Date</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($payments as $payment)
+                                                <tr>
+                                                    <td style="font-weight:900;">
+                                                        {{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') : '—' }}
+                                                    </td>
+                                                    <td class="muted">
+                                                        @if(optional($payment->visit)->id)
+                                                            <a class="linkx" href="{{ route('staff.visits.show', $payment->visit->id) }}">
+                                                                {{ $payment->visit->visit_date ? \Carbon\Carbon::parse($payment->visit->visit_date)->format('M d, Y') : 'View Visit' }}
+                                                            </a>
+                                                        @else
+                                                            —
+                                                        @endif
+                                                    </td>
+                                                    <td style="font-weight:1000;">₱{{ number_format((float)$payment->amount, 2) }}</td>
+                                                    <td class="muted">{{ ucfirst($payment->method ?? '—') }}</td>
+                                                    <td class="muted">{{ $payment->notes ?? '—' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+
+                            @if($payments->hasPages())
+                                <div class="mt-3">
+                                    {{ $payments->appends(array_merge(request()->except('payments_page'), ['tab' => 'tab-payments']))->links() }}
+                                </div>
+                            @endif
+                        </div>
+
+                        <div style="margin-top:14px;">
+                            <div class="section-title"><i class="fa fa-calendar-check"></i> Installment Payments</div>
+
+                            @if($installmentPayments->isEmpty())
+                                <div class="muted">No installment payments found.</div>
+                            @else
+                                <div class="table-wrap table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Payment Date</th>
+                                                <th>Plan</th>
+                                                <th>Label</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Visit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($installmentPayments as $ip)
+                                                @php
+                                                    $isDp = ((int)($ip->month_number ?? -1) === 0) || str_contains(strtolower((string)($ip->notes ?? '')), 'downpayment');
+                                                    $label = $isDp
+                                                        ? 'Downpayment'
+                                                        : (($ip->plan?->is_open_contract ?? false) ? 'Payment #'.(int)$ip->month_number : 'Month '.(int)$ip->month_number);
+                                                @endphp
+                                                <tr>
+                                                    <td style="font-weight:900;">
+                                                        {{ $ip->payment_date ? \Carbon\Carbon::parse($ip->payment_date)->format('M d, Y') : '—' }}
+                                                    </td>
+                                                    <td style="font-weight:1000;">
+                                                        @if($ip->plan?->id)
+                                                            <a class="linkx" href="{{ route('staff.installments.show', $ip->plan->id) }}">#{{ $ip->plan->id }}</a>
+                                                        @else
+                                                            —
+                                                        @endif
+                                                    </td>
+                                                    <td class="muted">{{ $label }}</td>
+                                                    <td style="font-weight:1000;">₱{{ number_format((float)$ip->amount, 2) }}</td>
+                                                    <td class="muted">{{ ucfirst($ip->method ?? '—') }}</td>
+                                                    <td class="muted">
+                                                        @if($ip->visit_id)
+                                                            <a class="linkx" href="{{ route('staff.visits.show', $ip->visit_id) }}">View Visit</a>
+                                                        @else
+                                                            —
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+
+                            @if($installmentPayments->hasPages())
+                                <div class="mt-3">
+                                    {{ $installmentPayments->appends(array_merge(request()->except('installment_payments_page'), ['tab' => 'tab-payments']))->links() }}
+                                </div>
+                            @endif
+                        </div>
+
                     </div>
 
                 </div>
@@ -787,14 +851,23 @@
 </div>
 
 <script>
-    // simple tabs
+    // Tabs + persist in URL (?tab=...)
     (function(){
         const tabs = document.querySelectorAll('.tabx');
         const panes = document.querySelectorAll('.tabpane');
 
+        function setUrlTab(id){
+            try{
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', id);
+                window.history.replaceState({}, '', url.toString());
+            }catch(e){}
+        }
+
         function activate(id){
             tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === id));
             panes.forEach(p => p.classList.toggle('active', p.id === id));
+            setUrlTab(id);
         }
 
         tabs.forEach(t => {
