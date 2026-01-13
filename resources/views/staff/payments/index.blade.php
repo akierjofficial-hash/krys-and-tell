@@ -290,6 +290,8 @@
         top: 0;
         z-index: 2;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     html[data-theme="dark"] thead th{
         background: rgba(2,6,23,.35);
@@ -312,6 +314,10 @@
     .muted{ color: var(--muted); font-weight: 800; }
     .nowrap{ white-space: nowrap; }
     .money{ font-variant-numeric: tabular-nums; }
+
+    /* ✅ Keep cash wide enough; installment now fits without Progress column */
+    #cashTable table{ min-width: 980px; }
+    #installmentTable table{ min-width: 1180px; }
 
     /* Patient mini avatar */
     .pwrap{ display:flex; align-items:center; gap: 10px; min-width:0; }
@@ -429,53 +435,6 @@
     }
     .pill-del:hover{ background: rgba(239, 68, 68, .20); }
 
-    /* Progress (Installments) */
-    .prog{
-        display:flex;
-        flex-direction:column;
-        gap: 6px;
-        min-width: 0;
-    }
-    .prog-top{
-        display:flex;
-        align-items:baseline;
-        justify-content:space-between;
-        gap: 10px;
-        font-size: 12px;
-        font-weight: 950;
-        color: var(--text);
-    }
-    .prog-sub{
-        color: var(--muted);
-        font-weight: 950;
-        font-size: 12px;
-        white-space: nowrap;
-    }
-    .prog-bar{
-        height: 8px;
-        background: rgba(148,163,184,.22);
-        border-radius: 999px;
-        overflow: hidden;
-    }
-    html[data-theme="dark"] .prog-bar{
-        background: rgba(148,163,184,.18);
-    }
-    .prog-bar > span{
-        display:block;
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(135deg, var(--brand), var(--brand2));
-        border-radius: 999px;
-    }
-    .prog-foot{
-        font-size: 11px;
-        color: var(--muted);
-        font-weight: 900;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
     /* Row click affordance */
     .row-link{ cursor: pointer; }
 
@@ -484,7 +443,7 @@
         .col-down, .col-term { display:none; }
     }
     @media (max-width: 900px){
-        .col-start, .col-progress { display:none; }
+        .col-start { display:none; }
     }
 
     /* Mobile improvements */
@@ -761,7 +720,6 @@
                     <col style="width: 130px;">
                     <col style="width: 95px;">
                     <col style="width: 140px;">
-                    <col style="width: 220px;">
                     <col style="width: 240px;">
                 </colgroup>
 
@@ -775,7 +733,6 @@
                         <th class="nowrap">Balance</th>
                         <th class="nowrap col-term">Term</th>
                         <th class="nowrap">Status</th>
-                        <th class="nowrap col-progress">Progress</th>
                         <th class="text-end nowrap">Actions</th>
                     </tr>
                 </thead>
@@ -792,9 +749,6 @@
                         $startTs = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->timestamp : 0;
                         $totalCost = (float)($plan->total_cost ?? 0);
                         $balance = (float)($plan->balance ?? 0);
-                        $paid = max(0, $totalCost - $balance);
-                        $pct = $totalCost > 0 ? (int) round(($paid / $totalCost) * 100) : 0;
-                        $pct = max(0, min(100, $pct));
 
                         $startLabel = $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->format('M d, Y') : '—';
                         $isPaid = strtolower($plan->status ?? '') === 'fully paid';
@@ -888,19 +842,6 @@
                             </span>
                         </td>
 
-                        <td class="col-progress">
-                            <div class="prog">
-                                <div class="prog-top">
-                                    <span class="money">₱{{ number_format($paid, 2) }}</span>
-                                    <span class="prog-sub">{{ $pct }}%</span>
-                                </div>
-                                <div class="prog-bar" aria-label="Progress">
-                                    <span style="width: {{ $pct }}%;"></span>
-                                </div>
-                                <div class="prog-foot money">Paid / Total ₱{{ number_format($totalCost, 2) }}</div>
-                            </div>
-                        </td>
-
                         <td class="text-end nowrap">
                             <div class="action-pills">
                                 @if(!$isPaid)
@@ -930,7 +871,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">No installment plans found.</td>
+                        <td colspan="9" class="text-center text-muted py-4">No installment plans found.</td>
                     </tr>
                 @endforelse
                 </tbody>
@@ -964,7 +905,7 @@
     cashTotalEl.textContent = cashRows.length;
     insTotalEl.textContent  = insRows.length;
 
-    // ✅ Installment Plans Import button behavior (same as Visits)
+    // ✅ Installment Plans Import button behavior
     const insPlanImportBtn  = document.getElementById('installmentPlanImportBtn');
     const insPlanImportFile = document.getElementById('installmentPlanImportFile');
     const insPlanImportForm = document.getElementById('installmentPlanImportForm');
@@ -973,7 +914,6 @@
         insPlanImportBtn.addEventListener('click', () => insPlanImportFile.click());
         insPlanImportFile.addEventListener('change', () => {
             if (insPlanImportFile.files && insPlanImportFile.files.length) {
-                // keep tab on reload
                 localStorage.setItem('payments_tab', 'installment');
                 insPlanImportForm.submit();
             }
