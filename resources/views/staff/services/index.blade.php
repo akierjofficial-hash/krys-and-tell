@@ -423,7 +423,10 @@
             <select id="serviceSort" class="sort-select">
                 <option value="created_desc">Date added (newest)</option>
                 <option value="created_asc">Date added (oldest)</option>
-                <option value="name_asc">Name (A–Z)</option>
+
+                {{-- ✅ Default: A–Z --}}
+                <option value="name_asc" selected>Name (A–Z)</option>
+
                 <option value="name_desc">Name (Z–A)</option>
                 <option value="price_desc">Base price (high → low)</option>
                 <option value="price_asc">Base price (low → high)</option>
@@ -595,9 +598,6 @@
             const da = a.dataset;
             const db = b.dataset;
 
-            const idA = Number(da.id || 0);
-            const idB = Number(db.id || 0);
-
             const nameA = da.name || '';
             const nameB = db.name || '';
             const createdA = Number(da.created || 0);
@@ -620,7 +620,7 @@
                 case 'custom_yes': return (customB - customA) || nameA.localeCompare(nameB);
                 case 'custom_no':  return (customA - customB) || nameA.localeCompare(nameB);
 
-                default: return createdB - createdA;
+                default: return nameA.localeCompare(nameB) || (createdB - createdA);
             }
         });
 
@@ -638,11 +638,14 @@
 
     resetBtn?.addEventListener('click', () => {
         searchInput.value = '';
-        sortSelect.value = 'created_desc';
+        // ✅ Reset back to alphabetical A–Z
+        sortSelect.value = 'name_asc';
         applyAll();
         searchInput.focus();
     });
 
+    // ✅ default load: alphabetical A–Z
+    sortSelect.value = 'name_asc';
     applyAll();
 })();
 </script>
