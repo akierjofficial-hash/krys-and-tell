@@ -5,8 +5,8 @@
 <style>
     /* ==========================================================
        Patients Index (Dark mode compatible)
-       - Removes hardcoded white backgrounds & black text vars
-       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-border, --kt-input-bg
+       - Adds A–Z grouping separators (Option A)
+       - Adds A–Z jump index (Option C) with mobile/iPad support
        ========================================================== */
 
     :root{
@@ -21,6 +21,8 @@
         --brand1: #0d6efd;
         --brand2: #1e90ff;
         --radius: 16px;
+
+        --thead-h: 44px; /* JS will update this */
     }
 
     html[data-theme="dark"]{
@@ -198,6 +200,7 @@
         box-shadow: var(--card-shadow);
         overflow: hidden;
         color: var(--text);
+        position: relative;
     }
 
     .card-head{
@@ -250,7 +253,7 @@
         background: rgba(248, 250, 252, .85);
         position: sticky;
         top: 0;
-        z-index: 1;
+        z-index: 5;
         white-space: nowrap;
     }
     html[data-theme="dark"] thead th{
@@ -344,12 +347,139 @@
         width: 100%;
     }
 
+    /* ==========================================================
+       Option A: Letter separator rows (sticky under thead)
+       ========================================================== */
+    tr.alpha-row td{
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--soft);
+        background: var(--kt-surface-2);
+        position: sticky;
+        top: var(--thead-h);
+        z-index: 4;
+        backdrop-filter: blur(8px);
+    }
+    html[data-theme="dark"] tr.alpha-row td{
+        background: rgba(2,6,23,.55);
+    }
+
+    .alpha-pill{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+        width: 100%;
+    }
+    .alpha-left{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        min-width: 0;
+    }
+    .alpha-letter{
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        font-weight: 950;
+        letter-spacing: .02em;
+        background: rgba(96,165,250,.16);
+        color: #60a5fa;
+        border: 1px solid rgba(96,165,250,.22);
+        flex: 0 0 auto;
+    }
+    .alpha-meta{
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    /* ==========================================================
+       Option C: A–Z Jump Index (desktop fixed, mobile horizontal)
+       ========================================================== */
+    .alpha-index{
+        position: fixed;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        display:flex;
+        flex-direction:column;
+        gap: 4px;
+        padding: 10px 8px;
+        border-radius: 14px;
+        background: var(--kt-surface);
+        border: 1px solid var(--kt-border);
+        box-shadow: var(--kt-shadow);
+        z-index: 60;
+        max-height: 70vh;
+        overflow: auto;
+        scrollbar-width: thin;
+        user-select: none;
+    }
+    .alpha-btn{
+        width: 28px;
+        height: 22px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        font-weight: 950;
+        font-size: 11px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        cursor: pointer;
+        transition: .12s ease;
+        flex: 0 0 auto;
+    }
+    .alpha-btn:hover{
+        background: rgba(96,165,250,.12);
+        color: var(--text);
+    }
+    .alpha-btn.active{
+        background: rgba(96,165,250,.16);
+        color: #60a5fa;
+        border-color: rgba(96,165,250,.25);
+    }
+    .alpha-btn.disabled{
+        opacity: .35;
+        pointer-events: none;
+    }
+
+    /* iPad + Mobile: turn into a horizontal bar inside the card */
+    @media (max-width: 1024px){
+        .alpha-index{
+            position: sticky;
+            top: 0;
+            right: auto;
+            left: auto;
+            transform: none;
+            flex-direction: row;
+            max-height: none;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 14px;
+        }
+        .alpha-btn{
+            width: 30px;
+            height: 26px;
+            font-size: 12px;
+        }
+    }
+
     @media (max-width: 768px){
         .search-box{ width: 100%; }
         .sort-select{ width: 100%; min-width: 0; }
         .top-actions{ width: 100%; }
         .action-pills{ justify-content:flex-start; }
         .toolbar-row{ flex-direction: column; align-items: stretch; }
+
+        .alpha-index{ margin: 10px 10px 0 10px; }
     }
 </style>
 
@@ -369,16 +499,18 @@
         <div class="sort-box">
             <span class="sort-label">Sort</span>
             <select id="patientSort" class="sort-select">
-    <option value="lname_asc" selected>Last name (A–Z)</option>
-    <option value="lname_desc">Last name (Z–A)</option>
-    <option value="fname_asc">First name (A–Z)</option>
-    <option value="fname_desc">First name (Z–A)</option>
-    <option value="created_desc">Date added (newest)</option>
-    <option value="created_asc">Date added (oldest)</option>
-    <option value="bday_asc">Birthdate (oldest first)</option>
-    <option value="bday_desc">Birthdate (youngest first)</option>
-</select>
+                <option value="created_desc">Date added (newest)</option>
+                <option value="created_asc">Date added (oldest)</option>
 
+                {{-- ✅ default sort --}}
+                <option value="lname_asc" selected>Last name (A–Z)</option>
+
+                <option value="lname_desc">Last name (Z–A)</option>
+                <option value="fname_asc">First name (A–Z)</option>
+                <option value="fname_desc">First name (Z–A)</option>
+                <option value="bday_asc">Birthdate (oldest first)</option>
+                <option value="bday_desc">Birthdate (youngest first)</option>
+            </select>
         </div>
 
         <button type="button" id="clearFilters" class="btnx btn-ghost">
@@ -406,7 +538,7 @@
 </div>
 
 {{-- Table Card --}}
-<div class="card-shell">
+<div class="card-shell" id="patientsCard">
     <div class="card-head">
         <div class="toolbar-row">
             <div class="hint">
@@ -419,8 +551,11 @@
         </div>
     </div>
 
+    {{-- ✅ Option C: A–Z jump index (JS fills this) --}}
+    <div class="alpha-index" id="alphaIndex" style="display:none;" aria-label="Jump to letter"></div>
+
     <div class="table-wrap table-responsive">
-        <table>
+        <table id="patientsTable">
             <thead>
                 <tr>
                     <th>Patient</th>
@@ -434,8 +569,8 @@
             <tbody id="patientTableBody">
                 @forelse ($patients as $patient)
                     <tr class="patient-row"
-                        data-lname="{{ strtolower($patient->last_name) }}"
-                        data-fname="{{ strtolower($patient->first_name) }}"
+                        data-lname="{{ strtolower($patient->last_name ?? '') }}"
+                        data-fname="{{ strtolower($patient->first_name ?? '') }}"
                         data-created="{{ optional($patient->created_at)->timestamp ?? 0 }}"
                         data-bday="{{ $patient->birthdate ? \Carbon\Carbon::parse($patient->birthdate)->timestamp : 0 }}"
                     >
@@ -500,17 +635,145 @@
     const searchInput = document.getElementById('patientSearch');
     const sortSelect  = document.getElementById('patientSort');
     const tbody       = document.getElementById('patientTableBody');
+    const table       = document.getElementById('patientsTable');
+    const alphaIndex  = document.getElementById('alphaIndex');
+
     const rowsAll     = Array.from(document.querySelectorAll('.patient-row'));
     const visibleCountEl = document.getElementById('visibleCount');
     const totalCountEl   = document.getElementById('totalCount');
     const resetBtn    = document.getElementById('clearFilters');
 
+    const emptyStateRow = document.getElementById('emptyStateRow');
+
+    // Update --thead-h based on actual thead height (for sticky alpha rows)
+    function updateTheadHeight(){
+        const thead = table?.querySelector('thead');
+        if (!thead) return;
+        const h = Math.round(thead.getBoundingClientRect().height || 44);
+        document.documentElement.style.setProperty('--thead-h', h + 'px');
+    }
+
     function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
+
+    function stripDiacritics(s){
+        try{
+            return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        } catch(e){
+            return (s || '');
+        }
+    }
+
+    function isAlphaGroupingMode(){
+        const v = sortSelect.value;
+        return v === 'lname_asc' || v === 'lname_desc';
+    }
+
+    function firstLetterFromRow(row){
+        const raw = stripDiacritics((row.dataset.lname || '').trim());
+        const ch = raw ? raw[0] : '';
+        if (ch && /[A-Za-z]/.test(ch)) return ch.toUpperCase();
+        return '#';
+    }
+
+    function clearAlphaRows(){
+        tbody.querySelectorAll('tr.alpha-row').forEach(r => r.remove());
+    }
+
+    function getVisibleRowsInDomOrder(){
+        return rowsAll.filter(r => r.style.display !== 'none');
+    }
+
+    function buildAlphaRowsAndIndex(){
+        clearAlphaRows();
+
+        // Only show A–Z features when sorting by last name
+        if (!isAlphaGroupingMode()){
+            alphaIndex.style.display = 'none';
+            return;
+        }
+
+        const visibleRows = getVisibleRowsInDomOrder();
+        if (!visibleRows.length){
+            alphaIndex.style.display = 'none';
+            return;
+        }
+
+        // Insert alpha separator rows before the first visible row of each letter
+        const counts = new Map(); // letter -> count
+        visibleRows.forEach(r => {
+            const L = firstLetterFromRow(r);
+            counts.set(L, (counts.get(L) || 0) + 1);
+        });
+
+        let lastLetter = null;
+        visibleRows.forEach(row => {
+            const letter = firstLetterFromRow(row);
+            if (letter !== lastLetter){
+                const tr = document.createElement('tr');
+                tr.className = 'alpha-row';
+                tr.dataset.letter = letter;
+                tr.innerHTML = `
+                    <td colspan="5">
+                        <div class="alpha-pill">
+                            <div class="alpha-left">
+                                <span class="alpha-letter">${letter}</span>
+                                <span class="alpha-meta">${counts.get(letter) || 0} patient(s)</span>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.insertBefore(tr, row);
+                lastLetter = letter;
+            }
+        });
+
+        // Build the A–Z index
+        alphaIndex.innerHTML = '';
+        const letters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+
+        letters.forEach(L => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'alpha-btn';
+            btn.textContent = L;
+
+            const available = counts.has(L) || (L === '#' && counts.has('#'));
+            if (!available) btn.classList.add('disabled');
+
+            btn.title = available ? `Jump to ${L}` : `No ${L} patients`;
+
+            btn.addEventListener('click', () => {
+                if (btn.classList.contains('disabled')) return;
+
+                if (L === '#'){
+                    // Jump to top of table/card
+                    const topEl = document.getElementById('patientsCard');
+                    if (topEl){
+                        const y = window.scrollY + topEl.getBoundingClientRect().top - 12;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                    return;
+                }
+
+                const anchor = tbody.querySelector(`tr.alpha-row[data-letter="${L}"]`);
+                if (!anchor) return;
+
+                const offset = (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--thead-h')) || 44) + 12;
+                const y = window.scrollY + anchor.getBoundingClientRect().top - offset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            });
+
+            alphaIndex.appendChild(btn);
+        });
+
+        alphaIndex.style.display = '';
+        updateActiveLetterHighlight(); // initial
+    }
 
     function applySearch() {
         const keyword = normalize(searchInput.value);
-
         let visible = 0;
+
         rowsAll.forEach(row => {
             const text = normalize(row.textContent);
             const show = text.includes(keyword);
@@ -519,64 +782,132 @@
         });
 
         visibleCountEl.textContent = visible;
-    }
 
-    function getComparable(row, mode){
-        const ds = row.dataset;
-        switch(mode){
-            case 'created_desc': return Number(ds.created || 0);
-            case 'created_asc':  return Number(ds.created || 0);
-            case 'lname_asc':    return ds.lname || '';
-            case 'lname_desc':   return ds.lname || '';
-            case 'fname_asc':    return ds.fname || '';
-            case 'fname_desc':   return ds.fname || '';
-            case 'bday_asc':     return Number(ds.bday || 0);
-            case 'bday_desc':    return Number(ds.bday || 0);
-            default:             return Number(ds.created || 0);
+        if (emptyStateRow){
+            emptyStateRow.style.display = (visible === 0) ? '' : 'none';
         }
     }
 
     function applySort() {
         const mode = sortSelect.value;
 
+        const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+
         const sorted = [...rowsAll].sort((a, b) => {
-            const va = getComparable(a, mode);
-            const vb = getComparable(b, mode);
+            const da = a.dataset;
+            const db = b.dataset;
 
-            if (typeof va === 'string' || typeof vb === 'string') {
-                const A = String(va), B = String(vb);
-                if (A < B) return (mode.endsWith('_desc') ? 1 : -1);
-                if (A > B) return (mode.endsWith('_desc') ? -1 : 1);
-                const ta = a.dataset.fname || '';
-                const tb = b.dataset.fname || '';
-                if (ta < tb) return -1;
-                if (ta > tb) return 1;
-                return Number(b.dataset.created || 0) - Number(a.dataset.created || 0);
+            const lnameA = stripDiacritics(da.lname || '');
+            const lnameB = stripDiacritics(db.lname || '');
+            const fnameA = stripDiacritics(da.fname || '');
+            const fnameB = stripDiacritics(db.fname || '');
+
+            const createdA = Number(da.created || 0);
+            const createdB = Number(db.created || 0);
+
+            const bdayA = Number(da.bday || 0);
+            const bdayB = Number(db.bday || 0);
+
+            switch(mode){
+                case 'lname_asc':
+                    return collator.compare(lnameA, lnameB)
+                        || collator.compare(fnameA, fnameB)
+                        || (createdB - createdA);
+
+                case 'lname_desc':
+                    return collator.compare(lnameB, lnameA)
+                        || collator.compare(fnameB, fnameA)
+                        || (createdB - createdA);
+
+                case 'fname_asc':
+                    return collator.compare(fnameA, fnameB)
+                        || collator.compare(lnameA, lnameB)
+                        || (createdB - createdA);
+
+                case 'fname_desc':
+                    return collator.compare(fnameB, fnameA)
+                        || collator.compare(lnameB, lnameA)
+                        || (createdB - createdA);
+
+                case 'created_asc':
+                    return createdA - createdB;
+
+                case 'created_desc':
+                    return createdB - createdA;
+
+                case 'bday_asc':
+                    return bdayA - bdayB || collator.compare(lnameA, lnameB);
+
+                case 'bday_desc':
+                    return bdayB - bdayA || collator.compare(lnameA, lnameB);
+
+                default:
+                    return collator.compare(lnameA, lnameB) || collator.compare(fnameA, fnameB);
             }
-
-            if (va === vb) return Number(b.dataset.created || 0) - Number(a.dataset.created || 0);
-
-            const asc = mode.endsWith('_asc');
-            return asc ? (va - vb) : (vb - va);
         });
 
         sorted.forEach(r => tbody.appendChild(r));
+
+        // keep empty row at bottom
+        if (emptyStateRow) tbody.appendChild(emptyStateRow);
     }
 
     function applyAll(){
+        updateTheadHeight();
         applySort();
         applySearch();
+        buildAlphaRowsAndIndex();
     }
 
+    // Highlight active letter as you scroll (best effort, lightweight)
+    let raf = null;
+    function updateActiveLetterHighlight(){
+        if (!isAlphaGroupingMode()) return;
+
+        const headers = Array.from(tbody.querySelectorAll('tr.alpha-row'));
+        if (!headers.length) return;
+
+        const offset = (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--thead-h')) || 44) + 16;
+        let active = null;
+
+        for (const h of headers){
+            const top = h.getBoundingClientRect().top;
+            if (top - offset <= 0) active = h.dataset.letter;
+            else break;
+        }
+
+        const btns = Array.from(alphaIndex.querySelectorAll('.alpha-btn'));
+        btns.forEach(b => b.classList.remove('active'));
+        if (active){
+            const b = btns.find(x => x.textContent === active);
+            if (b) b.classList.add('active');
+        }
+    }
+
+    function onScroll(){
+        if (!isAlphaGroupingMode()) return;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+            raf = null;
+            updateActiveLetterHighlight();
+        });
+    }
+
+    // Counts
     totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
 
-    searchInput.addEventListener('keyup', applySearch);
+    // Events
+    searchInput.addEventListener('input', () => {
+        applySearch();
+        buildAlphaRowsAndIndex();
+    });
+
     sortSelect.addEventListener('change', applyAll);
 
     resetBtn.addEventListener('click', () => {
         searchInput.value = '';
-        sortSelect.value = 'lname_asc';
+        sortSelect.value = 'lname_asc'; // ✅ reset to A–Z
         applyAll();
         searchInput.focus();
     });
@@ -590,6 +921,16 @@
         if (patientFile.files && patientFile.files.length > 0) importForm.submit();
     });
 
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => {
+        updateTheadHeight();
+        buildAlphaRowsAndIndex();
+        updateActiveLetterHighlight();
+    });
+
+    // Initial
+    // Ensure default is A–Z even if browser preserves a previous selection
+    if (!sortSelect.value) sortSelect.value = 'lname_asc';
     applyAll();
 })();
 </script>
