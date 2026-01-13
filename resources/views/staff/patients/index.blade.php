@@ -369,15 +369,16 @@
         <div class="sort-box">
             <span class="sort-label">Sort</span>
             <select id="patientSort" class="sort-select">
-                <option value="created_desc">Date added (newest)</option>
-                <option value="created_asc">Date added (oldest)</option>
-                <option value="lname_asc">Last name (A–Z)</option>
-                <option value="lname_desc">Last name (Z–A)</option>
-                <option value="fname_asc">First name (A–Z)</option>
-                <option value="fname_desc">First name (Z–A)</option>
-                <option value="bday_asc">Birthdate (oldest first)</option>
-                <option value="bday_desc">Birthdate (youngest first)</option>
-            </select>
+    <option value="lname_asc" selected>Last name (A–Z)</option>
+    <option value="lname_desc">Last name (Z–A)</option>
+    <option value="fname_asc">First name (A–Z)</option>
+    <option value="fname_desc">First name (Z–A)</option>
+    <option value="created_desc">Date added (newest)</option>
+    <option value="created_asc">Date added (oldest)</option>
+    <option value="bday_asc">Birthdate (oldest first)</option>
+    <option value="bday_desc">Birthdate (youngest first)</option>
+</select>
+
         </div>
 
         <button type="button" id="clearFilters" class="btnx btn-ghost">
@@ -575,7 +576,7 @@
 
     resetBtn.addEventListener('click', () => {
         searchInput.value = '';
-        sortSelect.value = 'created_desc';
+        sortSelect.value = 'lname_asc';
         applyAll();
         searchInput.focus();
     });
