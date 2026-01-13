@@ -298,19 +298,81 @@
 
     $hasMonth0 = $payments->contains(fn($p) => (int)($p->month_number ?? -1) === 0);
     $dpIsLegacyMonth1 = (!$hasMonth0 && $dpPayment && (int)($dpPayment->month_number ?? -1) === 1);
-
     $shift = $dpIsLegacyMonth1 ? 1 : 0;
 
     $hasDpRecord = (bool) $dpPayment;
     $totalPaid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
 
     $remainingBalance = max(0, $total - $totalPaid);
-
-    // ✅ clean numeric for HTML attributes (no commas)
     $remainingBalanceAttr = number_format($remainingBalance, 2, '.', '');
 
     // ✅ selected month safe-guard (fixed-term)
     $selectedMonth = (int) old('month_number', $nextMonth ?? 1);
+
+    // ✅ Monthly suggested amount (fixed-term): (Total - Downpayment) / Months
+    $monthsTerm = max(0, (int)($plan->months ?? 0));
+    $principal = max(0, $total - $down);
+    $monthlySuggested = ($monthsTerm > 0) ? round($principal / $monthsTerm, 2) : 0.00;
+
+    $computedDefault = $isOpenContract
+        ? $remainingBalance
+        : min($remainingBalance, ($monthlySuggested > 0 ? $monthlySuggested : $remainingBalance));
+
+    $computedDefaultAttr = number_format($computedDefault, 2, '.', '');
+    $monthlySuggestedAttr = number_format($monthlySuggested, 2, '.', '');
+
+    // ✅ DP date (base month). Month 1 due date = DP date + 1 month.
+    $dpDateObj = $dpPayment?->payment_date
+        ? Carbon::parse($dpPayment->payment_date)
+        : ($startDate ? $startDate->copy() : now());
+
+    $dpDateStr = $dpDateObj->toDateString();
+
+    // ✅ Map UI month => paid date (YYYY-MM-DD) for fixed-term (uses shift)
+    $uiPaidDates = [];
+    if (!$isOpenContract) {
+        for ($i = 1; $i <= $monthsTerm; $i++) {
+            $dbMonth = $i + $shift;
+            $p = $payments->first(function($x) use ($dbMonth){
+                return (int)($x->month_number ?? -999) === (int)$dbMonth;
+            });
+
+            if ($p && $p->payment_date) {
+                $uiPaidDates[$i] = Carbon::parse($p->payment_date)->toDateString();
+            }
+        }
+    }
+
+    // ✅ Suggested date for initial render:
+    // - fixed-term: month i uses (prev paid month date +1) else (dp date + i months)
+    // - open: last paid date +1 month
+    $suggestedDate = now()->toDateString();
+
+    if ($isOpenContract) {
+        $lastNonDp = $payments
+            ->filter(fn($p) => (int)($p->month_number ?? -1) >= (1 + $shift))
+            ->sortByDesc(fn($p) => (int)($p->month_number ?? 0))
+            ->first();
+
+        $lastDateObj = $lastNonDp?->payment_date
+            ? Carbon::parse($lastNonDp->payment_date)
+            : $dpDateObj->copy();
+
+        $suggestedDate = $lastDateObj->copy()->addMonth()->toDateString();
+    } else {
+        $sel = max(1, $selectedMonth);
+        $prevDate = null;
+
+        for ($j = $sel - 1; $j >= 1; $j--) {
+            if (!empty($uiPaidDates[$j])) { $prevDate = $uiPaidDates[$j]; break; }
+        }
+
+        if ($prevDate) {
+            $suggestedDate = Carbon::parse($prevDate)->addMonth()->toDateString();
+        } else {
+            $suggestedDate = $dpDateObj->copy()->addMonths($sel)->toDateString(); // Month 1 = dp +1 month
+        }
+    }
 @endphp
 
 <div class="page-head form-max">
@@ -337,7 +399,11 @@
     </div>
 @endif
 
-<div class="card-shell form-max">
+<div class="card-shell form-max" id="installmentPayShell"
+     data-open="{{ $isOpenContract ? '1' : '0' }}"
+     data-dp-date="{{ $dpDateStr }}"
+     data-paid-dates='@json($uiPaidDates)'
+>
     <div class="card-head">
         <div class="hint">
             <span class="badge-soft"><i class="fa fa-file-invoice"></i> Plan ID: #{{ $plan->id }}</span>
@@ -381,6 +447,14 @@
                 <div class="k"><i class="fa fa-circle-exclamation"></i> Remaining Balance</div>
                 <div class="v balance">₱{{ number_format($remainingBalance, 2) }}</div>
             </div>
+
+            @if(!$isOpenContract && (int)($plan->months ?? 0) > 0)
+                <div class="tile">
+                    <div class="k"><i class="fa fa-calculator"></i> Suggested Monthly Payment</div>
+                    <div class="v">₱{{ number_format($monthlySuggested, 2) }}</div>
+                    <div class="helper">(Total − Downpayment) ÷ Months. You can still edit the amount.</div>
+                </div>
+            @endif
         </div>
 
         <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
@@ -401,18 +475,17 @@
                         @php
                             $maxMonthsLocal = $maxMonths ?? max(0, (int)($plan->months ?? 0));
 
-                            // ✅ If old selected month is already paid AND disabled, force select nextMonth
                             if (isset($paidMonths) && $paidMonths->contains($selectedMonth)) {
                                 $selectedMonth = (int) ($nextMonth ?? 1);
                             }
                         @endphp
 
-                        <select name="month_number" class="selectx" required>
+                        <select id="monthSelect" name="month_number" class="selectx" required>
                             @for($i = 1; $i <= $maxMonthsLocal; $i++)
                                 @php
                                     $isAlreadyPaid = isset($paidMonths) && $paidMonths->contains($i);
                                     $shouldDisable = $isAlreadyPaid;
-                                    $shouldSelect  = ($selectedMonth === $i) && !$shouldDisable;
+                                    $shouldSelect  = ((int)$selectedMonth === $i) && !$shouldDisable;
                                 @endphp
 
                                 <option value="{{ $i }}"
@@ -423,29 +496,44 @@
                                 </option>
                             @endfor
                         </select>
-                        <div class="helper">Only unpaid months can be selected.</div>
+                        <div class="helper">Only unpaid months can be selected. Date auto-advances from DP / previous paid month.</div>
                     @endif
                 </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
                     <input
+                        id="amountPaid"
                         type="number"
                         name="amount"
                         class="inputx"
                         step="0.01"
                         min="0"
                         max="{{ $remainingBalanceAttr }}"
-                        value="{{ old('amount') }}"
+                        value="{{ old('amount', $computedDefaultAttr) }}"
+                        data-suggested="{{ $isOpenContract ? $computedDefaultAttr : $monthlySuggestedAttr }}"
                         required
                     >
-                    <div class="helper">Tip: keep it ≤ remaining balance.</div>
+                    @if(!$isOpenContract && (int)($plan->months ?? 0) > 0)
+                        <div class="helper">Auto-filled with suggested monthly payment. Edit if the patient pays more.</div>
+                    @else
+                        <div class="helper">You can edit this amount anytime.</div>
+                    @endif
                 </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
-                    <input type="date" name="payment_date" class="inputx" value="{{ old('payment_date', now()->toDateString()) }}" required>
-                    <div class="helper">This will also be used as the Visit date.</div>
+                    <input
+                        id="paymentDate"
+                        type="date"
+                        name="payment_date"
+                        class="inputx"
+                        value="{{ old('payment_date', $suggestedDate) }}"
+                        required
+                    >
+                    <div class="helper">
+                        Fixed-term: Month 1 = DP month + 1 month. Next months follow the previous paid month date + 1 month.
+                    </div>
                 </div>
 
                 <div class="col-12 col-md-6">
@@ -481,5 +569,73 @@
 
     </div>
 </div>
+
+<script>
+(() => {
+    const shell = document.getElementById('installmentPayShell');
+    const monthSelect = document.getElementById('monthSelect');
+    const dateInput = document.getElementById('paymentDate');
+
+    if (!shell || !dateInput) return;
+
+    const isOpen = shell.dataset.open === '1';
+
+    function addMonthsSafe(yyyy_mm_dd, monthsToAdd){
+        if (!yyyy_mm_dd) return '';
+
+        const parts = yyyy_mm_dd.split('-').map(Number);
+        if (parts.length !== 3) return '';
+
+        const y = parts[0];
+        const m = parts[1] - 1;
+        const d = parts[2];
+
+        let totalMonths = (m + monthsToAdd);
+        let year = y + Math.floor(totalMonths / 12);
+        let month = totalMonths % 12;
+        if (month < 0) { month += 12; year -= 1; }
+
+        const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+        const day = Math.min(d, lastDay);
+
+        const dt = new Date(Date.UTC(year, month, day));
+        return dt.toISOString().slice(0, 10);
+    }
+
+    function getPaidDates(){
+        try { return JSON.parse(shell.dataset.paidDates || '{}') || {}; }
+        catch(e){ return {}; }
+    }
+
+    function suggestedDateForMonth(uiMonth){
+        const dpDate = shell.dataset.dpDate || '';
+        const paid = getPaidDates();
+
+        // if previous month has a paid date, next month follows that date + 1 month
+        for (let j = uiMonth - 1; j >= 1; j--){
+            if (paid[j]) return addMonthsSafe(paid[j], 1);
+        }
+
+        // otherwise, month 1 = DP + 1 month, month 2 = DP + 2 months, etc.
+        return addMonthsSafe(dpDate, uiMonth);
+    }
+
+    // mark if user manually edits date
+    dateInput.addEventListener('input', () => dateInput.dataset.touched = '1');
+    dateInput.addEventListener('change', () => dateInput.dataset.touched = '1');
+
+    if (!isOpen && monthSelect){
+        monthSelect.addEventListener('change', () => {
+            if (dateInput.dataset.touched === '1') return;
+
+            const m = parseInt(monthSelect.value || '1', 10);
+            const s = suggestedDateForMonth(isNaN(m) ? 1 : m);
+            if (s) dateInput.value = s;
+        });
+
+        // on load: if no old value OR user didn't touch, keep computed by server; this stays as-is
+    }
+})();
+</script>
 
 @endsection
