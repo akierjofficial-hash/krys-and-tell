@@ -344,7 +344,8 @@
     $paidAmount = $paymentsTotal + ($hasDpRecord ? 0 : $downpayment);
     $remaining = max(0, $totalCost - $paidAmount);
 
-    $status = strtoupper(trim((string)($plan->status ?? 'PENDING')));
+    $status = strtoupper(trim((string)($plan->status ?? 'PARTIALLY PAID')));
+    $isCompleted = ($status === 'COMPLETED');
     $isPaid = $remaining <= 0;
 
     $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
@@ -386,10 +387,30 @@
             label="Back"
         />
 
-        @if(!$isPaid)
+        @if(!$isPaid && !$isCompleted)
             <a href="{{ route('staff.installments.pay', [$plan->id, 'return' => url()->full()]) }}" class="i-btn i-btn-primary">
                 <i class="fa fa-circle-dollar-to-slot"></i> Pay
             </a>
+        @endif
+
+        @if($isOpen)
+            @if(!$isCompleted)
+                <form action="{{ route('staff.installments.complete', $plan) }}" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Mark this Open Contract plan as COMPLETED? This will stop payments even if balance is not fully paid.');">
+                    @csrf
+                    <button type="submit" class="i-btn" title="Mark plan as completed">
+                        <i class="fa fa-circle-check"></i> Mark Completed
+                    </button>
+                </form>
+            @else
+                <form action="{{ route('staff.installments.reopen', $plan) }}" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Reopen this plan?');">
+                    @csrf
+                    <button type="submit" class="i-btn" title="Reopen plan">
+                        <i class="fa fa-rotate-left"></i> Reopen
+                    </button>
+                </form>
+            @endif
         @endif
 
         {{-- ✅ Installment Payments: Template --}}
@@ -459,8 +480,9 @@
         <div class="i-card-head-left">
             <div class="i-ref"><i class="fa fa-layer-group"></i> {{ $refNo }}</div>
 
-            <span class="i-badge {{ $isPaid ? 'st-paid' : 'st-pending' }}">
-                <span class="i-dot"></span> {{ $isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING') }}
+            <span class="i-badge {{ $isCompleted ? 'st-info' : ($isPaid ? 'st-paid' : 'st-pending') }}">
+                <span class="i-dot"></span>
+                {{ $isCompleted ? 'COMPLETED' : ($isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING')) }}
             </span>
 
             @if($isOpen)
@@ -669,10 +691,12 @@
                                                     </a>
                                                 @endif
                                             @else
-                                                <a class="i-mini i-mini-primary"
-                                                   href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
-                                                    <i class="fa fa-circle-dollar-to-slot"></i> Pay
-                                                </a>
+                                                @if(!$isCompleted)
+                                                    <a class="i-mini i-mini-primary"
+                                                       href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
+                                                        <i class="fa fa-circle-dollar-to-slot"></i> Pay
+                                                    </a>
+                                                @endif
                                             @endif
                                         </div>
                                     </td>

@@ -94,10 +94,18 @@ class InstallmentPlanController extends Controller
         $paid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
 
         $balance = max(0, $totalCost - $paid);
-        $status  = $balance <= 0 ? 'Fully Paid' : 'Partially Paid';
+        $computedStatus = $balance <= 0 ? 'Fully Paid' : 'Partially Paid';
+
+        // ✅ IMPORTANT: Preserve COMPLETED for Open Contract
+        $currentStatusUpper = strtoupper(trim((string)($plan->status ?? '')));
+        if ($currentStatusUpper === 'COMPLETED') {
+            $plan->balance = $balance;
+            $plan->save();
+            return $plan;
+        }
 
         $plan->balance = $balance;
-        $plan->status  = $status;
+        $plan->status  = $computedStatus;
         $plan->save();
 
         return $plan;
@@ -345,5 +353,40 @@ class InstallmentPlanController extends Controller
 
         return redirect()->route('staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment deleted successfully');
+    }
+
+    // ✅ OPEN CONTRACT: Mark as completed even if not fully paid
+    public function complete(Request $request, InstallmentPlan $plan)
+    {
+        if (!(bool)($plan->is_open_contract ?? false)) {
+            return back()->with('error', 'Only Open Contract plans can be marked as completed.');
+        }
+
+        $plan->status = 'COMPLETED';
+        $plan->save();
+
+        // keep balance updated, but preserve COMPLETED
+        $this->recomputePlan($plan);
+
+        return redirect()
+            ->route('staff.installments.show', $plan)
+            ->with('success', 'Installment plan marked as COMPLETED.');
+    }
+
+    // ✅ OPEN CONTRACT: Reopen completed plan
+    public function reopen(Request $request, InstallmentPlan $plan)
+    {
+        if (!(bool)($plan->is_open_contract ?? false)) {
+            return back()->with('error', 'Only Open Contract plans can be reopened.');
+        }
+
+        $plan->status = 'Partially Paid';
+        $plan->save();
+
+        $this->recomputePlan($plan);
+
+        return redirect()
+            ->route('staff.installments.show', $plan)
+            ->with('success', 'Installment plan reopened.');
     }
 }

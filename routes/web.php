@@ -226,6 +226,10 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{plan}/pay', [InstallmentPaymentController::class, 'create'])->name('pay');
                 Route::post('/{plan}/pay', [InstallmentPaymentController::class, 'store'])->name('pay.store');
 
+                // ✅ Mark complete / reopen (OPEN CONTRACT only)
+                Route::post('/{plan}/complete', [InstallmentPlanController::class, 'complete'])->name('complete');
+                Route::post('/{plan}/reopen', [InstallmentPlanController::class, 'reopen'])->name('reopen');
+
                 // ✅ Edit / Update an installment payment (per-month)
                 Route::get('/{plan}/payments/{payment}/edit', [InstallmentPaymentController::class, 'edit'])
                     ->name('payments.edit');
