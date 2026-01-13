@@ -17,11 +17,16 @@ use Carbon\Carbon;
 
 class PatientController extends Controller
 {
-    public function index()
-    {
-        $patients = Patient::all();
-        return view('staff.patients.index', compact('patients'));
-    }
+    public function index(Request $request)
+{
+    $patients = Patient::query()
+        ->orderBy('last_name', 'asc')
+        ->orderBy('first_name', 'asc')
+        ->get();
+
+    return view('staff.patients.index', compact('patients'));
+}
+
 
     public function create()
     {
