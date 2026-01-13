@@ -344,8 +344,6 @@
     }
 
     // ✅ Suggested date for initial render:
-    // - fixed-term: month i uses (prev paid month date +1) else (dp date + i months)
-    // - open: last paid date +1 month
     $suggestedDate = now()->toDateString();
 
     if ($isOpenContract) {
@@ -373,6 +371,27 @@
             $suggestedDate = $dpDateObj->copy()->addMonths($sel)->toDateString(); // Month 1 = dp +1 month
         }
     }
+
+    // ✅ Notes template: use Month 1 notes (first actual installment), then auto-fill for Month 2, 3, ...
+    $notesTemplate = '';
+    if ($isOpenContract) {
+        $firstPay = $payments
+            ->filter(fn($p) => (int)($p->month_number ?? -1) >= (1 + $shift))
+            ->sortBy(fn($p) => (int)($p->month_number ?? 0))
+            ->first();
+
+        $notesTemplate = trim((string)($firstPay?->notes ?? ''));
+    } else {
+        $dbMonth1 = 1 + $shift; // Month 1 installment (not DP)
+        $m1 = $payments->first(function($p) use ($dbMonth1){
+            return (int)($p->month_number ?? -999) === (int)$dbMonth1;
+        });
+
+        $notesTemplate = trim((string)($m1?->notes ?? ''));
+    }
+
+    // If validation error occurs, keep old('notes'). Otherwise default to template (if any).
+    $notesDefault = old('notes', $notesTemplate);
 @endphp
 
 <div class="page-head form-max">
@@ -403,6 +422,7 @@
      data-open="{{ $isOpenContract ? '1' : '0' }}"
      data-dp-date="{{ $dpDateStr }}"
      data-paid-dates='@json($uiPaidDates)'
+     data-note-template='@json($notesTemplate)'
 >
     <div class="card-head">
         <div class="hint">
@@ -549,9 +569,11 @@
 
                 <div class="col-12">
                     <label class="form-labelx">Treatment Notes / Visit Notes</label>
-                    <textarea name="notes" rows="3" class="textareax"
-                        placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ old('notes') }}</textarea>
-                    <div class="helper">Shown in Visits and linked to this installment payment.</div>
+                    <textarea id="notesInput" name="notes" rows="3" class="textareax"
+                        placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ $notesDefault }}</textarea>
+                    <div class="helper">
+                        Auto-fills using Month 1 notes (if available). Edit anytime.
+                    </div>
                 </div>
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
@@ -575,6 +597,7 @@
     const shell = document.getElementById('installmentPayShell');
     const monthSelect = document.getElementById('monthSelect');
     const dateInput = document.getElementById('paymentDate');
+    const notesInput = document.getElementById('notesInput');
 
     if (!shell || !dateInput) return;
 
@@ -607,33 +630,60 @@
         catch(e){ return {}; }
     }
 
+    function getNoteTemplate(){
+        try { return JSON.parse(shell.dataset.noteTemplate || '""') || ''; }
+        catch(e){ return ''; }
+    }
+
     function suggestedDateForMonth(uiMonth){
         const dpDate = shell.dataset.dpDate || '';
         const paid = getPaidDates();
 
-        // if previous month has a paid date, next month follows that date + 1 month
         for (let j = uiMonth - 1; j >= 1; j--){
             if (paid[j]) return addMonthsSafe(paid[j], 1);
         }
 
-        // otherwise, month 1 = DP + 1 month, month 2 = DP + 2 months, etc.
         return addMonthsSafe(dpDate, uiMonth);
     }
 
-    // mark if user manually edits date
+    // Mark if user manually edits date/notes (so we won't override)
     dateInput.addEventListener('input', () => dateInput.dataset.touched = '1');
     dateInput.addEventListener('change', () => dateInput.dataset.touched = '1');
 
+    if (notesInput){
+        notesInput.addEventListener('input', () => notesInput.dataset.touched = '1');
+        notesInput.addEventListener('change', () => notesInput.dataset.touched = '1');
+    }
+
+    // Notes auto-fill: for Month 2+ use Month 1 notes (if exists), unless user already typed
+    function applyNotesTemplateIfAllowed(uiMonth){
+        if (!notesInput) return;
+        if (notesInput.dataset.touched === '1') return;
+
+        const tpl = getNoteTemplate();
+        if (!tpl) return;
+
+        if (uiMonth >= 2){
+            notesInput.value = tpl;
+        }
+    }
+
     if (!isOpen && monthSelect){
         monthSelect.addEventListener('change', () => {
-            if (dateInput.dataset.touched === '1') return;
-
             const m = parseInt(monthSelect.value || '1', 10);
-            const s = suggestedDateForMonth(isNaN(m) ? 1 : m);
-            if (s) dateInput.value = s;
+            const uiMonth = isNaN(m) ? 1 : m;
+
+            if (dateInput.dataset.touched !== '1'){
+                const s = suggestedDateForMonth(uiMonth);
+                if (s) dateInput.value = s;
+            }
+
+            applyNotesTemplateIfAllowed(uiMonth);
         });
 
-        // on load: if no old value OR user didn't touch, keep computed by server; this stays as-is
+        // On load: if the selected month is 2+ and user didn't type notes, auto-apply template
+        const initial = parseInt(monthSelect.value || '1', 10);
+        applyNotesTemplateIfAllowed(isNaN(initial) ? 1 : initial);
     }
 })();
 </script>
