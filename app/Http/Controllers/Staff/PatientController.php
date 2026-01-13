@@ -20,12 +20,14 @@ class PatientController extends Controller
     public function index(Request $request)
 {
     $patients = Patient::query()
-        ->orderBy('last_name', 'asc')
-        ->orderBy('first_name', 'asc')
+        ->orderByRaw("LOWER(TRIM(last_name)) ASC")
+        ->orderByRaw("LOWER(TRIM(first_name)) ASC")
+        ->orderBy('id', 'ASC') // stable tie-breaker
         ->get();
 
     return view('staff.patients.index', compact('patients'));
 }
+
 
 
     public function create()
