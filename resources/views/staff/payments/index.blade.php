@@ -251,6 +251,17 @@
         font-weight: 900;
     }
 
+    /* ✅ right-side header actions for Installments */
+    .card-head .head-right{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content:flex-end;
+        min-width: 0;
+    }
+    .card-head .head-right form{ margin: 0; }
+
     /* Table */
     .table-wrap{ padding: 10px 10px 12px 10px; }
     .table-scroll{
@@ -526,10 +537,16 @@
     </div>
 </div>
 
-{{-- Flash messages (kept for normal actions) --}}
+{{-- Flash messages --}}
 @if(session('success'))
     <div class="alert alert-success" style="border-radius:12px; font-weight:800;">
         {{ session('success') }}
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger" style="border-radius:12px; font-weight:800;">
+        {{ session('error') }}
     </div>
 @endif
 
@@ -538,6 +555,17 @@
         <ul style="margin:0; padding-left:18px;">
             @foreach($errors->all() as $e)
                 <li style="font-weight:800;">{{ $e }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+@if(session('import_warnings') && is_array(session('import_warnings')))
+    <div class="alert alert-warning" style="border-radius:12px;">
+        <div style="font-weight:900; margin-bottom:6px;">Import warnings (some rows skipped):</div>
+        <ul style="margin:0; padding-left:18px;">
+            @foreach(session('import_warnings') as $w)
+                <li style="font-weight:800;">{{ $w }}</li>
             @endforeach
         </ul>
     </div>
@@ -701,7 +729,24 @@
 <div class="card-shell" id="installmentTable" style="display:none;">
     <div class="card-head">
         <h6 class="title"><i class="fa fa-layer-group"></i> Installment Plans</h6>
-        <div class="hint">Showing <strong id="insVisible">{{ $installments->count() }}</strong> / <strong id="insTotal">{{ $installments->count() }}</strong></div>
+
+        <div class="head-right">
+            <div class="hint">Showing <strong id="insVisible">{{ $installments->count() }}</strong> / <strong id="insTotal">{{ $installments->count() }}</strong></div>
+
+            {{-- ✅ Installment Plans template --}}
+            <a href="{{ route('staff.installments.template') }}" class="btnx btn-ghost" title="Download Excel template">
+                <i class="fa fa-file-excel"></i> Template
+            </a>
+
+            {{-- ✅ Installment Plans import --}}
+            <form id="installmentPlanImportForm" action="{{ route('staff.installments.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
+                @csrf
+                <input id="installmentPlanImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
+                <button type="button" id="installmentPlanImportBtn" class="btnx btn-ghost" title="Import Excel file">
+                    <i class="fa fa-cloud-arrow-up"></i> Import
+                </button>
+            </form>
+        </div>
     </div>
 
     <div class="table-wrap">
@@ -918,6 +963,22 @@
 
     cashTotalEl.textContent = cashRows.length;
     insTotalEl.textContent  = insRows.length;
+
+    // ✅ Installment Plans Import button behavior (same as Visits)
+    const insPlanImportBtn  = document.getElementById('installmentPlanImportBtn');
+    const insPlanImportFile = document.getElementById('installmentPlanImportFile');
+    const insPlanImportForm = document.getElementById('installmentPlanImportForm');
+
+    if (insPlanImportBtn && insPlanImportFile && insPlanImportForm) {
+        insPlanImportBtn.addEventListener('click', () => insPlanImportFile.click());
+        insPlanImportFile.addEventListener('change', () => {
+            if (insPlanImportFile.files && insPlanImportFile.files.length) {
+                // keep tab on reload
+                localStorage.setItem('payments_tab', 'installment');
+                insPlanImportForm.submit();
+            }
+        });
+    }
 
     function currentTab(){
         return cashTable.style.display !== 'none' ? 'cash' : 'installment';

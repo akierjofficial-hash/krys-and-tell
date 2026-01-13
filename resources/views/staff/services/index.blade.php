@@ -182,7 +182,7 @@
         border-spacing: 0;
         table-layout: fixed;
         background: transparent;
-        min-width: 880px;
+        min-width: 980px; /* was 880, add space for ID column */
     }
 
     thead th{
@@ -210,13 +210,35 @@
     tbody tr{ transition: .12s ease; }
     tbody tr:hover{ background: rgba(13,110,253,.06); }
 
-    /* Column sizing */
-    th:nth-child(1), td:nth-child(1){ width: 220px; }  /* Name */
-    th:nth-child(2), td:nth-child(2){ width: 140px; }  /* Base price */
-    th:nth-child(3), td:nth-child(3){ width: 150px; }  /* Custom price */
-    th:nth-child(5), td:nth-child(5){ width: 240px; }  /* Actions */
+    /* Column sizing (UPDATED because we added ID column) */
+    th:nth-child(1), td:nth-child(1){ width: 80px; }   /* ID */
+    th:nth-child(2), td:nth-child(2){ width: 220px; }  /* Name */
+    th:nth-child(3), td:nth-child(3){ width: 140px; }  /* Base price */
+    th:nth-child(4), td:nth-child(4){ width: 150px; }  /* Custom price */
+    th:nth-child(6), td:nth-child(6){ width: 240px; }  /* Actions */
 
     .muted{ color: var(--kt-muted, rgba(15, 23, 42, .55)); }
+
+    /* ID pill */
+    .idpill{
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 900;
+        border: 1px solid rgba(148,163,184,.22);
+        background: rgba(148,163,184,.12);
+        color: var(--kt-text, #0f172a);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    html[data-theme="dark"] .idpill{
+        border-color: rgba(148,163,184,.22);
+        background: rgba(148,163,184,.10);
+        color: var(--kt-text);
+    }
 
     /* Chips */
     .chip{
@@ -303,18 +325,17 @@
     /* ✅ Sticky Actions column (NO overlay slab) */
     thead th.actions-sticky{
         right: 0;
-        z-index: 6; /* keep above body cells */
-        background: rgba(248, 250, 252, .9); /* match other headers */
+        z-index: 6;
+        background: rgba(248, 250, 252, .9);
     }
     tbody td.actions-sticky{
         position: sticky;
         right: 0;
         z-index: 3;
-        background: var(--kt-surface, rgba(255,255,255,.92)); /* blend with table surface */
-        /* removed: box-shadow, border-left, backdrop-filter */
+        background: var(--kt-surface, rgba(255,255,255,.92));
     }
     tbody tr:hover td.actions-sticky{
-        background: rgba(13,110,253,.06); /* match row hover */
+        background: rgba(13,110,253,.06);
     }
 
     /* “No results” row */
@@ -336,7 +357,7 @@
         color: var(--kt-muted);
     }
     html[data-theme="dark"] thead th.actions-sticky{
-        background: rgba(2, 6, 23, .55); /* same as other headers */
+        background: rgba(2, 6, 23, .55);
     }
     html[data-theme="dark"] tbody td{
         border-bottom-color: rgba(148,163,184,.14);
@@ -374,12 +395,13 @@
         .top-actions{ width: 100%; }
         .action-pills{ justify-content:flex-start; }
 
-        th:nth-child(1), td:nth-child(1){ width: 180px; }
-        th:nth-child(2), td:nth-child(2){ width: 120px; }
-        th:nth-child(3), td:nth-child(3){ width: 130px; }
-        th:nth-child(5), td:nth-child(5){ width: 220px; }
+        th:nth-child(1), td:nth-child(1){ width: 70px; }   /* ID */
+        th:nth-child(2), td:nth-child(2){ width: 180px; }  /* Name */
+        th:nth-child(3), td:nth-child(3){ width: 120px; }  /* Base price */
+        th:nth-child(4), td:nth-child(4){ width: 130px; }  /* Custom price */
+        th:nth-child(6), td:nth-child(6){ width: 220px; }  /* Actions */
 
-        table{ min-width: 760px; }
+        table{ min-width: 860px; }
     }
 </style>
 
@@ -393,7 +415,7 @@
     <div class="top-actions">
         <div class="search-box">
             <i class="fa fa-search"></i>
-            <input type="text" id="serviceSearch" placeholder="Search service name, description, or price…">
+            <input type="text" id="serviceSearch" placeholder="Search service id, name, description, or price…">
         </div>
 
         <div class="sort-box">
@@ -435,6 +457,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>ID</th>
                     <th>Name</th>
                     <th>Base Price</th>
                     <th>Custom Price</th>
@@ -446,6 +469,7 @@
             <tbody id="servicesTableBody">
                 @forelse ($services as $service)
                     @php
+                        $idKey = (string)($service->id ?? '');
                         $nameKey = strtolower(trim($service->name ?? ''));
                         $createdTs = optional($service->created_at)->timestamp ?? 0;
                         $price = (float)($service->base_price ?? 0);
@@ -453,11 +477,18 @@
                     @endphp
 
                     <tr class="service-row"
+                        data-id="{{ $idKey }}"
                         data-name="{{ $nameKey }}"
                         data-created="{{ $createdTs }}"
                         data-price="{{ $price }}"
                         data-custom="{{ $custom }}"
                     >
+                        <td>
+                            <span class="idpill" title="Service ID">
+                                #{{ $service->id }}
+                            </span>
+                        </td>
+
                         <td class="fw-semibold">{{ $service->name }}</td>
 
                         <td class="fw-semibold">₱{{ number_format((float)($service->base_price ?? 0), 2) }}</td>
@@ -505,7 +536,7 @@
                     </tr>
                 @empty
                     <tr class="no-data-row">
-                        <td colspan="5" class="empty-state">
+                        <td colspan="6" class="empty-state">
                             No services found.
                         </td>
                     </tr>
@@ -532,7 +563,7 @@
 
     // “No results” row (only for search/filter)
     const noResultsRow = document.createElement('tr');
-    noResultsRow.innerHTML = `<td colspan="5" class="empty-state">No matching services.</td>`;
+    noResultsRow.innerHTML = `<td colspan="6" class="empty-state">No matching services.</td>`;
     noResultsRow.style.display = 'none';
 
     if (rowsAll.length) tbody.appendChild(noResultsRow);
@@ -544,7 +575,8 @@
         let visible = 0;
 
         rowsAll.forEach(row => {
-            const show = normalize(row.textContent).includes(q);
+            const hay = normalize(row.textContent) + ' ' + normalize(row.dataset.id);
+            const show = hay.includes(q);
             row.style.display = show ? '' : 'none';
             if (show) visible++;
         });
@@ -562,6 +594,9 @@
         const sorted = [...rowsAll].sort((a, b) => {
             const da = a.dataset;
             const db = b.dataset;
+
+            const idA = Number(da.id || 0);
+            const idB = Number(db.id || 0);
 
             const nameA = da.name || '';
             const nameB = db.name || '';

@@ -19,6 +19,9 @@ use App\Http\Controllers\Staff\ApprovalRequestController;
 // ✅ Visit import/export
 use App\Http\Controllers\Staff\VisitImportExportController;
 
+// ✅ Installment import/export
+use App\Http\Controllers\Staff\InstallmentImportExportController;
+
 // Admin controllers
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -200,6 +203,20 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [InstallmentPlanController::class, 'index'])->name('index');
                 Route::get('/create', [InstallmentPlanController::class, 'create'])->name('create');
                 Route::post('/', [InstallmentPlanController::class, 'store'])->name('store');
+
+                /*
+                |------------------------------------------------------------------
+                | ✅ INSTALLMENTS IMPORT/TEMPLATE
+                | ✅ MUST be before /installments/{plan}
+                |------------------------------------------------------------------
+                */
+                Route::get('/template', [InstallmentImportExportController::class, 'plansTemplate'])->name('template');
+                Route::post('/import', [InstallmentImportExportController::class, 'importPlans'])->name('import');
+
+                Route::get('/{plan}/payments/template', [InstallmentImportExportController::class, 'paymentsTemplate'])
+                    ->name('payments.template');
+                Route::post('/{plan}/payments/import', [InstallmentImportExportController::class, 'importPayments'])
+                    ->name('payments.import');
 
                 Route::get('/{plan}', [InstallmentPlanController::class, 'show'])->name('show');
                 Route::get('/{plan}/edit', [InstallmentPlanController::class, 'edit'])->name('edit');

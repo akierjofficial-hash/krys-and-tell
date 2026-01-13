@@ -69,6 +69,7 @@
         transition: .15s ease;
         white-space: nowrap;
         user-select:none;
+        cursor: pointer;
     }
     .i-btn:hover{
         transform: translateY(-1px);
@@ -391,6 +392,22 @@
             </a>
         @endif
 
+        {{-- ✅ Installment Payments: Template --}}
+        <a href="{{ route('staff.installments.payments.template', $plan) }}" class="i-btn" title="Download Excel template">
+            <i class="fa fa-file-excel"></i> Template
+        </a>
+
+        {{-- ✅ Installment Payments: Import --}}
+        <form id="installmentPaymentsImportForm"
+              action="{{ route('staff.installments.payments.import', $plan) }}"
+              method="POST" enctype="multipart/form-data" style="display:inline;">
+            @csrf
+            <input id="installmentPaymentsImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
+            <button type="button" id="installmentPaymentsImportBtn" class="i-btn" title="Import payments from Excel">
+                <i class="fa fa-cloud-arrow-up"></i> Import
+            </button>
+        </form>
+
         <a href="{{ route('staff.installments.edit', [$plan->id, 'return' => url()->full()]) }}" class="i-btn">
             <i class="fa fa-pen"></i> Edit Plan
         </a>
@@ -402,6 +419,40 @@
         @endif
     </div>
 </div>
+
+{{-- ✅ Flash messages + import warnings --}}
+@if(session('success'))
+    <div class="alert alert-success" style="border-radius:12px; font-weight:800;">
+        {{ session('success') }}
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger" style="border-radius:12px; font-weight:800;">
+        {{ session('error') }}
+    </div>
+@endif
+
+@if($errors->any())
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <ul style="margin:0; padding-left:18px;">
+            @foreach($errors->all() as $e)
+                <li style="font-weight:800;">{{ $e }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+@if(session('import_warnings') && is_array(session('import_warnings')))
+    <div class="alert alert-warning" style="border-radius:12px;">
+        <div style="font-weight:900; margin-bottom:6px;">Import warnings (some rows skipped):</div>
+        <ul style="margin:0; padding-left:18px;">
+            @foreach(session('import_warnings') as $w)
+                <li style="font-weight:800;">{{ $w }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 <div class="i-card">
     <div class="i-card-head">
@@ -640,5 +691,20 @@
 
     </div>
 </div>
+
+<script>
+(() => {
+    const btn  = document.getElementById('installmentPaymentsImportBtn');
+    const file = document.getElementById('installmentPaymentsImportFile');
+    const form = document.getElementById('installmentPaymentsImportForm');
+
+    if (!btn || !file || !form) return;
+
+    btn.addEventListener('click', () => file.click());
+    file.addEventListener('change', () => {
+        if (file.files && file.files.length) form.submit();
+    });
+})();
+</script>
 
 @endsection
