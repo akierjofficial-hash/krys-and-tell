@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -19,29 +20,32 @@ class GoogleController extends Controller
     {
         $googleUser = Socialite::driver('google')->user();
 
-        // Find existing user by google_id OR email
         $user = User::where('google_id', $googleUser->id)
             ->orWhere('email', $googleUser->email)
             ->first();
 
         if (!$user) {
-            // ✅ New Google signup -> role is always "user"
+            // ✅ Create user (password required in production DB)
             $user = User::create([
-                'name' => $googleUser->name ?? $googleUser->nickname ?? 'User',
-                'email' => $googleUser->email,
-                'google_id' => $googleUser->id,
-                'role' => 'user',
-                'email_verified_at' => now(), // optional but recommended for OAuth
+                'name'              => $googleUser->name ?? $googleUser->nickname ?? 'User',
+                'email'             => $googleUser->email,
+                'google_id'         => $googleUser->id,
+                'role'              => 'user',
+                'password'          => Hash::make(Str::random(32)), // ✅ FIX
+                'email_verified_at' => now(),
             ]);
         } else {
-            // Link google_id if missing
             if (empty($user->google_id)) {
                 $user->google_id = $googleUser->id;
             }
 
-            // ✅ Don’t overwrite staff/admin — only set if empty/null
             if (empty($user->role)) {
                 $user->role = 'user';
+            }
+
+            // ✅ If legacy user has null password, patch it
+            if (empty($user->password)) {
+                $user->password = Hash::make(Str::random(32));
             }
 
             $user->save();
@@ -49,7 +53,6 @@ class GoogleController extends Controller
 
         Auth::login($user, true);
 
-        // Respect intended URL (e.g. booking) and fallback by role
         $fallback = match ($user->role) {
             'admin' => route('admin.dashboard'),
             'staff' => route('staff.dashboard'),
