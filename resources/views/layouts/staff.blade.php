@@ -25,9 +25,7 @@
            + Motion Pack (loader, modal confirm, toasts, micro-animations)
            ========================================================== */
 
-    body {
-        overflow-x: hidden;
-    }
+    body { overflow-x: hidden; }
 
     /* ---------- Theme Tokens (LOCKED) ---------- */
     html {
@@ -104,15 +102,10 @@
         --bs-tertiary-bg: var(--kt-surface) !important;
     }
 
-    html {
-        --kt-sidebar-w: 245px !important;
-    }
-
+    html { --kt-sidebar-w: 245px !important; }
 
     /* ---------- Base ---------- */
-    * {
-        box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
         font-family: 'Poppins', sans-serif;
@@ -121,19 +114,10 @@
         margin: 0;
     }
 
-    a {
-        color: var(--kt-primary);
-    }
+    a { color: var(--kt-primary); }
+    a:hover { opacity: .92; }
 
-    a:hover {
-        opacity: .92;
-    }
-
-    .text-muted,
-    small,
-    .small {
-        color: var(--kt-muted) !important;
-    }
+    .text-muted, small, .small { color: var(--kt-muted) !important; }
 
     hr {
         border-color: var(--kt-border) !important;
@@ -251,18 +235,12 @@
         padding-right: 6px;
     }
 
-    .sidebar-menu::-webkit-scrollbar {
-        width: 8px;
-    }
-
+    .sidebar-menu::-webkit-scrollbar { width: 8px; }
     .sidebar-menu::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, .18);
         border-radius: 999px;
     }
-
-    .sidebar-menu::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, .06);
-    }
+    .sidebar-menu::-webkit-scrollbar-track { background: rgba(255, 255, 255, .06); }
 
     .sidebar-menu a {
         padding: 12px;
@@ -321,22 +299,11 @@
         overflow-x: hidden;
         padding: 16px;
         color: var(--kt-text);
-
-        /* ✅ important: loader will be absolute INSIDE content */
         position: relative;
     }
 
-    @media (min-width: 768px) {
-        .content {
-            padding: 22px;
-        }
-    }
-
-    @media (min-width: 1200px) {
-        .content {
-            padding: 28px;
-        }
-    }
+    @media (min-width: 768px) { .content { padding: 22px; } }
+    @media (min-width: 1200px) { .content { padding: 28px; } }
 
     html[data-theme="dark"] .content {
         background:
@@ -346,18 +313,8 @@
     }
 
     /* ---------- Global Surfaces ---------- */
-    .card,
-    .kt-card,
-    .section-box,
-    .welcome,
-    .stat-card,
-    .list-item,
-    .receipt-container,
-    .modal-content,
-    .dropdown-menu,
-    .toast,
-    .offcanvas,
-    .list-group-item {
+    .card, .kt-card, .section-box, .welcome, .stat-card, .list-item, .receipt-container,
+    .modal-content, .dropdown-menu, .toast, .offcanvas, .list-group-item {
         background: var(--kt-surface);
         border: 1px solid var(--kt-border);
         box-shadow: var(--kt-shadow);
@@ -366,15 +323,9 @@
     }
 
     /* ---------- Tables ---------- */
-    .table,
-    table {
-        color: var(--kt-text);
-    }
+    .table, table { color: var(--kt-text); }
 
-    .table td,
-    .table th {
-        border-color: var(--kt-border) !important;
-    }
+    .table td, .table th { border-color: var(--kt-border) !important; }
 
     .table thead th {
         background: rgba(248, 250, 252, .95);
@@ -399,13 +350,8 @@
         border-color: rgba(148, 163, 184, .18) !important;
     }
 
-    .table tbody tr:hover {
-        background: rgba(13, 110, 253, .06) !important;
-    }
-
-    html[data-theme="dark"] .table tbody tr:hover {
-        background: rgba(96, 165, 250, .08) !important;
-    }
+    .table tbody tr:hover { background: rgba(13, 110, 253, .06) !important; }
+    html[data-theme="dark"] .table tbody tr:hover { background: rgba(96, 165, 250, .08) !important; }
 
     .table-responsive {
         background: transparent !important;
@@ -414,17 +360,14 @@
     }
 
     /* ---------- Inputs ---------- */
-    .form-control,
-    .form-select,
-    .input-group-text {
+    .form-control, .form-select, .input-group-text {
         background: var(--kt-input-bg) !important;
         color: var(--kt-text) !important;
         border-color: var(--kt-input-border) !important;
         border-radius: 12px !important;
     }
 
-    .form-control:focus,
-    .form-select:focus {
+    .form-control:focus, .form-select:focus {
         border-color: rgba(96, 165, 250, .55) !important;
         box-shadow: 0 0 0 3px rgba(96, 165, 250, .18) !important;
     }
@@ -465,9 +408,7 @@
         transition: .15s ease;
     }
 
-    .kt-top-icon:hover {
-        background: var(--kt-surface-2);
-    }
+    .kt-top-icon:hover { background: var(--kt-surface-2); }
 
     .kt-dot {
         position: absolute;
@@ -484,7 +425,6 @@
         box-shadow: 0 0 0 2px rgba(2, 6, 23, .85);
     }
 
-    /* ✅ Popover animated (instead of display:none) */
     .kt-popover {
         position: absolute;
         top: 54px;
@@ -551,9 +491,7 @@
         margin-bottom: 10px;
     }
 
-    .kt-popover .kt-item:last-child {
-        margin-bottom: 0;
-    }
+    .kt-popover .kt-item:last-child { margin-bottom: 0; }
 
     .kt-popover .kt-item .top {
         display: flex;
@@ -581,9 +519,7 @@
         margin-top: 10px;
     }
 
-    .kt-popover .kt-actions form {
-        margin: 0;
-    }
+    .kt-popover .kt-actions form { margin: 0; }
 
     .kt-popover .btn-mini {
         padding: 6px 10px;
@@ -633,14 +569,10 @@
         color: var(--kt-text);
     }
 
-    .menu-toggle:hover {
-        background: var(--kt-surface-2);
-    }
+    .menu-toggle:hover { background: var(--kt-surface-2); }
 
     @media (max-width: 900px) {
-        .menu-toggle {
-            display: grid;
-        }
+        .menu-toggle { display: grid; }
 
         .sidebar {
             position: fixed;
@@ -652,25 +584,17 @@
             transition: transform .18s ease;
         }
 
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .content {
-            padding: 14px;
-        }
+        .sidebar.open { transform: translateX(0); }
+        .content { padding: 14px; }
     }
 
     /* ==========================================================
            ✅ DARK MODE HAMMER
            ========================================================== */
-    html[data-theme="dark"] body .content {
-        color: var(--kt-text) !important;
-    }
+    html[data-theme="dark"] body .content { color: var(--kt-text) !important; }
 
     html[data-theme="dark"] body .content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
-        textarea,
-        select) {
+        textarea, select) {
         background: var(--kt-input-bg) !important;
         color: var(--kt-text) !important;
         border-color: var(--kt-input-border) !important;
@@ -693,35 +617,12 @@
         opacity: .85;
     }
 
-    html[data-theme="dark"] body .content :is(label,
-        legend,
-        .form-label,
-        .col-form-label,
-        .form-check-label,
-        .input-group-text) {
+    html[data-theme="dark"] body .content :is(label, legend, .form-label, .col-form-label, .form-check-label, .input-group-text) {
         color: var(--kt-text) !important;
     }
 
-    html[data-theme="dark"] body .content :is(.form-text,
-        .help-text,
-        .hint,
-        .subtitle,
-        .muted,
-        small,
-        .small) {
+    html[data-theme="dark"] body .content :is(.form-text, .help-text, .hint, .subtitle, .muted, small, .small) {
         color: var(--kt-muted) !important;
-    }
-
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class*="card"],
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class*="-card"],
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class^="card"],
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class*="panel"],
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class*="box"],
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class*="shell"],
-    html[data-theme="dark"] body .content :is(div, section, article, aside, form)[class*="container-card"] {
-        background: var(--kt-surface) !important;
-        border-color: var(--kt-border) !important;
-        color: var(--kt-text) !important;
     }
 
     html[data-theme="dark"] body .content .dropdown-menu {
@@ -730,13 +631,8 @@
         box-shadow: var(--kt-shadow) !important;
     }
 
-    html[data-theme="dark"] body .content .dropdown-item {
-        color: var(--kt-text) !important;
-    }
-
-    html[data-theme="dark"] body .content .dropdown-item:hover {
-        background: rgba(96, 165, 250, .10) !important;
-    }
+    html[data-theme="dark"] body .content .dropdown-item { color: var(--kt-text) !important; }
+    html[data-theme="dark"] body .content .dropdown-item:hover { background: rgba(96, 165, 250, .10) !important; }
 
     html[data-theme="dark"] body .content :is(input[readonly], textarea[readonly]) {
         background: rgba(2, 6, 23, .55) !important;
@@ -746,7 +642,6 @@
     /* ==========================================================
            ✅ MOTION PACK (Loader + Confirm Modal + Toasts + Micro)
            ========================================================== */
-
     @media (prefers-reduced-motion: reduce) {
         * {
             animation-duration: .001ms !important;
@@ -756,25 +651,16 @@
         }
     }
 
-    /* Micro interactions */
     :where(.kt-top-icon, .menu-toggle, .logout-btn, .sidebar-menu a, button, .btn) {
         transition: transform 140ms ease, opacity 140ms ease, background 140ms ease, box-shadow 140ms ease;
     }
 
-    :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active {
-        transform: scale(.98);
-    }
+    :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active { transform: scale(.98); }
+    :where(.btn, button):active { transform: translateY(1px) scale(.99); }
 
-    :where(.btn, button):active {
-        transform: translateY(1px) scale(.99);
-    }
-
-    /* ✅ Loader overlay (CONTENT ONLY, not sidebar) */
     .kt-loader {
         position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
+        top: 0; right: 0; bottom: 0;
         left: var(--kt-sidebar-w, 245px);
         display: grid;
         place-items: center;
@@ -786,14 +672,7 @@
         z-index: 9999;
     }
 
-    @media (max-width: 900px) {
-        .kt-loader {
-            left: 0;
-        }
-
-        /* on mobile, sidebar is off-canvas */
-    }
-
+    @media (max-width: 900px) { .kt-loader { left: 0; } }
 
     .kt-loader.is-active {
         opacity: 1;
@@ -815,9 +694,7 @@
         transition: transform 160ms ease;
     }
 
-    .kt-loader.is-active .kt-loader__card {
-        transform: translateY(0) scale(1);
-    }
+    .kt-loader.is-active .kt-loader__card { transform: translateY(0) scale(1); }
 
     .kt-spinner {
         width: 22px;
@@ -828,18 +705,10 @@
         animation: ktSpin .8s linear infinite;
     }
 
-    @keyframes ktSpin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
+    @keyframes ktSpin { to { transform: rotate(360deg); } }
 
-    .kt-loader__text {
-        font-size: 13px;
-        opacity: .9;
-    }
+    .kt-loader__text { font-size: 13px; opacity: .9; }
 
-    /* Confirm Modal */
     .kt-modal {
         position: fixed;
         inset: 0;
@@ -851,10 +720,7 @@
         z-index: 9998;
     }
 
-    .kt-modal.is-open {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .kt-modal.is-open { opacity: 1; pointer-events: auto; }
 
     .kt-modal__backdrop {
         position: absolute;
@@ -876,21 +742,10 @@
         transition: transform 180ms cubic-bezier(.2, .8, .2, 1);
     }
 
-    .kt-modal.is-open .kt-modal__panel {
-        transform: translateY(0) scale(1);
-    }
+    .kt-modal.is-open .kt-modal__panel { transform: translateY(0) scale(1); }
 
-    .kt-modal__title {
-        margin: 0 0 6px;
-        font-size: 16px;
-        font-weight: 900;
-    }
-
-    .kt-modal__msg {
-        margin: 0 0 14px;
-        font-size: 13px;
-        opacity: .85;
-    }
+    .kt-modal__title { margin: 0 0 6px; font-size: 16px; font-weight: 900; }
+    .kt-modal__msg { margin: 0 0 14px; font-size: 13px; opacity: .85; }
 
     .kt-modal__actions {
         display: flex;
@@ -910,9 +765,7 @@
         user-select: none;
     }
 
-    .kt-btn:active {
-        transform: scale(.98);
-    }
+    .kt-btn:active { transform: scale(.98); }
 
     .kt-btn--ghost {
         background: transparent;
@@ -926,7 +779,6 @@
         color: #fecaca;
     }
 
-    /* Toasts */
     .kt-toasts {
         position: fixed;
         right: 14px;
@@ -967,10 +819,7 @@
         transition: opacity 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
     }
 
-    .kt-toast.show {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    .kt-toast.show { opacity: 1; transform: translateY(0) scale(1); }
 
     .kt-toast .icon {
         width: 34px;
@@ -981,18 +830,8 @@
         flex: 0 0 auto;
     }
 
-    .kt-toast .title {
-        font-weight: 900;
-        font-size: 13px;
-        margin: 0;
-        line-height: 1.1;
-    }
-
-    .kt-toast .msg {
-        font-size: 12px;
-        opacity: .9;
-        margin: 4px 0 0 0;
-    }
+    .kt-toast .title { font-weight: 900; font-size: 13px; margin: 0; line-height: 1.1; }
+    .kt-toast .msg { font-size: 12px; opacity: .9; margin: 4px 0 0 0; }
 
     .kt-toast .close {
         margin-left: auto;
@@ -1006,9 +845,7 @@
         cursor: pointer;
     }
 
-    .kt-toast .close:hover {
-        background: rgba(148, 163, 184, .12);
-    }
+    .kt-toast .close:hover { background: rgba(148, 163, 184, .12); }
 
     .kt-toast.success .icon {
         background: rgba(34, 197, 94, .14);
@@ -1095,11 +932,11 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     class="{{ request()->routeIs('staff.services.*') ? 'active' : '' }}">
                     <i class="fa fa-gear"></i> Services
                 </a>
+
                 <a href="{{ route('staff.messages.index') }}"
                     class="{{ request()->routeIs('staff.messages.*') ? 'active' : '' }}">
                     <i class="fa fa-inbox"></i> Messages
                 </a>
-
             </div>
 
             <div class="sidebar-footer">
@@ -1121,21 +958,21 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             $pendingItems = collect();
 
             try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
-            && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+                if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
 
-            $pendingItems = \App\Models\Appointment::query()
-            ->with(['service','doctor','patient'])
-            ->where('status', 'pending')
-            ->orderByDesc('created_at')
-            ->take(8)
-            ->get();
+                    $pendingItems = \App\Models\Appointment::query()
+                        ->with(['service','doctor','patient'])
+                        ->where('status', 'pending')
+                        ->orderByDesc('created_at')
+                        ->take(8)
+                        ->get();
 
-            $pendingApprovals = $pendingItems->count();
-            }
+                    $pendingApprovals = $pendingItems->count();
+                }
             } catch (\Throwable $e) {
-            $pendingApprovals = 0;
-            $pendingItems = collect();
+                $pendingApprovals = 0;
+                $pendingItems = collect();
             }
             @endphp
 
@@ -1167,64 +1004,63 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                         <div class="kt-pop-body" id="approvalList">
                             @if($pendingItems->isEmpty())
-                            <div class="text-center py-3" id="approvalEmpty">
-                                <div class="fw-bold">No pending requests</div>
-                                <div class="small text-muted">You're all caught up.</div>
-                            </div>
+                                <div class="text-center py-3" id="approvalEmpty">
+                                    <div class="fw-bold">No pending requests</div>
+                                    <div class="small text-muted">You're all caught up.</div>
+                                </div>
                             @else
-                            @foreach($pendingItems as $a)
-                            @php
-                            $displayName =
-                            $a->public_name
-                            ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').'
-                            '.($a->public_last_name ?? ''))
-                            ?: ($a->patient->name ?? 'Patient');
+                                @foreach($pendingItems as $a)
+                                    @php
+                                        $displayName =
+                                            $a->public_name
+                                            ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').' '.($a->public_last_name ?? ''))
+                                            ?: ($a->patient->name ?? 'Patient');
 
-                            $serviceName = $a->service->name ?? 'Service';
-                            $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
+                                        $serviceName = $a->service->name ?? 'Service';
+                                        $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
 
-                            $date = $a->appointment_date ?? null;
-                            $time = $a->appointment_time ?? null;
-                            @endphp
+                                        $date = $a->appointment_date ?? null;
+                                        $time = $a->appointment_time ?? null;
+                                    @endphp
 
-                            <div class="kt-item" data-approval-id="{{ $a->id }}">
-                                <div class="top">
-                                    <div>
-                                        <p class="name">{{ $displayName }}</p>
-                                        <div class="meta">
-                                            <div><b>{{ $serviceName }}</b></div>
+                                    <div class="kt-item" data-approval-id="{{ $a->id }}">
+                                        <div class="top">
                                             <div>
-                                                {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
-                                                @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                <p class="name">{{ $displayName }}</p>
+                                                <div class="meta">
+                                                    <div><b>{{ $serviceName }}</b></div>
+                                                    <div>
+                                                        {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
+                                                        @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                    </div>
+                                                    <div class="small text-muted">Doctor: {{ $doctorName }}</div>
+                                                </div>
                                             </div>
-                                            <div class="small text-muted">Doctor: {{ $doctorName }}</div>
+
+                                            <div class="small text-muted text-end">
+                                                {{ optional($a->created_at)->diffForHumans() }}
+                                            </div>
+                                        </div>
+
+                                        <div class="kt-actions">
+                                            <form class="approval-form" data-action="approve" method="POST"
+                                                action="{{ route('staff.approvals.approve', $a->id) }}">
+                                                @csrf
+                                                <button class="btn btn-mini btn-approve" type="submit">
+                                                    <i class="fa-solid fa-check me-1"></i> Approve
+                                                </button>
+                                            </form>
+
+                                            <form class="approval-form" data-action="decline" method="POST"
+                                                action="{{ route('staff.approvals.decline', $a->id) }}">
+                                                @csrf
+                                                <button class="btn btn-mini btn-decline" type="submit">
+                                                    <i class="fa-solid fa-xmark me-1"></i> Decline
+                                                </button>
+                                            </form>
                                         </div>
                                     </div>
-
-                                    <div class="small text-muted text-end">
-                                        {{ optional($a->created_at)->diffForHumans() }}
-                                    </div>
-                                </div>
-
-                                <div class="kt-actions">
-                                    <form class="approval-form" data-action="approve" method="POST"
-                                        action="{{ route('staff.approvals.approve', $a->id) }}">
-                                        @csrf
-                                        <button class="btn btn-mini btn-approve" type="submit">
-                                            <i class="fa-solid fa-check me-1"></i> Approve
-                                        </button>
-                                    </form>
-
-                                    <form class="approval-form" data-action="decline" method="POST"
-                                        action="{{ route('staff.approvals.decline', $a->id) }}">
-                                        @csrf
-                                        <button class="btn btn-mini btn-decline" type="submit">
-                                            <i class="fa-solid fa-xmark me-1"></i> Decline
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            @endforeach
+                                @endforeach
                             @endif
                         </div>
                     </div>
@@ -1313,21 +1149,26 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         });
 
         // =========================
-        // Toast helper (optional)
+        // Toast helper
         // =========================
         const toastWrap = document.getElementById('ktToasts');
 
         function toastIcon(type) {
             switch (type) {
-                case 'success':
-                    return '<i class="fa-solid fa-check"></i>';
-                case 'danger':
-                    return '<i class="fa-solid fa-triangle-exclamation"></i>';
-                case 'warning':
-                    return '<i class="fa-solid fa-circle-exclamation"></i>';
-                default:
-                    return '<i class="fa-solid fa-circle-info"></i>';
+                case 'success': return '<i class="fa-solid fa-check"></i>';
+                case 'danger':  return '<i class="fa-solid fa-triangle-exclamation"></i>';
+                case 'warning': return '<i class="fa-solid fa-circle-exclamation"></i>';
+                default:        return '<i class="fa-solid fa-circle-info"></i>';
             }
+        }
+
+        function escapeHtml(str) {
+            return (str ?? '').toString()
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
         }
 
         function showToast(type, title, message, ms = 2600) {
@@ -1336,13 +1177,13 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             const el = document.createElement('div');
             el.className = `kt-toast ${type || 'info'}`;
             el.innerHTML = `
-            <div class="icon">${toastIcon(type)}</div>
-            <div>
-                <p class="title">${escapeHtml(title || 'Notice')}</p>
-                <p class="msg">${escapeHtml(message || '')}</p>
-            </div>
-            <button class="close" type="button" aria-label="Close">&times;</button>
-        `;
+                <div class="icon">${toastIcon(type)}</div>
+                <div>
+                    <p class="title">${escapeHtml(title || 'Notice')}</p>
+                    <p class="msg">${escapeHtml(message || '')}</p>
+                </div>
+                <button class="close" type="button" aria-label="Close">&times;</button>
+            `;
 
             toastWrap.appendChild(el);
             requestAnimationFrame(() => el.classList.add('show'));
@@ -1358,9 +1199,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             return el;
         }
 
-        window.KTToast = {
-            show: showToast
-        };
+        window.KTToast = { show: showToast };
 
         // =========================
         // Global Loader (CONTENT ONLY)
@@ -1384,15 +1223,12 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             setTimeout(() => KTLoader.hide(), 80);
         });
 
-        // show loader on full-page navigation
         window.addEventListener('beforeunload', () => KTLoader.show());
 
-        // show loader on normal form submit (skip AJAX forms)
         document.addEventListener('submit', (e) => {
             const form = e.target;
             if (!form || !form.matches('form')) return;
 
-            // opt-outs
             if (form.hasAttribute('data-no-loader')) return;
             if (form.classList.contains('approval-form')) return;
             if (form.closest('#approvalPopover')) return;
@@ -1410,23 +1246,16 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         let pendingAction = null;
 
-        function openConfirm({
-            title = 'Confirm action',
-            message = 'Are you sure?',
-            onYes = null,
-            yesText = 'Continue'
-        } = {}) {
+        function openConfirm({ title = 'Confirm action', message = 'Are you sure?', onYes = null, yesText = 'Continue' } = {}) {
             if (!modal) return;
 
             pendingAction = onYes;
-
             if (titleEl) titleEl.textContent = title;
             if (msgEl) msgEl.textContent = message;
             if (yesBtn) yesBtn.textContent = yesText;
 
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
-
             setTimeout(() => yesBtn?.focus(), 0);
         }
 
@@ -1477,7 +1306,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         });
 
         // =========================
-        // Approval popover (bell) + AJAX approve/decline
+        // Approval popover (bell) + AJAX approve/decline + ✅ LIVE POLLING
         // =========================
         const bell = document.getElementById('approvalBell');
         const pop = document.getElementById('approvalPopover');
@@ -1492,6 +1321,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             document.querySelector('input[name="_token"]')?.value ||
             '';
 
+        const widgetUrl = @json(route('staff.approvals.widget'));
+
         function closePopover() {
             if (!pop) return;
             pop.classList.remove('show');
@@ -1504,9 +1335,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             if (!pop) return;
 
             const isOpen = pop.classList.contains('show');
-            if (isOpen) {
-                closePopover();
-            } else {
+            if (isOpen) closePopover();
+            else {
                 pop.classList.add('show');
                 pop.setAttribute('aria-hidden', 'false');
                 bell?.setAttribute('aria-expanded', 'true');
@@ -1521,12 +1351,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         function showFlash(type, text) {
             if (!flashEl) return;
+
             flashEl.classList.remove('d-none');
             flashEl.innerHTML = `
-            <div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px;">
-                ${escapeHtml(text)}
-            </div>
-        `;
+                <div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px;">
+                    ${escapeHtml(text)}
+                </div>
+            `;
+
             window.clearTimeout(showFlash._t);
             showFlash._t = window.setTimeout(() => flashEl.classList.add('d-none'), 2500);
 
@@ -1536,17 +1368,13 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         function ensureEmptyState() {
             if (!listEl) return;
             const anyItem = listEl.querySelector('.kt-item');
-            const empty = listEl.querySelector('#approvalEmpty');
-
             if (!anyItem) {
-                if (!empty) {
-                    listEl.innerHTML = `
+                listEl.innerHTML = `
                     <div class="text-center py-3" id="approvalEmpty">
                         <div class="fw-bold">No pending requests</div>
                         <div class="small text-muted">You're all caught up.</div>
                     </div>
                 `;
-                }
             }
         }
 
@@ -1558,6 +1386,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             btns.forEach(b => b.disabled = true);
 
             try {
+                const body = new URLSearchParams();
+                body.set('_token', csrf);
+
                 const res = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -1566,29 +1397,22 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                         'X-CSRF-TOKEN': csrf,
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: ''
+                    body
                 });
 
-                const ct = res.headers.get('content-type') || '';
-                const data = ct.includes('application/json') ? await res.json() : null;
+                const data = await res.json().catch(() => ({}));
 
-                if (!res.ok || (data && data.ok === false)) {
-                    showFlash('danger', (data && data.message) ? data.message :
-                        'Action failed. Please try again.');
+                if (!res.ok || data.ok === false) {
+                    showFlash('danger', data.message || 'Action failed. Please try again.');
                     btns.forEach(b => b.disabled = false);
                     return;
                 }
 
-                showFlash('success', (data && data.message) ?
-                    data.message :
-                    (action === 'approve' ? 'Booking approved.' : 'Booking declined.')
-                );
-
+                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
                 if (item) item.remove();
 
-                if (data && typeof data.pendingCount !== 'undefined') {
-                    setCount(data.pendingCount);
-                } else {
+                if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
+                else {
                     const current = Number(badgeEl?.textContent || 0);
                     setCount(Math.max(0, current - 1));
                 }
@@ -1612,21 +1436,111 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         pop?.addEventListener('click', (e) => e.stopPropagation());
 
         document.addEventListener('click', closePopover);
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closePopover();
-        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
 
-        function escapeHtml(str) {
-            return (str ?? '').toString()
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
+        // ---------- ✅ LIVE: Poll widget() every 5s ----------
+        let lastPending = Number(badgeEl?.textContent || 0);
+        let polling = false;
+
+        function renderItems(items) {
+            if (!listEl) return;
+
+            if (!Array.isArray(items) || items.length === 0) {
+                ensureEmptyState();
+                return;
+            }
+
+            const htmlItems = items.map(i => {
+                const id = Number(i.id || 0);
+                const patient = escapeHtml(i.patient || 'N/A');
+                const service = escapeHtml(i.service || 'N/A');
+                const doctor  = escapeHtml(i.doctor  || '—');
+                const date    = escapeHtml(i.date    || '—');
+                const time    = escapeHtml(i.time    || '—');
+
+                const approveUrl = escapeHtml(i.approve_url || '');
+                const declineUrl = escapeHtml(i.decline_url || '');
+
+                return `
+                    <div class="kt-item" data-approval-id="${id}">
+                        <div class="top">
+                            <div>
+                                <p class="name">${patient}</p>
+                                <div class="meta">
+                                    <div><b>${service}</b></div>
+                                    <div>${date} • ${time}</div>
+                                    <div class="small text-muted">Doctor: ${doctor}</div>
+                                </div>
+                            </div>
+                            <div class="small text-muted text-end">Pending</div>
+                        </div>
+
+                        <div class="kt-actions">
+                            <form class="approval-form" data-action="approve" method="POST" action="${approveUrl}">
+                                <button class="btn btn-mini btn-approve" type="submit">
+                                    <i class="fa-solid fa-check me-1"></i> Approve
+                                </button>
+                            </form>
+
+                            <form class="approval-form" data-action="decline" method="POST" action="${declineUrl}">
+                                <button class="btn btn-mini btn-decline" type="submit">
+                                    <i class="fa-solid fa-xmark me-1"></i> Decline
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            listEl.innerHTML = htmlItems;
         }
+
+        async function pollApprovals() {
+            if (polling) return;
+            if (document.hidden) return;
+
+            polling = true;
+            try {
+                const res = await fetch(widgetUrl + '?limit=8', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    cache: 'no-store'
+                });
+
+                if (!res.ok) throw new Error('poll failed');
+
+                const data = await res.json();
+                const pendingCount = Number(data.pendingCount || 0);
+                setCount(pendingCount);
+
+                // update list always (so dropdown is always fresh)
+                renderItems(data.items || []);
+
+                // notify on increase
+                if (pendingCount > lastPending) {
+                    window.KTToast?.show('info', 'New booking', 'A new approval request arrived.', 2200);
+
+                    // quick highlight on bell
+                    bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
+                    setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
+                }
+
+                lastPending = pendingCount;
+            } catch (e) {
+                // silent fail (avoid annoying toasts)
+                // console.warn(e);
+            } finally {
+                polling = false;
+            }
+        }
+
+        pollApprovals();
+        setInterval(pollApprovals, 5000);
+
     })();
     </script>
 
 </body>
-
 </html>

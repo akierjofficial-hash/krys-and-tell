@@ -31,10 +31,14 @@ class ApprovalRequestController extends Controller
     }
 
     /**
-     * ✅ Dropdown data for the bell card (AJAX)
+     * ✅ Live dropdown/widget data (AJAX polling) — returns JSON
+     * Supports ?limit=6 (default) up to 20
      */
-    public function widget()
+    public function widget(Request $request)
     {
+        $limit = (int) $request->query('limit', 6);
+        $limit = max(1, min(20, $limit));
+
         $q = Appointment::query();
 
         if (Schema::hasColumn('appointments', 'status')) {
@@ -45,11 +49,12 @@ class ApprovalRequestController extends Controller
 
         $pendingCount = (clone $q)->count();
 
-        $items = $q->take(6)->get()->map(function ($a) {
+        $items = (clone $q)->take($limit)->get()->map(function ($a) {
             $patientName =
                 trim(($a->public_first_name ?? '') . ' ' . ($a->public_last_name ?? '')) ?: ($a->public_name ?? 'N/A');
 
             $serviceName = $a->service->name ?? 'N/A';
+            $doctorName  = $a->doctor->name ?? ($a->dentist_name ?? '—');
 
             $dateLabel = '—';
             $timeLabel = '—';
@@ -69,8 +74,19 @@ class ApprovalRequestController extends Controller
                 'id'      => $a->id,
                 'patient' => $patientName,
                 'service' => $serviceName,
+                'doctor'  => $doctorName,
+
+                'email'   => $a->public_email ?? '—',
+                'phone'   => $a->public_phone ?? '—',
+                'address' => $a->public_address ?? '—',
+
                 'date'    => $dateLabel,
                 'time'    => $timeLabel,
+
+                // handy URLs so frontend can build buttons
+                'approve_url' => route('staff.approvals.approve', $a),
+                'decline_url' => route('staff.approvals.decline', $a),
+                'index_url'   => route('staff.approvals.index'),
             ];
         })->values();
 
@@ -83,12 +99,10 @@ class ApprovalRequestController extends Controller
     public function approve(Request $request, Appointment $appointment)
     {
         try {
-            // ✅ Track previous status to avoid duplicate notifications
             $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
 
             DB::transaction(function () use ($appointment) {
 
-                // ✅ Ensure patient_id exists (public booking must create/link patient)
                 if (Schema::hasColumn('appointments', 'patient_id') && empty($appointment->patient_id)) {
                     $patientId = $this->findOrCreatePatientFromAppointment($appointment);
 
@@ -99,7 +113,6 @@ class ApprovalRequestController extends Controller
                     $appointment->patient_id = $patientId;
                 }
 
-                // ✅ Update status so it appears in Payments (we included "upcoming" in payable statuses)
                 if (Schema::hasColumn('appointments', 'status')) {
                     $appointment->status = 'upcoming';
                 }
@@ -107,7 +120,6 @@ class ApprovalRequestController extends Controller
                 $appointment->save();
             });
 
-            // ✅ Notify user (only on transition to upcoming)
             $appointment->refresh()->loadMissing(['user', 'service', 'doctor']);
 
             if (
@@ -123,7 +135,6 @@ class ApprovalRequestController extends Controller
                 }
             }
 
-            // ✅ AJAX response
             if ($request->expectsJson()) {
                 $pendingCount = Schema::hasColumn('appointments', 'status')
                     ? Appointment::where('status', 'pending')->count()
@@ -154,7 +165,6 @@ class ApprovalRequestController extends Controller
     public function decline(Request $request, Appointment $appointment)
     {
         try {
-            // ✅ Track previous status to avoid duplicate notifications
             $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
 
             if (Schema::hasColumn('appointments', 'status')) {
@@ -163,7 +173,6 @@ class ApprovalRequestController extends Controller
 
             $appointment->save();
 
-            // ✅ Notify user (only on transition to declined)
             $appointment->refresh()->loadMissing(['user', 'service', 'doctor']);
 
             if (
@@ -217,7 +226,6 @@ class ApprovalRequestController extends Controller
         $phone   = $a->public_phone ?? null;
         $address = $a->public_address ?? null;
 
-        // ✅ pull possible gender/birthdate if present on appointment
         $gender    = $a->public_gender ?? ($a->gender ?? null);
         $birthdate = $a->public_birthdate ?? ($a->birthdate ?? null);
 
@@ -277,7 +285,6 @@ class ApprovalRequestController extends Controller
             $patient->address = $address;
         }
 
-        // ✅ Save gender/birthdate IF your patients table has them
         if ($gender && Schema::hasColumn('patients', 'gender') && empty($patient->gender)) {
             $patient->gender = $gender;
         }
@@ -286,15 +293,8 @@ class ApprovalRequestController extends Controller
             $patient->birthdate = $birthdate;
         }
 
-        /**
-         * ✅ IMPORTANT: If patients.birthdate is NOT NULL and you removed it from booking,
-         * patient creation will FAIL. To prevent that, we set a safe fallback only when needed.
-         *
-         * Better: make birthdate nullable in migration.
-         * But for now, this ensures approval won't break.
-         */
+        // fallback to prevent approval failing if birthdate is NOT NULL
         if (Schema::hasColumn('patients', 'birthdate') && empty($patient->birthdate)) {
-            // fallback to Jan 1 2000 (or change to your preference)
             $patient->birthdate = '2000-01-01';
         }
 

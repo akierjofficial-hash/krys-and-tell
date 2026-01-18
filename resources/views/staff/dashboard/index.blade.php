@@ -5,14 +5,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css">
 
 <style>
-    /* ==========================================================
-       Dashboard CSS (Dark mode compatible)
-       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-border
-       - Removes hardcoded white cards + hardcoded black text
-       ========================================================== */
-
+    /* (YOUR EXISTING CSS - unchanged) */
     :root{
-        /* tie to staff layout tokens (AUTO adapts when theme switches) */
         --card-shadow: var(--kt-shadow);
         --card-border: 1px solid var(--kt-border);
         --muted: var(--kt-muted);
@@ -23,20 +17,17 @@
         --green:#22c55e;
         --amber:#f59e0b;
 
-        /* dashboard background accents */
         --bg1: rgba(59,130,246,.14);
         --bg2: rgba(124,58,237,.12);
         --bg3: rgba(34,197,94,.12);
     }
 
-    /* softer accents in dark mode */
     html[data-theme="dark"]{
         --bg1: rgba(96,165,250,.08);
         --bg2: rgba(167,139,250,.07);
         --bg3: rgba(34,197,94,.06);
     }
 
-    /* Background wrapper */
     .dash-wrap{
         padding: 12px 0 22px;
         background:
@@ -46,7 +37,6 @@
         border-radius: 18px;
     }
 
-    /* Header */
     .dash-header{
         display:flex;
         align-items:flex-end;
@@ -69,7 +59,6 @@
         color: var(--muted);
     }
 
-    /* Welcome bar */
     .welcome{
         background: var(--kt-surface);
         border: var(--card-border);
@@ -90,9 +79,7 @@
         pointer-events:none;
         opacity: .9;
     }
-    html[data-theme="dark"] .welcome::before{
-        opacity: .55;
-    }
+    html[data-theme="dark"] .welcome::before{ opacity: .55; }
 
     .welcome-inner{
         position:relative;
@@ -131,7 +118,6 @@
         box-shadow: 0 10px 18px rgba(37,99,235,.10);
     }
 
-    /* Stats grid */
     .grid-gap{ row-gap: 14px; }
 
     .stat-card{
@@ -203,7 +189,6 @@
         font-size: 22px;
     }
 
-    /* Universal cards */
     .kt-card{
         background: var(--kt-surface);
         border: var(--card-border);
@@ -257,7 +242,6 @@
         box-shadow: 0 10px 18px rgba(37,99,235,.10);
     }
 
-    /* List items */
     .list-item{
         border: 1px solid var(--kt-border);
         border-radius: 16px;
@@ -271,9 +255,7 @@
         box-shadow: 0 18px 28px rgba(0,0,0,.18);
     }
 
-    /* =========================
-       FullCalendar — Modern Skin
-       ========================= */
+    /* FullCalendar CSS unchanged... */
     #ktCalendar{
         border-radius: 18px;
         overflow: hidden;
@@ -281,7 +263,6 @@
         border: 1px solid var(--kt-border);
         box-shadow: 0 18px 34px rgba(0,0,0,.12);
     }
-
     .fc .fc-header-toolbar{
         margin: 0 !important;
         padding: 14px 14px 12px;
@@ -291,14 +272,12 @@
             var(--kt-surface);
         border-bottom: 1px solid rgba(148,163,184,.16);
     }
-
     .fc .fc-toolbar-title{
         font-weight: 950;
         letter-spacing: -0.4px;
         color: var(--text);
         font-size: 16px;
     }
-
     .fc .fc-button{
         border-radius: 14px !important;
         border: 1px solid var(--kt-border) !important;
@@ -319,16 +298,11 @@
         border-color: rgba(96,165,250,.35) !important;
         color: var(--kt-primary) !important;
     }
-
     .fc-theme-standard td,
-    .fc-theme-standard th{
-        border-color: rgba(148,163,184,.16) !important;
-    }
+    .fc-theme-standard th{ border-color: rgba(148,163,184,.16) !important; }
     .fc .fc-scrollgrid{ border: 0 !important; }
-
     .fc .fc-col-header-cell{ background: rgba(248,250,252,.35); }
     html[data-theme="dark"] .fc .fc-col-header-cell{ background: rgba(2,6,23,.45) !important; }
-
     .fc .fc-col-header-cell-cushion{
         padding: 10px 8px !important;
         font-size: 11px;
@@ -337,10 +311,8 @@
         text-transform: uppercase;
         color: var(--muted);
     }
-
     .fc .fc-daygrid-day{ background: var(--kt-surface); }
     html[data-theme="dark"] .fc .fc-daygrid-day{ background: rgba(17,24,39,.40) !important; }
-
     .fc .fc-daygrid-day-number{
         font-weight: 950;
         color: var(--muted);
@@ -351,7 +323,6 @@
         margin: 8px 8px 0 0;
         font-size: 11px;
     }
-
     .fc .fc-day-today{
         background: rgba(96,165,250,.08) !important;
         position: relative;
@@ -364,7 +335,6 @@
         border: 1px solid rgba(96,165,250,.22);
         pointer-events:none;
     }
-
     .fc .fc-event{
         border: 0 !important;
         border-radius: 999px !important;
@@ -376,19 +346,16 @@
         border: 1px solid rgba(255,255,255,.10) !important;
         box-shadow: 0 10px 24px rgba(0,0,0,.35);
     }
-
     .fc .fc-event .fc-event-main{
         color: #fff !important;
         font-weight: 950;
         font-size: 11px;
         letter-spacing: .15px;
     }
-
     .fc .fc-daygrid-more-link{
         font-weight: 950;
         color: var(--kt-primary);
     }
-
     .fc .fc-button:focus,
     .fc a:focus{
         box-shadow: none !important;
@@ -500,6 +467,27 @@
         </div>
 
         <div class="col-lg-4">
+
+            {{-- ✅ LIVE APPROVAL REQUESTS CARD (NEW) --}}
+            <div class="kt-card mb-3" id="ktApprovalsCard">
+                <div class="kt-card-h">
+                    <div class="kt-card-title">Approval Requests</div>
+                    <span class="pill">
+                        Pending: <span id="ktApprovalsCount">0</span>
+                    </span>
+                </div>
+                <div class="kt-card-b d-grid gap-2" id="ktApprovalsList">
+                    <div class="list-item" style="opacity:.8;">Loading…</div>
+                </div>
+                <div class="px-3 pb-3">
+                    <a href="{{ route('staff.approvals.index') }}"
+                       class="btn btn-sm btn-outline-primary"
+                       style="border-radius:12px;font-weight:900;">
+                        Open approvals
+                    </a>
+                </div>
+            </div>
+
             <div class="kt-card mb-3">
                 <div class="kt-card-h">
                     <div class="kt-card-title">Today’s Schedule</div>
@@ -566,6 +554,7 @@
                     @endforelse
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -628,6 +617,79 @@ document.addEventListener('DOMContentLoaded', function () {
     btnWeek?.addEventListener('click',  () => { calendar.changeView('timeGridWeek'); setActive(btnWeek); });
     btnDay?.addEventListener('click',   () => { calendar.changeView('timeGridDay'); setActive(btnDay); });
 });
+</script>
+
+{{-- ✅ LIVE APPROVALS POLLING SCRIPT (NEW) --}}
+<script>
+(function(){
+    const url = @json(route('staff.approvals.widget'));
+    const card = document.getElementById('ktApprovalsCard');
+    const countEl = document.getElementById('ktApprovalsCount');
+    const listEl = document.getElementById('ktApprovalsList');
+    if(!card || !countEl || !listEl) return;
+
+    const esc = (s) => String(s ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+
+    let lastCount = null;
+    let loading = false;
+
+    function render(items){
+        if (!items.length) {
+            listEl.innerHTML = `<div class="list-item" style="opacity:.8;">No pending requests 🎉</div>`;
+            return;
+        }
+
+        listEl.innerHTML = items.map(i => `
+            <div class="list-item">
+                <div style="font-weight:900;">${esc(i.patient)}</div>
+                <div style="opacity:.8;font-size:12.5px;">
+                    ${esc(i.service)} • ${esc(i.date)} ${esc(i.time)}<br>
+                    Doctor: ${esc(i.doctor)}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function refresh(){
+        if (loading) return;
+        if (document.hidden) return;
+
+        loading = true;
+        try{
+            const res = await fetch(url + '?limit=6', {
+                headers: { 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest' },
+                cache: 'no-store'
+            });
+            if(!res.ok) throw new Error('fetch failed');
+
+            const data = await res.json();
+            const c = parseInt(data.pendingCount || 0, 10);
+            countEl.textContent = c;
+
+            const items = Array.isArray(data.items) ? data.items : [];
+            render(items);
+
+            if (lastCount !== null && c > lastCount) {
+                card.style.transition = 'box-shadow .2s ease';
+                card.style.boxShadow = '0 0 0 4px rgba(34,197,94,.18)';
+                setTimeout(() => card.style.boxShadow = '', 650);
+            }
+            lastCount = c;
+        }catch(e){
+            console.warn(e);
+        }finally{
+            loading = false;
+        }
+    }
+
+    refresh();
+    setInterval(refresh, 5000);
+})();
 </script>
 
 @endsection
