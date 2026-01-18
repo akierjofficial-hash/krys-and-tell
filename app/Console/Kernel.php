@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\CheckSeededUsers::class,
+        // Optional: only add this if you want it explicitly listed.
+        // Otherwise, it will still load from app/Console/Commands automatically.
+        // \App\Console\Commands\SendAppointmentReminders::class,
     ];
 
     /**
@@ -21,7 +24,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // ✅ Appointment reminders (24h/1h) check
+        $schedule->command('appointments:send-reminders')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     }
 
     /**

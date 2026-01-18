@@ -15,6 +15,7 @@ class Service extends Model
         'allow_custom_price',
         'description',
         'color',
+        'duration_minutes',
     ];
 
     protected $casts = [

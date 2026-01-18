@@ -5,8 +5,7 @@
 <style>
     /* ==========================================================
        Visits Index (Dark mode compatible)
-       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
-                           --kt-border, --kt-input-bg, --kt-input-border, --kt-shadow
+       + Skeleton shimmer loading
        ========================================================== */
     :root{
         --card-shadow: var(--kt-shadow);
@@ -22,9 +21,15 @@
 
         --focus: rgba(96,165,250,.55);
         --focusRing: rgba(96,165,250,.18);
+
+        /* Skeleton colors */
+        --skel-base: rgba(148,163,184,.18);
+        --skel-shine: rgba(255,255,255,.75);
     }
     html[data-theme="dark"]{
         --soft: rgba(148, 163, 184, .16);
+        --skel-base: rgba(148,163,184,.14);
+        --skel-shine: rgba(255,255,255,.10);
     }
 
     .page-head{
@@ -151,12 +156,8 @@
         border-color: var(--kt-border);
         color: var(--text) !important;
     }
-    .btn-ghost:hover{
-        background: rgba(148,163,184,.14);
-    }
-    html[data-theme="dark"] .btn-ghost:hover{
-        background: rgba(17,24,39,.75);
-    }
+    .btn-ghost:hover{ background: rgba(148,163,184,.14); }
+    html[data-theme="dark"] .btn-ghost:hover{ background: rgba(17,24,39,.75); }
 
     .btn-active{
         background: rgba(96,165,250,.14);
@@ -191,6 +192,7 @@
         box-shadow: var(--card-shadow);
         overflow: hidden;
         color: var(--text);
+        position: relative; /* needed for skeleton overlay */
     }
 
     .card-head{
@@ -225,9 +227,7 @@
         color: var(--text);
         white-space: nowrap;
     }
-    html[data-theme="dark"] .count-pill{
-        background: rgba(2,6,23,.35);
-    }
+    html[data-theme="dark"] .count-pill{ background: rgba(2,6,23,.35); }
 
     .table-wrap{ padding: 8px 10px 10px 10px; }
     table{
@@ -248,9 +248,7 @@
         z-index: 1;
         white-space: nowrap;
     }
-    html[data-theme="dark"] thead th{
-        background: rgba(2,6,23,.35);
-    }
+    html[data-theme="dark"] thead th{ background: rgba(2,6,23,.35); }
 
     tbody td{
         padding: 14px 14px;
@@ -338,6 +336,71 @@
         .action-pills{ justify-content:flex-start; }
         .toggle-group{ width: 100%; }
     }
+
+    /* ==========================================================
+       ✅ Skeleton Loading (shimmer)
+       ========================================================== */
+    .kt-skel{
+        position:absolute;
+        inset:0;
+        background: var(--kt-surface);
+        z-index: 20;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+    }
+    .card-shell.is-loading .kt-skel{
+        opacity: 1;
+        pointer-events: auto; /* block clicks */
+        cursor: progress;
+    }
+    .kt-skel__inner{ padding: 14px 10px 12px 10px; }
+
+    .kt-skel__bar{
+        height: 12px;
+        border-radius: 999px;
+        background: linear-gradient(
+            90deg,
+            var(--skel-base) 0%,
+            var(--skel-shine) 45%,
+            var(--skel-base) 65%
+        );
+        background-size: 200% 100%;
+        animation: ktShimmer 1.15s linear infinite;
+    }
+    .kt-skel__bar.sm{ height: 10px; }
+
+    @keyframes ktShimmer{
+        to { background-position: -200% 0; }
+    }
+
+    /* rows layout differs for All Visits vs Patients view */
+    .kt-skel__head,
+    .kt-skel__row{
+        display:grid;
+        gap: 12px;
+        padding: 14px 14px;
+        align-items: center;
+        border-bottom: 1px solid var(--soft);
+    }
+    .kt-skel__head{
+        padding: 10px 14px 14px 14px;
+        border-bottom: 1px solid var(--soft);
+    }
+
+    .card-shell[data-skel="all"] .kt-skel__head,
+    .card-shell[data-skel="all"] .kt-skel__row{
+        grid-template-columns: 1.2fr .8fr 1fr 1.4fr 1.6fr .8fr;
+    }
+
+    .card-shell[data-skel="patients"] .kt-skel__head,
+    .card-shell[data-skel="patients"] .kt-skel__row{
+        grid-template-columns: 1.4fr 1fr .8fr 1fr;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+        .kt-skel__bar{ animation: none !important; }
+    }
 </style>
 
 @php
@@ -401,12 +464,12 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        {{-- ✅ NEW: Visits template download --}}
+        {{-- Visits template download --}}
         <a href="{{ route('staff.visits.template') }}" class="btnx btn-ghost" title="Download Excel template">
             <i class="fa fa-file-excel"></i> Template
         </a>
 
-        {{-- ✅ NEW: Visits import --}}
+        {{-- Visits import --}}
         <form id="visitImportForm" action="{{ route('staff.visits.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
             @csrf
             <input id="visitImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
@@ -421,7 +484,7 @@
     </div>
 </div>
 
-{{-- ✅ Flash messages --}}
+{{-- Flash messages --}}
 @if(session('success'))
     <div class="alert alert-success" style="border-radius:12px; font-weight:800;">
         {{ session('success') }}
@@ -445,7 +508,7 @@
     </div>
 @endif
 
-<div class="card-shell">
+<div class="card-shell" id="visitsCard" data-skel="{{ $isAll ? 'all' : 'patients' }}">
     <div class="card-head">
         <div class="hint">
             <span class="count-pill">
@@ -456,10 +519,31 @@
         <div class="hint">Tip: search + sort works together</div>
     </div>
 
+    {{-- ✅ Skeleton overlay --}}
+    <div class="kt-skel" id="visitsSkeleton" aria-hidden="true">
+        <div class="kt-skel__inner">
+            <div class="kt-skel__head">
+                @if($isAll)
+                    <div class="kt-skel__bar sm" style="width:60%"></div>
+                    <div class="kt-skel__bar sm" style="width:70%"></div>
+                    <div class="kt-skel__bar sm" style="width:55%"></div>
+                    <div class="kt-skel__bar sm" style="width:75%"></div>
+                    <div class="kt-skel__bar sm" style="width:62%"></div>
+                    <div class="kt-skel__bar sm" style="width:45%"></div>
+                @else
+                    <div class="kt-skel__bar sm" style="width:65%"></div>
+                    <div class="kt-skel__bar sm" style="width:58%"></div>
+                    <div class="kt-skel__bar sm" style="width:46%"></div>
+                    <div class="kt-skel__bar sm" style="width:40%"></div>
+                @endif
+            </div>
+            <div id="visitsSkelRows"></div>
+        </div>
+    </div>
+
     <div class="table-wrap table-responsive">
         <table>
             @if($isAll)
-                {{-- ✅ ALL VISITS --}}
                 <thead>
                     <tr>
                         <th>Patient</th>
@@ -552,13 +636,16 @@
                                         <i class="fa fa-eye"></i> View
                                     </a>
 
-                                    <form action="{{ route('staff.visits.destroy', $visit->id) }}"
-                                          method="POST"
-                                          style="display:inline;"
-                                          onsubmit="return confirm('Delete this visit?');">
+                                    {{-- ✅ Animated confirm delete --}}
+                                    <form id="del-visit-{{ $visit->id }}" action="{{ route('staff.visits.destroy', $visit->id) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="pill pill-del">
+                                        <button type="button"
+                                                class="pill pill-del"
+                                                data-confirm="Delete this visit? This can’t be undone."
+                                                data-confirm-title="Confirm delete"
+                                                data-confirm-yes="Delete"
+                                                data-confirm-form="#del-visit-{{ $visit->id }}">
                                             <i class="fa fa-trash"></i> Delete
                                         </button>
                                     </form>
@@ -574,7 +661,6 @@
                     @endforelse
                 </tbody>
             @else
-                {{-- ✅ UNIQUE PATIENTS --}}
                 <thead>
                     <tr>
                         <th>Patient</th>
@@ -640,7 +726,7 @@
 
 <script>
 (() => {
-    // ✅ Import button wiring
+    // Import button wiring
     const importBtn = document.getElementById('visitImportBtn');
     const importFile = document.getElementById('visitImportFile');
     const importForm = document.getElementById('visitImportForm');
@@ -652,6 +738,9 @@
         }
     });
 
+    const card = document.getElementById('visitsCard');
+    const skelRowsEl = document.getElementById('visitsSkelRows');
+
     const searchInput = document.getElementById('visitSearch');
     const sortSelect  = document.getElementById('visitSort');
     const tbody       = document.getElementById('visitTableBody');
@@ -662,6 +751,65 @@
     const rowsAll = Array.from(document.querySelectorAll('.visit-row'));
 
     function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
+
+    // Skeleton
+    function buildSkeletonRows(n = 8){
+        if (!skelRowsEl || !card) return;
+        const mode = card.getAttribute('data-skel') || 'patients';
+
+        skelRowsEl.innerHTML = '';
+        for (let i=0;i<n;i++){
+            const row = document.createElement('div');
+            row.className = 'kt-skel__row';
+
+            if (mode === 'all'){
+                row.innerHTML = `
+                    <div class="kt-skel__bar" style="width:${62 + (i%3)*10}%"></div>
+                    <div class="kt-skel__bar" style="width:${48 + (i%4)*9}%"></div>
+                    <div class="kt-skel__bar" style="width:${55 + (i%3)*8}%"></div>
+                    <div class="kt-skel__bar" style="width:${72 + (i%3)*7}%"></div>
+                    <div class="kt-skel__bar" style="width:${64 + (i%4)*6}%"></div>
+                    <div class="kt-skel__bar" style="width:${42 + (i%3)*10}%"></div>
+                `;
+            } else {
+                row.innerHTML = `
+                    <div class="kt-skel__bar" style="width:${65 + (i%3)*10}%"></div>
+                    <div class="kt-skel__bar" style="width:${55 + (i%4)*8}%"></div>
+                    <div class="kt-skel__bar" style="width:${40 + (i%5)*8}%"></div>
+                    <div class="kt-skel__bar" style="width:${46 + (i%3)*10}%"></div>
+                `;
+            }
+
+            skelRowsEl.appendChild(row);
+        }
+    }
+    buildSkeletonRows(9);
+
+    let skelTimer = null;
+    let skelShownAt = 0;
+
+    function showSkeletonImmediate(minMs = 240){
+        if (!card) return;
+        clearTimeout(skelTimer);
+        card.classList.add('is-loading');
+        skelShownAt = Date.now();
+        skelTimer = setTimeout(() => {}, minMs);
+    }
+
+    function showSkeletonSoft(){
+        if (!card) return;
+        clearTimeout(skelTimer);
+        skelTimer = setTimeout(() => showSkeletonImmediate(220), 90);
+    }
+
+    function hideSkeleton(){
+        if (!card) return;
+        clearTimeout(skelTimer);
+        const elapsed = Date.now() - skelShownAt;
+        const minMs = 220;
+        const wait = Math.max(0, minMs - elapsed);
+        setTimeout(() => card.classList.remove('is-loading'), wait);
+    }
 
     function applySearch() {
         const keyword = normalize(searchInput.value);
@@ -704,20 +852,17 @@
             const va = getComparable(a, mode);
             const vb = getComparable(b, mode);
 
-            // String compare for patient
             if (typeof va === 'string' || typeof vb === 'string') {
                 const A = String(va), B = String(vb);
                 if (A < B) return mode.endsWith('_desc') ? 1 : -1;
                 if (A > B) return mode.endsWith('_desc') ? -1 : 1;
 
-                // tie-breaker: last/visit date newest first
                 const tb = Number(b.dataset.vdate || b.dataset.last || 0);
                 const ta = Number(a.dataset.vdate || a.dataset.last || 0);
                 return tb - ta;
             }
 
             if (va === vb) {
-                // tie-breaker: created desc if exists, else patient
                 const cb = Number(b.dataset.created || 0);
                 const ca = Number(a.dataset.created || 0);
                 if (cb !== ca) return cb - ca;
@@ -739,17 +884,42 @@
     totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
 
-    searchInput.addEventListener('input', applySearch);
-    sortSelect && sortSelect.addEventListener('change', applyAll);
-
-    resetBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        if (sortSelect) sortSelect.selectedIndex = 0;
-        applyAll();
-        searchInput.focus();
+    // Events with skeleton
+    let searchDeb = null;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchDeb);
+        showSkeletonSoft();
+        searchDeb = setTimeout(() => {
+            applySearch();
+            hideSkeleton();
+        }, 140);
     });
 
-    applyAll();
+    sortSelect && sortSelect.addEventListener('change', () => {
+        showSkeletonImmediate(260);
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton();
+        });
+    });
+
+    resetBtn.addEventListener('click', () => {
+        showSkeletonImmediate(260);
+        searchInput.value = '';
+        if (sortSelect) sortSelect.selectedIndex = 0;
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton();
+            searchInput.focus();
+        });
+    });
+
+    // Initial load feel
+    showSkeletonImmediate(220);
+    requestAnimationFrame(() => {
+        applyAll();
+        hideSkeleton();
+    });
 })();
 </script>
 

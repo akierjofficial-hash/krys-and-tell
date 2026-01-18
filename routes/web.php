@@ -3,6 +3,10 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\GoogleController;
+
+// ✅ User controllers
+use App\Http\Controllers\User\UserProfileController;
 
 // Staff controllers
 use App\Http\Controllers\Staff\DashboardController;
@@ -15,12 +19,12 @@ use App\Http\Controllers\Staff\InstallmentPlanController;
 use App\Http\Controllers\Staff\InstallmentPaymentController;
 use App\Http\Controllers\Staff\PatientImportExportController;
 use App\Http\Controllers\Staff\ApprovalRequestController;
-
-// ✅ Visit import/export
 use App\Http\Controllers\Staff\VisitImportExportController;
-
-// ✅ Installment import/export
 use App\Http\Controllers\Staff\InstallmentImportExportController;
+
+// ✅ Contact inbox controllers
+use App\Http\Controllers\Public\ContactMessageController as PublicContactMessageController;
+use App\Http\Controllers\Staff\ContactMessageController as StaffContactMessageController;
 
 // Admin controllers
 use App\Http\Controllers\Admin\AdminUserController;
@@ -36,22 +40,28 @@ use App\Http\Controllers\Public\PublicBookingController;
 
 /*
 |--------------------------------------------------------------------------
+| GOOGLE AUTH ROUTES (PUBLIC)
+|--------------------------------------------------------------------------
+| Callback must be accessible even for guests.
+*/
+Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
+Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+
+/*
+|--------------------------------------------------------------------------
 | PUBLIC WEBSITE (NO LOGIN REQUIRED)
 |--------------------------------------------------------------------------
 */
 Route::get('/', fn () => view('public.home'))->name('public.home');
 Route::get('/about', fn () => view('public.about'))->name('public.about');
+
+/** ✅ Contact page GET + POST */
 Route::get('/contact', fn () => view('public.contact'))->name('public.contact');
+Route::post('/contact', [PublicContactMessageController::class, 'store'])->name('public.contact.store');
 
 /** Public services */
 Route::get('/services', [PublicServiceController::class, 'index'])->name('public.services.index');
 Route::get('/services/{service}', [PublicServiceController::class, 'show'])->name('public.services.show');
-
-/** Booking flow */
-Route::get('/book/{service}', [PublicBookingController::class, 'create'])->name('public.booking.create');
-Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
-Route::post('/book/{service}', [PublicBookingController::class, 'store'])->name('public.booking.store');
-Route::get('/booking/success/{appointment}', [PublicBookingController::class, 'success'])->name('public.booking.success');
 
 /*
 |--------------------------------------------------------------------------
@@ -69,6 +79,16 @@ Route::middleware('guest')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
+
+    // ✅ Booking flow (LOGIN REQUIRED)
+    Route::get('/book/{service}', [PublicBookingController::class, 'create'])->name('public.booking.create');
+    Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
+    Route::post('/book/{service}', [PublicBookingController::class, 'store'])->name('public.booking.store');
+
+    // ✅ User Profile (Upcoming + History + Settings + Password)
+    Route::get('/profile', [UserProfileController::class, 'index'])->name('profile.show');
+    Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
+    Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('user.profile.password');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
@@ -129,9 +149,6 @@ Route::middleware('auth')->group(function () {
     |----------------------------------------------------------------------
     | STAFF ROUTES
     |----------------------------------------------------------------------
-    | ✅ URL prefix: /staff/...
-    | ✅ Name prefix: staff....
-    |----------------------------------------------------------------------
     */
     Route::middleware('role:staff')
         ->prefix('staff')
@@ -151,6 +168,14 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{appointment}/decline', [ApprovalRequestController::class, 'decline'])->name('decline');
             });
 
+            // ✅ Contact Messages Inbox (Staff)
+            Route::prefix('messages')->name('messages.')->group(function () {
+                Route::get('/', [StaffContactMessageController::class, 'index'])->name('index');
+                Route::get('/{message}', [StaffContactMessageController::class, 'show'])->name('show');
+                Route::post('/{message}/read', [StaffContactMessageController::class, 'markRead'])->name('read');
+                Route::delete('/{message}', [StaffContactMessageController::class, 'destroy'])->name('destroy');
+            });
+
             // Patients import/export
             Route::get('/patients/export', [PatientImportExportController::class, 'export'])->name('patients.export');
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
@@ -159,11 +184,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])
                 ->name('patients.printInfo');
 
-            /*
-            |------------------------------------------------------------------
-            | ✅ VISITS IMPORT/TEMPLATE (MUST be before /visits/{visit})
-            |------------------------------------------------------------------
-            */
+            // ✅ VISITS IMPORT/TEMPLATE
             Route::get('/visits/template', [VisitImportExportController::class, 'template'])->name('visits.template');
             Route::post('/visits/import', [VisitImportExportController::class, 'import'])->name('visits.import');
 
@@ -200,16 +221,12 @@ Route::middleware('auth')->group(function () {
 
             // Installments
             Route::prefix('installments')->name('installments.')->group(function () {
+
                 Route::get('/', [InstallmentPlanController::class, 'index'])->name('index');
                 Route::get('/create', [InstallmentPlanController::class, 'create'])->name('create');
                 Route::post('/', [InstallmentPlanController::class, 'store'])->name('store');
 
-                /*
-                |------------------------------------------------------------------
-                | ✅ INSTALLMENTS IMPORT/TEMPLATE
-                | ✅ MUST be before /installments/{plan}
-                |------------------------------------------------------------------
-                */
+                // ✅ INSTALLMENTS IMPORT/TEMPLATE
                 Route::get('/template', [InstallmentImportExportController::class, 'plansTemplate'])->name('template');
                 Route::post('/import', [InstallmentImportExportController::class, 'importPlans'])->name('import');
 

@@ -27,13 +27,15 @@ class ServiceController extends Controller
             'base_price'         => 'required|numeric|min:0',
             'allow_custom_price' => 'required|in:0,1',
             'description'        => 'nullable|string',
+            'duration_minutes'   => 'nullable|integer|min:15|max:240',
         ]);
 
         Service::create([
             'name'               => $validated['name'],
             'base_price'         => $validated['base_price'],
-            'allow_custom_price' => (int) $validated['allow_custom_price'], 
-            'description'        => $validated['description'] ?? null,     
+            'allow_custom_price' => (int) $validated['allow_custom_price'],
+            'description'        => $validated['description'] ?? null,
+            'duration_minutes'   => $validated['duration_minutes'] ?? null,
         ]);
 
         return redirect()->route('staff.services.index')->with('success', 'Service added successfully!');
@@ -51,30 +53,32 @@ class ServiceController extends Controller
             'base_price'         => 'required|numeric|min:0',
             'allow_custom_price' => 'required|in:0,1',
             'description'        => 'nullable|string',
+            'duration_minutes'   => 'nullable|integer|min:15|max:240',
         ]);
 
         $service->update([
             'name'               => $validated['name'],
             'base_price'         => $validated['base_price'],
-            'allow_custom_price' => (int) $validated['allow_custom_price'], 
-            'description'        => $validated['description'] ?? null,      
+            'allow_custom_price' => (int) $validated['allow_custom_price'],
+            'description'        => $validated['description'] ?? null,
+            'duration_minutes'   => $validated['duration_minutes'] ?? null,
         ]);
 
         return redirect()->route('staff.services.index')->with('success', 'Service updated successfully!');
     }
 
     public function patients(Service $service)
-{
-    $patients = Patient::query()
-        ->whereHas('visits.procedures', function ($q) use ($service) {
-            $q->where('service_id', $service->id);
-        })
-        ->orderBy('last_name')
-        ->orderBy('first_name')
-        ->get();
+    {
+        $patients = Patient::query()
+            ->whereHas('visits.procedures', function ($q) use ($service) {
+                $q->where('service_id', $service->id);
+            })
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
 
-    return view('staff.services.patients', compact('service', 'patients'));
-}
+        return view('staff.services.patients', compact('service', 'patients'));
+    }
 
     public function destroy(Service $service)
     {

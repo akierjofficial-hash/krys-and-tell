@@ -2,6 +2,18 @@
 @section('title', 'Contact — Krys & Tell')
 
 @section('content')
+@php
+    // ✅ exact file: public/images/map.png
+    $mapRelative = 'images/map.png';
+    $mapExists = file_exists(public_path($mapRelative));
+
+    $u = auth()->user();
+    $autoName  = trim(old('name',  $u->name  ?? ''));
+    $autoEmail = trim(old('email', $u->email ?? ''));
+
+    $isLoggedIn = auth()->check();
+@endphp
+
 <section class="section">
     <div class="container">
         {{-- Header --}}
@@ -42,7 +54,7 @@
                             <span class="contact-ico"><i class="fa-solid fa-location-dot"></i></span>
                             <div>
                                 <div class="contact-label">Address</div>
-                                <div class="contact-value">(Your address here)</div>
+                                <div class="contact-value">CT Building, Jose Romero Road, Bagacay (Across Hypermart), Dumaguete City, Philippines, 6200</div>
                             </div>
                         </div>
 
@@ -52,7 +64,7 @@
                             </span>
                             <div>
                                 <div class="contact-label">Phone</div>
-                                <div class="contact-value">(Your phone here)</div>
+                                <div class="contact-value">0977 244 3595</div>
                             </div>
                         </div>
 
@@ -62,7 +74,7 @@
                             </span>
                             <div>
                                 <div class="contact-label">Email</div>
-                                <div class="contact-value">(Your email here)</div>
+                                <div class="contact-value">krysandt@gmail.com</div>
                             </div>
                         </div>
 
@@ -88,7 +100,7 @@
                 </div>
             </div>
 
-            {{-- Right: Message form --}}
+            {{-- Right: Message form + Map --}}
             <div class="col-lg-7">
                 <div class="card-soft p-4">
                     <div class="d-flex align-items-center gap-2">
@@ -101,21 +113,94 @@
                         </div>
                     </div>
 
-                    <form class="mt-4" method="POST" action="#">
+                    {{-- ✅ Success / Errors --}}
+                    @if(session('contact_success'))
+                        <div class="alert alert-success mt-3 mb-0" style="border-radius:16px;">
+                            <i class="fa-solid fa-circle-check me-1"></i>
+                            {{ session('contact_success') }}
+                        </div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="alert alert-danger mt-3 mb-0" style="border-radius:16px;">
+                            <div style="font-weight:900;">Please fix the following:</div>
+                            <ul class="mb-0 mt-2">
+                                @foreach($errors->all() as $e)
+                                    <li>{{ $e }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    <form class="mt-4" method="POST" action="{{ route('public.contact.store') }}">
                         @csrf
+
+                        {{-- If not logged in, optionally show a gentle hint --}}
+                        @guest
+                            <div class="alert alert-info mt-0" style="border-radius:16px;">
+                                <i class="fa-solid fa-circle-info me-1"></i>
+                                Tip: Sign in with Google so your name and email autofill.
+                            </div>
+                        @endguest
+
                         <div class="row g-3">
+                            {{-- Name --}}
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Name</label>
-                                <input class="form-control kt-input" type="text" name="name" placeholder="Your name">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Email</label>
-                                <input class="form-control kt-input" type="email" name="email" placeholder="you@email.com">
+
+                                @if($isLoggedIn)
+                                    <input class="form-control kt-input"
+                                           type="text"
+                                           value="{{ $autoName }}"
+                                           readonly
+                                           aria-readonly="true">
+                                    {{-- send value via hidden input so controller receives it --}}
+                                    <input type="hidden" name="name" value="{{ $autoName }}">
+                                    <div class="small text-muted-2 mt-1" style="font-weight:650;">
+                                        This comes from your account.
+                                    </div>
+                                @else
+                                    <input class="form-control kt-input"
+                                           type="text"
+                                           name="name"
+                                           value="{{ old('name') }}"
+                                           placeholder="Your name"
+                                           required>
+                                @endif
                             </div>
 
+                            {{-- Email --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Email</label>
+
+                                @if($isLoggedIn)
+                                    <input class="form-control kt-input"
+                                           type="email"
+                                           value="{{ $autoEmail }}"
+                                           readonly
+                                           aria-readonly="true">
+                                    <input type="hidden" name="email" value="{{ $autoEmail }}">
+                                    <div class="small text-muted-2 mt-1" style="font-weight:650;">
+                                        We’ll reply to this email.
+                                    </div>
+                                @else
+                                    <input class="form-control kt-input"
+                                           type="email"
+                                           name="email"
+                                           value="{{ old('email') }}"
+                                           placeholder="you@email.com"
+                                           required>
+                                @endif
+                            </div>
+
+                            {{-- Message --}}
                             <div class="col-12">
                                 <label class="form-label fw-bold">Message</label>
-                                <textarea class="form-control kt-input" name="message" rows="5" placeholder="How can we help?"></textarea>
+                                <textarea class="form-control kt-input"
+                                          name="message"
+                                          rows="5"
+                                          placeholder="How can we help?"
+                                          required>{{ old('message') }}</textarea>
                             </div>
 
                             <div class="col-12 d-flex flex-wrap gap-2">
@@ -129,28 +214,50 @@
                         </div>
                     </form>
 
-                    {{-- Optional Map --}}
+                    {{-- Map --}}
                     <div class="mt-4">
-                        <div class="fw-black" style="font-weight:950;">Map</div>
-                        <div class="text-muted-2" style="font-weight:650;">
-                            Add your exact clinic address and we’ll embed Google Maps here.
-                        </div>
-
-                        <div class="map-shell mt-3">
-                            <div class="map-placeholder">
-                                <i class="fa-solid fa-map-location-dot"></i>
-                                <div class="mt-2 fw-bold">Map placeholder</div>
+                        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                            <div>
+                                <div class="fw-black" style="font-weight:950;">Map</div>
                                 <div class="text-muted-2" style="font-weight:650;">
-                                    Replace this with an iframe embed when ready.
+                                    Find us easily — the clinic is across Hypermart.
                                 </div>
                             </div>
 
-                            {{-- Example embed (use later)
-                            <iframe
-                                src="https://www.google.com/maps/embed?pb=..."
-                                width="100%" height="320" style="border:0;" allowfullscreen="" loading="lazy">
-                            </iframe>
-                            --}}
+                            <a class="btn kt-btn kt-btn-outline"
+                               href="https://www.google.com/maps/search/?api=1&query=CT%20Building%20Jose%20Romero%20Road%20Bagacay%20Dumaguete%20City"
+                               target="_blank" rel="noopener">
+                                <i class="fa-solid fa-location-arrow me-1"></i> Open in Maps
+                            </a>
+                        </div>
+
+                        <div class="map-shell mt-3">
+                            @if($mapExists)
+                                <img
+                                    src="{{ asset($mapRelative) }}"
+                                    alt="Clinic Map"
+                                    class="map-img"
+                                    loading="lazy"
+                                    decoding="async"
+                                >
+                            @else
+                                <div class="map-missing">
+                                    <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                    <div class="fw-bold">Map image not found</div>
+                                    <div class="text-muted-2" style="font-weight:650;">
+                                        Put the file here exactly:
+                                        <code>public/images/map.png</code>
+                                    </div>
+                                    <div class="text-muted-2" style="font-weight:650;">
+                                        (Check filename/case: <code>map.png</code> not <code>Map.png</code>)
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="mt-2 text-muted-2" style="font-weight:650; font-size:.92rem;">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            Tip: Just ask some parking boy there.
                         </div>
                     </div>
                 </div>
@@ -160,7 +267,6 @@
 </section>
 
 <style>
-    /* Contact page polish */
     .contact-badge{
         display:inline-flex; align-items:center; gap:.35rem;
         padding: .45rem .7rem;
@@ -233,18 +339,34 @@
         overflow:hidden;
         background: rgba(15,23,42,.02);
         box-shadow: 0 18px 55px rgba(2,6,23,.06);
-        min-height: 320px;
+        min-height: 260px;
+    }
+    .map-img{
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .map-missing{
+        min-height: 260px;
         display:grid;
         place-items:center;
-    }
-    .map-placeholder{
         text-align:center;
         padding: 18px;
-        color: rgba(15,23,42,.75);
     }
-    .map-placeholder i{
-        font-size: 2rem;
-        color: rgba(29,78,216,.75);
+    .map-missing .icon{
+        width: 44px; height: 44px;
+        border-radius: 16px;
+        display:grid; place-items:center;
+        background: rgba(239,68,68,.12);
+        border: 1px solid rgba(239,68,68,.20);
+        color: #ef4444;
+        margin-bottom: 10px;
+    }
+
+    @media (max-width: 768px){
+        .map-shell{ min-height: 220px; }
+        .map-missing{ min-height: 220px; }
     }
 </style>
 @endsection

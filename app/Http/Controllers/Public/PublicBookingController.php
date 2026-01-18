@@ -17,9 +17,18 @@ class PublicBookingController extends Controller
     {
         $doctors = $this->activeDoctors();
 
+        // ✅ Same-page success card support
+        $successAppointment = null;
+        if (session('booking_success') && session('success_appointment_id')) {
+            $successAppointment = Appointment::with(['service', 'doctor'])
+                ->whereKey(session('success_appointment_id'))
+                ->first();
+        }
+
         return view('public.booking.create', [
             'service' => $service,
             'doctors' => $doctors,
+            'successAppointment' => $successAppointment,
         ]);
     }
 
@@ -28,19 +37,29 @@ class PublicBookingController extends Controller
         $doctorRequired = $this->doctorRequired();
 
         $request->validate([
-            'date' => ['required', 'date', 'after_or_equal:today'],
+            'date'      => ['required', 'date', 'after_or_equal:today'],
             'doctor_id' => $doctorRequired ? ['required', 'integer', 'exists:doctors,id'] : ['nullable', 'integer'],
         ]);
 
         $date = Carbon::parse($request->date)->toDateString();
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
-        $slots = $this->computeSlots($date, $doctorId);
+        $durationMinutes = $this->serviceDurationMinutes($service);
+        $slots = $this->computeSlots($date, $doctorId, $durationMinutes);
 
         return response()->json([
-            'date' => $date,
+            'date'      => $date,
             'doctor_id' => $doctorId,
-            'slots' => $slots,
+            'slots'     => $slots,
+            'meta' => [
+                'step_minutes' => 30,
+                'duration_minutes' => $durationMinutes,
+                'lead_minutes_today' => 60,
+                'open' => '09:00',
+                'close' => '18:00',
+                'closed_weekday' => 'Sunday',
+                'timezone' => config('app.timezone'),
+            ],
         ]);
     }
 
@@ -48,7 +67,6 @@ class PublicBookingController extends Controller
     {
         $doctorRequired = $this->doctorRequired();
 
-        // ✅ Booking form is SHORT: no birthdate / gender required
         $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time' => ['required', 'date_format:H:i'],
@@ -57,11 +75,11 @@ class PublicBookingController extends Controller
                 ? ['required', 'integer', 'exists:doctors,id']
                 : ['nullable', 'integer', 'exists:doctors,id'],
 
-            'first_name' => ['required', 'string', 'max:120'],
+            'first_name'  => ['required', 'string', 'max:120'],
             'middle_name' => ['nullable', 'string', 'max:120'],
-            'last_name' => ['required', 'string', 'max:120'],
+            'last_name'   => ['required', 'string', 'max:120'],
 
-            'email' => ['required', 'email', 'max:190'],
+            'email'   => ['required', 'email', 'max:190'],
             'contact' => ['required', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
 
@@ -73,11 +91,13 @@ class PublicBookingController extends Controller
 
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
-        // prevent double booking
-        $available = in_array($time, $this->computeSlots($date, $doctorId), true);
+        $durationMinutes = $this->serviceDurationMinutes($service);
+
+        // ✅ TIME TRAP: re-check availability at submit time (overlap / past / too-close / closing)
+        $available = in_array($time, $this->computeSlots($date, $doctorId, $durationMinutes), true);
         if (!$available) {
             return back()
-                ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
+                ->withErrors(['time' => 'That time slot is no longer available (overlap / too close / past / clinic closing). Please choose another.'])
                 ->withInput();
         }
 
@@ -87,16 +107,25 @@ class PublicBookingController extends Controller
             $request->last_name
         );
 
-        return DB::transaction(function () use ($request, $service, $date, $time, $doctorId, $fullName) {
+        return DB::transaction(function () use ($request, $service, $date, $time, $doctorId, $fullName, $durationMinutes) {
 
             $appointment = new Appointment();
 
-            // service/date/time
-            if (Schema::hasColumn('appointments', 'service_id')) $appointment->service_id = $service->id;
-            if (Schema::hasColumn('appointments', 'appointment_date')) $appointment->appointment_date = $date;
-            if (Schema::hasColumn('appointments', 'appointment_time')) $appointment->appointment_time = $time;
+            if (Schema::hasColumn('appointments', 'service_id')) {
+                $appointment->service_id = $service->id;
+            }
+            if (Schema::hasColumn('appointments', 'appointment_date')) {
+                $appointment->appointment_date = $date;
+            }
+            if (Schema::hasColumn('appointments', 'appointment_time')) {
+                $appointment->appointment_time = $time;
+            }
 
-            // doctor (optional)
+            // ✅ store duration for overlap logic (if column exists)
+            if (Schema::hasColumn('appointments', 'duration_minutes')) {
+                $appointment->duration_minutes = $durationMinutes;
+            }
+
             if ($doctorId && Schema::hasColumn('appointments', 'doctor_id')) {
                 $appointment->doctor_id = $doctorId;
             }
@@ -105,56 +134,103 @@ class PublicBookingController extends Controller
                 $appointment->dentist_name = Doctor::whereKey($doctorId)->value('name');
             }
 
-            // ✅ public fields (used for approval + future linking)
-            if (Schema::hasColumn('appointments', 'public_name')) $appointment->public_name = $fullName;
+            if (Schema::hasColumn('appointments', 'public_name')) {
+                $appointment->public_name = $fullName;
+            }
 
-            if (Schema::hasColumn('appointments', 'public_first_name')) $appointment->public_first_name = $request->first_name;
-            if (Schema::hasColumn('appointments', 'public_middle_name')) $appointment->public_middle_name = $request->middle_name;
-            if (Schema::hasColumn('appointments', 'public_last_name')) $appointment->public_last_name = $request->last_name;
+            if (Schema::hasColumn('appointments', 'public_first_name')) {
+                $appointment->public_first_name = $request->first_name;
+            }
+            if (Schema::hasColumn('appointments', 'public_middle_name')) {
+                $appointment->public_middle_name = $request->middle_name;
+            }
+            if (Schema::hasColumn('appointments', 'public_last_name')) {
+                $appointment->public_last_name = $request->last_name;
+            }
 
-            if (Schema::hasColumn('appointments', 'public_email')) $appointment->public_email = $request->email;
-            if (Schema::hasColumn('appointments', 'public_phone')) $appointment->public_phone = $request->contact;
-            if (Schema::hasColumn('appointments', 'public_address')) $appointment->public_address = $request->address;
-            if (Schema::hasColumn('appointments', 'public_message')) $appointment->public_message = $request->message;
+            if (Schema::hasColumn('appointments', 'public_email')) {
+                $appointment->public_email = $request->email;
+            }
+            if (Schema::hasColumn('appointments', 'public_phone')) {
+                $appointment->public_phone = $request->contact;
+            }
+            if (Schema::hasColumn('appointments', 'public_address')) {
+                $appointment->public_address = $request->address;
+            }
+            if (Schema::hasColumn('appointments', 'public_message')) {
+                $appointment->public_message = $request->message;
+            }
 
-            if (Schema::hasColumn('appointments', 'status')) $appointment->status = 'pending';
+            if (Schema::hasColumn('appointments', 'status')) {
+                $appointment->status = 'pending';
+            }
+
+            if (auth()->check() && Schema::hasColumn('appointments', 'user_id')) {
+                $appointment->user_id = auth()->id();
+            }
+
+            // recommended for consistent matching
+            if (auth()->check() && Schema::hasColumn('appointments', 'public_email')) {
+                $appointment->public_email = auth()->user()->email;
+            }
 
             $appointment->save();
 
-            // ✅ THIS is what fixes your error: route calls success() now exists
-            return redirect()->route('public.booking.success', $appointment);
+            // ✅ SAME PAGE: redirect back to create with flash data
+            return redirect()
+                ->route('public.booking.create', $service->id)
+                ->with('booking_success', true)
+                ->with('success_appointment_id', $appointment->id);
         });
     }
 
-    // ✅ REQUIRED by your route: public.booking.success
-    public function success(Appointment $appointment)
+    /**
+     * ✅ TIME TRAP + OVERLAP SAFE SLOTS
+     * $durationMinutes comes from service.duration_minutes (fallback 60)
+     */
+    private function computeSlots(string $date, ?int $doctorId, int $durationMinutes): array
     {
-        $appointment->loadMissing(['service', 'doctor']);
+        $tz = config('app.timezone');
 
-        return view('public.booking.success', compact('appointment'));
-    }
+        // Sunday closed
+        $day = Carbon::parse($date, $tz)->dayOfWeekIso; // 7 = Sunday
+        if ($day === 7) return [];
 
-    private function computeSlots(string $date, ?int $doctorId): array
-    {
-        $day = Carbon::parse($date)->dayOfWeekIso;
-        if ($day === 7) return []; // Sunday closed
+        // clinic hours
+        $openStart = Carbon::parse("$date 09:00", $tz);
+        $openEnd   = Carbon::parse("$date 18:00", $tz);
 
-        $start = Carbon::parse($date . ' 09:00');
-        $end   = Carbon::parse($date . ' 18:00');
+        // settings
         $stepMinutes = 30;
+        $leadMinutesToday = 60;
 
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
+        if (!Schema::hasColumn('appointments', 'appointment_date')) return [];
 
-        $bookedQuery = Appointment::query();
+        // ✅ Time trap: today -> remove past times + lead time
+        $minStart = $openStart->copy();
+        $now = now($tz);
 
-        if (Schema::hasColumn('appointments', 'appointment_date')) {
-            $bookedQuery->whereDate('appointment_date', $date);
+        if ($openStart->isSameDay($now)) {
+            $minCandidate = $now->copy()->addMinutes($leadMinutesToday);
+            $minStart = $this->ceilToStep($minCandidate, $stepMinutes);
+            if ($minStart->lt($openStart)) $minStart = $openStart->copy();
         }
 
+        // ✅ Build blocked intervals from existing appointments
+        $bookedQuery = Appointment::query()->select(['appointment_time']);
+
+        if (Schema::hasColumn('appointments', 'duration_minutes')) {
+            $bookedQuery->addSelect('duration_minutes');
+        }
+
+        $bookedQuery->whereDate('appointment_date', $date);
+
+        // ignore cancelled/declined/rejected
         if (Schema::hasColumn('appointments', 'status')) {
             $bookedQuery->where(function ($q) {
                 $q->whereNull('status')
-                  ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
+                    ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
             });
         }
 
@@ -162,24 +238,86 @@ class PublicBookingController extends Controller
             $bookedQuery->where('doctor_id', $doctorId);
         }
 
-        $booked = $bookedQuery->pluck('appointment_time')->map(function ($t) {
-            try {
-                return Carbon::parse($t)->format('H:i');
-            } catch (\Throwable $e) {
-                return (string) $t;
+        $blocked = $bookedQuery->get()->map(function ($row) use ($date, $tz) {
+            $start = $this->parseTimeOnDate($date, $row->appointment_time, $tz);
+            if (!$start) return null;
+
+            $dur = 60;
+            if (Schema::hasColumn('appointments', 'duration_minutes') && !empty($row->duration_minutes)) {
+                $dur = max(1, (int) $row->duration_minutes);
             }
-        })->unique()->values()->all();
 
+            $end = $start->copy()->addMinutes($dur);
+            return [$start, $end];
+        })->filter()->values();
+
+        // ✅ Generate slot starts, excluding overlaps and closing overflow
         $slots = [];
-        $cursor = $start->copy();
+        $cursor = $openStart->copy();
 
-        while ($cursor->lt($end)) {
-            $label = $cursor->format('H:i');
-            if (!in_array($label, $booked, true)) $slots[] = $label;
+        while ($cursor->lt($openEnd)) {
+            if ($cursor->lt($minStart)) {
+                $cursor->addMinutes($stepMinutes);
+                continue;
+            }
+
+            $candidateEnd = $cursor->copy()->addMinutes($durationMinutes);
+
+            // must finish before closing
+            if ($candidateEnd->gt($openEnd)) break;
+
+            $overlap = false;
+            foreach ($blocked as [$bStart, $bEnd]) {
+                if ($cursor->lt($bEnd) && $candidateEnd->gt($bStart)) {
+                    $overlap = true;
+                    break;
+                }
+            }
+
+            if (!$overlap) {
+                $slots[] = $cursor->format('H:i');
+            }
+
             $cursor->addMinutes($stepMinutes);
         }
 
         return $slots;
+    }
+
+    private function serviceDurationMinutes(Service $service): int
+    {
+        $d = 60;
+        if (Schema::hasColumn('services', 'duration_minutes') && !empty($service->duration_minutes)) {
+            $d = (int) $service->duration_minutes;
+        }
+        // clamp to sane range
+        return max(15, min(240, $d));
+    }
+
+    private function parseTimeOnDate(string $date, $time, string $tz): ?Carbon
+    {
+        if (empty($time)) return null;
+        $timeStr = is_string($time) ? $time : (string) $time;
+
+        try {
+            return Carbon::parse(trim($date . ' ' . $timeStr), $tz)->seconds(0);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function ceilToStep(Carbon $dt, int $stepMinutes): Carbon
+    {
+        $d = $dt->copy()->seconds(0);
+
+        $minute = (int) $d->minute;
+        $remainder = $minute % $stepMinutes;
+
+        if ($remainder !== 0) {
+            $d->addMinutes($stepMinutes - $remainder);
+        }
+
+        return $d;
     }
 
     private function activeDoctors()

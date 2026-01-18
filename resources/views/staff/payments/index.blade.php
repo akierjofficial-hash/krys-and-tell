@@ -5,8 +5,8 @@
 <style>
     /* ==========================================================
        Payments Index (Dark mode compatible)
-       - Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
-                           --kt-border, --kt-shadow
+       + Skeleton shimmer loading
+       + Animated confirm delete (data-confirm buttons)
        ========================================================== */
     :root{
         --card-shadow: var(--kt-shadow);
@@ -26,11 +26,18 @@
 
         --focus: rgba(96,165,250,.55);
         --focusRing: rgba(96,165,250,.18);
+
+        /* Skeleton */
+        --skel-base: rgba(148,163,184,.18);
+        --skel-shine: rgba(255,255,255,.75);
     }
     html[data-theme="dark"]{
         --muted2: rgba(148,163,184,.66);
         --soft: rgba(148,163,184,.16);
         --soft2: rgba(148,163,184,.20);
+
+        --skel-base: rgba(148,163,184,.14);
+        --skel-shine: rgba(255,255,255,.10);
     }
 
     /* Header */
@@ -226,6 +233,7 @@
         margin-top: 8px;
         min-width: 0;
         backdrop-filter: blur(8px);
+        position: relative; /* ✅ for skeleton overlay */
     }
     .card-head{
         display:flex;
@@ -251,7 +259,7 @@
         font-weight: 900;
     }
 
-    /* ✅ right-side header actions for Installments */
+    /* right-side header actions for Installments */
     .card-head .head-right{
         display:flex;
         align-items:center;
@@ -315,7 +323,7 @@
     .nowrap{ white-space: nowrap; }
     .money{ font-variant-numeric: tabular-nums; }
 
-    /* ✅ Keep cash wide enough; installment now fits without Progress column */
+    /* Keep cash wide enough; installment fits */
     #cashTable table{ min-width: 980px; }
     #installmentTable table{ min-width: 1180px; }
 
@@ -455,6 +463,71 @@
         .pill span{ display:none; }
         .pill{ padding: 8px 10px; }
     }
+
+    /* ==========================================================
+       ✅ Skeleton Loading (shimmer)
+       ========================================================== */
+    .kt-skel{
+        position:absolute;
+        inset:0;
+        background: var(--kt-surface);
+        z-index: 30;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+    }
+    .card-shell.is-loading .kt-skel{
+        opacity: 1;
+        pointer-events: auto;
+        cursor: progress;
+    }
+    .kt-skel__inner{ padding: 12px 10px 12px 10px; }
+
+    .kt-skel__bar{
+        height: 12px;
+        border-radius: 999px;
+        background: linear-gradient(
+            90deg,
+            var(--skel-base) 0%,
+            var(--skel-shine) 45%,
+            var(--skel-base) 65%
+        );
+        background-size: 200% 100%;
+        animation: ktShimmer 1.15s linear infinite;
+    }
+    .kt-skel__bar.sm{ height: 10px; }
+
+    @keyframes ktShimmer{
+        to { background-position: -200% 0; }
+    }
+
+    .kt-skel__head,
+    .kt-skel__row{
+        display:grid;
+        gap: 12px;
+        padding: 14px 14px;
+        align-items: center;
+        border-bottom: 1px solid var(--soft);
+    }
+    .kt-skel__head{
+        padding: 10px 14px 14px 14px;
+    }
+
+    /* CASH = 7 columns */
+    .card-shell[data-skel="cash"] .kt-skel__head,
+    .card-shell[data-skel="cash"] .kt-skel__row{
+        grid-template-columns: 1.2fr 2fr .9fr .9fr .8fr .9fr 1.2fr;
+    }
+
+    /* INSTALLMENT = 9 columns */
+    .card-shell[data-skel="installment"] .kt-skel__head,
+    .card-shell[data-skel="installment"] .kt-skel__row{
+        grid-template-columns: 1.2fr 2fr .9fr .9fr .9fr .9fr .7fr .9fr 1.2fr;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+        .kt-skel__bar{ animation: none !important; }
+    }
 </style>
 
 {{-- Header --}}
@@ -541,10 +614,26 @@
 </div>
 
 {{-- CASH TABLE --}}
-<div class="card-shell" id="cashTable">
+<div class="card-shell" id="cashTable" data-skel="cash">
     <div class="card-head">
         <h6 class="title"><i class="fa fa-money-bill-wave"></i> Cash Payments</h6>
         <div class="hint">Showing <strong id="cashVisible">{{ $cashPayments->count() }}</strong> / <strong id="cashTotal">{{ $cashPayments->count() }}</strong></div>
+    </div>
+
+    {{-- ✅ Skeleton overlay --}}
+    <div class="kt-skel" id="cashSkeleton" aria-hidden="true">
+        <div class="kt-skel__inner">
+            <div class="kt-skel__head">
+                <div class="kt-skel__bar sm" style="width:64%"></div>
+                <div class="kt-skel__bar sm" style="width:78%"></div>
+                <div class="kt-skel__bar sm" style="width:58%"></div>
+                <div class="kt-skel__bar sm" style="width:52%"></div>
+                <div class="kt-skel__bar sm" style="width:48%"></div>
+                <div class="kt-skel__bar sm" style="width:55%"></div>
+                <div class="kt-skel__bar sm" style="width:46%"></div>
+            </div>
+            <div id="cashSkelRows"></div>
+        </div>
     </div>
 
     <div class="table-wrap">
@@ -663,10 +752,17 @@
                                     <i class="fa fa-eye"></i> <span>View</span>
                                 </a>
 
-                                <form action="{{ route('staff.payments.destroy', $payment->id) }}" method="POST" style="display:inline;"
-                                      onsubmit="return confirm('Delete this payment?');">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="pill pill-del" title="Delete">
+                                {{-- ✅ Animated confirm delete --}}
+                                <form id="del-pay-{{ $payment->id }}" action="{{ route('staff.payments.destroy', $payment->id) }}" method="POST" style="display:inline;">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="button"
+                                            class="pill pill-del"
+                                            title="Delete"
+                                            data-confirm="Delete this payment? This can’t be undone."
+                                            data-confirm-title="Confirm delete"
+                                            data-confirm-yes="Delete"
+                                            data-confirm-form="#del-pay-{{ $payment->id }}">
                                         <i class="fa fa-trash"></i> <span>Delete</span>
                                     </button>
                                 </form>
@@ -685,19 +781,19 @@
 </div>
 
 {{-- INSTALLMENT TABLE --}}
-<div class="card-shell" id="installmentTable" style="display:none;">
+<div class="card-shell" id="installmentTable" data-skel="installment" style="display:none;">
     <div class="card-head">
         <h6 class="title"><i class="fa fa-layer-group"></i> Installment Plans</h6>
 
         <div class="head-right">
             <div class="hint">Showing <strong id="insVisible">{{ $installments->count() }}</strong> / <strong id="insTotal">{{ $installments->count() }}</strong></div>
 
-            {{-- ✅ Installment Plans template --}}
+            {{-- Installment Plans template --}}
             <a href="{{ route('staff.installments.template') }}" class="btnx btn-ghost" title="Download Excel template">
                 <i class="fa fa-file-excel"></i> Template
             </a>
 
-            {{-- ✅ Installment Plans import --}}
+            {{-- Installment Plans import --}}
             <form id="installmentPlanImportForm" action="{{ route('staff.installments.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
                 @csrf
                 <input id="installmentPlanImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
@@ -705,6 +801,24 @@
                     <i class="fa fa-cloud-arrow-up"></i> Import
                 </button>
             </form>
+        </div>
+    </div>
+
+    {{-- ✅ Skeleton overlay --}}
+    <div class="kt-skel" id="insSkeleton" aria-hidden="true">
+        <div class="kt-skel__inner">
+            <div class="kt-skel__head">
+                <div class="kt-skel__bar sm" style="width:62%"></div>
+                <div class="kt-skel__bar sm" style="width:82%"></div>
+                <div class="kt-skel__bar sm" style="width:56%"></div>
+                <div class="kt-skel__bar sm" style="width:50%"></div>
+                <div class="kt-skel__bar sm" style="width:52%"></div>
+                <div class="kt-skel__bar sm" style="width:58%"></div>
+                <div class="kt-skel__bar sm" style="width:44%"></div>
+                <div class="kt-skel__bar sm" style="width:52%"></div>
+                <div class="kt-skel__bar sm" style="width:46%"></div>
+            </div>
+            <div id="insSkelRows"></div>
         </div>
     </div>
 
@@ -858,11 +972,17 @@
                                     <i class="fa fa-eye"></i> <span>View</span>
                                 </a>
 
-                                <form action="{{ route('staff.installments.destroy', $plan) }}" method="POST" style="display:inline;"
-                                      onsubmit="return confirm('Delete this installment plan?');">
+                                {{-- ✅ Animated confirm delete --}}
+                                <form id="del-plan-{{ $plan->id }}" action="{{ route('staff.installments.destroy', $plan) }}" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="pill pill-del" title="Delete">
+                                    <button type="button"
+                                            class="pill pill-del"
+                                            title="Delete"
+                                            data-confirm="Delete this installment plan? This can’t be undone."
+                                            data-confirm-title="Confirm delete"
+                                            data-confirm-yes="Delete"
+                                            data-confirm-form="#del-plan-{{ $plan->id }}">
                                         <i class="fa fa-trash"></i> <span>Delete</span>
                                     </button>
                                 </form>
@@ -920,8 +1040,83 @@
         });
     }
 
+    /* ==========================================================
+       ✅ Skeleton (per tab)
+       ========================================================== */
+    const cashSkelRowsEl = document.getElementById('cashSkelRows');
+    const insSkelRowsEl  = document.getElementById('insSkelRows');
+
+    function buildSkelRows(kind, n = 8){
+        const el = kind === 'cash' ? cashSkelRowsEl : insSkelRowsEl;
+        if (!el) return;
+
+        el.innerHTML = '';
+        for (let i=0;i<n;i++){
+            const row = document.createElement('div');
+            row.className = 'kt-skel__row';
+
+            if (kind === 'cash'){
+                row.innerHTML = `
+                    <div class="kt-skel__bar" style="width:${60 + (i%3)*12}%"></div>
+                    <div class="kt-skel__bar" style="width:${74 + (i%4)*7}%"></div>
+                    <div class="kt-skel__bar" style="width:${52 + (i%3)*10}%"></div>
+                    <div class="kt-skel__bar" style="width:${48 + (i%4)*9}%"></div>
+                    <div class="kt-skel__bar" style="width:${44 + (i%5)*8}%"></div>
+                    <div class="kt-skel__bar" style="width:${50 + (i%3)*10}%"></div>
+                    <div class="kt-skel__bar" style="width:${46 + (i%4)*8}%"></div>
+                `;
+            } else {
+                row.innerHTML = `
+                    <div class="kt-skel__bar" style="width:${62 + (i%3)*12}%"></div>
+                    <div class="kt-skel__bar" style="width:${80 + (i%4)*6}%"></div>
+                    <div class="kt-skel__bar" style="width:${54 + (i%3)*10}%"></div>
+                    <div class="kt-skel__bar" style="width:${50 + (i%4)*9}%"></div>
+                    <div class="kt-skel__bar" style="width:${48 + (i%5)*8}%"></div>
+                    <div class="kt-skel__bar" style="width:${56 + (i%3)*9}%"></div>
+                    <div class="kt-skel__bar" style="width:${42 + (i%4)*10}%"></div>
+                    <div class="kt-skel__bar" style="width:${48 + (i%5)*8}%"></div>
+                    <div class="kt-skel__bar" style="width:${46 + (i%3)*10}%"></div>
+                `;
+            }
+            el.appendChild(row);
+        }
+    }
+    buildSkelRows('cash', 9);
+    buildSkelRows('installment', 9);
+
+    const skelState = new Map(); // card -> {timer, shownAt}
+    function showSkeletonImmediate(card, minMs = 240){
+        if (!card) return;
+        const st = skelState.get(card) || { timer: null, shownAt: 0 };
+        clearTimeout(st.timer);
+        card.classList.add('is-loading');
+        st.shownAt = Date.now();
+        st.timer = setTimeout(() => {}, minMs);
+        skelState.set(card, st);
+    }
+    function showSkeletonSoft(card){
+        if (!card) return;
+        const st = skelState.get(card) || { timer: null, shownAt: 0 };
+        clearTimeout(st.timer);
+        st.timer = setTimeout(() => showSkeletonImmediate(card, 220), 90);
+        skelState.set(card, st);
+    }
+    function hideSkeleton(card){
+        if (!card) return;
+        const st = skelState.get(card);
+        const shownAt = st?.shownAt || 0;
+        const elapsed = Date.now() - shownAt;
+        const minMs = 220;
+        const wait = Math.max(0, minMs - elapsed);
+        clearTimeout(st?.timer);
+        setTimeout(() => card.classList.remove('is-loading'), wait);
+    }
+
     function currentTab(){
         return cashTable.style.display !== 'none' ? 'cash' : 'installment';
+    }
+    function activeCard(){
+        return currentTab() === 'cash' ? cashTable : installmentTable;
     }
 
     function updateSortOptions(){
@@ -944,7 +1139,12 @@
         installmentTable.style.display = 'none';
         if (save) localStorage.setItem('payments_tab', 'cash');
         updateSortOptions();
-        applyAll();
+
+        showSkeletonImmediate(cashTable, 260);
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton(cashTable);
+        });
     }
 
     function showInstallment(save=true){
@@ -954,7 +1154,12 @@
         installmentTable.style.display = 'block';
         if (save) localStorage.setItem('payments_tab', 'installment');
         updateSortOptions();
-        applyAll();
+
+        showSkeletonImmediate(installmentTable, 260);
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton(installmentTable);
+        });
     }
 
     tabCash.addEventListener('click', () => showCash(true));
@@ -1048,30 +1253,60 @@
     let t = null;
     function debounceApply(){
         clearTimeout(t);
-        t = setTimeout(applyAll, 120);
+        const card = activeCard();
+        showSkeletonSoft(card);
+        t = setTimeout(() => {
+            applyAll();
+            hideSkeleton(card);
+        }, 140);
     }
 
     searchInput.addEventListener('input', debounceApply);
-    sortSelect.addEventListener('change', applyAll);
+
+    sortSelect.addEventListener('change', () => {
+        const card = activeCard();
+        showSkeletonImmediate(card, 260);
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton(card);
+        });
+    });
 
     resetBtn.addEventListener('click', () => {
+        const card = activeCard();
+        showSkeletonImmediate(card, 260);
         searchInput.value = '';
         sortSelect.value = 'date_desc';
         updateSortOptions();
-        applyAll();
-        searchInput.focus();
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton(card);
+            searchInput.focus();
+        });
     });
 
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            const card = activeCard();
+            showSkeletonImmediate(card, 220);
             searchInput.value = '';
-            applyAll();
-            searchInput.blur();
+            requestAnimationFrame(() => {
+                applyAll();
+                hideSkeleton(card);
+                searchInput.blur();
+            });
         }
     });
 
     updateSortOptions();
-    applyAll();
+
+    // Initial load feel on active tab
+    const firstCard = activeCard();
+    showSkeletonImmediate(firstCard, 240);
+    requestAnimationFrame(() => {
+        applyAll();
+        hideSkeleton(firstCard);
+    });
 })();
 </script>
 

@@ -48,6 +48,13 @@
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
     }
 
+    .help-text{
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 6px;
+        line-height: 1.25rem;
+    }
+
     .submit-btn {
         background: #2563eb;
         padding: 10px 18px;
@@ -65,6 +72,12 @@
         margin-left: 10px;
         color: #6b7280;
         font-weight: 500;
+    }
+
+    .error-text{
+        color:#dc2626;
+        font-size:12px;
+        margin-top:6px;
     }
 </style>
 
@@ -89,11 +102,13 @@
             <div>
                 <label class="form-label">Service Name</label>
                 <input type="text" name="name" class="form-input" value="{{ old('name') }}" required>
+                @error('name') <div class="error-text">{{ $message }}</div> @enderror
             </div>
 
             <div>
                 <label class="form-label">Base Price</label>
                 <input type="number" step="0.01" name="base_price" class="form-input" value="{{ old('base_price') }}" required>
+                @error('base_price') <div class="error-text">{{ $message }}</div> @enderror
             </div>
 
             <div>
@@ -102,11 +117,32 @@
                     <option value="0" {{ old('allow_custom_price') == '0' ? 'selected' : '' }}>No</option>
                     <option value="1" {{ old('allow_custom_price') == '1' ? 'selected' : '' }}>Yes</option>
                 </select>
+                @error('allow_custom_price') <div class="error-text">{{ $message }}</div> @enderror
+            </div>
+
+            {{-- ✅ NEW: Duration (minutes) --}}
+            <div>
+                <label class="form-label">Duration (minutes)</label>
+                <input
+                    type="number"
+                    name="duration_minutes"
+                    class="form-input"
+                    min="15"
+                    max="240"
+                    step="5"
+                    value="{{ old('duration_minutes', 60) }}"
+                    placeholder="e.g. 60"
+                >
+                <div class="help-text">
+                    This controls scheduling/time slots (prevents overlaps). If empty, the system will treat it as 60 minutes.
+                </div>
+                @error('duration_minutes') <div class="error-text">{{ $message }}</div> @enderror
             </div>
 
             <div>
                 <label class="form-label">Description</label>
                 <textarea name="description" rows="3" class="form-textarea">{{ old('description') }}</textarea>
+                @error('description') <div class="error-text">{{ $message }}</div> @enderror
             </div>
         </div>
 

@@ -2,7 +2,14 @@
 @section('title', ($service->name ?? 'Service') . ' — Krys & Tell')
 
 @section('content')
-<section class="section">
+<section class="section kt-service-show">
+    <style>
+        /* Only for this page: give space for sticky CTA on mobile */
+        @media (max-width: 768px){
+            .kt-service-show{ padding-bottom: 120px !important; }
+        }
+    </style>
+
     <div class="container">
         <div class="row g-4 align-items-start">
             <div class="col-lg-7">
@@ -35,18 +42,26 @@
                         <div class="card-soft p-4 h-100">
                             <div class="d-flex align-items-center gap-2">
                                 <span class="icon-badge" style="background:linear-gradient(135deg, rgba(216,193,176,.95), rgba(176,124,88,.95));">
-                                    <i class="fa-solid fa-circle-info"></i>
+                                    <i class="fa-solid fa-tag"></i>
                                 </span>
-                                <div style="font-weight:950;">What to expect</div>
+                                <div style="font-weight:950;">Price</div>
                             </div>
                             <div class="text-muted-2 mt-2" style="font-weight:650;">
-                                Clear explanation, gentle treatment, and after-care guidance.
+                                @if(isset($service->base_price))
+                                    ₱{{ number_format((float)$service->base_price, 2) }}
+                                    @if(!empty($service->allow_custom_price))
+                                        <div class="small text-muted mt-1">Final price may vary depending on the case.</div>
+                                    @endif
+                                @else
+                                    Please inquire for pricing.
+                                @endif
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="d-flex flex-wrap gap-2 mt-4">
+                {{-- Desktop actions --}}
+                <div class="d-none d-md-flex flex-wrap gap-2 mt-4 kt-mobile-stack">
                     <a class="btn kt-btn kt-btn-primary text-white" href="{{ url('/book/' . $service->id) }}">
                         <i class="fa-solid fa-calendar-check me-1"></i> Book this service
                     </a>
@@ -76,19 +91,29 @@
                         Prefer to ask first? Visit our contact page and we’ll guide you on the best service to book.
                     </div>
 
-                    <div class="d-flex gap-2 mt-3">
-                        <a href="{{ url('/contact') }}" class="btn kt-btn kt-btn-outline w-100">
-                            Contact
-                        </a>
-                        <a href="{{ url('/services') }}" class="btn kt-btn kt-btn-primary text-white w-100">
-                            Browse
-                        </a>
+                    <div class="d-flex gap-2 mt-3 kt-mobile-stack">
+                        <a href="{{ url('/contact') }}" class="btn kt-btn kt-btn-outline w-100">Contact</a>
+                        <a href="{{ url('/services') }}" class="btn kt-btn kt-btn-primary text-white w-100">Browse</a>
                     </div>
                 </div>
 
                 <div class="img-tile mt-3" style="height:260px;">
                     <img src="{{ asset('assets/img/public/pic3.jpg') }}" alt="Clinic room">
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Mobile sticky CTA --}}
+    <div class="kt-sticky-cta d-md-none">
+        <div class="container">
+            <div class="d-grid gap-2">
+                <a class="btn kt-btn kt-btn-primary text-white" href="{{ url('/book/' . $service->id) }}">
+                    <i class="fa-solid fa-calendar-check me-1"></i> Book this service
+                </a>
+                <a class="btn kt-btn kt-btn-outline" href="{{ url('/services') }}">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Back to services
+                </a>
             </div>
         </div>
     </div>

@@ -307,6 +307,57 @@
         transform: rotate(6deg);
         opacity: .04;
     }
+    /* Divider */
+.divider{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    margin: 14px 0;
+    color: rgba(15,23,42,.45);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.divider::before,
+.divider::after{
+    content:"";
+    flex:1;
+    height: 1px;
+    background: rgba(15,23,42,.12);
+}
+
+/* Google button */
+.btn-google{
+    width: 100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 10px;
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-weight: 900;
+    font-size: 14px;
+    text-decoration: none;
+
+    border: 1px solid rgba(15,23,42,.12);
+    background: rgba(255,255,255,.92);
+    color: var(--text);
+    box-shadow: 0 12px 22px rgba(15,23,42,.08);
+    transition: .15s ease;
+}
+.btn-google:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(15,23,42,.12);
+}
+.btn-google:active{ transform: translateY(0); }
+
+.g-icon{
+    width: 18px;
+    height: 18px;
+    display:block;
+}
+
 
     /* Responsive: center card on mobile */
     @media (max-width: 900px){
@@ -451,9 +502,23 @@
                     </div>
                 </div>
 
-                <button class="btn" type="submit">Login</button>
+               <button class="btn" type="submit">Login</button>
 
-                <div class="fineprint">Accounts are created by system administrators only</div>
+<div class="divider"><span>or</span></div>
+
+<a class="btn-google" href="{{ route('google.redirect') }}">
+    <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.01 1.53 7.39 2.81l5.06-5.06C33.36 4.3 29.08 2 24 2 14.73 2 6.98 7.3 3.08 15.02l6.1 4.74C11.2 13.5 17.08 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24c0-1.64-.15-3.22-.43-4.74H24v9h12.7c-.55 2.97-2.2 5.48-4.7 7.17l7.2 5.6C43.76 36.97 46.5 30.98 46.5 24z"/>
+        <path fill="#FBBC05" d="M9.18 28.24A14.5 14.5 0 0 1 8.4 24c0-1.48.26-2.91.78-4.24l-6.1-4.74A23.9 23.9 0 0 0 2 24c0 3.86.92 7.52 2.54 10.98l6.64-6.74z"/>
+        <path fill="#34A853" d="M24 46c5.08 0 9.35-1.67 12.47-4.53l-7.2-5.6c-1.99 1.34-4.54 2.13-5.27 2.13-6.92 0-12.8-4-14.82-10.26l-6.64 6.74C6.98 40.7 14.73 46 24 46z"/>
+        <path fill="none" d="M2 2h44v44H2z"/>
+    </svg>
+    Continue with Google
+</a>
+
+<div class="fineprint">Accounts are created by system administrators only</div>
+
             </form>
 
             <div class="footer">

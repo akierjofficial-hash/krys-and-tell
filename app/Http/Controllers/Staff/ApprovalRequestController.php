@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Patient;
+use App\Notifications\AppointmentApproved;
+use App\Notifications\AppointmentDeclined;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 
 class ApprovalRequestController extends Controller
@@ -80,6 +83,9 @@ class ApprovalRequestController extends Controller
     public function approve(Request $request, Appointment $appointment)
     {
         try {
+            // ✅ Track previous status to avoid duplicate notifications
+            $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
+
             DB::transaction(function () use ($appointment) {
 
                 // ✅ Ensure patient_id exists (public booking must create/link patient)
@@ -100,6 +106,22 @@ class ApprovalRequestController extends Controller
 
                 $appointment->save();
             });
+
+            // ✅ Notify user (only on transition to upcoming)
+            $appointment->refresh()->loadMissing(['user', 'service', 'doctor']);
+
+            if (
+                Schema::hasColumn('appointments', 'status') &&
+                $previousStatus !== 'upcoming' &&
+                ($appointment->status ?? null) === 'upcoming'
+            ) {
+                if ($appointment->user) {
+                    $appointment->user->notify(new AppointmentApproved($appointment));
+                } elseif (!empty($appointment->public_email)) {
+                    Notification::route('mail', $appointment->public_email)
+                        ->notify(new AppointmentApproved($appointment));
+                }
+            }
 
             // ✅ AJAX response
             if ($request->expectsJson()) {
@@ -132,11 +154,30 @@ class ApprovalRequestController extends Controller
     public function decline(Request $request, Appointment $appointment)
     {
         try {
+            // ✅ Track previous status to avoid duplicate notifications
+            $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
+
             if (Schema::hasColumn('appointments', 'status')) {
                 $appointment->status = 'declined';
             }
 
             $appointment->save();
+
+            // ✅ Notify user (only on transition to declined)
+            $appointment->refresh()->loadMissing(['user', 'service', 'doctor']);
+
+            if (
+                Schema::hasColumn('appointments', 'status') &&
+                $previousStatus !== 'declined' &&
+                ($appointment->status ?? null) === 'declined'
+            ) {
+                if ($appointment->user) {
+                    $appointment->user->notify(new AppointmentDeclined($appointment));
+                } elseif (!empty($appointment->public_email)) {
+                    Notification::route('mail', $appointment->public_email)
+                        ->notify(new AppointmentDeclined($appointment));
+                }
+            }
 
             if ($request->expectsJson()) {
                 $pendingCount = Schema::hasColumn('appointments', 'status')

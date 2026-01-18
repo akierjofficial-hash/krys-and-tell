@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class LoginController extends Controller
 {
@@ -22,47 +23,51 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email'    => ['required', 'email'],
+            'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
+        $remember = $request->boolean('remember');
 
-            $user = Auth::user();
-
-            // Optional: inactive accounts
-            if (isset($user->is_active) && !$user->is_active) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return back()->withErrors([
-                    'email' => 'Your account is inactive.',
-                ])->withInput();
-            }
-
-            // ✅ Track last login (optional)
-            if (property_exists($user, 'last_login_at') || isset($user->last_login_at)) {
-                $user->forceFill([
-                    'last_login_at' => now(),
-                ])->save();
-            } else {
-                // Even if the property doesn't exist in PHP, save will still work if column exists in DB.
-                $user->forceFill(['last_login_at' => now()])->save();
-            }
-
-            // ✅ SAME LOGIN, DIFFERENT ROUTES
-            if (($user->role ?? null) === 'admin') {
-                return redirect()->route('admin.dashboard');
-            }
-
-            return redirect()->route('staff.dashboard');
+        if (!Auth::attempt($credentials, $remember)) {
+            return back()->withErrors([
+                'email' => 'Invalid email or password.',
+            ])->withInput();
         }
 
-        return back()->withErrors([
-            'email' => 'Invalid email or password.',
-        ])->withInput();
+        $user = Auth::user();
+
+        // Optional: inactive accounts
+        if (isset($user->is_active) && !$user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Your account is inactive.',
+            ])->withInput();
+        }
+
+        // Regenerate session AFTER successful login checks
+        $request->session()->regenerate();
+
+        // Optional: Track last login (safe)
+        try {
+            if (Schema::hasColumn($user->getTable(), 'last_login_at')) {
+                $user->forceFill(['last_login_at' => now()])->save();
+            }
+        } catch (\Throwable $e) {
+            // Ignore if the column/table doesn't exist or DB blocks it
+        }
+
+        // ✅ Respect intended URL (booking will go back after login)
+        $fallback = match ($user->role ?? null) {
+            'admin' => route('admin.dashboard'),
+            'staff' => route('staff.dashboard'),
+            default => route('public.home'),
+        };
+
+        return redirect()->intended($fallback);
     }
 
     /**
@@ -75,6 +80,6 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route('public.home');
     }
 }

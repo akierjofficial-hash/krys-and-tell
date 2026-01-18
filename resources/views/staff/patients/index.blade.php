@@ -5,8 +5,7 @@
 <style>
     /* ==========================================================
        Patients Index (Dark mode compatible)
-       - Adds A–Z grouping separators (Option A)
-       - Adds A–Z jump index (Option C) with mobile/iPad support
+       + Skeleton shimmer loading for table
        ========================================================== */
 
     :root{
@@ -23,11 +22,18 @@
         --radius: 16px;
 
         --thead-h: 44px; /* JS will update this */
+
+        /* Skeleton colors */
+        --skel-base: rgba(148,163,184,.18);
+        --skel-shine: rgba(255,255,255,.75);
     }
 
     html[data-theme="dark"]{
         --soft: rgba(148, 163, 184, .16);
         --muted2: rgba(248, 250, 252, .62);
+
+        --skel-base: rgba(148,163,184,.14);
+        --skel-shine: rgba(255,255,255,.10);
     }
 
     .page-head{
@@ -88,12 +94,8 @@
         font-size: 14px;
         color: var(--text);
     }
-    .search-box input::placeholder{
-        color: rgba(148, 163, 184, .85);
-    }
-    html[data-theme="dark"] .search-box input::placeholder{
-        color: rgba(248, 250, 252, .55);
-    }
+    .search-box input::placeholder{ color: rgba(148, 163, 184, .85); }
+    html[data-theme="dark"] .search-box input::placeholder{ color: rgba(248, 250, 252, .55); }
     .search-box input:focus{
         border-color: rgba(96,165,250,.55);
         box-shadow: 0 0 0 4px rgba(96,165,250,.18);
@@ -130,8 +132,6 @@
         border-color: rgba(96,165,250,.55);
         box-shadow: 0 0 0 4px rgba(96,165,250,.18);
     }
-
-    /* make options readable in dark mode */
     html[data-theme="dark"] .sort-select,
     html[data-theme="dark"] .sort-select option{
         background-color: rgba(17,24,39,.98) !important;
@@ -449,7 +449,6 @@
         pointer-events: none;
     }
 
-    /* iPad + Mobile: turn into a horizontal bar inside the card */
     @media (max-width: 1024px){
         .alpha-index{
             position: sticky;
@@ -478,8 +477,75 @@
         .top-actions{ width: 100%; }
         .action-pills{ justify-content:flex-start; }
         .toolbar-row{ flex-direction: column; align-items: stretch; }
-
         .alpha-index{ margin: 10px 10px 0 10px; }
+    }
+
+    /* ==========================================================
+       ✅ Skeleton Loading (shimmer)
+       ========================================================== */
+    .kt-skel{
+        position: absolute;
+        inset: 0;
+        background: var(--kt-surface);
+        z-index: 70; /* above card content; alpha-index is fixed so we hide it via JS */
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+    }
+    .card-shell.is-loading .kt-skel{
+        opacity: 1;
+        pointer-events: auto; /* block clicks during “loading” */
+        cursor: progress;
+    }
+
+    .kt-skel__inner{
+        padding: 14px 10px 12px 10px;
+    }
+
+    .kt-skel__bar{
+        height: 12px;
+        border-radius: 999px;
+        background: linear-gradient(
+            90deg,
+            var(--skel-base) 0%,
+            var(--skel-shine) 45%,
+            var(--skel-base) 65%
+        );
+        background-size: 200% 100%;
+        animation: ktShimmer 1.15s linear infinite;
+    }
+    .kt-skel__bar.sm{ height: 10px; }
+    .kt-skel__bar.lg{ height: 14px; }
+
+    @keyframes ktShimmer{
+        to { background-position: -200% 0; }
+    }
+
+    /* nice “row” spacing */
+    .kt-skel__row{
+        display:grid;
+        grid-template-columns: 1.8fr .8fr .9fr 1fr .9fr;
+        gap: 12px;
+        padding: 14px 14px;
+        border-bottom: 1px solid var(--soft);
+        align-items: center;
+    }
+    .kt-skel__row:first-child{
+        border-top: 1px solid var(--soft);
+        border-radius: 12px 12px 0 0;
+    }
+
+    /* header mimic */
+    .kt-skel__head{
+        display:grid;
+        grid-template-columns: 1.8fr .8fr .9fr 1fr .9fr;
+        gap: 12px;
+        padding: 10px 14px 14px 14px;
+    }
+
+    /* reduce motion */
+    @media (prefers-reduced-motion: reduce){
+        .kt-skel__bar{ animation: none !important; }
     }
 </style>
 
@@ -554,6 +620,20 @@
     {{-- ✅ Option C: A–Z jump index (JS fills this) --}}
     <div class="alpha-index" id="alphaIndex" style="display:none;" aria-label="Jump to letter"></div>
 
+    {{-- ✅ Skeleton overlay (JS fills rows) --}}
+    <div class="kt-skel" id="patientsSkeleton" aria-hidden="true">
+        <div class="kt-skel__inner">
+            <div class="kt-skel__head">
+                <div class="kt-skel__bar sm" style="width:55%"></div>
+                <div class="kt-skel__bar sm" style="width:60%"></div>
+                <div class="kt-skel__bar sm" style="width:70%"></div>
+                <div class="kt-skel__bar sm" style="width:65%"></div>
+                <div class="kt-skel__bar sm" style="width:45%"></div>
+            </div>
+            <div id="patientsSkelRows"></div>
+        </div>
+    </div>
+
     <div class="table-wrap table-responsive">
         <table id="patientsTable">
             <thead>
@@ -603,15 +683,16 @@
                                     <i class="fa fa-eye"></i> View
                                 </a>
 
-                                <form
-                                    action="{{ route('staff.patients.destroy', $patient->id) }}"
-                                    method="POST"
-                                    onsubmit="return confirm('Are you sure you want to delete this patient?');"
-                                    style="display:inline;"
-                                >
+                                {{-- ✅ Animated confirm delete (NO nested forms) --}}
+                                <form id="del-{{ $patient->id }}" action="{{ route('staff.patients.destroy', $patient->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="pill pill-del">
+                                    <button type="button"
+                                            class="pill pill-del"
+                                            data-confirm="Delete this patient? This can’t be undone."
+                                            data-confirm-title="Confirm delete"
+                                            data-confirm-yes="Delete"
+                                            data-confirm-form="#del-{{ $patient->id }}">
                                         <i class="fa fa-trash"></i> Delete
                                     </button>
                                 </form>
@@ -638,12 +719,75 @@
     const table       = document.getElementById('patientsTable');
     const alphaIndex  = document.getElementById('alphaIndex');
 
+    const card        = document.getElementById('patientsCard');
+    const skelWrap    = document.getElementById('patientsSkeleton');
+    const skelRowsEl  = document.getElementById('patientsSkelRows');
+
     const rowsAll     = Array.from(document.querySelectorAll('.patient-row'));
     const visibleCountEl = document.getElementById('visibleCount');
     const totalCountEl   = document.getElementById('totalCount');
     const resetBtn    = document.getElementById('clearFilters');
 
     const emptyStateRow = document.getElementById('emptyStateRow');
+
+    // Build skeleton rows once
+    function buildSkeletonRows(n = 8){
+        if (!skelRowsEl) return;
+        skelRowsEl.innerHTML = '';
+        for (let i=0;i<n;i++){
+            const row = document.createElement('div');
+            row.className = 'kt-skel__row';
+            row.innerHTML = `
+                <div class="kt-skel__bar" style="width:${60 + (i%3)*12}%"></div>
+                <div class="kt-skel__bar" style="width:${40 + (i%4)*10}%"></div>
+                <div class="kt-skel__bar" style="width:${45 + (i%5)*8}%"></div>
+                <div class="kt-skel__bar" style="width:${52 + (i%4)*9}%"></div>
+                <div class="kt-skel__bar" style="width:${38 + (i%3)*12}%"></div>
+            `;
+            skelRowsEl.appendChild(row);
+        }
+    }
+    buildSkeletonRows(9);
+
+    // Skeleton controls
+    let skelTimer = null;
+    let skelShownAt = 0;
+
+    function showSkeletonImmediate(minMs = 240){
+        if (!card || !skelWrap) return;
+        clearTimeout(skelTimer);
+
+        // Hide fixed alpha index while loading (desktop)
+        if (alphaIndex) alphaIndex.style.display = 'none';
+
+        card.classList.add('is-loading');
+        skelShownAt = Date.now();
+
+        skelTimer = setTimeout(() => {
+            // allow hide after minMs; actual hide happens in hideSkeleton()
+        }, minMs);
+    }
+
+    function showSkeletonSoft(){
+        // small delay so it doesn’t flicker while typing fast
+        if (!card || !skelWrap) return;
+        clearTimeout(skelTimer);
+        skelTimer = setTimeout(() => showSkeletonImmediate(220), 90);
+    }
+
+    function hideSkeleton(){
+        if (!card || !skelWrap) return;
+        clearTimeout(skelTimer);
+
+        const elapsed = Date.now() - skelShownAt;
+        const minMs = 220;
+        const wait = Math.max(0, minMs - elapsed);
+
+        setTimeout(() => {
+            card.classList.remove('is-loading');
+            // alphaIndex visibility will be restored by buildAlphaRowsAndIndex()
+        }, wait);
+    }
 
     // Update --thead-h based on actual thead height (for sticky alpha rows)
     function updateTheadHeight(){
@@ -746,7 +890,6 @@
                 if (btn.classList.contains('disabled')) return;
 
                 if (L === '#'){
-                    // Jump to top of table/card
                     const topEl = document.getElementById('patientsCard');
                     if (topEl){
                         const y = window.scrollY + topEl.getBoundingClientRect().top - 12;
@@ -790,7 +933,6 @@
 
     function applySort() {
         const mode = sortSelect.value;
-
         const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
 
         const sorted = [...rowsAll].sort((a, b) => {
@@ -847,8 +989,6 @@
         });
 
         sorted.forEach(r => tbody.appendChild(r));
-
-        // keep empty row at bottom
         if (emptyStateRow) tbody.appendChild(emptyStateRow);
     }
 
@@ -859,7 +999,7 @@
         buildAlphaRowsAndIndex();
     }
 
-    // Highlight active letter as you scroll (best effort, lightweight)
+    // Highlight active letter as you scroll (lightweight)
     let raf = null;
     function updateActiveLetterHighlight(){
         if (!isAlphaGroupingMode()) return;
@@ -897,21 +1037,42 @@
     totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
 
-    // Events
+    // ---- Events ----
+
+    // Search (soft skeleton)
+    let searchDeb = null;
     searchInput.addEventListener('input', () => {
-        applySearch();
-        buildAlphaRowsAndIndex();
+        clearTimeout(searchDeb);
+        showSkeletonSoft();
+        searchDeb = setTimeout(() => {
+            applySearch();
+            buildAlphaRowsAndIndex();
+            hideSkeleton();
+        }, 140);
     });
 
-    sortSelect.addEventListener('change', applyAll);
+    // Sort (immediate skeleton)
+    sortSelect.addEventListener('change', () => {
+        showSkeletonImmediate(260);
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton();
+        });
+    });
 
+    // Reset (immediate skeleton)
     resetBtn.addEventListener('click', () => {
+        showSkeletonImmediate(260);
         searchInput.value = '';
-        sortSelect.value = 'lname_asc'; // ✅ reset to A–Z
-        applyAll();
-        searchInput.focus();
+        sortSelect.value = 'lname_asc';
+        requestAnimationFrame(() => {
+            applyAll();
+            hideSkeleton();
+            searchInput.focus();
+        });
     });
 
+    // Import
     const importBtn = document.getElementById('importBtn');
     const patientFile = document.getElementById('patientFile');
     const importForm = document.getElementById('importForm');
@@ -921,6 +1082,7 @@
         if (patientFile.files && patientFile.files.length > 0) importForm.submit();
     });
 
+    // Scroll/resize
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', () => {
         updateTheadHeight();
@@ -928,10 +1090,13 @@
         updateActiveLetterHighlight();
     });
 
-    // Initial
-    // Ensure default is A–Z even if browser preserves a previous selection
-    if (!sortSelect.value) sortSelect.value = 'lname_asc';
-    applyAll();
+    // Initial (nice “website feel”)
+    showSkeletonImmediate(220);
+    requestAnimationFrame(() => {
+        if (!sortSelect.value) sortSelect.value = 'lname_asc';
+        applyAll();
+        hideSkeleton();
+    });
 })();
 </script>
 
