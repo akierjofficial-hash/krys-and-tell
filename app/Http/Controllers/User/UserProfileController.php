@@ -74,20 +74,23 @@ class UserProfileController extends Controller
     {
         $user = $request->user();
 
-        // If user has no password yet (Google sign-in / nullable), don’t require current password.
+        // ✅ Only require current password if they previously SET a real password
+        $hasLocalPassword = (bool)($user->password_set ?? false);
+
         $rules = [
-            'password' => ['required','string','min:8','max:72','confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
 
-        if (!empty($user->password)) {
-            $rules['current_password'] = ['required','current_password'];
+        if ($hasLocalPassword) {
+            $rules['current_password'] = ['required', 'current_password'];
         }
 
-        $data = $request->validate($rules);
+        $validated = $request->validate($rules);
 
-        $user->password = Hash::make($data['password']);
+        $user->password = Hash::make($validated['password']);
+        $user->password_set = true; // ✅ after they set it once, require current password next time
         $user->save();
 
-        return back()->with('success', 'Password updated.');
+        return back()->with('success', $hasLocalPassword ? 'Password updated.' : 'Password set successfully.');
     }
 }

@@ -122,6 +122,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
+            // ✅ Delete user
+            Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
             // ✅ Activity Log per user
             Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');

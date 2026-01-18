@@ -33,7 +33,10 @@
         return $a->doctor->name ?? ($a->dentist_name ?? '—');
     };
 
-    $hasLocalPassword = !empty($user->password);
+    // ✅ IMPORTANT:
+    // password may be random (from Google signup) so it's NOT a reliable check.
+    // Only require current password if user previously SET one.
+    $hasLocalPassword = (bool)($user->password_set ?? false);
 @endphp
 
 <section class="section section-soft">
@@ -323,8 +326,10 @@
                                         </div>
                                     @endif
 
+                                    {{-- ✅ IMPORTANT: route is PUT so we must spoof PUT --}}
                                     <form method="POST" action="{{ route('user.profile.password') }}" class="mt-1">
                                         @csrf
+                                        @method('PUT')
 
                                         @if($hasLocalPassword)
                                             <div class="mb-3">
@@ -387,9 +392,7 @@
 
                         <div class="mt-3 d-grid gap-2">
                             @forelse($upcoming as $a)
-                                @php
-                                    [$label, $type] = $badge($a->status);
-                                @endphp
+                                @php [$label, $type] = $badge($a->status); @endphp
                                 <div class="kt-appt">
                                     <div class="d-flex justify-content-between align-items-start gap-2">
                                         <div style="min-width:0;">
@@ -472,8 +475,10 @@
                             {{ $hasLocalPassword ? 'Keep your account secure.' : 'Set a password to allow email + password login.' }}
                         </div>
 
+                        {{-- ✅ IMPORTANT: route is PUT so we must spoof PUT --}}
                         <form method="POST" action="{{ route('user.profile.password') }}" class="mt-3">
                             @csrf
+                            @method('PUT')
 
                             <div class="row g-3">
                                 @if($hasLocalPassword)

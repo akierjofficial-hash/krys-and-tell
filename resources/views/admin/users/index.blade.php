@@ -257,6 +257,21 @@
         color: var(--text) !important;
     }
 
+    /* ✅ Delete button style */
+    .abtn-danger{
+        background: rgba(239,68,68,.12) !important;
+        border-color: rgba(239,68,68,.22) !important;
+        color: #b91c1c !important;
+    }
+    .abtn-danger:hover{
+        background: rgba(239,68,68,.18) !important;
+    }
+    html[data-theme="dark"] .abtn-danger{
+        background: rgba(239,68,68,.14) !important;
+        border-color: rgba(239,68,68,.22) !important;
+        color: #fecaca !important;
+    }
+
     .footer{
         display:flex;
         align-items:center;
@@ -339,7 +354,7 @@
                         <th>Role</th>
                         <th>Status</th>
                         <th style="min-width: 240px;">Last Login</th>
-                        <th class="text-end" style="min-width: 320px;">Actions</th>
+                        <th class="text-end" style="min-width: 420px;">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -356,6 +371,7 @@
                             $roleClass = $roleText === 'admin' ? 'role-admin' : 'role-staff';
 
                             $isActive = (bool)($u->is_active ?? false);
+                            $isMe = auth()->check() && auth()->id() === $u->id;
                         @endphp
                         <tr>
                             <td>
@@ -412,7 +428,7 @@
                                 <form class="d-inline" method="POST" action="{{ route('admin.users.toggleActive', $u->id) }}">
                                     @csrf
                                     <button
-                                        class="btn btn-sm abtn"
+                                        class="btn btn-sm abtn me-1"
                                         type="submit"
                                         title="{{ $isActive ? 'Deactivate user' : 'Activate user' }}"
                                     >
@@ -420,6 +436,20 @@
                                         {{ $isActive ? 'Deactivate' : 'Activate' }}
                                     </button>
                                 </form>
+
+                                {{-- ✅ DELETE (hide for self) --}}
+                                @if(!$isMe)
+                                    <form class="d-inline"
+                                          method="POST"
+                                          action="{{ route('admin.users.destroy', $u->id) }}"
+                                          onsubmit="return confirm('Delete this user permanently? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm abtn abtn-danger" type="submit" title="Delete user">
+                                            <i class="fa fa-trash me-1"></i> Delete
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

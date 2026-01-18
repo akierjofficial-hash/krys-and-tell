@@ -20,32 +20,40 @@ class GoogleController extends Controller
     {
         $googleUser = Socialite::driver('google')->user();
 
+        // Find existing user by google_id OR email
         $user = User::where('google_id', $googleUser->id)
             ->orWhere('email', $googleUser->email)
             ->first();
 
         if (!$user) {
-            // ✅ Create user (password required in production DB)
+            // ✅ New Google signup -> role is always "user"
+            // ✅ Postgres requires NOT NULL password -> generate a random one
+            // ✅ password_set stays false so UI shows "Set Password" (no current_password)
             $user = User::create([
-                'name'              => $googleUser->name ?? $googleUser->nickname ?? 'User',
-                'email'             => $googleUser->email,
-                'google_id'         => $googleUser->id,
-                'role'              => 'user',
-                'password'          => Hash::make(Str::random(32)), // ✅ FIX
+                'name' => $googleUser->name ?? $googleUser->nickname ?? 'User',
+                'email' => $googleUser->email,
+                'google_id' => $googleUser->id,
+                'role' => 'user',
                 'email_verified_at' => now(),
+
+                'password' => Hash::make(Str::random(40)),
+                'password_set' => false,
             ]);
         } else {
+            // Link google_id if missing
             if (empty($user->google_id)) {
                 $user->google_id = $googleUser->id;
             }
 
+            // ✅ Do NOT overwrite staff/admin
             if (empty($user->role)) {
                 $user->role = 'user';
             }
 
-            // ✅ If legacy user has null password, patch it
-            if (empty($user->password)) {
-                $user->password = Hash::make(Str::random(32));
+            // ✅ If old users exist and password_set column is missing/null, keep it false by default
+            // (Only becomes true when they set a password in Profile)
+            if ($user->password_set === null) {
+                $user->password_set = false;
             }
 
             $user->save();
@@ -53,6 +61,7 @@ class GoogleController extends Controller
 
         Auth::login($user, true);
 
+        // Respect intended URL (e.g. booking) and fallback by role
         $fallback = match ($user->role) {
             'admin' => route('admin.dashboard'),
             'staff' => route('staff.dashboard'),

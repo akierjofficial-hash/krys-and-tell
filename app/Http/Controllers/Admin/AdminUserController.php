@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\User;
 use App\Models\ActivityLog; // ✅ add
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class AdminUserController extends Controller
 {
@@ -117,4 +119,44 @@ class AdminUserController extends Controller
 
         return view('admin.users.activity', compact('user', 'logs'));
     }
+    public function destroy(User $user)
+{
+    $me = auth()->user();
+
+    // ✅ Prevent deleting yourself
+    if ($me && $me->id === $user->id) {
+        return back()->with('error', "You can't delete your own account.");
+    }
+
+    // ✅ Prevent deleting the last admin
+    if (($user->role ?? '') === 'admin') {
+        $otherAdmins = User::where('role', 'admin')
+            ->where('id', '!=', $user->id)
+            ->count();
+
+        if ($otherAdmins <= 0) {
+            return back()->with('error', "You can't delete the last admin account.");
+        }
+    }
+
+    try {
+        DB::transaction(function () use ($user) {
+            // ✅ Keep appointment history: move user-linked appointments to public_email fallback
+            Appointment::where('user_id', $user->id)
+                ->whereNull('public_email')
+                ->update(['public_email' => $user->email]);
+
+            Appointment::where('user_id', $user->id)
+                ->update(['user_id' => null]);
+
+            // ✅ Delete user
+            $user->delete();
+        });
+
+        return back()->with('success', 'User deleted successfully.');
+    } catch (\Throwable $e) {
+        return back()->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');
+    }
+}
+
 }
