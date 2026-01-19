@@ -19,8 +19,12 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
     public int $visitsCreated = 0;
     public int $proceduresCreated = 0;
     public int $skipped = 0;
+
     /** @var string[] */
     public array $errors = [];
+
+    // ✅ match your DB column: visit_procedures.tooth_number (string, 10)
+    private int $toothNumberMaxLen = 10;
 
     public function collection(Collection $rows)
     {
@@ -41,7 +45,6 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
 
         foreach ($groups as $groupKey => $items) {
             DB::transaction(function () use ($groupKey, $items) {
-                $firstRow = $items[0]['row'];
 
                 // Optional: attach procedures to an existing visit if visit_id is provided
                 $visitId = $this->pick($items, 'visit_id');
@@ -110,8 +113,7 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                     return;
                 }
 
-                $visitNotes = trim((string)($this->pick($items, 'visit_notes') ?? ''));
-                $visitNotes = $visitNotes !== '' ? $visitNotes : null;
+                $visitNotes = $this->nullIfEmpty($this->pick($items, 'visit_notes'));
 
                 // Build procedures payload first (so we don’t create an empty visit)
                 $procedurePayloads = [];
@@ -120,6 +122,7 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                     $rowNo = $it['rowNo'];
                     $row   = $it['row'];
 
+                    // Resolve service
                     $service = null;
                     $serviceId = $row['service_id'] ?? null;
 
@@ -144,9 +147,16 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                     $override = $this->toMoney($row['procedure_price'] ?? null);
                     $price = $override !== null ? $override : (float)($service->base_price ?? 0);
 
+                    // ✅ tooth_number safety (prevents varchar(10) crash)
+                    $tooth = $this->nullIfEmpty($row['tooth_number'] ?? null);
+                    if ($tooth !== null && mb_strlen($tooth) > $this->toothNumberMaxLen) {
+                        $this->errors[] = "Row {$rowNo}: tooth_number too long (max {$this->toothNumberMaxLen}). Truncated.";
+                        $tooth = mb_substr($tooth, 0, $this->toothNumberMaxLen);
+                    }
+
                     $procedurePayloads[] = [
                         'service_id'   => $service->id,
-                        'tooth_number' => $this->nullIfEmpty($row['tooth_number'] ?? null),
+                        'tooth_number' => $tooth,
                         'surface'      => $this->nullIfEmpty($row['surface'] ?? null),
                         'shade'        => $this->nullIfEmpty($row['shade'] ?? null),
                         'price'        => $price,
@@ -210,6 +220,12 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
     {
         if ($value === null || $value === '') return null;
 
+        // ✅ Excel sometimes gives DateTime objects
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value)->toDateString();
+        }
+
+        // ✅ Excel numeric date
         if (is_numeric($value)) {
             return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->toDateString();
         }
@@ -230,12 +246,15 @@ class VisitsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
     private function toMoney($value): ?float
     {
         if ($value === null || $value === '') return null;
+
         if (is_string($value)) {
             $value = trim($value);
             if ($value === '') return null;
             $value = preg_replace('/[^0-9.\-]/', '', $value);
         }
+
         if (!is_numeric($value)) return null;
+
         return (float)$value;
     }
 }
