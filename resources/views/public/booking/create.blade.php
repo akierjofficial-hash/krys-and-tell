@@ -8,6 +8,7 @@
     $fullName = trim(old('full_name', $u->name ?? ''));
     $email    = trim(old('email', $u->email ?? ''));
 
+    // Best-effort split for old hidden fields (some controllers still validate these)
     $parts = preg_split('/\s+/', trim($u->name ?? ''), -1, PREG_SPLIT_NO_EMPTY);
     $first = $parts[0] ?? '';
     $last  = count($parts) > 1 ? $parts[count($parts)-1] : ($parts[0] ?? '');
@@ -17,8 +18,23 @@
     if ($last === '' && $first !== '') $last = $first;
 
     $doctorRequired = ($doctors->count() > 0);
-
     $hasSuccess = session('booking_success') && !empty($successAppointment);
+
+    // ✅ These are passed from controller (fallback safe)
+    $needsDetails = $needsDetails ?? true;
+    $profile = $profile ?? ['contact' => null, 'address' => null, 'birthdate' => null];
+
+    // Prefill helpers
+    $contactVal = old('contact', $profile['contact'] ?? ($u->phone_number ?? ''));
+    $addressVal = old('address', $profile['address'] ?? ($u->address ?? ''));
+
+    $birthdateVal = old('birthdate');
+    if (!$birthdateVal && !empty($profile['birthdate'])) {
+        try { $birthdateVal = \Carbon\Carbon::parse($profile['birthdate'])->format('Y-m-d'); } catch (\Throwable $e) {}
+    }
+    if (!$birthdateVal && !empty($u->birthdate)) {
+        try { $birthdateVal = \Carbon\Carbon::parse($u->birthdate)->format('Y-m-d'); } catch (\Throwable $e) {}
+    }
 @endphp
 
 <section class="section section-soft kt-booking-page">
@@ -74,6 +90,14 @@
         html[data-theme="dark"] .kt-sticky-submit{
             background: linear-gradient(to top, rgba(17,24,39,.92), rgba(17,24,39,.55), rgba(17,24,39,0));
         }
+        .kt-help{
+            font-size: 12px;
+            color: rgba(15, 23, 42, .6);
+            font-weight: 650;
+        }
+        html[data-theme="dark"] .kt-help{
+            color: rgba(226, 232, 240, .65);
+        }
     </style>
 
     <div class="container">
@@ -128,10 +152,25 @@
                 @else
                     <div class="card card-soft p-4">
                         <h2 class="sec-title mb-2">Book: {{ $service->name }}</h2>
-                        <div class="sec-sub">
-                            Only select doctor, date, time, and contact number.
-                            Appointment will be created as <b>Pending</b>.
-                        </div>
+
+                        @if($needsDetails)
+                            <div class="sec-sub">
+                                Select doctor, date, time — then fill <b>contact number</b>, <b>address</b>, and <b>birthdate</b>.
+                                Appointment will be created as <b>Pending</b>.
+                            </div>
+                        @else
+                            <div class="sec-sub">
+                                Select doctor, date, and time. We’ll use your saved contact, address, and birthdate.
+                                Appointment will be created as <b>Pending</b>.
+                            </div>
+
+                            <div class="alert alert-light border mt-3" style="border-radius:16px;">
+                                <div style="font-weight:900;">Using saved details</div>
+                                <div class="small text-muted">
+                                    Contact, address, and birthdate are already on record — no need to re-enter.
+                                </div>
+                            </div>
+                        @endif
 
                         @if ($errors->any())
                             <div class="alert alert-danger mt-3">
@@ -159,7 +198,7 @@
                                 </div>
                             </div>
 
-                            {{-- Hidden fields for current controller validation --}}
+                            {{-- Hidden fields (keep for controllers that still validate these) --}}
                             <input type="hidden" name="first_name" value="{{ old('first_name', $first) }}">
                             <input type="hidden" name="middle_name" value="{{ old('middle_name', $middle) }}">
                             <input type="hidden" name="last_name" value="{{ old('last_name', $last) }}">
@@ -218,23 +257,64 @@
                                     @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                 </div>
 
-                                {{-- Contact --}}
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Step 4: Contact Number</label>
-                                    <input class="form-control"
-                                           type="tel"
-                                           name="contact"
-                                           value="{{ old('contact') }}"
-                                           placeholder="09xx xxx xxxx"
-                                           inputmode="tel"
-                                           required>
-                                    @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-                                </div>
+                                {{-- If details needed, Contact goes in this row --}}
+                                @if($needsDetails)
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Step 4: Contact Number</label>
+                                        <input class="form-control"
+                                               type="tel"
+                                               name="contact"
+                                               value="{{ $contactVal }}"
+                                               placeholder="09xx xxx xxxx"
+                                               inputmode="tel"
+                                               required>
+                                        <div class="kt-help mt-1">We’ll use this to confirm your booking.</div>
+                                        @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                    </div>
+                                @endif
                             </div>
 
-                            {{-- Optional hidden fields --}}
-                            <input type="hidden" name="address" value="{{ old('address', '') }}">
-                            <input type="hidden" name="message" value="{{ old('message', '') }}">
+                            {{-- If details already saved, send hidden values --}}
+                            @if(!$needsDetails)
+                                <input type="hidden" name="contact" value="{{ $contactVal }}">
+                                <input type="hidden" name="address" value="{{ $addressVal }}">
+                                <input type="hidden" name="birthdate" value="{{ $birthdateVal }}">
+                            @else
+                                <div class="row g-3 mt-1">
+                                    {{-- Address --}}
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold">Step 5: Address</label>
+                                        <input class="form-control"
+                                               type="text"
+                                               name="address"
+                                               value="{{ $addressVal }}"
+                                               placeholder="Complete address"
+                                               required>
+                                        @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                    </div>
+
+                                    {{-- Birthdate --}}
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Step 6: Birthdate</label>
+                                        <input class="form-control"
+                                               type="date"
+                                               name="birthdate"
+                                               value="{{ $birthdateVal }}"
+                                               max="{{ now()->subDay()->toDateString() }}"
+                                               required>
+                                        <div class="kt-help mt-1">Used for your patient record.</div>
+                                        @error('birthdate')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Optional message --}}
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">Message (optional)</label>
+                                <textarea class="form-control" name="message" rows="3" maxlength="500"
+                                          placeholder="Anything you want us to know?">{{ old('message') }}</textarea>
+                                @error('message')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
 
                             {{-- Desktop submit --}}
                             <button class="btn kt-btn kt-btn-primary text-white mt-4 d-none d-md-inline-flex" type="submit">
@@ -254,7 +334,7 @@
                 @endif
             </div>
 
-            {{-- Right image always stays (even on success) --}}
+            {{-- Right image always stays --}}
             <div class="col-lg-6">
                 <div class="img-tile" style="height:520px;">
                     <img src="{{ asset('assets/img/public/pic7.jpg') }}" alt="Clinic">
@@ -277,7 +357,6 @@
     const doctorRequired = @json($doctors->count() > 0);
     const oldTime = @json(old('time'));
 
-    // success view => no form
     if (!dateEl || !timeEl) return;
 
     function setLoading(msg){
@@ -319,11 +398,8 @@
         }).join('');
 
         const btns = Array.from(gridEl.querySelectorAll('.kt-slot'));
-        const markActive = (val) => {
-            btns.forEach(b => b.classList.toggle('is-active', b.dataset.time === val));
-        };
+        const markActive = (val) => btns.forEach(b => b.classList.toggle('is-active', b.dataset.time === val));
 
-        // initial
         markActive(timeEl.value);
 
         btns.forEach(btn => {
@@ -379,7 +455,6 @@
             return;
         }
 
-        // Dropdown shows start–end range too
         timeEl.innerHTML = `<option value="">Select time…</option>` + slots.map(t => {
             const selected = (oldTime && oldTime === t) ? 'selected' : '';
             let label = fmt12h(t);
@@ -394,7 +469,6 @@
 
         if (oldTime) timeEl.value = oldTime;
 
-        // Mobile grid
         renderGrid(slots, duration);
 
         if (helpEl){

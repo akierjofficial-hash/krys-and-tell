@@ -428,15 +428,6 @@
 
             {{-- Actions (always visible, top-right on mobile) --}}
             <div class="d-flex align-items-center gap-2 order-2 ms-auto order-lg-3">
-                <a class="btn kt-btn kt-btn-primary text-white d-inline-flex d-lg-none px-3"
-                   href="{{ url('/services') }}"
-                   title="Book">
-                    <i class="fa-solid fa-calendar-check"></i>
-                </a>
-                <a class="btn kt-btn kt-btn-primary text-white d-none d-lg-inline-flex"
-                   href="{{ url('/services') }}">
-                    <i class="fa-solid fa-calendar-check me-1"></i> Book
-                </a>
 
                 @auth
                     <div class="dropdown">

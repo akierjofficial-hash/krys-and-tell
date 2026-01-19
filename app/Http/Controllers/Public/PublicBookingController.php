@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\Patient;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -25,14 +26,19 @@ class PublicBookingController extends Controller
                 ->first();
         }
 
-        // ✅ Optional: pass user for autofill in blade
-        $authUser = auth()->user();
+        // ✅ Determine if we still need contact/address/birthdate from this user
+        $user = auth()->user();
+        $profile = $this->knownBookingDetails($user);
+        $needsDetails = $user ? !$profile['complete'] : true;
 
         return view('public.booking.create', [
             'service' => $service,
             'doctors' => $doctors,
             'successAppointment' => $successAppointment,
-            'authUser' => $authUser,
+
+            // ✅ for blade logic
+            'needsDetails' => $needsDetails,
+            'profile' => $profile,
         ]);
     }
 
@@ -72,13 +78,10 @@ class PublicBookingController extends Controller
         $doctorRequired = $this->doctorRequired();
         $user = auth()->user();
 
-        // ✅ If logged-in and already has phone, contact can be optional.
-        $needsContact = true;
-        if ($user && Schema::hasColumn('users', 'phone_number')) {
-            $needsContact = empty($user->phone_number);
-        }
+        // ✅ Decide if we should require details this time
+        $profile = $this->knownBookingDetails($user);
+        $needsDetails = $user ? !$profile['complete'] : true;
 
-        // ✅ Validation rules adapt based on login
         $rules = [
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time' => ['required', 'date_format:H:i'],
@@ -87,14 +90,15 @@ class PublicBookingController extends Controller
                 ? ['required', 'integer', 'exists:doctors,id']
                 : ['nullable', 'integer', 'exists:doctors,id'],
 
-            // Contact + address (user will fill contact, address optional)
-            'contact' => $needsContact ? ['required', 'string', 'max:40'] : ['nullable', 'string', 'max:40'],
-            'address' => ['nullable', 'string', 'max:255'],
+            // ✅ only required on first booking (or when missing)
+            'contact'   => $needsDetails ? ['required', 'string', 'max:40'] : ['nullable', 'string', 'max:40'],
+            'address'   => $needsDetails ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
+            'birthdate' => $needsDetails ? ['required', 'date', 'before:today', 'after:1900-01-01'] : ['nullable', 'date'],
 
             'message' => ['nullable', 'string', 'max:500'],
         ];
 
-        // ✅ Only require name/email if NOT logged in
+        // (Your booking is likely auth-only, but keep robust)
         if (!$user) {
             $rules = array_merge($rules, [
                 'first_name'  => ['required', 'string', 'max:120'],
@@ -103,7 +107,6 @@ class PublicBookingController extends Controller
                 'email'       => ['required', 'email', 'max:190'],
             ]);
         } else {
-            // still accept them if your form sends them
             $rules = array_merge($rules, [
                 'first_name'  => ['nullable', 'string', 'max:120'],
                 'middle_name' => ['nullable', 'string', 'max:120'],
@@ -128,9 +131,7 @@ class PublicBookingController extends Controller
                 ->withInput();
         }
 
-        // ✅ Build identity fields:
-        // - If logged in: use user.name + user.email
-        // - Else: use request fields
+        // ✅ Identity fields
         $first = $request->first_name;
         $middle = $request->middle_name;
         $last = $request->last_name;
@@ -143,30 +144,40 @@ class PublicBookingController extends Controller
         }
 
         $fullName = trim(($first ?: '') . ' ' . ($middle ? trim($middle) . ' ' : '') . ($last ?: ''));
-        if ($user && empty($fullName)) {
-            $fullName = $user->name ?? 'User';
-        }
-        if (!$user && empty($fullName)) {
-            $fullName = 'Guest';
-        }
+        if ($user && empty($fullName)) $fullName = $user->name ?? 'User';
+        if (!$user && empty($fullName)) $fullName = 'Guest';
 
         $email = $user ? ($user->email ?? $request->email) : $request->email;
 
-        // ✅ contact/address:
-        // - If user has phone/address saved, use it unless user enters new data
-        $contact = $request->contact;
-        if ($user && Schema::hasColumn('users', 'phone_number') && empty($contact)) {
-            $contact = $user->phone_number;
+        // ✅ Use submitted details if present, otherwise fall back to stored details
+        $contact = $request->filled('contact') ? $request->contact : ($profile['contact'] ?? null);
+        $address = $request->filled('address') ? $request->address : ($profile['address'] ?? null);
+
+        $birthdate = null;
+        if ($request->filled('birthdate')) {
+            $birthdate = Carbon::parse($request->birthdate)->toDateString();
+        } elseif (!empty($profile['birthdate'])) {
+            try { $birthdate = Carbon::parse($profile['birthdate'])->toDateString(); } catch (\Throwable $e) {}
         }
 
-        $address = $request->address;
-        if ($user && Schema::hasColumn('users', 'address') && empty($address)) {
-            $address = $user->address;
-        }
-
-        return DB::transaction(function () use ($request, $service, $date, $time, $doctorId, $fullName, $durationMinutes, $user, $first, $middle, $last, $email, $contact, $address) {
-
-            // ✅ If user typed contact/address and their profile is empty -> save to users table (one-time capture)
+        return DB::transaction(function () use (
+            $request,
+            $service,
+            $date,
+            $time,
+            $doctorId,
+            $fullName,
+            $durationMinutes,
+            $user,
+            $first,
+            $middle,
+            $last,
+            $email,
+            $contact,
+            $address,
+            $birthdate
+        ) {
+            // ✅ Optional: if users table has these cols, capture them once
             if ($user) {
                 $dirty = false;
 
@@ -180,9 +191,12 @@ class PublicBookingController extends Controller
                     $dirty = true;
                 }
 
-                if ($dirty) {
-                    $user->save();
+                if (Schema::hasColumn('users', 'birthdate') && empty($user->birthdate) && !empty($birthdate)) {
+                    $user->birthdate = $birthdate;
+                    $dirty = true;
                 }
+
+                if ($dirty) $user->save();
             }
 
             $appointment = new Appointment();
@@ -197,7 +211,6 @@ class PublicBookingController extends Controller
                 $appointment->appointment_time = $time;
             }
 
-            // ✅ store duration for overlap logic (if column exists)
             if (Schema::hasColumn('appointments', 'duration_minutes')) {
                 $appointment->duration_minutes = $durationMinutes;
             }
@@ -227,12 +240,17 @@ class PublicBookingController extends Controller
             if (Schema::hasColumn('appointments', 'public_email')) {
                 $appointment->public_email = $email;
             }
-            if (Schema::hasColumn('appointments', 'public_phone')) {
+            if (Schema::hasColumn('appointments', 'public_phone') && !empty($contact)) {
                 $appointment->public_phone = $contact;
             }
-            if (Schema::hasColumn('appointments', 'public_address')) {
+            if (Schema::hasColumn('appointments', 'public_address') && !empty($address)) {
                 $appointment->public_address = $address;
             }
+
+            if (Schema::hasColumn('appointments', 'public_birthdate') && !empty($birthdate)) {
+                $appointment->public_birthdate = $birthdate;
+            }
+
             if (Schema::hasColumn('appointments', 'public_message')) {
                 $appointment->public_message = $request->message;
             }
@@ -245,14 +263,13 @@ class PublicBookingController extends Controller
                 $appointment->user_id = $user->id;
             }
 
-            // ✅ ensure email is consistent with logged-in user
+            // ensure email is consistent with logged-in user
             if ($user && Schema::hasColumn('appointments', 'public_email')) {
                 $appointment->public_email = $user->email;
             }
 
             $appointment->save();
 
-            // ✅ SAME PAGE: redirect back to create with flash data
             return redirect()
                 ->route('public.booking.create', $service->id)
                 ->with('booking_success', true)
@@ -261,8 +278,101 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * Split a full name into first/middle/last (best-effort).
+     * ✅ Detect existing contact/address/birthdate so we can hide fields on next bookings.
      */
+    private function knownBookingDetails($user): array
+    {
+        $data = [
+            'contact' => null,
+            'address' => null,
+            'birthdate' => null,
+            'source' => null,
+            'complete' => false,
+        ];
+
+        if (!$user) return $data;
+
+        // 1) users table (optional)
+        if (Schema::hasColumn('users', 'phone_number') && !empty($user->phone_number)) {
+            $data['contact'] = $data['contact'] ?? $user->phone_number;
+            $data['source'] = $data['source'] ?? 'users.phone_number';
+        }
+        if (Schema::hasColumn('users', 'address') && !empty($user->address)) {
+            $data['address'] = $data['address'] ?? $user->address;
+            $data['source'] = $data['source'] ?? 'users.address';
+        }
+        if (Schema::hasColumn('users', 'birthdate') && !empty($user->birthdate)) {
+            $data['birthdate'] = $data['birthdate'] ?? $user->birthdate;
+            $data['source'] = $data['source'] ?? 'users.birthdate';
+        }
+
+        // 2) patients table (best)
+        if (Schema::hasTable('patients')) {
+            $pq = Patient::query();
+
+            if (Schema::hasColumn('patients', 'user_id')) {
+                $pq->where('user_id', $user->id);
+            } elseif (Schema::hasColumn('patients', 'email') && !empty($user->email)) {
+                $pq->where('email', $user->email);
+            }
+
+            $patient = $pq->first();
+            if ($patient) {
+                // contact
+                if (empty($data['contact'])) {
+                    foreach (['contact', 'contact_number', 'phone', 'mobile'] as $col) {
+                        if (Schema::hasColumn('patients', $col) && !empty($patient->{$col})) {
+                            $data['contact'] = $patient->{$col};
+                            $data['source'] = 'patients.' . $col;
+                            break;
+                        }
+                    }
+                }
+
+                // address
+                if (empty($data['address']) && Schema::hasColumn('patients', 'address') && !empty($patient->address)) {
+                    $data['address'] = $patient->address;
+                    $data['source'] = $data['source'] ?? 'patients.address';
+                }
+
+                // birthdate
+                if (empty($data['birthdate']) && Schema::hasColumn('patients', 'birthdate') && !empty($patient->birthdate)) {
+                    $data['birthdate'] = $patient->birthdate;
+                    $data['source'] = $data['source'] ?? 'patients.birthdate';
+                }
+            }
+        }
+
+        // 3) last appointment fallback
+        if (Schema::hasTable('appointments')) {
+            $aq = Appointment::query()
+                ->latest()
+                ->when(Schema::hasColumn('appointments', 'user_id'), fn($q) => $q->where('user_id', $user->id))
+                ->when(!Schema::hasColumn('appointments', 'user_id') && Schema::hasColumn('appointments', 'public_email'),
+                    fn($q) => $q->where('public_email', $user->email)
+                );
+
+            $last = $aq->first();
+            if ($last) {
+                if (empty($data['contact']) && !empty($last->public_phone)) {
+                    $data['contact'] = $last->public_phone;
+                    $data['source'] = $data['source'] ?? 'appointments.public_phone';
+                }
+                if (empty($data['address']) && !empty($last->public_address)) {
+                    $data['address'] = $last->public_address;
+                    $data['source'] = $data['source'] ?? 'appointments.public_address';
+                }
+                if (empty($data['birthdate']) && !empty($last->public_birthdate)) {
+                    $data['birthdate'] = $last->public_birthdate;
+                    $data['source'] = $data['source'] ?? 'appointments.public_birthdate';
+                }
+            }
+        }
+
+        $data['complete'] = !empty($data['contact']) && !empty($data['address']) && !empty($data['birthdate']);
+        return $data;
+    }
+
     private function splitName(string $name): array
     {
         $name = trim(preg_replace('/\s+/', ' ', $name));
@@ -282,9 +392,6 @@ class PublicBookingController extends Controller
         return ['first' => $first, 'middle' => $middle, 'last' => $last];
     }
 
-    /**
-     * ✅ TIME TRAP + OVERLAP SAFE SLOTS
-     */
     private function computeSlots(string $date, ?int $doctorId, int $durationMinutes): array
     {
         $tz = config('app.timezone');
@@ -293,18 +400,15 @@ class PublicBookingController extends Controller
         $day = Carbon::parse($date, $tz)->dayOfWeekIso; // 7 = Sunday
         if ($day === 7) return [];
 
-        // clinic hours
         $openStart = Carbon::parse("$date 09:00", $tz);
         $openEnd   = Carbon::parse("$date 18:00", $tz);
 
-        // settings
         $stepMinutes = 30;
         $leadMinutesToday = 60;
 
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
         if (!Schema::hasColumn('appointments', 'appointment_date')) return [];
 
-        // today -> remove past times + lead time
         $minStart = $openStart->copy();
         $now = now($tz);
 
@@ -314,20 +418,17 @@ class PublicBookingController extends Controller
             if ($minStart->lt($openStart)) $minStart = $openStart->copy();
         }
 
-        // build blocked intervals
         $bookedQuery = Appointment::query()->select(['appointment_time']);
-
         if (Schema::hasColumn('appointments', 'duration_minutes')) {
             $bookedQuery->addSelect('duration_minutes');
         }
 
         $bookedQuery->whereDate('appointment_date', $date);
 
-        // ignore cancelled/declined/rejected
         if (Schema::hasColumn('appointments', 'status')) {
             $bookedQuery->where(function ($q) {
                 $q->whereNull('status')
-                    ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
+                  ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
             });
         }
 
@@ -348,7 +449,6 @@ class PublicBookingController extends Controller
             return [$start, $end];
         })->filter()->values();
 
-        // generate slots
         $slots = [];
         $cursor = $openStart->copy();
 
@@ -359,7 +459,6 @@ class PublicBookingController extends Controller
             }
 
             $candidateEnd = $cursor->copy()->addMinutes($durationMinutes);
-
             if ($candidateEnd->gt($openEnd)) break;
 
             $overlap = false;
