@@ -25,10 +25,14 @@ class PublicBookingController extends Controller
                 ->first();
         }
 
+        // ✅ Optional: pass user for autofill in blade
+        $authUser = auth()->user();
+
         return view('public.booking.create', [
             'service' => $service,
             'doctors' => $doctors,
             'successAppointment' => $successAppointment,
+            'authUser' => $authUser,
         ]);
     }
 
@@ -66,8 +70,16 @@ class PublicBookingController extends Controller
     public function store(Request $request, Service $service)
     {
         $doctorRequired = $this->doctorRequired();
+        $user = auth()->user();
 
-        $request->validate([
+        // ✅ If logged-in and already has phone, contact can be optional.
+        $needsContact = true;
+        if ($user && Schema::hasColumn('users', 'phone_number')) {
+            $needsContact = empty($user->phone_number);
+        }
+
+        // ✅ Validation rules adapt based on login
+        $rules = [
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time' => ['required', 'date_format:H:i'],
 
@@ -75,39 +87,103 @@ class PublicBookingController extends Controller
                 ? ['required', 'integer', 'exists:doctors,id']
                 : ['nullable', 'integer', 'exists:doctors,id'],
 
-            'first_name'  => ['required', 'string', 'max:120'],
-            'middle_name' => ['nullable', 'string', 'max:120'],
-            'last_name'   => ['required', 'string', 'max:120'],
-
-            'email'   => ['required', 'email', 'max:190'],
-            'contact' => ['required', 'string', 'max:40'],
+            // Contact + address (user will fill contact, address optional)
+            'contact' => $needsContact ? ['required', 'string', 'max:40'] : ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
 
             'message' => ['nullable', 'string', 'max:500'],
-        ]);
+        ];
+
+        // ✅ Only require name/email if NOT logged in
+        if (!$user) {
+            $rules = array_merge($rules, [
+                'first_name'  => ['required', 'string', 'max:120'],
+                'middle_name' => ['nullable', 'string', 'max:120'],
+                'last_name'   => ['required', 'string', 'max:120'],
+                'email'       => ['required', 'email', 'max:190'],
+            ]);
+        } else {
+            // still accept them if your form sends them
+            $rules = array_merge($rules, [
+                'first_name'  => ['nullable', 'string', 'max:120'],
+                'middle_name' => ['nullable', 'string', 'max:120'],
+                'last_name'   => ['nullable', 'string', 'max:120'],
+                'email'       => ['nullable', 'email', 'max:190'],
+            ]);
+        }
+
+        $request->validate($rules);
 
         $date = Carbon::parse($request->date)->toDateString();
         $time = $request->time;
-
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
         $durationMinutes = $this->serviceDurationMinutes($service);
 
-        // ✅ TIME TRAP: re-check availability at submit time (overlap / past / too-close / closing)
+        // ✅ TIME TRAP: re-check availability at submit time
         $available = in_array($time, $this->computeSlots($date, $doctorId, $durationMinutes), true);
         if (!$available) {
             return back()
-                ->withErrors(['time' => 'That time slot is no longer available (overlap / too close / past / clinic closing). Please choose another.'])
+                ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
                 ->withInput();
         }
 
-        $fullName = trim(
-            $request->first_name . ' ' .
-            ($request->middle_name ? trim($request->middle_name) . ' ' : '') .
-            $request->last_name
-        );
+        // ✅ Build identity fields:
+        // - If logged in: use user.name + user.email
+        // - Else: use request fields
+        $first = $request->first_name;
+        $middle = $request->middle_name;
+        $last = $request->last_name;
 
-        return DB::transaction(function () use ($request, $service, $date, $time, $doctorId, $fullName, $durationMinutes) {
+        if ($user) {
+            $nameParts = $this->splitName($user->name ?? '');
+            $first  = $first  ?: $nameParts['first'];
+            $middle = $middle ?: $nameParts['middle'];
+            $last   = $last   ?: $nameParts['last'];
+        }
+
+        $fullName = trim(($first ?: '') . ' ' . ($middle ? trim($middle) . ' ' : '') . ($last ?: ''));
+        if ($user && empty($fullName)) {
+            $fullName = $user->name ?? 'User';
+        }
+        if (!$user && empty($fullName)) {
+            $fullName = 'Guest';
+        }
+
+        $email = $user ? ($user->email ?? $request->email) : $request->email;
+
+        // ✅ contact/address:
+        // - If user has phone/address saved, use it unless user enters new data
+        $contact = $request->contact;
+        if ($user && Schema::hasColumn('users', 'phone_number') && empty($contact)) {
+            $contact = $user->phone_number;
+        }
+
+        $address = $request->address;
+        if ($user && Schema::hasColumn('users', 'address') && empty($address)) {
+            $address = $user->address;
+        }
+
+        return DB::transaction(function () use ($request, $service, $date, $time, $doctorId, $fullName, $durationMinutes, $user, $first, $middle, $last, $email, $contact, $address) {
+
+            // ✅ If user typed contact/address and their profile is empty -> save to users table (one-time capture)
+            if ($user) {
+                $dirty = false;
+
+                if (Schema::hasColumn('users', 'phone_number') && empty($user->phone_number) && !empty($contact)) {
+                    $user->phone_number = $contact;
+                    $dirty = true;
+                }
+
+                if (Schema::hasColumn('users', 'address') && empty($user->address) && !empty($address)) {
+                    $user->address = $address;
+                    $dirty = true;
+                }
+
+                if ($dirty) {
+                    $user->save();
+                }
+            }
 
             $appointment = new Appointment();
 
@@ -139,23 +215,23 @@ class PublicBookingController extends Controller
             }
 
             if (Schema::hasColumn('appointments', 'public_first_name')) {
-                $appointment->public_first_name = $request->first_name;
+                $appointment->public_first_name = $first;
             }
             if (Schema::hasColumn('appointments', 'public_middle_name')) {
-                $appointment->public_middle_name = $request->middle_name;
+                $appointment->public_middle_name = $middle;
             }
             if (Schema::hasColumn('appointments', 'public_last_name')) {
-                $appointment->public_last_name = $request->last_name;
+                $appointment->public_last_name = $last;
             }
 
             if (Schema::hasColumn('appointments', 'public_email')) {
-                $appointment->public_email = $request->email;
+                $appointment->public_email = $email;
             }
             if (Schema::hasColumn('appointments', 'public_phone')) {
-                $appointment->public_phone = $request->contact;
+                $appointment->public_phone = $contact;
             }
             if (Schema::hasColumn('appointments', 'public_address')) {
-                $appointment->public_address = $request->address;
+                $appointment->public_address = $address;
             }
             if (Schema::hasColumn('appointments', 'public_message')) {
                 $appointment->public_message = $request->message;
@@ -165,13 +241,13 @@ class PublicBookingController extends Controller
                 $appointment->status = 'pending';
             }
 
-            if (auth()->check() && Schema::hasColumn('appointments', 'user_id')) {
-                $appointment->user_id = auth()->id();
+            if ($user && Schema::hasColumn('appointments', 'user_id')) {
+                $appointment->user_id = $user->id;
             }
 
-            // recommended for consistent matching
-            if (auth()->check() && Schema::hasColumn('appointments', 'public_email')) {
-                $appointment->public_email = auth()->user()->email;
+            // ✅ ensure email is consistent with logged-in user
+            if ($user && Schema::hasColumn('appointments', 'public_email')) {
+                $appointment->public_email = $user->email;
             }
 
             $appointment->save();
@@ -185,8 +261,29 @@ class PublicBookingController extends Controller
     }
 
     /**
+     * Split a full name into first/middle/last (best-effort).
+     */
+    private function splitName(string $name): array
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name));
+        if ($name === '') {
+            return ['first' => null, 'middle' => null, 'last' => null];
+        }
+
+        $parts = explode(' ', $name);
+        if (count($parts) === 1) {
+            return ['first' => $parts[0], 'middle' => null, 'last' => null];
+        }
+
+        $first = array_shift($parts);
+        $last = array_pop($parts);
+        $middle = count($parts) ? implode(' ', $parts) : null;
+
+        return ['first' => $first, 'middle' => $middle, 'last' => $last];
+    }
+
+    /**
      * ✅ TIME TRAP + OVERLAP SAFE SLOTS
-     * $durationMinutes comes from service.duration_minutes (fallback 60)
      */
     private function computeSlots(string $date, ?int $doctorId, int $durationMinutes): array
     {
@@ -207,7 +304,7 @@ class PublicBookingController extends Controller
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
         if (!Schema::hasColumn('appointments', 'appointment_date')) return [];
 
-        // ✅ Time trap: today -> remove past times + lead time
+        // today -> remove past times + lead time
         $minStart = $openStart->copy();
         $now = now($tz);
 
@@ -217,7 +314,7 @@ class PublicBookingController extends Controller
             if ($minStart->lt($openStart)) $minStart = $openStart->copy();
         }
 
-        // ✅ Build blocked intervals from existing appointments
+        // build blocked intervals
         $bookedQuery = Appointment::query()->select(['appointment_time']);
 
         if (Schema::hasColumn('appointments', 'duration_minutes')) {
@@ -251,7 +348,7 @@ class PublicBookingController extends Controller
             return [$start, $end];
         })->filter()->values();
 
-        // ✅ Generate slot starts, excluding overlaps and closing overflow
+        // generate slots
         $slots = [];
         $cursor = $openStart->copy();
 
@@ -263,7 +360,6 @@ class PublicBookingController extends Controller
 
             $candidateEnd = $cursor->copy()->addMinutes($durationMinutes);
 
-            // must finish before closing
             if ($candidateEnd->gt($openEnd)) break;
 
             $overlap = false;
@@ -290,7 +386,6 @@ class PublicBookingController extends Controller
         if (Schema::hasColumn('services', 'duration_minutes') && !empty($service->duration_minutes)) {
             $d = (int) $service->duration_minutes;
         }
-        // clamp to sane range
         return max(15, min(240, $d));
     }
 

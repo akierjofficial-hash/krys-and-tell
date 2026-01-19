@@ -252,6 +252,7 @@
         text-decoration: none;
         border-radius: 12px;
         transition: .18s ease;
+        position: relative; /* ✅ for badges */
     }
 
     .sidebar-menu a:hover {
@@ -264,6 +265,27 @@
         background: rgba(255, 255, 255, .18);
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
         color: #fff;
+    }
+
+    /* ✅ Messages unread badge (sidebar) */
+    .kt-nav-badge{
+        position:absolute;
+        top: 8px;
+        right: 10px;
+        min-width: 20px;
+        height: 18px;
+        padding: 0 6px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        font-size: 11px;
+        font-weight: 950;
+        border-radius: 999px;
+        background: rgba(239, 68, 68, .22);
+        border: 1px solid rgba(239, 68, 68, .35);
+        color: #fff;
+        box-shadow: 0 0 0 2px rgba(255,255,255,.12);
+        line-height: 1;
     }
 
     .sidebar-footer {
@@ -324,7 +346,6 @@
 
     /* ---------- Tables ---------- */
     .table, table { color: var(--kt-text); }
-
     .table td, .table th { border-color: var(--kt-border) !important; }
 
     .table thead th {
@@ -884,6 +905,17 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         <div class="side-overlay" id="sideOverlay"></div>
 
         <!-- SIDEBAR -->
+        @php
+            // ✅ unread message badge for sidebar/top
+            $unreadMessages = 0;
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('contact_messages')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('contact_messages', 'read_at')) {
+                    $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
+                }
+            } catch (\Throwable $e) { $unreadMessages = 0; }
+        @endphp
+
         <div class="sidebar" id="staffSidebar">
             <div class="brand">
                 <div class="brand-left">
@@ -936,6 +968,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 <a href="{{ route('staff.messages.index') }}"
                     class="{{ request()->routeIs('staff.messages.*') ? 'active' : '' }}">
                     <i class="fa fa-inbox"></i> Messages
+                    <span id="msgNavBadge" class="kt-nav-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
                 </a>
             </div>
 
@@ -952,7 +985,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         <!-- CONTENT -->
         <div class="content app-content">
-            {{-- Top bar: menu (left) + bell dropdown (right) --}}
+            {{-- Top bar: menu (left) + icons (right) --}}
             @php
             $pendingApprovals = 0;
             $pendingItems = collect();
@@ -983,6 +1016,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                 {{-- Right side --}}
                 <div class="ms-auto d-flex align-items-center gap-2 position-relative">
+                    {{-- ✅ Messages icon (with dot) --}}
+                    <a href="{{ route('staff.messages.index') }}"
+                       class="kt-top-icon position-relative text-decoration-none"
+                       title="Messages">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span id="msgTopDot" class="kt-dot {{ $unreadMessages > 0 ? '' : 'd-none' }}"></span>
+                    </a>
+
                     {{-- Bell button --}}
                     <button type="button" id="approvalBell" class="kt-top-icon position-relative border-0"
                         title="Approval Requests" aria-haspopup="true" aria-expanded="false">
@@ -1502,10 +1543,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             polling = true;
             try {
                 const res = await fetch(widgetUrl + '?limit=8', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     cache: 'no-store'
                 });
 
@@ -1515,22 +1553,18 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 const pendingCount = Number(data.pendingCount || 0);
                 setCount(pendingCount);
 
-                // update list always (so dropdown is always fresh)
                 renderItems(data.items || []);
 
-                // notify on increase
                 if (pendingCount > lastPending) {
                     window.KTToast?.show('info', 'New booking', 'A new approval request arrived.', 2200);
 
-                    // quick highlight on bell
                     bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
                     setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
                 }
 
                 lastPending = pendingCount;
             } catch (e) {
-                // silent fail (avoid annoying toasts)
-                // console.warn(e);
+                // silent
             } finally {
                 polling = false;
             }
@@ -1538,6 +1572,100 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         pollApprovals();
         setInterval(pollApprovals, 5000);
+
+        // =========================
+        // ✅ Messages realtime polling (AJAX) + badges
+        // =========================
+        // =========================
+// ✅ Messages realtime polling (AJAX) + badges (widget endpoint)
+// =========================
+const msgWidgetUrl = @json(route('staff.messages.widget'));
+const msgNavBadge = document.getElementById('msgNavBadge');
+const msgTopDot = document.getElementById('msgTopDot');
+
+let msgSince = localStorage.getItem('kt_msg_since') || '';
+let msgPolling = false;
+let msgLastUnread = Number(msgNavBadge?.textContent || 0);
+
+function setUnreadMessages(n) {
+    n = Number(n || 0);
+
+    if (msgNavBadge) {
+        msgNavBadge.textContent = String(n);
+        msgNavBadge.classList.toggle('d-none', n <= 0);
+    }
+
+    if (msgTopDot) {
+        msgTopDot.classList.toggle('d-none', n <= 0);
+    }
+
+    window.dispatchEvent(new CustomEvent('kt:messages:count', { detail: { unreadCount: n } }));
+}
+
+function normalizeMsg(m){
+    return {
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        message: m.message,
+        created_human: m.created_at, // ✅ matches your index listener
+        show_url: m.show_url
+    };
+}
+
+async function pollMessages() {
+    if (msgPolling) return;
+    if (document.hidden) return;
+
+    msgPolling = true;
+
+    const prevSince = msgSince;
+
+    try {
+        const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
+        const res = await fetch(url, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store'
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error('messages poll failed');
+
+        const unread = Number(data.unreadCount || 0);
+        setUnreadMessages(unread);
+
+        const latest = Array.isArray(data.latest) ? data.latest : [];
+        if (latest[0]?.created_at_iso) {
+            msgSince = latest[0].created_at_iso;
+            localStorage.setItem('kt_msg_since', msgSince);
+        }
+
+        // compute "new messages" client-side from latest list
+        let newMsgs = [];
+        if (prevSince) {
+            newMsgs = latest.filter(x => x.created_at_iso && x.created_at_iso > prevSince);
+        } else if (Number(data.newCount || 0) > 0) {
+            newMsgs = latest.slice(0, Math.min(5, latest.length));
+        }
+
+        if (newMsgs.length > 0) {
+            window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
+            window.dispatchEvent(new CustomEvent('kt:messages:new', {
+                detail: { messages: newMsgs.map(normalizeMsg) }
+            }));
+        }
+
+        msgLastUnread = unread;
+    } catch (e) {
+        // silent
+    } finally {
+        msgPolling = false;
+    }
+}
+
+pollMessages();
+setInterval(pollMessages, 6000);
+
 
     })();
     </script>

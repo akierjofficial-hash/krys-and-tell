@@ -13,45 +13,69 @@ class GoogleController extends Controller
 {
     public function redirect()
     {
-        return Socialite::driver('google')->redirect();
+        // ✅ Basic scopes only (no People API, no phone/address/birthday)
+        return Socialite::driver('google')
+            ->scopes(['openid', 'profile', 'email'])
+            ->with(['prompt' => 'select_account'])
+            ->redirect();
     }
 
     public function callback()
     {
-        $googleUser = Socialite::driver('google')->user();
+        try {
+            $googleUser = Socialite::driver('google')->user();
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Google sign-in failed. Please try again.']);
+        }
+
+        $googleId = $googleUser->getId();
+        $email    = $googleUser->getEmail();
+
+        if (empty($email)) {
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Google did not return an email address. Please use a different account.']);
+        }
 
         // Find existing user by google_id OR email
-        $user = User::where('google_id', $googleUser->id)
-            ->orWhere('email', $googleUser->email)
+        $user = User::query()
+            ->where('google_id', $googleId)
+            ->orWhere('email', $email)
             ->first();
 
         if (!$user) {
-            // ✅ New Google signup -> role is always "user"
-            // ✅ Postgres requires NOT NULL password -> generate a random one
-            // ✅ password_set stays false so UI shows "Set Password" (no current_password)
+            // ✅ New Google signup -> role always "user"
             $user = User::create([
-                'name' => $googleUser->name ?? $googleUser->nickname ?? 'User',
-                'email' => $googleUser->email,
-                'google_id' => $googleUser->id,
-                'role' => 'user',
+                'name'              => $googleUser->getName() ?: 'User',
+                'email'             => $email,
+                'google_id'         => $googleId,
+                'role'              => 'user',
                 'email_verified_at' => now(),
 
-                'password' => Hash::make(Str::random(40)),
-                'password_set' => false,
+                // required (password NOT NULL)
+                'password'          => Hash::make(Str::random(40)),
+                'password_set'      => false,
             ]);
         } else {
             // Link google_id if missing
             if (empty($user->google_id)) {
-                $user->google_id = $googleUser->id;
+                $user->google_id = $googleId;
             }
 
-            // ✅ Do NOT overwrite staff/admin
+            // ✅ never overwrite admin/staff role
             if (empty($user->role)) {
                 $user->role = 'user';
             }
 
-            // ✅ If old users exist and password_set column is missing/null, keep it false by default
-            // (Only becomes true when they set a password in Profile)
+            // Ensure email verified if they came via google
+            if (empty($user->email_verified_at)) {
+                $user->email_verified_at = now();
+            }
+
+            // Safety for older rows
             if ($user->password_set === null) {
                 $user->password_set = false;
             }
@@ -61,13 +85,7 @@ class GoogleController extends Controller
 
         Auth::login($user, true);
 
-        // Respect intended URL (e.g. booking) and fallback by role
-        $fallback = match ($user->role) {
-            'admin' => route('admin.dashboard'),
-            'staff' => route('staff.dashboard'),
-            default => route('public.home'),
-        };
-
-        return redirect()->intended($fallback);
+        // ✅ Use portal as a single “role router”
+        return redirect()->intended(route('portal'));
     }
 }

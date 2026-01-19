@@ -70,6 +70,9 @@ Route::get('/services/{service}', [PublicServiceController::class, 'show'])->nam
 */
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+
+    // (optional) add throttle if you want:
+    // Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:10,1')->name('login.submit');
     Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
 });
 
@@ -92,11 +95,15 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-    // ✅ Portal redirect based on role
+    // ✅ Portal redirect based on role (FIXED)
     Route::get('/portal', function () {
-        return (auth()->user()->role ?? 'staff') === 'admin'
-            ? redirect()->route('admin.dashboard')
-            : redirect()->route('staff.dashboard');
+        $role = auth()->user()->role ?? 'user';
+
+        return match ($role) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'staff' => redirect()->route('staff.dashboard'),
+            default => redirect()->route('profile.show'),
+        };
     })->name('portal');
 
     /*
@@ -122,23 +129,17 @@ Route::middleware('auth')->group(function () {
             Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
-            // ✅ Delete user
             Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
-            // ✅ Activity Log per user
             Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');
 
-            // Analytics
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
 
-            // Appointments
             Route::get('/appointments', [AdminAppointmentController::class, 'index'])->name('appointments.index');
 
-            // Patients
             Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
             Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
 
-            // Doctors
             Route::get('/doctors', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'index'])->name('doctors.index');
             Route::get('/doctors/create', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'create'])->name('doctors.create');
             Route::post('/doctors', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'store'])->name('doctors.store');
@@ -172,6 +173,9 @@ Route::middleware('auth')->group(function () {
 
             // ✅ Contact Messages Inbox (Staff)
             Route::prefix('messages')->name('messages.')->group(function () {
+                // ✅ MUST be before /{message}
+                Route::get('/widget', [StaffContactMessageController::class, 'widget'])->name('widget');
+
                 Route::get('/', [StaffContactMessageController::class, 'index'])->name('index');
                 Route::get('/{message}', [StaffContactMessageController::class, 'show'])->name('show');
                 Route::post('/{message}/read', [StaffContactMessageController::class, 'markRead'])->name('read');
@@ -245,11 +249,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{plan}/pay', [InstallmentPaymentController::class, 'create'])->name('pay');
                 Route::post('/{plan}/pay', [InstallmentPaymentController::class, 'store'])->name('pay.store');
 
-                // ✅ Mark complete / reopen (OPEN CONTRACT only)
                 Route::post('/{plan}/complete', [InstallmentPlanController::class, 'complete'])->name('complete');
                 Route::post('/{plan}/reopen', [InstallmentPlanController::class, 'reopen'])->name('reopen');
 
-                // ✅ Edit / Update an installment payment (per-month)
                 Route::get('/{plan}/payments/{payment}/edit', [InstallmentPaymentController::class, 'edit'])
                     ->name('payments.edit');
                 Route::put('/{plan}/payments/{payment}', [InstallmentPaymentController::class, 'update'])

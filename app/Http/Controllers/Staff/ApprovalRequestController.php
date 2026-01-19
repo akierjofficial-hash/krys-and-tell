@@ -30,10 +30,6 @@ class ApprovalRequestController extends Controller
         return view('staff.approvals.index', compact('requests'));
     }
 
-    /**
-     * ✅ Live dropdown/widget data (AJAX polling) — returns JSON
-     * Supports ?limit=6 (default) up to 20
-     */
     public function widget(Request $request)
     {
         $limit = (int) $request->query('limit', 6);
@@ -66,9 +62,7 @@ class ApprovalRequestController extends Controller
                 if (!empty($a->appointment_time)) {
                     $timeLabel = Carbon::parse($a->appointment_time)->format('h:i A');
                 }
-            } catch (\Throwable $e) {
-                // keep —
-            }
+            } catch (\Throwable $e) {}
 
             return [
                 'id'      => $a->id,
@@ -83,7 +77,6 @@ class ApprovalRequestController extends Controller
                 'date'    => $dateLabel,
                 'time'    => $timeLabel,
 
-                // handy URLs so frontend can build buttons
                 'approve_url' => route('staff.approvals.approve', $a),
                 'decline_url' => route('staff.approvals.decline', $a),
                 'index_url'   => route('staff.approvals.index'),
@@ -102,6 +95,8 @@ class ApprovalRequestController extends Controller
             $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
 
             DB::transaction(function () use ($appointment) {
+                // ✅ Ensure user is available for patient auto-create fallback
+                $appointment->loadMissing('user');
 
                 if (Schema::hasColumn('appointments', 'patient_id') && empty($appointment->patient_id)) {
                     $patientId = $this->findOrCreatePatientFromAppointment($appointment);
@@ -219,9 +214,13 @@ class ApprovalRequestController extends Controller
     {
         if (!Schema::hasTable('patients')) return null;
 
+        $u = $a->user; // may be null
+
+        // Appointment fields
         $first   = $a->public_first_name ?? null;
         $middle  = $a->public_middle_name ?? null;
         $last    = $a->public_last_name ?? null;
+
         $email   = $a->public_email ?? null;
         $phone   = $a->public_phone ?? null;
         $address = $a->public_address ?? null;
@@ -229,6 +228,32 @@ class ApprovalRequestController extends Controller
         $gender    = $a->public_gender ?? ($a->gender ?? null);
         $birthdate = $a->public_birthdate ?? ($a->birthdate ?? null);
 
+        // ✅ Fallback to user profile (Google data saved in users table)
+        if ($u) {
+            if (empty($email) && !empty($u->email)) $email = $u->email;
+
+            if (empty($phone) && Schema::hasColumn('users', 'phone_number') && !empty($u->phone_number)) {
+                $phone = $u->phone_number;
+            }
+
+            if (empty($address) && Schema::hasColumn('users', 'address') && !empty($u->address)) {
+                $address = $u->address;
+            }
+
+            if (empty($birthdate) && Schema::hasColumn('users', 'birthdate') && !empty($u->birthdate)) {
+                $birthdate = $u->birthdate;
+            }
+
+            // If appointment has no name parts, split user->name
+            if (empty($first) && empty($last) && !empty($u->name)) {
+                $parts = $this->splitName($u->name);
+                $first  = $parts['first'] ?: $first;
+                $middle = $parts['middle'] ?: $middle;
+                $last   = $parts['last'] ?: $last;
+            }
+        }
+
+        // Lookup patient by email/phone/name
         $patient = null;
 
         if ($email && Schema::hasColumn('patients', 'email')) {
@@ -256,6 +281,11 @@ class ApprovalRequestController extends Controller
         }
 
         $patient = $patient ?: new Patient();
+
+        // Optional link to user_id if your patients table has it
+        if ($u && Schema::hasColumn('patients', 'user_id') && empty($patient->user_id)) {
+            $patient->user_id = $u->id;
+        }
 
         if ($first && Schema::hasColumn('patients', 'first_name')) $patient->first_name = $first;
         if ($last  && Schema::hasColumn('patients', 'last_name'))  $patient->last_name  = $last;
@@ -293,7 +323,7 @@ class ApprovalRequestController extends Controller
             $patient->birthdate = $birthdate;
         }
 
-        // fallback to prevent approval failing if birthdate is NOT NULL
+        // fallback if your DB requires NOT NULL birthdate
         if (Schema::hasColumn('patients', 'birthdate') && empty($patient->birthdate)) {
             $patient->birthdate = '2000-01-01';
         }
@@ -301,5 +331,24 @@ class ApprovalRequestController extends Controller
         $patient->save();
 
         return $patient->id;
+    }
+
+    private function splitName(string $name): array
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name));
+        if ($name === '') {
+            return ['first' => null, 'middle' => null, 'last' => null];
+        }
+
+        $parts = explode(' ', $name);
+        if (count($parts) === 1) {
+            return ['first' => $parts[0], 'middle' => null, 'last' => null];
+        }
+
+        $first = array_shift($parts);
+        $last = array_pop($parts);
+        $middle = count($parts) ? implode(' ', $parts) : null;
+
+        return ['first' => $first, 'middle' => $middle, 'last' => $last];
     }
 }
