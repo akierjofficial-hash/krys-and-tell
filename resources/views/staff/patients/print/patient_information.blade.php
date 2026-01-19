@@ -170,29 +170,48 @@
             font-weight: 900;
         }
 
-        /* ===== SIGNATURE AREA ===== */
+        /* ===== SIGNATURE AREA (DOMPDF SAFE ALIGN) ===== */
         .sig-area{
             width: 100%;
             margin-top: 10px;
         }
-        .sig-img{
-            width: 220px;
+        .sig-table{
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sig-cell{
+            text-align: right; /* ✅ DOMPDF reliable */
+        }
+        .sig-box{
+            width: 280px;          /* same width as the line */
+            height: 70px;          /* room for image above */
+            position: relative;
+            display: inline-block; /* keep tight */
+        }
+        .sig-box img{
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 22px;          /* sits above the line */
+            margin: 0 auto;
+            max-width: 260px;
+            max-height: 42px;
+            width: auto;
             height: auto;
-            display:block;
-            margin-left: auto; /* align right-ish like image bottom */
-            margin-bottom: 2px;
+            display: block;
         }
         .sig-line{
-            width: 280px;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 18px;
             border-bottom: 1px solid #000;
-            margin-left: auto;
-            height: 18px;
-            position: relative;
+            height: 0;
         }
         .sig-text{
             position: absolute;
             right: 0;
-            bottom: -14px;
+            bottom: 0;
             font-weight: 700;
             font-style: italic;
             font-size: 11px;
@@ -699,13 +718,20 @@
 
     {{-- SIGNATURE (bottom like image) --}}
     <div class="sig-area">
-        @if($sigInfoData)
-            <img class="sig-img" src="{{ $sigInfoData }}" alt="Signature">
-        @endif
+        <table class="sig-table">
+            <tr>
+                <td class="sig-cell">
+                    <div class="sig-box">
+                        @if($sigInfoData)
+                            <img src="{{ $sigInfoData }}" alt="Signature">
+                        @endif
 
-        <div class="sig-line">
-            <div class="sig-text">Signature</div>
-        </div>
+                        <div class="sig-line"></div>
+                        <div class="sig-text">Signature</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 </div>
 

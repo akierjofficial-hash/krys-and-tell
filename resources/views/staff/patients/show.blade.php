@@ -788,6 +788,7 @@
                             @endif
                         </div>
 
+                        {{-- ✅ UPDATED Cash Payments --}}
                         <div style="margin-top:14px;">
                             <div class="section-title"><i class="fa fa-receipt"></i> Cash Payments</div>
 
@@ -799,30 +800,44 @@
                                         <thead>
                                             <tr>
                                                 <th>Payment Date</th>
-                                                <th>Visit Date</th>
+                                                <th>Treatment</th>
                                                 <th>Amount</th>
                                                 <th>Method</th>
-                                                <th>Notes</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach($payments as $payment)
+                                                @php
+                                                    $visit = $payment->visit;
+
+                                                    $serviceNames = $visit
+                                                        ? $visit->procedures
+                                                            ->map(fn($p) => optional($p->service)->name)
+                                                            ->filter()
+                                                            ->unique()
+                                                            ->values()
+                                                        : collect();
+                                                @endphp
+
                                                 <tr>
                                                     <td style="font-weight:950;">
                                                         {{ $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') : '—' }}
                                                     </td>
-                                                    <td class="muted">
-                                                        @if(optional($payment->visit)->id)
-                                                            <a class="linkx" href="{{ route('staff.visits.show', $payment->visit->id) }}">
-                                                                {{ $payment->visit->visit_date ? \Carbon\Carbon::parse($payment->visit->visit_date)->format('M d, Y') : 'View Visit' }}
-                                                            </a>
+
+                                                    <td>
+                                                        @if($serviceNames->count())
+                                                            <div class="svc-wrap">
+                                                                @foreach($serviceNames as $name)
+                                                                    <span class="svc-pill">{{ $name }}</span>
+                                                                @endforeach
+                                                            </div>
                                                         @else
-                                                            —
+                                                            <span class="muted">—</span>
                                                         @endif
                                                     </td>
+
                                                     <td style="font-weight:950;">₱{{ number_format((float)$payment->amount, 2) }}</td>
                                                     <td class="muted">{{ ucfirst($payment->method ?? '—') }}</td>
-                                                    <td class="muted">{{ $payment->notes ?? '—' }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
@@ -837,6 +852,7 @@
                             @endif
                         </div>
 
+                        {{-- ✅ UPDATED Installment Payments --}}
                         <div style="margin-top:14px;">
                             <div class="section-title"><i class="fa fa-calendar-check"></i> Installment Payments</div>
 
@@ -848,11 +864,11 @@
                                         <thead>
                                             <tr>
                                                 <th>Payment Date</th>
-                                                <th>Plan</th>
+                                                <th>Visit Date</th>
                                                 <th>Label</th>
                                                 <th>Amount</th>
                                                 <th>Method</th>
-                                                <th>Visit</th>
+                                                <th>Plan</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -867,19 +883,24 @@
                                                     <td style="font-weight:950;">
                                                         {{ $ip->payment_date ? \Carbon\Carbon::parse($ip->payment_date)->format('M d, Y') : '—' }}
                                                     </td>
-                                                    <td style="font-weight:950;">
-                                                        @if($ip->plan?->id)
-                                                            <a class="linkx" href="{{ route('staff.installments.show', $ip->plan->id) }}">#{{ $ip->plan->id }}</a>
+
+                                                    <td class="muted">
+                                                        @if($ip->visit?->id)
+                                                            <a class="linkx" href="{{ route('staff.visits.show', $ip->visit->id) }}">
+                                                                {{ $ip->visit->visit_date ? \Carbon\Carbon::parse($ip->visit->visit_date)->format('M d, Y') : 'View Visit' }}
+                                                            </a>
                                                         @else
                                                             —
                                                         @endif
                                                     </td>
+
                                                     <td class="muted">{{ $label }}</td>
                                                     <td style="font-weight:950;">₱{{ number_format((float)$ip->amount, 2) }}</td>
                                                     <td class="muted">{{ ucfirst($ip->method ?? '—') }}</td>
-                                                    <td class="muted">
-                                                        @if($ip->visit_id)
-                                                            <a class="linkx" href="{{ route('staff.visits.show', $ip->visit_id) }}">View Visit</a>
+
+                                                    <td class="muted" style="font-weight:950;">
+                                                        @if($ip->plan?->id)
+                                                            <a class="linkx" href="{{ route('staff.installments.show', $ip->plan->id) }}">View Plan</a>
                                                         @else
                                                             —
                                                         @endif

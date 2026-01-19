@@ -18,17 +18,15 @@ use Carbon\Carbon;
 class PatientController extends Controller
 {
     public function index(Request $request)
-{
-    $patients = Patient::query()
-        ->orderByRaw("LOWER(TRIM(last_name)) ASC")
-        ->orderByRaw("LOWER(TRIM(first_name)) ASC")
-        ->orderBy('id', 'ASC') // stable tie-breaker
-        ->get();
+    {
+        $patients = Patient::query()
+            ->orderByRaw("LOWER(TRIM(last_name)) ASC")
+            ->orderByRaw("LOWER(TRIM(first_name)) ASC")
+            ->orderBy('id', 'ASC') // stable tie-breaker
+            ->get();
 
-    return view('staff.patients.index', compact('patients'));
-}
-
-
+        return view('staff.patients.index', compact('patients'));
+    }
 
     public function create()
     {
@@ -252,6 +250,7 @@ class PatientController extends Controller
         ];
 
         // ✅ Save everything atomically
+        $patient = null; // ✅ avoids undefined variable with "&$patient"
         DB::transaction(function () use ($patientData, $infoData, $consentData, $request, &$patient) {
             $patient = Patient::create($patientData);
 
@@ -340,9 +339,9 @@ class PatientController extends Controller
             ->orderByDesc('appointment_time')
             ->paginate(10, ['*'], 'appointments_page');
 
-        // Cash Payments
+        // ✅ Cash Payments (now needs visit procedures/services for "Treatment" pills)
         $payments = $patient->payments()
-            ->with('visit')
+            ->with(['visit.procedures.service'])
             ->orderByDesc('payment_date')
             ->paginate(10, ['*'], 'payments_page');
 
