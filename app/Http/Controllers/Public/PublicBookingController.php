@@ -14,12 +14,28 @@ use Illuminate\Support\Facades\Schema;
 
 class PublicBookingController extends Controller
 {
-    // ✅ Clinic rules
+    // ✅ Clinic rules (scheduled bookings)
     private const CLINIC_OPEN  = '09:00';
-    private const CLINIC_CLOSE = '17:00'; // close at 5PM (last start slot is 16:00)
+    private const CLINIC_CLOSE = '17:00'; // last start slot is 16:00
     private const SLOT_MINUTES = 60;      // 1 hour blocks
     private const CHAIRS       = 2;       // 2 chairs = 2 patients per hour
-    private const LEAD_MINUTES_TODAY = 60; // same-day lead time
+    private const LEAD_MINUTES_TODAY = 60;
+
+    // ✅ Walk-in rule:
+    // - duration_minutes is null/empty => walk-in
+    // - duration_minutes 1–5 => walk-in
+    private function isWalkIn(Service $service): bool
+    {
+        $durRaw = $service->duration_minutes ?? null;
+        if ($durRaw === null || $durRaw === '') return true;
+
+        if (is_numeric($durRaw)) {
+            $d = (int) $durRaw;
+            return $d > 0 && $d <= 5;
+        }
+
+        return false;
+    }
 
     public function create(Service $service)
     {
@@ -42,11 +58,27 @@ class PublicBookingController extends Controller
             'successAppointment' => $successAppointment,
             'needsDetails' => $needsDetails,
             'profile' => $profile,
+            'isWalkIn' => $this->isWalkIn($service), // ✅ keep blade+controller consistent
         ]);
     }
 
     public function slots(Request $request, Service $service)
     {
+        // ✅ Walk-in services do not have slots
+        if ($this->isWalkIn($service)) {
+            return response()->json([
+                'date' => Carbon::parse($request->date ?? now())->toDateString(),
+                'doctor_id' => $request->integer('doctor_id') ?: null,
+                'slots' => [],
+                'meta' => [
+                    'walk_in' => true,
+                    'open' => self::CLINIC_OPEN,
+                    'close' => self::CLINIC_CLOSE,
+                    'timezone' => config('app.timezone'),
+                ],
+            ]);
+        }
+
         $doctorRequired = $this->doctorRequired();
 
         $request->validate([
@@ -57,7 +89,6 @@ class PublicBookingController extends Controller
         $date = Carbon::parse($request->date)->toDateString();
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
-        // ✅ Fixed schedule: hourly slots, capacity-based
         $slots = $this->computeHourlySlots($date, $doctorId);
 
         return response()->json([
@@ -71,7 +102,7 @@ class PublicBookingController extends Controller
                 'open' => self::CLINIC_OPEN,
                 'close' => self::CLINIC_CLOSE,
                 'chairs' => self::CHAIRS,
-                'closed_weekday' => 'Sunday', // remove if you want open Sundays
+                'closed_weekday' => 'Sunday',
                 'timezone' => config('app.timezone'),
             ],
         ]);
@@ -82,14 +113,16 @@ class PublicBookingController extends Controller
         $doctorRequired = $this->doctorRequired();
         $user = auth()->user();
 
+        $isWalkIn = $this->isWalkIn($service);
+
         $profile = $this->knownBookingDetails($user);
         $needsDetails = $user ? !$profile['complete'] : true;
 
         $rules = [
             'date' => ['required', 'date', 'after_or_equal:today'],
 
-            // ✅ still required for scheduled bookings
-            'time' => ['required', 'date_format:H:i'],
+            // ✅ Walk-in: time is NOT required
+            'time' => $isWalkIn ? ['nullable'] : ['required', 'date_format:H:i'],
 
             'doctor_id' => $doctorRequired
                 ? ['required', 'integer', 'exists:doctors,id']
@@ -104,42 +137,36 @@ class PublicBookingController extends Controller
             'message' => ['nullable', 'string', 'max:500'],
         ];
 
-        if (!$user) {
-            $rules = array_merge($rules, [
-                'email' => ['required', 'email', 'max:190'],
-            ]);
-        } else {
-            $rules = array_merge($rules, [
-                'email' => ['nullable', 'email', 'max:190'],
-            ]);
-        }
+        $rules = array_merge($rules, [
+            'email' => $user ? ['nullable', 'email', 'max:190'] : ['required', 'email', 'max:190'],
+        ]);
 
         $request->validate($rules);
 
         $date = Carbon::parse($request->date)->toDateString();
-        $time = $request->time;
-
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
-        // ✅ Re-check availability at submit time (capacity-based)
-        $available = in_array($time, $this->computeHourlySlots($date, $doctorId), true);
-        if (!$available) {
-            return back()
-                ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
-                ->withInput();
+        // ✅ Walk-in: store NULL time (no slot system)
+        $time = $isWalkIn ? null : $request->time;
+
+        // ✅ Only enforce chair-capacity rules for scheduled services
+        if (!$isWalkIn) {
+            $available = in_array($time, $this->computeHourlySlots($date, $doctorId), true);
+            if (!$available) {
+                return back()
+                    ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
+                    ->withInput();
+            }
         }
 
-        // ✅ Use editable full_name
         $fullName = trim((string) $request->full_name);
         $nameParts = $this->splitName($fullName);
         $first  = $nameParts['first'];
         $middle = $nameParts['middle'];
         $last   = $nameParts['last'];
 
-        // ✅ email: always trust logged-in user
         $email = $user ? ($user->email ?? $request->email) : $request->email;
 
-        // ✅ Use submitted details if present, otherwise fall back to stored details
         $contact = $request->filled('contact') ? $request->contact : ($profile['contact'] ?? null);
         $address = $request->filled('address') ? $request->address : ($profile['address'] ?? null);
 
@@ -164,7 +191,8 @@ class PublicBookingController extends Controller
             $email,
             $contact,
             $address,
-            $birthdate
+            $birthdate,
+            $isWalkIn
         ) {
             if ($user) {
                 $dirty = false;
@@ -173,12 +201,10 @@ class PublicBookingController extends Controller
                     $user->phone_number = $contact;
                     $dirty = true;
                 }
-
                 if (Schema::hasColumn('users', 'address') && empty($user->address) && !empty($address)) {
                     $user->address = $address;
                     $dirty = true;
                 }
-
                 if (Schema::hasColumn('users', 'birthdate') && empty($user->birthdate) && !empty($birthdate)) {
                     $user->birthdate = $birthdate;
                     $dirty = true;
@@ -195,19 +221,20 @@ class PublicBookingController extends Controller
             if (Schema::hasColumn('appointments', 'appointment_date')) {
                 $appointment->appointment_date = $date;
             }
-            if (Schema::hasColumn('appointments', 'appointment_time')) {
+
+            // ✅ only set time if scheduled
+            if (!$isWalkIn && Schema::hasColumn('appointments', 'appointment_time')) {
                 $appointment->appointment_time = $time;
             }
 
-            // ✅ FIXED: always block 1 hour in the schedule
-            if (Schema::hasColumn('appointments', 'duration_minutes')) {
+            // ✅ Scheduled bookings block 1 hour; Walk-ins: do NOT block chairs
+            if (!$isWalkIn && Schema::hasColumn('appointments', 'duration_minutes')) {
                 $appointment->duration_minutes = self::SLOT_MINUTES;
             }
 
             if ($doctorId && Schema::hasColumn('appointments', 'doctor_id')) {
                 $appointment->doctor_id = $doctorId;
             }
-
             if ($doctorId && Schema::hasColumn('appointments', 'dentist_name')) {
                 $appointment->dentist_name = Doctor::whereKey($doctorId)->value('name');
             }
@@ -263,15 +290,11 @@ class PublicBookingController extends Controller
         });
     }
 
-    /**
-     * ✅ Hourly slots + capacity (2 chairs) + dentist availability
-     */
     private function computeHourlySlots(string $date, ?int $doctorId): array
     {
         $tz = config('app.timezone');
 
-        // Keep Sunday closed (remove this block if you want open Sundays)
-        $day = Carbon::parse($date, $tz)->dayOfWeekIso; // 7 = Sunday
+        $day = Carbon::parse($date, $tz)->dayOfWeekIso;
         if ($day === 7) return [];
 
         $openStart = Carbon::parse("$date " . self::CLINIC_OPEN, $tz);
@@ -280,7 +303,6 @@ class PublicBookingController extends Controller
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
         if (!Schema::hasColumn('appointments', 'appointment_date')) return [];
 
-        // Today lead time
         $minStart = $openStart->copy();
         $now = now($tz);
 
@@ -290,7 +312,6 @@ class PublicBookingController extends Controller
             if ($minStart->lt($openStart)) $minStart = $openStart->copy();
         }
 
-        // Load appointments for the day (not cancelled/declined/rejected)
         $bookedQuery = Appointment::query()
             ->select(['appointment_time'])
             ->whereDate('appointment_date', $date);
@@ -310,7 +331,6 @@ class PublicBookingController extends Controller
             });
         }
 
-        // Build blocked intervals (we allow overlaps up to CHAIRS)
         $blocked = $bookedQuery->get()->map(function ($row) use ($date, $tz) {
             $start = $this->parseTimeOnDate($date, $row->appointment_time, $tz);
             if (!$start) return null;
@@ -345,9 +365,7 @@ class PublicBookingController extends Controller
             $overlapDoctor = 0;
 
             foreach ($blocked as $b) {
-                /** @var \Carbon\Carbon $bStart */
                 $bStart = $b['start'];
-                /** @var \Carbon\Carbon $bEnd */
                 $bEnd = $b['end'];
 
                 $isOverlap = $cursor->lt($bEnd) && $candidateEnd->gt($bStart);
@@ -360,9 +378,6 @@ class PublicBookingController extends Controller
                 }
             }
 
-            // ✅ Rules:
-            // - Max 2 concurrent appointments per hour (chairs)
-            // - If user selected a dentist, that dentist can't be double-booked
             if ($overlapAll < self::CHAIRS && ($doctorId ? $overlapDoctor === 0 : true)) {
                 $slots[] = $cursor->format('H:i');
             }
