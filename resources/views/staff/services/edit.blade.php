@@ -117,21 +117,22 @@
                 @error('allow_custom_price') <div class="error-text">{{ $message }}</div> @enderror
             </div>
 
-            {{-- ✅ NEW: Duration (minutes) --}}
+            {{-- ✅ Duration (minutes) --}}
             <div>
                 <label class="form-label">Duration (minutes)</label>
                 <input
                     type="number"
                     name="duration_minutes"
                     class="form-input"
-                    min="15"
-                    max="240"
-                    step="5"
+                    min="1"
+                    max="60"
+                    step="1"
                     value="{{ old('duration_minutes', $service->duration_minutes ?? 60) }}"
-                    placeholder="e.g. 60"
+                    placeholder="e.g. 3 for checkup, 60 for treatment"
                 >
                 <div class="help-text">
-                    This controls scheduling/time slots (prevents overlaps). If empty, the system will treat it as 60 minutes.
+                    Used for scheduling/time slots (prevents overlaps). Allowed range: 1–60 minutes.
+                    If empty, the system will treat it as 60 minutes.
                 </div>
                 @error('duration_minutes') <div class="error-text">{{ $message }}</div> @enderror
             </div>
