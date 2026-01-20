@@ -27,7 +27,9 @@ class ServiceController extends Controller
             'base_price'         => 'required|numeric|min:0',
             'allow_custom_price' => 'required|in:0,1',
             'description'        => 'nullable|string',
-            'duration_minutes'   => 'nullable|integer|min:15|max:240',
+
+            // ✅ allow checkup 3 mins etc.
+            'duration_minutes'   => 'nullable|integer|min:1|max:60',
         ]);
 
         Service::create([
@@ -53,7 +55,9 @@ class ServiceController extends Controller
             'base_price'         => 'required|numeric|min:0',
             'allow_custom_price' => 'required|in:0,1',
             'description'        => 'nullable|string',
-            'duration_minutes'   => 'nullable|integer|min:15|max:240',
+
+            // ✅ allow checkup 3 mins etc.
+            'duration_minutes'   => 'nullable|integer|min:1|max:60',
         ]);
 
         $service->update([

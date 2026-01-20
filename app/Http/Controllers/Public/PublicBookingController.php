@@ -246,7 +246,6 @@ class PublicBookingController extends Controller
             if (Schema::hasColumn('appointments', 'public_address') && !empty($address)) {
                 $appointment->public_address = $address;
             }
-
             if (Schema::hasColumn('appointments', 'public_birthdate') && !empty($birthdate)) {
                 $appointment->public_birthdate = $birthdate;
             }
@@ -318,7 +317,6 @@ class PublicBookingController extends Controller
 
             $patient = $pq->first();
             if ($patient) {
-                // contact
                 if (empty($data['contact'])) {
                     foreach (['contact', 'contact_number', 'phone', 'mobile'] as $col) {
                         if (Schema::hasColumn('patients', $col) && !empty($patient->{$col})) {
@@ -329,13 +327,11 @@ class PublicBookingController extends Controller
                     }
                 }
 
-                // address
                 if (empty($data['address']) && Schema::hasColumn('patients', 'address') && !empty($patient->address)) {
                     $data['address'] = $patient->address;
                     $data['source'] = $data['source'] ?? 'patients.address';
                 }
 
-                // birthdate
                 if (empty($data['birthdate']) && Schema::hasColumn('patients', 'birthdate') && !empty($patient->birthdate)) {
                     $data['birthdate'] = $patient->birthdate;
                     $data['source'] = $data['source'] ?? 'patients.birthdate';
@@ -343,28 +339,33 @@ class PublicBookingController extends Controller
             }
         }
 
-        // 3) last appointment fallback
+        // 3) last appointment fallback (ONLY if we can safely filter by this user)
         if (Schema::hasTable('appointments')) {
-            $aq = Appointment::query()
-                ->latest()
-                ->when(Schema::hasColumn('appointments', 'user_id'), fn($q) => $q->where('user_id', $user->id))
-                ->when(!Schema::hasColumn('appointments', 'user_id') && Schema::hasColumn('appointments', 'public_email'),
-                    fn($q) => $q->where('public_email', $user->email)
-                );
+            $aq = Appointment::query()->latest();
 
-            $last = $aq->first();
-            if ($last) {
-                if (empty($data['contact']) && !empty($last->public_phone)) {
-                    $data['contact'] = $last->public_phone;
-                    $data['source'] = $data['source'] ?? 'appointments.public_phone';
-                }
-                if (empty($data['address']) && !empty($last->public_address)) {
-                    $data['address'] = $last->public_address;
-                    $data['source'] = $data['source'] ?? 'appointments.public_address';
-                }
-                if (empty($data['birthdate']) && !empty($last->public_birthdate)) {
-                    $data['birthdate'] = $last->public_birthdate;
-                    $data['source'] = $data['source'] ?? 'appointments.public_birthdate';
+            if (Schema::hasColumn('appointments', 'user_id')) {
+                $aq->where('user_id', $user->id);
+            } elseif (Schema::hasColumn('appointments', 'public_email') && !empty($user->email)) {
+                $aq->where('public_email', $user->email);
+            } else {
+                $aq = null;
+            }
+
+            if ($aq) {
+                $last = $aq->first();
+                if ($last) {
+                    if (empty($data['contact']) && !empty($last->public_phone)) {
+                        $data['contact'] = $last->public_phone;
+                        $data['source'] = $data['source'] ?? 'appointments.public_phone';
+                    }
+                    if (empty($data['address']) && !empty($last->public_address)) {
+                        $data['address'] = $last->public_address;
+                        $data['source'] = $data['source'] ?? 'appointments.public_address';
+                    }
+                    if (empty($data['birthdate']) && !empty($last->public_birthdate)) {
+                        $data['birthdate'] = $last->public_birthdate;
+                        $data['source'] = $data['source'] ?? 'appointments.public_birthdate';
+                    }
                 }
             }
         }
@@ -482,10 +483,13 @@ class PublicBookingController extends Controller
     private function serviceDurationMinutes(Service $service): int
     {
         $d = 60;
+
         if (Schema::hasColumn('services', 'duration_minutes') && !empty($service->duration_minutes)) {
             $d = (int) $service->duration_minutes;
         }
-        return max(15, min(240, $d));
+
+        // ✅ IMPORTANT: allow short durations like 3 mins, and max 60
+        return max(1, min(60, $d));
     }
 
     private function parseTimeOnDate(string $date, $time, string $tz): ?Carbon
