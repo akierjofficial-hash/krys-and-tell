@@ -582,7 +582,7 @@
                             <span class="kt-info-ico"><i class="fa-solid fa-phone"></i></span>
                             <div>
                                 <div class="kt-info-main">Phone</div>
-                                <div class="kt-info-sub">+63 928 559 8951</div>
+                                <div class="kt-info-sub">+639772443595</div>
                             </div>
                         </div>
 
