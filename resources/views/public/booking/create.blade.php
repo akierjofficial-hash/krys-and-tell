@@ -6,8 +6,40 @@
 @php
     $u = auth()->user();
 
-    // ✅ editable full name (can override gmail display name)
-    $fullName = trim(old('full_name', $u->name ?? ''));
+    // ✅ pull most recently used booking name (if user already booked before)
+    $recentBookingName = null;
+
+    if ($u && \Illuminate\Support\Facades\Schema::hasTable('appointments')) {
+        $aq = \App\Models\Appointment::query();
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'user_id')) {
+            $aq->where('user_id', $u->id);
+        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_email') && !empty($u->email)) {
+            $aq->where('public_email', $u->email);
+        }
+
+        // use id as safe "latest" ordering
+        $lastAppt = $aq->orderByDesc('id')->first();
+
+        if ($lastAppt) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_name') && !empty($lastAppt->public_name)) {
+                $recentBookingName = $lastAppt->public_name;
+            } else {
+                // fallback: reconstruct from first/middle/last if available
+                $f = (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_first_name') ? ($lastAppt->public_first_name ?? '') : '');
+                $m = (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_middle_name') ? ($lastAppt->public_middle_name ?? '') : '');
+                $l = (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_last_name') ? ($lastAppt->public_last_name ?? '') : '');
+
+                $rebuilt = trim(implode(' ', array_filter([trim($f), trim($m), trim($l)])));
+                if ($rebuilt !== '') $recentBookingName = $rebuilt;
+            }
+        }
+    }
+
+    // ✅ editable full name
+    // Priority: old() > most recent appointment name > Google name
+    $fullName = trim(old('full_name', $recentBookingName ?? ($u->name ?? '')));
+
     $email    = trim(old('email', $u->email ?? ''));
 
     // ✅ IMPORTANT: use controller-provided flag if available (keeps blade+controller consistent)
@@ -56,13 +88,10 @@
             .kt-booking-page{ padding-bottom: 130px !important; }
         }
 
-        /* Make row columns match height better */
         .kt-booking-card{ height: 100%; }
 
-        /* Fix misalignment from varying help text heights */
         .kt-field-help{ min-height: 18px; }
 
-        /* Slots */
         .kt-slot-grid{
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -94,7 +123,6 @@
             background: rgba(194,138,99,.12);
         }
 
-        /* Sticky submit for mobile */
         .kt-sticky-submit{
             position: fixed;
             left: 0;
@@ -118,18 +146,10 @@
             color: rgba(226, 232, 240, .65);
         }
 
-        /* Success buttons stack on small screens */
-        .kt-mobile-stack{
-            flex-wrap: wrap;
-        }
-        .kt-mobile-stack > a{
-            flex: 1 1 220px;
-        }
+        .kt-mobile-stack{ flex-wrap: wrap; }
+        .kt-mobile-stack > a{ flex: 1 1 220px; }
 
-        /* Right image: keep consistent and not overflow */
-        .kt-side-img{
-            height: 520px;
-        }
+        .kt-side-img{ height: 520px; }
         @media (max-width: 991.98px){
             .kt-side-img{ height: 320px; }
         }
@@ -140,7 +160,6 @@
             border-radius: 18px;
         }
 
-        /* Step badge */
         .kt-step-pill{
             display: inline-flex;
             align-items: center;
@@ -275,7 +294,9 @@
                                         placeholder="Type your real full name"
                                         required
                                     >
-                                    <div class="kt-help mt-1 kt-field-help">If your Google name is not your real name, edit it here.</div>
+                                    <div class="kt-help mt-1 kt-field-help">
+                                        We remembered the name you used last time. Edit it if needed.
+                                    </div>
                                 </div>
 
                                 <div class="col-md-5">
@@ -325,7 +346,6 @@
                                 @if(!$isWalkIn)
                                     <div class="col-md-4">
                                         <label class="form-label fw-bold">Step 3: Time</label>
-                                        {{-- ✅ required only for scheduled services --}}
                                         <select class="form-select" name="time" id="time" required>
                                             <option value="">
                                                 {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
@@ -341,7 +361,6 @@
                                         @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 @else
-                                    {{-- Walk-in: submit NULL time (controller accepts nullable) --}}
                                     <input type="hidden" name="time" value="">
                                 @endif
 

@@ -43,6 +43,10 @@
     <div class="container">
 
         <style>
+            /* Force inputs to align consistently */
+            .kt-input{ width: 100% !important; display:block; box-sizing:border-box; }
+            .kt-field{ display:block; margin-bottom: 6px; }
+
             /* ===== Mobile UX: Tabs + Cards ===== */
             .kt-profile-head{
                 display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
@@ -113,7 +117,6 @@
                 line-height: 1.45;
             }
 
-            /* Slightly tighter for small phones */
             @media (max-width: 390px){
                 .kt-mobile-tabs .nav-link{ padding: .5rem .8rem; font-size: 12.5px; }
             }
@@ -326,29 +329,30 @@
                                         </div>
                                     @endif
 
-                                    {{-- ✅ IMPORTANT: route is PUT so we must spoof PUT --}}
                                     <form method="POST" action="{{ route('user.profile.password') }}" class="mt-1">
                                         @csrf
                                         @method('PUT')
 
-                                        @if($hasLocalPassword)
-                                            <div class="mb-3">
-                                                <label class="kt-field">Current Password</label>
-                                                <input type="password" class="kt-input" name="current_password" required>
+                                        <div class="row g-3">
+                                            @if($hasLocalPassword)
+                                                <div class="col-12">
+                                                    <label class="kt-field">Current Password</label>
+                                                    <input type="password" class="kt-input" name="current_password" required>
+                                                </div>
+                                            @endif
+
+                                            <div class="col-12 col-md-6">
+                                                <label class="kt-field">New Password</label>
+                                                <input type="password" class="kt-input" name="password" required>
                                             </div>
-                                        @endif
 
-                                        <div class="mb-3">
-                                            <label class="kt-field">New Password</label>
-                                            <input type="password" class="kt-input" name="password" required>
+                                            <div class="col-12 col-md-6">
+                                                <label class="kt-field">Confirm New Password</label>
+                                                <input type="password" class="kt-input" name="password_confirmation" required>
+                                            </div>
                                         </div>
 
-                                        <div class="mb-3">
-                                            <label class="kt-field">Confirm New Password</label>
-                                            <input type="password" class="kt-input" name="password_confirmation" required>
-                                        </div>
-
-                                        <button class="btn kt-btn kt-btn-primary text-white w-100" type="submit">
+                                        <button class="btn kt-btn kt-btn-primary text-white w-100 mt-3" type="submit">
                                             <i class="fa-solid fa-key me-1"></i>
                                             {{ $hasLocalPassword ? 'Update password' : 'Set password' }}
                                         </button>
@@ -475,7 +479,6 @@
                             {{ $hasLocalPassword ? 'Keep your account secure.' : 'Set a password to allow email + password login.' }}
                         </div>
 
-                        {{-- ✅ IMPORTANT: route is PUT so we must spoof PUT --}}
                         <form method="POST" action="{{ route('user.profile.password') }}" class="mt-3">
                             @csrf
                             @method('PUT')
