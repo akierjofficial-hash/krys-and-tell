@@ -5,11 +5,12 @@
 @php
     $u = auth()->user();
 
+    // ✅ editable full name (can override gmail display name)
     $fullName = trim(old('full_name', $u->name ?? ''));
     $email    = trim(old('email', $u->email ?? ''));
 
-    // Best-effort split for old hidden fields (some controllers still validate these)
-    $parts = preg_split('/\s+/', trim($u->name ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+    // ✅ Best-effort split based on the CURRENT fullName (not just google name)
+    $parts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY);
     $first = $parts[0] ?? '';
     $last  = count($parts) > 1 ? $parts[count($parts)-1] : ($parts[0] ?? '');
     $middle = (count($parts) > 2) ? implode(' ', array_slice($parts, 1, -1)) : '';
@@ -188,8 +189,16 @@
                             {{-- Account --}}
                             <div class="row g-3">
                                 <div class="col-md-7">
-                                    <label class="form-label fw-bold">Name</label>
-                                    <input class="form-control" value="{{ $fullName }}" readonly aria-readonly="true">
+                                    <label class="form-label fw-bold">Full Name</label>
+                                    <input
+                                        class="form-control"
+                                        id="full_name"
+                                        name="full_name"
+                                        value="{{ $fullName }}"
+                                        placeholder="Type your real full name"
+                                        required
+                                    >
+                                    <div class="kt-help mt-1">If your Google name is not your real name, edit it here.</div>
                                 </div>
 
                                 <div class="col-md-5">
@@ -198,7 +207,7 @@
                                 </div>
                             </div>
 
-                            {{-- Hidden fields (keep for controllers that still validate these) --}}
+                            {{-- Hidden fields (controller still uses these) --}}
                             <input type="hidden" name="first_name" value="{{ old('first_name', $first) }}">
                             <input type="hidden" name="middle_name" value="{{ old('middle_name', $middle) }}">
                             <input type="hidden" name="last_name" value="{{ old('last_name', $last) }}">
@@ -346,6 +355,45 @@
 
 @push('scripts')
 <script>
+// ✅ Keep first/middle/last hidden fields synced with editable full_name
+(function(){
+    const fullNameEl = document.getElementById('full_name');
+    const firstEl  = document.querySelector('input[name="first_name"]');
+    const middleEl = document.querySelector('input[name="middle_name"]');
+    const lastEl   = document.querySelector('input[name="last_name"]');
+    const form = fullNameEl ? fullNameEl.closest('form') : null;
+
+    function splitName(n){
+        n = (n || '').trim().replace(/\s+/g, ' ');
+        if(!n) return { first:'', middle:'', last:'' };
+
+        const parts = n.split(' ');
+        const first = parts[0] || '';
+        const last  = parts.length > 1 ? parts[parts.length - 1] : (parts[0] || '');
+        const middle = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+        return { first, middle, last };
+    }
+
+    function sync(){
+        if(!fullNameEl || !firstEl || !middleEl || !lastEl) return;
+        const s = splitName(fullNameEl.value);
+        firstEl.value = s.first;
+        middleEl.value = s.middle;
+        lastEl.value = s.last;
+    }
+
+    if(fullNameEl){
+        fullNameEl.addEventListener('input', sync);
+        fullNameEl.addEventListener('blur', sync);
+        sync();
+    }
+    if(form){
+        form.addEventListener('submit', sync);
+    }
+})();
+</script>
+
+<script>
 (function(){
     const serviceId = @json($service->id);
     const dateEl = document.getElementById('date');
@@ -475,6 +523,7 @@
             if (data.meta){
                 helpEl.textContent =
                     `${slots.length} slot(s). Clinic ${data.meta.open}–${data.meta.close}. ` +
+                    `Step: ${data.meta.step_minutes} min. ` +
                     `Same-day needs ${data.meta.lead_minutes_today} min lead time. ` +
                     (duration ? `Duration: ${duration} min.` : ``);
             } else {

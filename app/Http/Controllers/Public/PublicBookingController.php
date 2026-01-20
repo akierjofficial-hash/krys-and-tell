@@ -35,8 +35,6 @@ class PublicBookingController extends Controller
             'service' => $service,
             'doctors' => $doctors,
             'successAppointment' => $successAppointment,
-
-            // ✅ for blade logic
             'needsDetails' => $needsDetails,
             'profile' => $profile,
         ]);
@@ -55,14 +53,16 @@ class PublicBookingController extends Controller
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
         $durationMinutes = $this->serviceDurationMinutes($service);
-        $slots = $this->computeSlots($date, $doctorId, $durationMinutes);
+        $stepMinutes = $this->slotStepMinutes($durationMinutes);
+
+        $slots = $this->computeSlots($date, $doctorId, $durationMinutes, $stepMinutes);
 
         return response()->json([
             'date'      => $date,
             'doctor_id' => $doctorId,
             'slots'     => $slots,
             'meta' => [
-                'step_minutes' => 30,
+                'step_minutes' => $stepMinutes,
                 'duration_minutes' => $durationMinutes,
                 'lead_minutes_today' => 60,
                 'open' => '09:00',
@@ -78,7 +78,6 @@ class PublicBookingController extends Controller
         $doctorRequired = $this->doctorRequired();
         $user = auth()->user();
 
-        // ✅ Decide if we should require details this time
         $profile = $this->knownBookingDetails($user);
         $needsDetails = $user ? !$profile['complete'] : true;
 
@@ -90,6 +89,9 @@ class PublicBookingController extends Controller
                 ? ['required', 'integer', 'exists:doctors,id']
                 : ['nullable', 'integer', 'exists:doctors,id'],
 
+            // ✅ editable full name (required)
+            'full_name' => ['required', 'string', 'max:190'],
+
             // ✅ only required on first booking (or when missing)
             'contact'   => $needsDetails ? ['required', 'string', 'max:40'] : ['nullable', 'string', 'max:40'],
             'address'   => $needsDetails ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
@@ -98,20 +100,13 @@ class PublicBookingController extends Controller
             'message' => ['nullable', 'string', 'max:500'],
         ];
 
-        // (Your booking is likely auth-only, but keep robust)
         if (!$user) {
             $rules = array_merge($rules, [
-                'first_name'  => ['required', 'string', 'max:120'],
-                'middle_name' => ['nullable', 'string', 'max:120'],
-                'last_name'   => ['required', 'string', 'max:120'],
-                'email'       => ['required', 'email', 'max:190'],
+                'email' => ['required', 'email', 'max:190'],
             ]);
         } else {
             $rules = array_merge($rules, [
-                'first_name'  => ['nullable', 'string', 'max:120'],
-                'middle_name' => ['nullable', 'string', 'max:120'],
-                'last_name'   => ['nullable', 'string', 'max:120'],
-                'email'       => ['nullable', 'email', 'max:190'],
+                'email' => ['nullable', 'email', 'max:190'],
             ]);
         }
 
@@ -122,31 +117,24 @@ class PublicBookingController extends Controller
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
         $durationMinutes = $this->serviceDurationMinutes($service);
+        $stepMinutes = $this->slotStepMinutes($durationMinutes);
 
         // ✅ TIME TRAP: re-check availability at submit time
-        $available = in_array($time, $this->computeSlots($date, $doctorId, $durationMinutes), true);
+        $available = in_array($time, $this->computeSlots($date, $doctorId, $durationMinutes, $stepMinutes), true);
         if (!$available) {
             return back()
                 ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
                 ->withInput();
         }
 
-        // ✅ Identity fields
-        $first = $request->first_name;
-        $middle = $request->middle_name;
-        $last = $request->last_name;
+        // ✅ Use editable full_name
+        $fullName = trim((string) $request->full_name);
+        $nameParts = $this->splitName($fullName);
+        $first  = $nameParts['first'];
+        $middle = $nameParts['middle'];
+        $last   = $nameParts['last'];
 
-        if ($user) {
-            $nameParts = $this->splitName($user->name ?? '');
-            $first  = $first  ?: $nameParts['first'];
-            $middle = $middle ?: $nameParts['middle'];
-            $last   = $last   ?: $nameParts['last'];
-        }
-
-        $fullName = trim(($first ?: '') . ' ' . ($middle ? trim($middle) . ' ' : '') . ($last ?: ''));
-        if ($user && empty($fullName)) $fullName = $user->name ?? 'User';
-        if (!$user && empty($fullName)) $fullName = 'Guest';
-
+        // ✅ email: always trust logged-in user
         $email = $user ? ($user->email ?? $request->email) : $request->email;
 
         // ✅ Use submitted details if present, otherwise fall back to stored details
@@ -177,7 +165,6 @@ class PublicBookingController extends Controller
             $address,
             $birthdate
         ) {
-            // ✅ Optional: if users table has these cols, capture them once
             if ($user) {
                 $dirty = false;
 
@@ -196,6 +183,9 @@ class PublicBookingController extends Controller
                     $dirty = true;
                 }
 
+                // (Optional) don’t change Google display name by default
+                // if (!empty($fullName) && $user->name !== $fullName) { $user->name = $fullName; $dirty = true; }
+
                 if ($dirty) $user->save();
             }
 
@@ -210,7 +200,6 @@ class PublicBookingController extends Controller
             if (Schema::hasColumn('appointments', 'appointment_time')) {
                 $appointment->appointment_time = $time;
             }
-
             if (Schema::hasColumn('appointments', 'duration_minutes')) {
                 $appointment->duration_minutes = $durationMinutes;
             }
@@ -218,7 +207,6 @@ class PublicBookingController extends Controller
             if ($doctorId && Schema::hasColumn('appointments', 'doctor_id')) {
                 $appointment->doctor_id = $doctorId;
             }
-
             if ($doctorId && Schema::hasColumn('appointments', 'dentist_name')) {
                 $appointment->dentist_name = Doctor::whereKey($doctorId)->value('name');
             }
@@ -226,7 +214,6 @@ class PublicBookingController extends Controller
             if (Schema::hasColumn('appointments', 'public_name')) {
                 $appointment->public_name = $fullName;
             }
-
             if (Schema::hasColumn('appointments', 'public_first_name')) {
                 $appointment->public_first_name = $first;
             }
@@ -262,7 +249,6 @@ class PublicBookingController extends Controller
                 $appointment->user_id = $user->id;
             }
 
-            // ensure email is consistent with logged-in user
             if ($user && Schema::hasColumn('appointments', 'public_email')) {
                 $appointment->public_email = $user->email;
             }
@@ -277,8 +263,17 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * ✅ Detect existing contact/address/birthdate so we can hide fields on next bookings.
+     * ✅ Dynamic slot step based on service duration.
+     * Example: 3 mins => 5 min step (so you can book 09:00, 09:05, 09:10...)
      */
+    private function slotStepMinutes(int $durationMinutes): int
+    {
+        if ($durationMinutes <= 10) return 5;
+        if ($durationMinutes <= 20) return 10;
+        if ($durationMinutes <= 40) return 15;
+        return 30;
+    }
+
     private function knownBookingDetails($user): array
     {
         $data = [
@@ -291,7 +286,6 @@ class PublicBookingController extends Controller
 
         if (!$user) return $data;
 
-        // 1) users table (optional)
         if (Schema::hasColumn('users', 'phone_number') && !empty($user->phone_number)) {
             $data['contact'] = $data['contact'] ?? $user->phone_number;
             $data['source'] = $data['source'] ?? 'users.phone_number';
@@ -305,7 +299,6 @@ class PublicBookingController extends Controller
             $data['source'] = $data['source'] ?? 'users.birthdate';
         }
 
-        // 2) patients table (best)
         if (Schema::hasTable('patients')) {
             $pq = Patient::query();
 
@@ -339,7 +332,6 @@ class PublicBookingController extends Controller
             }
         }
 
-        // 3) last appointment fallback (ONLY if we can safely filter by this user)
         if (Schema::hasTable('appointments')) {
             $aq = Appointment::query()->latest();
 
@@ -377,13 +369,13 @@ class PublicBookingController extends Controller
     private function splitName(string $name): array
     {
         $name = trim(preg_replace('/\s+/', ' ', $name));
-        if ($name === '') {
-            return ['first' => null, 'middle' => null, 'last' => null];
-        }
+        if ($name === '') return ['first' => null, 'middle' => null, 'last' => null];
 
         $parts = explode(' ', $name);
+
         if (count($parts) === 1) {
-            return ['first' => $parts[0], 'middle' => null, 'last' => null];
+            // ✅ make last = first for single-word names
+            return ['first' => $parts[0], 'middle' => null, 'last' => $parts[0]];
         }
 
         $first = array_shift($parts);
@@ -393,18 +385,17 @@ class PublicBookingController extends Controller
         return ['first' => $first, 'middle' => $middle, 'last' => $last];
     }
 
-    private function computeSlots(string $date, ?int $doctorId, int $durationMinutes): array
+    private function computeSlots(string $date, ?int $doctorId, int $durationMinutes, int $stepMinutes): array
     {
         $tz = config('app.timezone');
 
         // Sunday closed
-        $day = Carbon::parse($date, $tz)->dayOfWeekIso; // 7 = Sunday
+        $day = Carbon::parse($date, $tz)->dayOfWeekIso;
         if ($day === 7) return [];
 
         $openStart = Carbon::parse("$date 09:00", $tz);
         $openEnd   = Carbon::parse("$date 18:00", $tz);
 
-        $stepMinutes = 30;
         $leadMinutesToday = 60;
 
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
@@ -470,10 +461,7 @@ class PublicBookingController extends Controller
                 }
             }
 
-            if (!$overlap) {
-                $slots[] = $cursor->format('H:i');
-            }
-
+            if (!$overlap) $slots[] = $cursor->format('H:i');
             $cursor->addMinutes($stepMinutes);
         }
 
@@ -488,7 +476,7 @@ class PublicBookingController extends Controller
             $d = (int) $service->duration_minutes;
         }
 
-        // ✅ IMPORTANT: allow short durations like 3 mins, and max 60
+        // ✅ allow very short durations and cap at 60 mins (per your clinic rule)
         return max(1, min(60, $d));
     }
 
