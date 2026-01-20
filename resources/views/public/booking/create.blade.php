@@ -1,3 +1,4 @@
+{{-- resources/views/public/booking/create.blade.php --}}
 @extends('layouts.public')
 @section('title', 'Book — ' . $service->name)
 
@@ -39,6 +40,7 @@
         try { $birthdateVal = \Carbon\Carbon::parse($profile['birthdate'])->format('Y-m-d'); } catch (\Throwable $e) {}
     }
     if (!$birthdateVal && !empty($u->birthdate)) {
+        // ✅ FIXED: removed the stray quote after $u->birthdate
         try { $birthdateVal = \Carbon\Carbon::parse($u->birthdate)->format('Y-m-d'); } catch (\Throwable $e) {}
     }
 @endphp
@@ -167,7 +169,7 @@
                             <div class="alert alert-light border mt-3" style="border-radius:16px;">
                                 <div style="font-weight:900;">Walk-in service</div>
                                 <div class="small text-muted">
-                                    Come anytime during clinic hours (Mon–Sat 9:00 AM – 6:00 PM). No time slot needed.
+                                    Come anytime during clinic hours (Mon–Sat 9:30 AM – 5:00 PM). No time slot needed.
                                 </div>
                             </div>
                         @else
@@ -275,7 +277,9 @@
                                             <div id="slotGrid" class="kt-slot-grid"></div>
                                         </div>
 
+                                        {{-- ✅ Short + clean text only --}}
                                         <div class="small text-muted mt-1" id="timeHelp"></div>
+
                                         @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 @else
@@ -435,28 +439,14 @@
         return `${h}:${mm} ${ampm}`;
     }
 
-    function addMinutesToTimeHHMM(t, mins){
-        const [hh, mm] = t.split(':').map(n => parseInt(n,10));
-        const total = (hh*60 + mm + mins) % (24*60);
-        const nh = Math.floor(total / 60).toString().padStart(2,'0');
-        const nm = (total % 60).toString().padStart(2,'0');
-        return `${nh}:${nm}`;
-    }
-
-    function renderGrid(slots, duration){
+    function renderGrid(slots){
         if (!gridEl) return;
 
-        gridEl.innerHTML = slots.map(t => {
-            const end = duration ? addMinutesToTimeHHMM(t, duration) : '';
-            const range = duration ? `${fmt12h(t)}–${fmt12h(end)}` : fmt12h(t);
-            const sub = duration ? `${duration} min` : '';
-            return `
-              <button type="button" class="kt-slot" data-time="${t}">
-                ${range}
-                ${sub ? `<small>${sub}</small>` : ``}
-              </button>
-            `;
-        }).join('');
+        gridEl.innerHTML = slots.map(t => `
+          <button type="button" class="kt-slot" data-time="${t}">
+            ${fmt12h(t)}
+          </button>
+        `).join('');
 
         const btns = Array.from(gridEl.querySelectorAll('.kt-slot'));
         const markActive = (val) => btns.forEach(b => b.classList.toggle('is-active', b.dataset.time === val));
@@ -495,53 +485,39 @@
             res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
         } catch (e) {
             setLoading('Unable to load slots');
-            if (helpEl) helpEl.textContent = 'Please check your connection and try again.';
+            if (helpEl) helpEl.textContent = '';
             return;
         }
 
         if(!res.ok){
             setLoading('Unable to load slots');
-            if (helpEl) helpEl.textContent = 'Please try again.';
+            if (helpEl) helpEl.textContent = '';
             return;
         }
 
         const data = await res.json();
         const slots = data.slots || [];
-        const duration = data?.meta?.duration_minutes || null;
 
         if(!slots.length){
             timeEl.innerHTML = `<option value="">No available slots</option>`;
-            if (helpEl) helpEl.textContent = 'Try another date.';
+            if (helpEl) helpEl.textContent = 'No slots available.';
             if (gridEl) gridEl.innerHTML = '';
             return;
         }
 
         timeEl.innerHTML = `<option value="">Select time…</option>` + slots.map(t => {
             const selected = (oldTime && oldTime === t) ? 'selected' : '';
-            let label = fmt12h(t);
-
-            if (duration){
-                const end = addMinutesToTimeHHMM(t, duration);
-                label = `${fmt12h(t)}–${fmt12h(end)}`;
-            }
-
-            return `<option value="${t}" ${selected}>${label}</option>`;
+            return `<option value="${t}" ${selected}>${fmt12h(t)}</option>`;
         }).join('');
 
         if (oldTime) timeEl.value = oldTime;
 
-        renderGrid(slots, duration);
+        renderGrid(slots);
 
+        // ✅ Only show slots count (short clean)
         if (helpEl){
-            if (data.meta){
-                helpEl.textContent =
-                    `${slots.length} slot(s). Clinic ${data.meta.open}–${data.meta.close}. ` +
-                    `Step: ${data.meta.step_minutes} min. ` +
-                    `Same-day needs ${data.meta.lead_minutes_today} min lead time. ` +
-                    (duration ? `Duration: ${duration} min.` : ``);
-            } else {
-                helpEl.textContent = `${slots.length} slot(s) available.`;
-            }
+            const suffix = (doctorRequired && doctorId) ? ' for this dentist.' : '.';
+            helpEl.textContent = `${slots.length} slot(s) available${suffix}`;
         }
     }
 
