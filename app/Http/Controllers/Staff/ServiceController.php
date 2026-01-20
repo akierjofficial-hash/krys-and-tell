@@ -28,16 +28,28 @@ class ServiceController extends Controller
             'allow_custom_price' => 'required|in:0,1',
             'description'        => 'nullable|string',
 
-            // ✅ allow checkup 3 mins etc.
-            'duration_minutes'   => 'nullable|integer|min:1|max:60',
+            // ✅ walk-in fields
+            'is_walk_in'         => 'nullable|boolean',
+            'walk_in_note'       => 'nullable|string|max:255',
+
+            // ✅ duration only matters for scheduled services
+            // clinic said treatments max 1 hour -> max 60
+            'duration_minutes'   => 'nullable|integer|min:15|max:60',
         ]);
+
+        $isWalkIn = (bool)($validated['is_walk_in'] ?? false);
 
         Service::create([
             'name'               => $validated['name'],
             'base_price'         => $validated['base_price'],
             'allow_custom_price' => (int) $validated['allow_custom_price'],
             'description'        => $validated['description'] ?? null,
-            'duration_minutes'   => $validated['duration_minutes'] ?? null,
+
+            'is_walk_in'         => $isWalkIn,
+            'walk_in_note'       => $validated['walk_in_note'] ?? null,
+
+            // ✅ if walk-in, ignore duration
+            'duration_minutes'   => $isWalkIn ? null : ($validated['duration_minutes'] ?? null),
         ]);
 
         return redirect()->route('staff.services.index')->with('success', 'Service added successfully!');
@@ -56,16 +68,24 @@ class ServiceController extends Controller
             'allow_custom_price' => 'required|in:0,1',
             'description'        => 'nullable|string',
 
-            // ✅ allow checkup 3 mins etc.
-            'duration_minutes'   => 'nullable|integer|min:1|max:60',
+            'is_walk_in'         => 'nullable|boolean',
+            'walk_in_note'       => 'nullable|string|max:255',
+
+            'duration_minutes'   => 'nullable|integer|min:15|max:60',
         ]);
+
+        $isWalkIn = (bool)($validated['is_walk_in'] ?? false);
 
         $service->update([
             'name'               => $validated['name'],
             'base_price'         => $validated['base_price'],
             'allow_custom_price' => (int) $validated['allow_custom_price'],
             'description'        => $validated['description'] ?? null,
-            'duration_minutes'   => $validated['duration_minutes'] ?? null,
+
+            'is_walk_in'         => $isWalkIn,
+            'walk_in_note'       => $validated['walk_in_note'] ?? null,
+
+            'duration_minutes'   => $isWalkIn ? null : ($validated['duration_minutes'] ?? null),
         ]);
 
         return redirect()->route('staff.services.index')->with('success', 'Service updated successfully!');

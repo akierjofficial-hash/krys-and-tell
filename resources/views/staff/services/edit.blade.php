@@ -2,6 +2,19 @@
 
 @section('content')
 
+@php
+    // Walk-in rule (recommended):
+    // - If duration_minutes is empty => walk-in (no time slot)
+    // - If duration_minutes is 1–5 => treat as walk-in too (prevents "too many slots" problem)
+    $durValRaw = old('duration_minutes', $service->duration_minutes);
+    $durValStr = is_null($durValRaw) ? '' : (string)$durValRaw;
+    $durNum = is_numeric($durValStr) ? (int)$durValStr : null;
+
+    $walkInByDuration = ($durValStr === '' || $durValNum = ($durNum !== null && $durNum > 0 && $durNum <= 5));
+    $walkInOld = old('is_walk_in', $walkInByDuration ? 1 : 0);
+    $isWalkInChecked = (int)$walkInOld === 1;
+@endphp
+
 <style>
     .page-title {
         font-size: 26px;
@@ -63,6 +76,7 @@
         color: white;
         font-weight: 600;
         transition: .2s;
+        border: none;
     }
 
     .submit-btn:hover {
@@ -74,6 +88,7 @@
         color: #6b7280;
         font-weight: 500;
         transition: .2s;
+        text-decoration: none;
     }
 
     .cancel-link:hover {
@@ -84,6 +99,24 @@
         color:#dc2626;
         font-size:12px;
         margin-top:6px;
+    }
+
+    .inline-row{
+        display:flex;
+        align-items:flex-start;
+        gap:10px;
+    }
+    .inline-row input[type="checkbox"]{
+        margin-top:4px;
+        transform: scale(1.05);
+    }
+
+    .soft-card{
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        padding: 12px 14px;
+        border-radius: 10px;
+        margin-top: 10px;
     }
 </style>
 
@@ -117,22 +150,49 @@
                 @error('allow_custom_price') <div class="error-text">{{ $message }}</div> @enderror
             </div>
 
-            {{-- ✅ Duration (minutes) --}}
+            {{-- ✅ Walk-in toggle (NO time slot) --}}
             <div>
+                <label class="form-label">Scheduling Mode</label>
+
+                {{-- Always send 0 if unchecked --}}
+                <input type="hidden" name="is_walk_in" value="0">
+
+                <div class="inline-row">
+                    <input type="checkbox" id="is_walk_in" name="is_walk_in" value="1" {{ $isWalkInChecked ? 'checked' : '' }}>
+                    <div>
+                        <div style="font-weight:700;color:#111827;">Walk-in (no time slot)</div>
+                        <div class="help-text">
+                            Use this for small services like checkup.
+                            Patient will pick a date only and can come anytime during clinic hours.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="soft-card">
+                    <div style="font-weight:700;color:#111827;">Tip</div>
+                    <div class="help-text" style="margin-top:4px;">
+                        If Walk-in is ON, we will clear <b>Duration</b>. If Walk-in is OFF, set a realistic duration (e.g. 30–60 minutes).
+                    </div>
+                </div>
+            </div>
+
+            {{-- ✅ Duration (minutes) --}}
+            <div id="durationWrap">
                 <label class="form-label">Duration (minutes)</label>
                 <input
+                    id="duration_minutes"
                     type="number"
                     name="duration_minutes"
                     class="form-input"
                     min="1"
                     max="60"
                     step="1"
-                    value="{{ old('duration_minutes', $service->duration_minutes ?? 60) }}"
-                    placeholder="e.g. 3 for checkup, 60 for treatment"
+                    value="{{ old('duration_minutes', $service->duration_minutes) }}"
+                    placeholder="e.g. 60 for treatment (leave empty for Walk-in)"
                 >
                 <div class="help-text">
-                    Used for scheduling/time slots (prevents overlaps). Allowed range: 1–60 minutes.
-                    If empty, the system will treat it as 60 minutes.
+                    Only used for scheduled services (time slots + overlap prevention).
+                    Leave empty if this service is Walk-in.
                 </div>
                 @error('duration_minutes') <div class="error-text">{{ $message }}</div> @enderror
             </div>
@@ -150,5 +210,32 @@
         </div>
     </form>
 </div>
+
+<script>
+(function(){
+    const cb = document.getElementById('is_walk_in');
+    const durationEl = document.getElementById('duration_minutes');
+    const wrap = document.getElementById('durationWrap');
+
+    if(!cb || !durationEl || !wrap) return;
+
+    function apply(){
+        const on = cb.checked;
+
+        // If Walk-in ON: clear duration and make it read-only (still submits empty => null)
+        if(on){
+            durationEl.value = '';
+            durationEl.readOnly = true;
+            wrap.style.opacity = '0.65';
+        } else {
+            durationEl.readOnly = false;
+            wrap.style.opacity = '1';
+        }
+    }
+
+    cb.addEventListener('change', apply);
+    apply();
+})();
+</script>
 
 @endsection

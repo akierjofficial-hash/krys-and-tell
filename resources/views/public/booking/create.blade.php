@@ -9,6 +9,13 @@
     $fullName = trim(old('full_name', $u->name ?? ''));
     $email    = trim(old('email', $u->email ?? ''));
 
+    // ✅ Walk-in rule (same as controller):
+    // - duration_minutes empty => walk-in
+    // - duration_minutes 1–5 => walk-in
+    $durRaw = $service->duration_minutes ?? null;
+    $durNum = is_numeric($durRaw) ? (int)$durRaw : null;
+    $isWalkIn = is_null($durRaw) || $durRaw === '' || ($durNum !== null && $durNum > 0 && $durNum <= 5);
+
     // ✅ Best-effort split based on the CURRENT fullName (not just google name)
     $parts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY);
     $first = $parts[0] ?? '';
@@ -21,11 +28,9 @@
     $doctorRequired = ($doctors->count() > 0);
     $hasSuccess = session('booking_success') && !empty($successAppointment);
 
-    // ✅ These are passed from controller (fallback safe)
     $needsDetails = $needsDetails ?? true;
     $profile = $profile ?? ['contact' => null, 'address' => null, 'birthdate' => null];
 
-    // Prefill helpers
     $contactVal = old('contact', $profile['contact'] ?? ($u->phone_number ?? ''));
     $addressVal = old('address', $profile['address'] ?? ($u->address ?? ''));
 
@@ -40,9 +45,8 @@
 
 <section class="section section-soft kt-booking-page">
     <style>
-        /* Mobile-only improvements for booking page */
         @media (max-width: 768px){
-            .kt-booking-page{ padding-bottom: 130px !important; } /* space for sticky submit */
+            .kt-booking-page{ padding-bottom: 130px !important; }
         }
 
         .kt-slot-grid{
@@ -112,7 +116,6 @@
         <div class="row g-4 mt-2">
             <div class="col-lg-6">
 
-                {{-- SUCCESS (same page) --}}
                 @if($hasSuccess)
                     <div class="card card-soft p-4">
                         <h2 class="sec-title mb-2">Booking submitted</h2>
@@ -134,7 +137,9 @@
                                 </div>
                                 <div class="col-6">
                                     <div class="small text-muted">Time</div>
-                                    <div style="font-weight:950;">{{ $successAppointment->appointment_time ?? '—' }}</div>
+                                    <div style="font-weight:950;">
+                                        {{ !empty($successAppointment->appointment_time) ? $successAppointment->appointment_time : 'WALK-IN' }}
+                                    </div>
                                 </div>
                             </div>
 
@@ -149,28 +154,41 @@
                         </div>
                     </div>
 
-                {{-- NORMAL FORM --}}
                 @else
                     <div class="card card-soft p-4">
                         <h2 class="sec-title mb-2">Book: {{ $service->name }}</h2>
 
-                        @if($needsDetails)
+                        @if($isWalkIn)
                             <div class="sec-sub">
-                                Select doctor, date, time — then fill <b>contact number</b>, <b>address</b>, and <b>birthdate</b>.
-                                Appointment will be created as <b>Pending</b>.
-                            </div>
-                        @else
-                            <div class="sec-sub">
-                                Select doctor, date, and time. We’ll use your saved contact, address, and birthdate.
+                                Choose doctor (if required) and a date. This is a <b>Walk-in</b> service — you can come anytime during clinic hours.
                                 Appointment will be created as <b>Pending</b>.
                             </div>
 
                             <div class="alert alert-light border mt-3" style="border-radius:16px;">
-                                <div style="font-weight:900;">Using saved details</div>
+                                <div style="font-weight:900;">Walk-in service</div>
                                 <div class="small text-muted">
-                                    Contact, address, and birthdate are already on record — no need to re-enter.
+                                    Come anytime during clinic hours (Mon–Sat 9:00 AM – 6:00 PM). No time slot needed.
                                 </div>
                             </div>
+                        @else
+                            @if($needsDetails)
+                                <div class="sec-sub">
+                                    Select doctor, date, time — then fill <b>contact number</b>, <b>address</b>, and <b>birthdate</b>.
+                                    Appointment will be created as <b>Pending</b>.
+                                </div>
+                            @else
+                                <div class="sec-sub">
+                                    Select doctor, date, and time. We’ll use your saved contact, address, and birthdate.
+                                    Appointment will be created as <b>Pending</b>.
+                                </div>
+
+                                <div class="alert alert-light border mt-3" style="border-radius:16px;">
+                                    <div style="font-weight:900;">Using saved details</div>
+                                    <div class="small text-muted">
+                                        Contact, address, and birthdate are already on record — no need to re-enter.
+                                    </div>
+                                </div>
+                            @endif
                         @endif
 
                         @if ($errors->any())
@@ -186,7 +204,6 @@
                         <form class="mt-3" method="POST" action="{{ route('public.booking.store', $service->id) }}">
                             @csrf
 
-                            {{-- Account --}}
                             <div class="row g-3">
                                 <div class="col-md-7">
                                     <label class="form-label fw-bold">Full Name</label>
@@ -207,7 +224,6 @@
                                 </div>
                             </div>
 
-                            {{-- Hidden fields (controller still uses these) --}}
                             <input type="hidden" name="first_name" value="{{ old('first_name', $first) }}">
                             <input type="hidden" name="middle_name" value="{{ old('middle_name', $middle) }}">
                             <input type="hidden" name="last_name" value="{{ old('last_name', $last) }}">
@@ -215,7 +231,6 @@
 
                             <hr class="my-4">
 
-                            {{-- Doctor --}}
                             @if($doctorRequired)
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Step 1: Select Doctor</label>
@@ -234,7 +249,6 @@
                             @endif
 
                             <div class="row g-3">
-                                {{-- Date --}}
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold">Step 2: Date</label>
                                     <input type="date"
@@ -247,29 +261,31 @@
                                     @error('date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                 </div>
 
-                                {{-- Time --}}
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Step 3: Time</label>
-                                    <select class="form-select" name="time" id="time" required>
-                                        <option value="">
-                                            {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
-                                        </option>
-                                    </select>
+                                @if(!$isWalkIn)
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Step 3: Time</label>
+                                        <select class="form-select" name="time" id="time" required>
+                                            <option value="">
+                                                {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
+                                            </option>
+                                        </select>
 
-                                    {{-- Mobile slot buttons --}}
-                                    <div class="d-md-none">
-                                        <div class="small text-muted mt-2" style="font-weight:700;">Tap a time slot:</div>
-                                        <div id="slotGrid" class="kt-slot-grid"></div>
+                                        <div class="d-md-none">
+                                            <div class="small text-muted mt-2" style="font-weight:700;">Tap a time slot:</div>
+                                            <div id="slotGrid" class="kt-slot-grid"></div>
+                                        </div>
+
+                                        <div class="small text-muted mt-1" id="timeHelp"></div>
+                                        @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
+                                @else
+                                    {{-- Walk-in: keep a nullable time field (controller accepts nullable) --}}
+                                    <input type="hidden" name="time" value="">
+                                @endif
 
-                                    <div class="small text-muted mt-1" id="timeHelp"></div>
-                                    @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-                                </div>
-
-                                {{-- If details needed, Contact goes in this row --}}
                                 @if($needsDetails)
                                     <div class="col-md-4">
-                                        <label class="form-label fw-bold">Step 4: Contact Number</label>
+                                        <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 3' : 'Step 4' }}: Contact Number</label>
                                         <input class="form-control"
                                                type="tel"
                                                name="contact"
@@ -283,16 +299,14 @@
                                 @endif
                             </div>
 
-                            {{-- If details already saved, send hidden values --}}
                             @if(!$needsDetails)
                                 <input type="hidden" name="contact" value="{{ $contactVal }}">
                                 <input type="hidden" name="address" value="{{ $addressVal }}">
                                 <input type="hidden" name="birthdate" value="{{ $birthdateVal }}">
                             @else
                                 <div class="row g-3 mt-1">
-                                    {{-- Address --}}
                                     <div class="col-md-8">
-                                        <label class="form-label fw-bold">Step 5: Address</label>
+                                        <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 4' : 'Step 5' }}: Address</label>
                                         <input class="form-control"
                                                type="text"
                                                name="address"
@@ -302,9 +316,8 @@
                                         @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
 
-                                    {{-- Birthdate --}}
                                     <div class="col-md-4">
-                                        <label class="form-label fw-bold">Step 6: Birthdate</label>
+                                        <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 5' : 'Step 6' }}: Birthdate</label>
                                         <input class="form-control"
                                                type="date"
                                                name="birthdate"
@@ -317,7 +330,6 @@
                                 </div>
                             @endif
 
-                            {{-- Optional message --}}
                             <div class="mt-3">
                                 <label class="form-label fw-bold">Message (optional)</label>
                                 <textarea class="form-control" name="message" rows="3" maxlength="500"
@@ -325,12 +337,10 @@
                                 @error('message')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
 
-                            {{-- Desktop submit --}}
                             <button class="btn kt-btn kt-btn-primary text-white mt-4 d-none d-md-inline-flex" type="submit">
                                 <i class="fa-solid fa-circle-check me-1"></i> Confirm Booking
                             </button>
 
-                            {{-- Mobile sticky submit --}}
                             <div class="kt-sticky-submit d-md-none">
                                 <div class="container">
                                     <button class="btn kt-btn kt-btn-primary text-white w-100" type="submit">
@@ -343,7 +353,6 @@
                 @endif
             </div>
 
-            {{-- Right image always stays --}}
             <div class="col-lg-6">
                 <div class="img-tile" style="height:520px;">
                     <img src="{{ asset('assets/img/public/pic7.jpg') }}" alt="Clinic">
@@ -392,7 +401,11 @@
     }
 })();
 </script>
+@endpush
 
+{{-- ✅ Slots script ONLY for scheduled services --}}
+@if(!$isWalkIn)
+@push('scripts')
 <script>
 (function(){
     const serviceId = @json($service->id);
@@ -539,4 +552,6 @@
 })();
 </script>
 @endpush
+@endif
+
 @endsection

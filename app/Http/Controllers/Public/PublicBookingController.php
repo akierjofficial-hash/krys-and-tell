@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class PublicBookingController extends Controller
 {
@@ -26,7 +27,6 @@ class PublicBookingController extends Controller
                 ->first();
         }
 
-        // ✅ Determine if we still need contact/address/birthdate from this user
         $user = auth()->user();
         $profile = $this->knownBookingDetails($user);
         $needsDetails = $user ? !$profile['complete'] : true;
@@ -42,6 +42,20 @@ class PublicBookingController extends Controller
 
     public function slots(Request $request, Service $service)
     {
+        // ✅ Walk-in services: no slots
+        if ($this->isWalkInService($service)) {
+            return response()->json([
+                'walk_in' => true,
+                'slots' => [],
+                'meta' => [
+                    'open' => '09:00',
+                    'close' => '18:00',
+                    'closed_weekday' => 'Sunday',
+                    'timezone' => config('app.timezone'),
+                ],
+            ]);
+        }
+
         $doctorRequired = $this->doctorRequired();
 
         $request->validate([
@@ -53,7 +67,9 @@ class PublicBookingController extends Controller
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
         $durationMinutes = $this->serviceDurationMinutes($service);
-        $stepMinutes = $this->slotStepMinutes($durationMinutes);
+
+        // ✅ Keep steps sane (avoid too many slots)
+        $stepMinutes = 30;
 
         $slots = $this->computeSlots($date, $doctorId, $durationMinutes, $stepMinutes);
 
@@ -81,18 +97,24 @@ class PublicBookingController extends Controller
         $profile = $this->knownBookingDetails($user);
         $needsDetails = $user ? !$profile['complete'] : true;
 
+        $isWalkIn = $this->isWalkInService($service);
+
         $rules = [
             'date' => ['required', 'date', 'after_or_equal:today'],
-            'time' => ['required', 'date_format:H:i'],
+
+            // ✅ Walk-in: no time required
+            'time' => [
+                Rule::requiredIf(!$isWalkIn),
+                'nullable',
+                'date_format:H:i',
+            ],
 
             'doctor_id' => $doctorRequired
                 ? ['required', 'integer', 'exists:doctors,id']
                 : ['nullable', 'integer', 'exists:doctors,id'],
 
-            // ✅ editable full name (required)
             'full_name' => ['required', 'string', 'max:190'],
 
-            // ✅ only required on first booking (or when missing)
             'contact'   => $needsDetails ? ['required', 'string', 'max:40'] : ['nullable', 'string', 'max:40'],
             'address'   => $needsDetails ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
             'birthdate' => $needsDetails ? ['required', 'date', 'before:today', 'after:1900-01-01'] : ['nullable', 'date'],
@@ -101,30 +123,30 @@ class PublicBookingController extends Controller
         ];
 
         if (!$user) {
-            $rules = array_merge($rules, [
-                'email' => ['required', 'email', 'max:190'],
-            ]);
+            $rules['email'] = ['required', 'email', 'max:190'];
         } else {
-            $rules = array_merge($rules, [
-                'email' => ['nullable', 'email', 'max:190'],
-            ]);
+            $rules['email'] = ['nullable', 'email', 'max:190'];
         }
 
         $request->validate($rules);
 
         $date = Carbon::parse($request->date)->toDateString();
-        $time = $request->time;
+        $time = $request->time; // may be null for walk-in
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
-        $durationMinutes = $this->serviceDurationMinutes($service);
-        $stepMinutes = $this->slotStepMinutes($durationMinutes);
+        $durationMinutes = null;
 
-        // ✅ TIME TRAP: re-check availability at submit time
-        $available = in_array($time, $this->computeSlots($date, $doctorId, $durationMinutes, $stepMinutes), true);
-        if (!$available) {
-            return back()
-                ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
-                ->withInput();
+        // ✅ Only validate slot availability if scheduled service
+        if (!$isWalkIn) {
+            $durationMinutes = $this->serviceDurationMinutes($service);
+            $stepMinutes = 30;
+
+            $available = in_array($time, $this->computeSlots($date, $doctorId, $durationMinutes, $stepMinutes), true);
+            if (!$available) {
+                return back()
+                    ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
+                    ->withInput();
+            }
         }
 
         // ✅ Use editable full_name
@@ -163,7 +185,8 @@ class PublicBookingController extends Controller
             $email,
             $contact,
             $address,
-            $birthdate
+            $birthdate,
+            $isWalkIn
         ) {
             if ($user) {
                 $dirty = false;
@@ -183,9 +206,6 @@ class PublicBookingController extends Controller
                     $dirty = true;
                 }
 
-                // (Optional) don’t change Google display name by default
-                // if (!empty($fullName) && $user->name !== $fullName) { $user->name = $fullName; $dirty = true; }
-
                 if ($dirty) $user->save();
             }
 
@@ -197,11 +217,14 @@ class PublicBookingController extends Controller
             if (Schema::hasColumn('appointments', 'appointment_date')) {
                 $appointment->appointment_date = $date;
             }
+
+            // ✅ Walk-in: appointment_time should be NULL (DB must allow nullable)
             if (Schema::hasColumn('appointments', 'appointment_time')) {
-                $appointment->appointment_time = $time;
+                $appointment->appointment_time = $isWalkIn ? null : $time;
             }
+
             if (Schema::hasColumn('appointments', 'duration_minutes')) {
-                $appointment->duration_minutes = $durationMinutes;
+                $appointment->duration_minutes = $isWalkIn ? null : $durationMinutes;
             }
 
             if ($doctorId && Schema::hasColumn('appointments', 'doctor_id')) {
@@ -263,15 +286,20 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * ✅ Dynamic slot step based on service duration.
-     * Example: 3 mins => 5 min step (so you can book 09:00, 09:05, 09:10...)
+     * ✅ Walk-in rule:
+     * - duration_minutes is NULL/empty => walk-in
+     * - duration_minutes 1–5 => also walk-in (prevents crazy slot counts)
      */
-    private function slotStepMinutes(int $durationMinutes): int
+    private function isWalkInService(Service $service): bool
     {
-        if ($durationMinutes <= 10) return 5;
-        if ($durationMinutes <= 20) return 10;
-        if ($durationMinutes <= 40) return 15;
-        return 30;
+        if (!Schema::hasColumn('services', 'duration_minutes')) return false;
+
+        $d = $service->duration_minutes;
+
+        if ($d === null) return true;
+
+        $n = (int) $d;
+        return $n > 0 && $n <= 5;
     }
 
     private function knownBookingDetails($user): array
@@ -374,7 +402,6 @@ class PublicBookingController extends Controller
         $parts = explode(' ', $name);
 
         if (count($parts) === 1) {
-            // ✅ make last = first for single-word names
             return ['first' => $parts[0], 'middle' => null, 'last' => $parts[0]];
         }
 
@@ -476,8 +503,7 @@ class PublicBookingController extends Controller
             $d = (int) $service->duration_minutes;
         }
 
-        // ✅ allow very short durations and cap at 60 mins (per your clinic rule)
-        return max(1, min(60, $d));
+        return max(15, min(60, $d));
     }
 
     private function parseTimeOnDate(string $date, $time, string $tz): ?Carbon
