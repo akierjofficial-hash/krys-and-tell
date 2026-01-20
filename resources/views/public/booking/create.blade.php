@@ -10,14 +10,19 @@
     $fullName = trim(old('full_name', $u->name ?? ''));
     $email    = trim(old('email', $u->email ?? ''));
 
-    // ✅ Walk-in rule (same as controller):
-    // - duration_minutes empty => walk-in
-    // - duration_minutes 1–5 => walk-in
-    $durRaw = $service->duration_minutes ?? null;
-    $durNum = is_numeric($durRaw) ? (int)$durRaw : null;
-    $isWalkIn = is_null($durRaw) || $durRaw === '' || ($durNum !== null && $durNum > 0 && $durNum <= 5);
+    // ✅ IMPORTANT: use controller-provided flag if available (keeps blade+controller consistent)
+    // Fallback to duration rule if not passed
+    $isWalkIn = $isWalkIn ?? (function() use ($service){
+        $durRaw = $service->duration_minutes ?? null;
+        if ($durRaw === null || $durRaw === '') return true;
+        if (is_numeric($durRaw)) {
+            $d = (int)$durRaw;
+            return $d > 0 && $d <= 5;
+        }
+        return false;
+    })();
 
-    // ✅ Best-effort split based on the CURRENT fullName (not just google name)
+    // ✅ Best-effort split based on CURRENT fullName
     $parts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY);
     $first = $parts[0] ?? '';
     $last  = count($parts) > 1 ? $parts[count($parts)-1] : ($parts[0] ?? '');
@@ -40,17 +45,24 @@
         try { $birthdateVal = \Carbon\Carbon::parse($profile['birthdate'])->format('Y-m-d'); } catch (\Throwable $e) {}
     }
     if (!$birthdateVal && !empty($u->birthdate)) {
-        // ✅ FIXED: removed the stray quote after $u->birthdate
         try { $birthdateVal = \Carbon\Carbon::parse($u->birthdate)->format('Y-m-d'); } catch (\Throwable $e) {}
     }
 @endphp
 
 <section class="section section-soft kt-booking-page">
     <style>
+        .kt-booking-page{ padding-bottom: 24px; }
         @media (max-width: 768px){
             .kt-booking-page{ padding-bottom: 130px !important; }
         }
 
+        /* Make row columns match height better */
+        .kt-booking-card{ height: 100%; }
+
+        /* Fix misalignment from varying help text heights */
+        .kt-field-help{ min-height: 18px; }
+
+        /* Slots */
         .kt-slot-grid{
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -71,12 +83,10 @@
             line-height: 1.15;
             cursor: pointer;
             transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+            width: 100%;
         }
-        .kt-slot small{
-            display:block;
-            font-weight: 750;
-            opacity: .7;
-            margin-top: 4px;
+        html[data-theme="dark"] .kt-slot{
+            background: rgba(17,24,39,.55);
         }
         .kt-slot:active{ transform: scale(.99); }
         .kt-slot.is-active{
@@ -84,6 +94,7 @@
             background: rgba(194,138,99,.12);
         }
 
+        /* Sticky submit for mobile */
         .kt-sticky-submit{
             position: fixed;
             left: 0;
@@ -97,6 +108,7 @@
         html[data-theme="dark"] .kt-sticky-submit{
             background: linear-gradient(to top, rgba(17,24,39,.92), rgba(17,24,39,.55), rgba(17,24,39,0));
         }
+
         .kt-help{
             font-size: 12px;
             color: rgba(15, 23, 42, .6);
@@ -104,6 +116,44 @@
         }
         html[data-theme="dark"] .kt-help{
             color: rgba(226, 232, 240, .65);
+        }
+
+        /* Success buttons stack on small screens */
+        .kt-mobile-stack{
+            flex-wrap: wrap;
+        }
+        .kt-mobile-stack > a{
+            flex: 1 1 220px;
+        }
+
+        /* Right image: keep consistent and not overflow */
+        .kt-side-img{
+            height: 520px;
+        }
+        @media (max-width: 991.98px){
+            .kt-side-img{ height: 320px; }
+        }
+        .kt-side-img img{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 18px;
+        }
+
+        /* Step badge */
+        .kt-step-pill{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--kt-border, rgba(15,23,42,.12));
+            background: rgba(255,255,255,.75);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-weight: 850;
+            font-size: 12px;
+        }
+        html[data-theme="dark"] .kt-step-pill{
+            background: rgba(17,24,39,.55);
         }
     </style>
 
@@ -115,11 +165,10 @@
             label="Back"
         />
 
-        <div class="row g-4 mt-2">
-            <div class="col-lg-6">
-
+        <div class="row g-4 mt-2 align-items-stretch">
+            <div class="col-lg-6 d-flex">
                 @if($hasSuccess)
-                    <div class="card card-soft p-4">
+                    <div class="card card-soft p-4 kt-booking-card w-100">
                         <h2 class="sec-title mb-2">Booking submitted</h2>
                         <div class="sec-sub">
                             Saved as <b>Pending</b>. Staff will confirm it and email you.
@@ -155,35 +204,44 @@
                             </div>
                         </div>
                     </div>
-
                 @else
-                    <div class="card card-soft p-4">
-                        <h2 class="sec-title mb-2">Book: {{ $service->name }}</h2>
-
-                        @if($isWalkIn)
-                            <div class="sec-sub">
-                                Choose doctor (if required) and a date. This is a <b>Walk-in</b> service — you can come anytime during clinic hours.
-                                Appointment will be created as <b>Pending</b>.
+                    <div class="card card-soft p-4 kt-booking-card w-100">
+                        <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+                            <div>
+                                <h2 class="sec-title mb-1">Book: {{ $service->name }}</h2>
+                                <div class="sec-sub mb-0">
+                                    @if($isWalkIn)
+                                        Choose doctor (if required) and a date. This is a <b>Walk-in</b> service — come anytime during clinic hours.
+                                    @else
+                                        @if($needsDetails)
+                                            Select doctor, date, time — then fill <b>contact</b>, <b>address</b>, and <b>birthdate</b>.
+                                        @else
+                                            Select doctor, date, and time. We’ll use your saved contact, address, and birthdate.
+                                        @endif
+                                    @endif
+                                </div>
                             </div>
 
+                            @if($isWalkIn)
+                                <span class="kt-step-pill">
+                                    <i class="fa-solid fa-person-walking"></i> Walk-in
+                                </span>
+                            @else
+                                <span class="kt-step-pill">
+                                    <i class="fa-regular fa-clock"></i> Scheduled
+                                </span>
+                            @endif
+                        </div>
+
+                        @if($isWalkIn)
                             <div class="alert alert-light border mt-3" style="border-radius:16px;">
                                 <div style="font-weight:900;">Walk-in service</div>
                                 <div class="small text-muted">
-                                    Come anytime during clinic hours (Mon–Sat 9:30 AM – 5:00 PM). No time slot needed.
+                                    Come anytime during clinic hours (Mon–Sat 9:00 AM – 5:00 PM). No time slot needed.
                                 </div>
                             </div>
                         @else
-                            @if($needsDetails)
-                                <div class="sec-sub">
-                                    Select doctor, date, time — then fill <b>contact number</b>, <b>address</b>, and <b>birthdate</b>.
-                                    Appointment will be created as <b>Pending</b>.
-                                </div>
-                            @else
-                                <div class="sec-sub">
-                                    Select doctor, date, and time. We’ll use your saved contact, address, and birthdate.
-                                    Appointment will be created as <b>Pending</b>.
-                                </div>
-
+                            @if(!$needsDetails)
                                 <div class="alert alert-light border mt-3" style="border-radius:16px;">
                                     <div style="font-weight:900;">Using saved details</div>
                                     <div class="small text-muted">
@@ -217,12 +275,13 @@
                                         placeholder="Type your real full name"
                                         required
                                     >
-                                    <div class="kt-help mt-1">If your Google name is not your real name, edit it here.</div>
+                                    <div class="kt-help mt-1 kt-field-help">If your Google name is not your real name, edit it here.</div>
                                 </div>
 
                                 <div class="col-md-5">
                                     <label class="form-label fw-bold">Email</label>
                                     <input class="form-control" value="{{ $email }}" readonly aria-readonly="true">
+                                    <div class="kt-field-help"></div>
                                 </div>
                             </div>
 
@@ -251,7 +310,7 @@
                             @endif
 
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4' }}">
                                     <label class="form-label fw-bold">Step 2: Date</label>
                                     <input type="date"
                                            class="form-control"
@@ -266,6 +325,7 @@
                                 @if(!$isWalkIn)
                                     <div class="col-md-4">
                                         <label class="form-label fw-bold">Step 3: Time</label>
+                                        {{-- ✅ required only for scheduled services --}}
                                         <select class="form-select" name="time" id="time" required>
                                             <option value="">
                                                 {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
@@ -277,18 +337,16 @@
                                             <div id="slotGrid" class="kt-slot-grid"></div>
                                         </div>
 
-                                        {{-- ✅ Short + clean text only --}}
                                         <div class="small text-muted mt-1" id="timeHelp"></div>
-
                                         @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 @else
-                                    {{-- Walk-in: keep a nullable time field (controller accepts nullable) --}}
+                                    {{-- Walk-in: submit NULL time (controller accepts nullable) --}}
                                     <input type="hidden" name="time" value="">
                                 @endif
 
                                 @if($needsDetails)
-                                    <div class="col-md-4">
+                                    <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4' }}">
                                         <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 3' : 'Step 4' }}: Contact Number</label>
                                         <input class="form-control"
                                                type="tel"
@@ -297,7 +355,7 @@
                                                placeholder="09xx xxx xxxx"
                                                inputmode="tel"
                                                required>
-                                        <div class="kt-help mt-1">We’ll use this to confirm your booking.</div>
+                                        <div class="kt-help mt-1 kt-field-help">We’ll use this to confirm your booking.</div>
                                         @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 @endif
@@ -328,7 +386,7 @@
                                                value="{{ $birthdateVal }}"
                                                max="{{ now()->subDay()->toDateString() }}"
                                                required>
-                                        <div class="kt-help mt-1">Used for your patient record.</div>
+                                        <div class="kt-help mt-1 kt-field-help">Used for your patient record.</div>
                                         @error('birthdate')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
@@ -357,8 +415,8 @@
                 @endif
             </div>
 
-            <div class="col-lg-6">
-                <div class="img-tile" style="height:520px;">
+            <div class="col-lg-6 d-flex">
+                <div class="img-tile kt-side-img w-100">
                     <img src="{{ asset('assets/img/public/pic7.jpg') }}" alt="Clinic">
                 </div>
             </div>
@@ -514,7 +572,6 @@
 
         renderGrid(slots);
 
-        // ✅ Only show slots count (short clean)
         if (helpEl){
             const suffix = (doctorRequired && doctorId) ? ' for this dentist.' : '.';
             helpEl.textContent = `${slots.length} slot(s) available${suffix}`;
