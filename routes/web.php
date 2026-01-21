@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\AdminScheduleController;
 use App\Http\Controllers\Admin\AdminAppointmentController;
 use App\Http\Controllers\Admin\AdminPatientController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
+use App\Http\Controllers\Admin\AdminDoctorController;
 
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
@@ -70,9 +71,6 @@ Route::get('/services/{service}', [PublicServiceController::class, 'show'])->nam
 */
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-
-    // (optional) add throttle if you want:
-    // Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:10,1')->name('login.submit');
     Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
 });
 
@@ -88,14 +86,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
     Route::post('/book/{service}', [PublicBookingController::class, 'store'])->name('public.booking.store');
 
-    // ✅ User Profile (Upcoming + History + Settings + Password)
+    // ✅ User Profile
     Route::get('/profile', [UserProfileController::class, 'index'])->name('profile.show');
     Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
     Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('user.profile.password');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-    // ✅ Portal redirect based on role (FIXED)
+    // ✅ Portal redirect based on role
     Route::get('/portal', function () {
         $role = auth()->user()->role ?? 'user';
 
@@ -107,9 +105,9 @@ Route::middleware('auth')->group(function () {
     })->name('portal');
 
     /*
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     | ADMIN ROUTES
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     */
     Route::middleware('role:admin')
         ->prefix('admin')
@@ -140,18 +138,19 @@ Route::middleware('auth')->group(function () {
             Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
             Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
 
-            Route::get('/doctors', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'index'])->name('doctors.index');
-            Route::get('/doctors/create', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'create'])->name('doctors.create');
-            Route::post('/doctors', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'store'])->name('doctors.store');
-            Route::get('/doctors/{doctor}/edit', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'edit'])->name('doctors.edit');
-            Route::put('/doctors/{doctor}', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'update'])->name('doctors.update');
-            Route::post('/doctors/{doctor}/toggle-active', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'toggleActive'])->name('doctors.toggleActive');
+            // Doctors
+            Route::get('/doctors', [AdminDoctorController::class, 'index'])->name('doctors.index');
+            Route::get('/doctors/create', [AdminDoctorController::class, 'create'])->name('doctors.create');
+            Route::post('/doctors', [AdminDoctorController::class, 'store'])->name('doctors.store');
+            Route::get('/doctors/{doctor}/edit', [AdminDoctorController::class, 'edit'])->name('doctors.edit');
+            Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
+            Route::post('/doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggleActive');
         });
 
     /*
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     | STAFF ROUTES
-    |----------------------------------------------------------------------
+    |--------------------------------------------------------------------------
     */
     Route::middleware('role:staff')
         ->prefix('staff')
@@ -159,9 +158,7 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-            Route::get('/dashboard/calendar/events', [DashboardController::class, 'calendarEvents'])
-                ->name('dashboard.calendar.events');
+            Route::get('/dashboard/calendar/events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar.events');
 
             // ✅ Approval Requests
             Route::prefix('approvals')->name('approvals.')->group(function () {
@@ -173,7 +170,6 @@ Route::middleware('auth')->group(function () {
 
             // ✅ Contact Messages Inbox (Staff)
             Route::prefix('messages')->name('messages.')->group(function () {
-                // ✅ MUST be before /{message}
                 Route::get('/widget', [StaffContactMessageController::class, 'widget'])->name('widget');
 
                 Route::get('/', [StaffContactMessageController::class, 'index'])->name('index');
@@ -187,8 +183,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
 
             // ✅ PRINT Patient Information Record (PDF)
-            Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])
-                ->name('patients.printInfo');
+            Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])->name('patients.printInfo');
 
             // ✅ VISITS IMPORT/TEMPLATE
             Route::get('/visits/template', [VisitImportExportController::class, 'template'])->name('visits.template');
@@ -201,12 +196,10 @@ Route::middleware('auth')->group(function () {
             Route::resource('services', ServiceController::class);
 
             // Patient Visit History
-            Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])
-                ->name('patients.visits');
+            Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])->name('patients.visits');
 
             // ✅ Service Folder
-            Route::get('services/{service}/patients', [ServiceController::class, 'patients'])
-                ->name('services.patients');
+            Route::get('services/{service}/patients', [ServiceController::class, 'patients'])->name('services.patients');
 
             // Payments
             Route::prefix('payments')->name('payments.')->group(function () {
@@ -236,10 +229,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/template', [InstallmentImportExportController::class, 'plansTemplate'])->name('template');
                 Route::post('/import', [InstallmentImportExportController::class, 'importPlans'])->name('import');
 
-                Route::get('/{plan}/payments/template', [InstallmentImportExportController::class, 'paymentsTemplate'])
-                    ->name('payments.template');
-                Route::post('/{plan}/payments/import', [InstallmentImportExportController::class, 'importPayments'])
-                    ->name('payments.import');
+                Route::get('/{plan}/payments/template', [InstallmentImportExportController::class, 'paymentsTemplate'])->name('payments.template');
+                Route::post('/{plan}/payments/import', [InstallmentImportExportController::class, 'importPayments'])->name('payments.import');
 
                 Route::get('/{plan}', [InstallmentPlanController::class, 'show'])->name('show');
                 Route::get('/{plan}/edit', [InstallmentPlanController::class, 'edit'])->name('edit');
@@ -252,10 +243,8 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{plan}/complete', [InstallmentPlanController::class, 'complete'])->name('complete');
                 Route::post('/{plan}/reopen', [InstallmentPlanController::class, 'reopen'])->name('reopen');
 
-                Route::get('/{plan}/payments/{payment}/edit', [InstallmentPaymentController::class, 'edit'])
-                    ->name('payments.edit');
-                Route::put('/{plan}/payments/{payment}', [InstallmentPaymentController::class, 'update'])
-                    ->name('payments.update');
+                Route::get('/{plan}/payments/{payment}/edit', [InstallmentPaymentController::class, 'edit'])->name('payments.edit');
+                Route::put('/{plan}/payments/{payment}', [InstallmentPaymentController::class, 'update'])->name('payments.update');
             });
         });
 });
