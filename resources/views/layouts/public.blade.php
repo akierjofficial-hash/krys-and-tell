@@ -391,12 +391,163 @@
             transition: color .15s ease;
         }
         .kt-footer-mini-links a:hover { color: rgba(255, 255, 255, .98); }
+
+        /* ==========================================================
+           ✅ LOADER — Follow video vibe:
+           - Glass blur background (NOT white)
+           - Center "card" + breathing logo
+           - 4 slices bounce with smooth easing
+           ========================================================== */
+        #kt-page-loader{
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+
+            /* blur what’s behind */
+            background: rgba(10, 10, 12, .22);
+            backdrop-filter: blur(18px) saturate(1.25);
+            -webkit-backdrop-filter: blur(18px) saturate(1.25);
+
+            display: grid;
+            place-items: center;
+
+            transition: opacity .35s ease, visibility .35s ease;
+        }
+        #kt-page-loader.is-hidden{
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .kt-loader-card{
+            width: min(420px, calc(100vw - 34px));
+            border-radius: 26px;
+            padding: 22px 20px;
+
+            /* glass card */
+            background: rgba(255, 255, 255, .42);
+            border: 1px solid rgba(255, 255, 255, .28);
+            box-shadow:
+                0 30px 80px rgba(0,0,0,.20),
+                inset 0 1px 0 rgba(255,255,255,.35);
+
+            backdrop-filter: blur(10px) saturate(1.2);
+            -webkit-backdrop-filter: blur(10px) saturate(1.2);
+
+            display: grid;
+            place-items: center;
+            gap: 14px;
+        }
+
+        .kt-loader-logo{
+            width: 92px;
+            height: 92px;
+            position: relative;
+            filter: drop-shadow(0 12px 26px rgba(0,0,0,.22));
+            animation: ktLogoBreath 1.35s ease-in-out infinite;
+        }
+
+        @keyframes ktLogoBreath{
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-3px) scale(1.03); }
+        }
+
+        /* 4 slices of the logo (like the 4 bars in the video) */
+        .kt-slice{
+            position:absolute;
+            inset:0;
+            background-image: url("{{ asset('images/weblogo.png') }}");
+            background-repeat:no-repeat;
+            background-position:center;
+            background-size:contain;
+
+            will-change: transform, opacity, filter;
+            opacity:.96;
+
+            animation: ktSliceBounce 0.95s cubic-bezier(.2,.9,.25,1) infinite;
+            filter: drop-shadow(0 10px 18px rgba(176,124,88,.18));
+        }
+
+        /* slices */
+        .kt-slice.s1{ clip-path: inset(0 75% 0 0);   animation-delay: 0s; }
+        .kt-slice.s2{ clip-path: inset(0 50% 0 25%); animation-delay: .11s; }
+        .kt-slice.s3{ clip-path: inset(0 25% 0 50%); animation-delay: .22s; }
+        .kt-slice.s4{ clip-path: inset(0 0 0 75%);   animation-delay: .33s; }
+
+        /* smoother + closer to video */
+        @keyframes ktSliceBounce{
+            0%   { transform: translateY(6px) scaleY(.86); opacity: .82; }
+            40%  { transform: translateY(-10px) scaleY(1.08); opacity: 1; }
+            70%  { transform: translateY(2px) scaleY(.94); opacity: .90; }
+            100% { transform: translateY(6px) scaleY(.86); opacity: .82; }
+        }
+
+        /* small “pulse” bar group under logo (extra video feel) */
+        .kt-loader-bars{
+            display:flex;
+            gap: 9px;
+            align-items:flex-end;
+            height: 18px;
+        }
+        .kt-loader-bars span{
+            width: 10px;
+            height: 12px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(176,124,88,.95), rgba(216,193,176,.95));
+            box-shadow: 0 12px 28px rgba(176,124,88,.18);
+            animation: ktBar 0.9s cubic-bezier(.2,.9,.25,1) infinite;
+        }
+        .kt-loader-bars span:nth-child(1){ animation-delay: 0s; }
+        .kt-loader-bars span:nth-child(2){ animation-delay: .12s; }
+        .kt-loader-bars span:nth-child(3){ animation-delay: .24s; }
+        .kt-loader-bars span:nth-child(4){ animation-delay: .36s; }
+
+        @keyframes ktBar{
+            0%,100%{ height: 8px; opacity: .55; transform: translateY(2px); }
+            50%{ height: 18px; opacity: 1; transform: translateY(-2px); }
+        }
+
+        .kt-loader-text{
+            font-weight: 850;
+            font-size: 12px;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: rgba(11,18,32,.68);
+            user-select: none;
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .kt-slice, .kt-loader-bars span, .kt-loader-logo { animation: none; }
+        }
+
+        /* if JS disabled, don’t trap the user */
+        noscript #kt-page-loader{ display:none !important; }
     </style>
 
     @stack('styles')
 </head>
 
 <body>
+<noscript><style>#kt-page-loader{display:none !important;}</style></noscript>
+
+{{-- ✅ Page Loader (blur background + video-like animation) --}}
+<div id="kt-page-loader" aria-label="Loading" role="status">
+    <div class="kt-loader-card">
+        <div class="kt-loader-logo" aria-hidden="true">
+            <span class="kt-slice s1"></span>
+            <span class="kt-slice s2"></span>
+            <span class="kt-slice s3"></span>
+            <span class="kt-slice s4"></span>
+        </div>
+
+        <div class="kt-loader-bars" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="kt-loader-text">Loading…</div>
+    </div>
+</div>
+
 @php
     $path = request()->path(); // "" for home
     $isActive = fn($p) => ($p === '/' ? $path === '' : str_starts_with($path, ltrim($p,'/')));
@@ -490,7 +641,7 @@
                 @endauth
             </div>
 
-            {{-- Collapsible links (no w-100 so desktop doesn't wrap) --}}
+            {{-- Collapsible links --}}
             <div id="ktNav" class="collapse navbar-collapse order-3 order-lg-2 mt-3 mt-lg-0">
                 <ul class="navbar-nav ms-lg-auto gap-lg-1 align-items-lg-center">
                     <li class="nav-item">
@@ -622,6 +773,32 @@
         </div>
     </div>
 </footer>
+
+{{-- ✅ Loader Hide Script --}}
+<script>
+(function () {
+    const loader = document.getElementById('kt-page-loader');
+    if (!loader) return;
+
+    const hide = () => {
+        loader.classList.add('is-hidden');
+        setTimeout(() => loader.remove(), 450);
+    };
+
+    // show at least a tiny bit so it feels intentional
+    window.addEventListener('load', () => {
+        setTimeout(hide, 300);
+    });
+
+    // handles back/forward cache restore
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) hide();
+    });
+
+    // safety fallback
+    setTimeout(hide, 10000);
+})();
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 @stack('scripts')
