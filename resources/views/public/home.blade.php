@@ -84,7 +84,7 @@
                     </div>
                     <div class="col-6">
                         <div class="img-tile" style="height:190px;">
-                            <img src="{{ asset('assets/img/public/pic5.jpg') }}" alt="Clinic interior">
+                            <img src="{{ asset('assets/img/public/pic1.jpg') }}" alt="Clinic interior">
                         </div>
                     </div>
                 </div>
