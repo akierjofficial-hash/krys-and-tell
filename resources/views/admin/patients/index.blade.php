@@ -205,10 +205,56 @@
         padding: 0 2px;
     }
 
+    /* ===== Pagination (FIX BIG ICONS) ===== */
+    .footer-row .pagination{
+        margin: 0;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .footer-row .pagination .page-item .page-link{
+        border-radius: 14px;
+        padding: 8px 12px;
+        font-weight: 900;
+        font-size: 13px;
+        line-height: 1;
+        border: 1px solid rgba(15,23,42,.12);
+        background: rgba(255,255,255,.70);
+        color: var(--text);
+        box-shadow: 0 10px 18px rgba(15,23,42,.06);
+    }
+
+    html[data-theme="dark"] .footer-row .pagination .page-item .page-link{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.18);
+        box-shadow: 0 12px 22px rgba(0,0,0,.35);
+    }
+
+    .footer-row .pagination .page-item.active .page-link{
+        background: rgba(37,99,235,.12);
+        border-color: rgba(37,99,235,.25);
+    }
+
+    .footer-row .pagination .page-item.disabled .page-link{
+        opacity: .55;
+    }
+
+    /* IMPORTANT: shrink the SVG icons inside Prev/Next */
+    .footer-row .pagination svg{
+        width: 16px !important;
+        height: 16px !important;
+        vertical-align: middle;
+    }
+
     /* Small screens: reduce min-width so it scrolls nicer */
     @media (max-width: 640px){
         table.kt-table{ min-width: 860px; }
         .pt-title{ font-size: 24px; }
+
+        .footer-row .pagination .page-item .page-link{
+            padding: 8px 10px;
+            font-size: 12px;
+        }
     }
 </style>
 @endpush
