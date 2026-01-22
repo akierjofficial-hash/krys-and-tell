@@ -18,14 +18,12 @@
             $aq->where('public_email', $u->email);
         }
 
-        // use id as safe "latest" ordering
         $lastAppt = $aq->orderByDesc('id')->first();
 
         if ($lastAppt) {
             if (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_name') && !empty($lastAppt->public_name)) {
                 $recentBookingName = $lastAppt->public_name;
             } else {
-                // fallback: reconstruct from first/middle/last if available
                 $f = (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_first_name') ? ($lastAppt->public_first_name ?? '') : '');
                 $m = (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_middle_name') ? ($lastAppt->public_middle_name ?? '') : '');
                 $l = (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_last_name') ? ($lastAppt->public_last_name ?? '') : '');
@@ -37,13 +35,10 @@
     }
 
     // ✅ editable full name
-    // Priority: old() > most recent appointment name > Google name
     $fullName = trim(old('full_name', $recentBookingName ?? ($u->name ?? '')));
-
     $email    = trim(old('email', $u->email ?? ''));
 
-    // ✅ IMPORTANT: use controller-provided flag if available (keeps blade+controller consistent)
-    // Fallback to duration rule if not passed
+    // ✅ IMPORTANT: use controller-provided flag if available
     $isWalkIn = $isWalkIn ?? (function() use ($service){
         $durRaw = $service->duration_minutes ?? null;
         if ($durRaw === null || $durRaw === '') return true;
@@ -81,15 +76,17 @@
     }
 @endphp
 
-<section class="section section-soft kt-booking-page">
+<section class="section section-soft kt-booking-page {{ $hasSuccess ? 'kt-booking-success' : 'kt-booking-form' }}">
     <style>
         .kt-booking-page{ padding-bottom: 24px; }
+
+        /* ✅ Only the FORM view needs extra bottom padding on mobile (sticky submit) */
         @media (max-width: 768px){
-            .kt-booking-page{ padding-bottom: 130px !important; }
+            .kt-booking-form{ padding-bottom: 130px !important; }
+            .kt-booking-success{ padding-bottom: 24px !important; }
         }
 
         .kt-booking-card{ height: 100%; }
-
         .kt-field-help{ min-height: 18px; }
 
         .kt-slot-grid{
@@ -114,9 +111,7 @@
             transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
             width: 100%;
         }
-        html[data-theme="dark"] .kt-slot{
-            background: rgba(17,24,39,.55);
-        }
+        html[data-theme="dark"] .kt-slot{ background: rgba(17,24,39,.55); }
         .kt-slot:active{ transform: scale(.99); }
         .kt-slot.is-active{
             border-color: rgba(194,138,99,.55);
@@ -142,12 +137,7 @@
             color: rgba(15, 23, 42, .6);
             font-weight: 650;
         }
-        html[data-theme="dark"] .kt-help{
-            color: rgba(226, 232, 240, .65);
-        }
-
-        .kt-mobile-stack{ flex-wrap: wrap; }
-        .kt-mobile-stack > a{ flex: 1 1 220px; }
+        html[data-theme="dark"] .kt-help{ color: rgba(226, 232, 240, .65); }
 
         .kt-side-img{ height: 520px; }
         @media (max-width: 991.98px){
@@ -171,8 +161,67 @@
             font-weight: 850;
             font-size: 12px;
         }
-        html[data-theme="dark"] .kt-step-pill{
-            background: rgba(17,24,39,.55);
+        html[data-theme="dark"] .kt-step-pill{ background: rgba(17,24,39,.55); }
+
+        /* ===========================
+           ✅ SUCCESS SUMMARY (MOBILE FIX)
+           =========================== */
+        .kt-success-wrap .sec-title{
+            font-size: clamp(24px, 5.6vw, 32px);
+            line-height: 1.12;
+        }
+
+        .kt-success-summary{
+            border: 1px solid var(--kt-border, rgba(15,23,42,.12));
+            background: rgba(255,255,255,.78);
+            border-radius: 18px;
+            padding: 14px;
+        }
+        html[data-theme="dark"] .kt-success-summary{
+            background: rgba(17,24,39,.45);
+        }
+
+        .kt-summary-grid{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        @media (min-width: 576px){
+            .kt-summary-grid{ grid-template-columns: 1fr 1fr; }
+        }
+
+        .kt-summary-item{
+            border: 1px solid rgba(15,23,42,.10);
+            background: rgba(255,255,255,.65);
+            border-radius: 16px;
+            padding: 12px 12px;
+        }
+        html[data-theme="dark"] .kt-summary-item{
+            border-color: rgba(226,232,240,.10);
+            background: rgba(2,6,23,.25);
+        }
+        .kt-summary-label{
+            font-size: 12px;
+            font-weight: 800;
+            color: rgba(15,23,42,.55);
+        }
+        html[data-theme="dark"] .kt-summary-label{ color: rgba(226,232,240,.65); }
+        .kt-summary-value{
+            font-weight: 950;
+            margin-top: 2px;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
+        .kt-success-actions{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        @media (min-width: 576px){
+            .kt-success-actions{ grid-template-columns: 1fr 1fr; }
         }
     </style>
 
@@ -187,33 +236,38 @@
         <div class="row g-4 mt-2 align-items-stretch">
             <div class="col-lg-6 d-flex">
                 @if($hasSuccess)
-                    <div class="card card-soft p-4 kt-booking-card w-100">
+                    <div class="card card-soft p-4 kt-booking-card w-100 kt-success-wrap">
                         <h2 class="sec-title mb-2">Booking submitted</h2>
                         <div class="sec-sub">
                             Saved as <b>Pending</b>. Staff will confirm it and email you.
                         </div>
 
-                        <div class="mt-3 card-soft p-3">
-                            <div class="small text-muted">Service</div>
-                            <div style="font-weight:950;">{{ $successAppointment->service->name ?? '—' }}</div>
-
-                            <div class="mt-2 small text-muted">Doctor</div>
-                            <div style="font-weight:950;">{{ $successAppointment->doctor->name ?? ($successAppointment->dentist_name ?? '—') }}</div>
-
-                            <div class="row g-2 mt-2">
-                                <div class="col-6">
-                                    <div class="small text-muted">Date</div>
-                                    <div style="font-weight:950;">{{ $successAppointment->appointment_date ?? '—' }}</div>
+                        <div class="kt-success-summary mt-3">
+                            <div class="kt-summary-grid">
+                                <div class="kt-summary-item">
+                                    <div class="kt-summary-label">Service</div>
+                                    <div class="kt-summary-value">{{ $successAppointment->service->name ?? '—' }}</div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="small text-muted">Time</div>
-                                    <div style="font-weight:950;">
+
+                                <div class="kt-summary-item">
+                                    <div class="kt-summary-label">Doctor</div>
+                                    <div class="kt-summary-value">{{ $successAppointment->doctor->name ?? ($successAppointment->dentist_name ?? '—') }}</div>
+                                </div>
+
+                                <div class="kt-summary-item">
+                                    <div class="kt-summary-label">Date</div>
+                                    <div class="kt-summary-value">{{ $successAppointment->appointment_date ?? '—' }}</div>
+                                </div>
+
+                                <div class="kt-summary-item">
+                                    <div class="kt-summary-label">Time</div>
+                                    <div class="kt-summary-value">
                                         {{ !empty($successAppointment->appointment_time) ? $successAppointment->appointment_time : 'WALK-IN' }}
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="mt-3 d-flex gap-2 kt-mobile-stack">
+                            <div class="kt-success-actions">
                                 <a class="btn kt-btn kt-btn-primary text-white" href="{{ route('public.services.index') }}">
                                     <i class="fa-solid fa-calendar-plus me-1"></i> Book another service
                                 </a>
