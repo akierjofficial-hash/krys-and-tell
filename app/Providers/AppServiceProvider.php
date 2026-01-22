@@ -2,11 +2,12 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Auth\Events\Login;
 use App\Listeners\UpdateLastLogin;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }
+
+        // ✅ Use Bootstrap pagination views globally (fixes huge next/prev SVG issue)
+        Paginator::useBootstrapFive();
 
         // ✅ Track last login (Laravel 11/12 - no EventServiceProvider by default)
         Event::listen(Login::class, UpdateLastLogin::class);
