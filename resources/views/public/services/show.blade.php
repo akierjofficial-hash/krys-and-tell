@@ -1,5 +1,5 @@
 @extends('layouts.public')
-@section('title', ($service->name ?? 'Service') . ' — Krys & Tell')
+@section('title', ($service->name ?? 'Service') . ' — Krys&Tell')
 
 @section('content')
 <section class="section kt-service-show">

@@ -1,5 +1,5 @@
 @extends('layouts.public')
-@section('title', 'Services — Krys & Tell')
+@section('title', 'Services — Krys&Tell')
 
 @section('content')
 <section class="section section-soft services-wrap">

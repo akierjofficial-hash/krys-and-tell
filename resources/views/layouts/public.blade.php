@@ -619,7 +619,8 @@
                             <li><hr class="dropdown-divider my-2"></li>
 
                             <li>
-                                <form method="POST" action="{{ route('logout') }}" class="m-0">
+                                {{-- ✅ Use userlogout so public users/logout intent is clear --}}
+                                <form method="POST" action="{{ route('userlogout') }}" class="m-0">
                                     @csrf
                                     <button type="submit" class="dropdown-item">
                                         <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
@@ -629,13 +630,16 @@
                         </ul>
                     </div>
                 @else
+                    {{-- ✅ MOBILE sign in icon -> USERLOGIN --}}
                     <a class="btn kt-btn kt-btn-outline d-inline-flex d-lg-none px-3"
-                       href="{{ route('login') }}"
+                       href="{{ route('userlogin') }}"
                        title="Sign in">
                         <i class="fa-solid fa-right-to-bracket"></i>
                     </a>
+
+                    {{-- ✅ DESKTOP sign in button -> USERLOGIN (NOT /login) --}}
                     <a class="btn kt-btn kt-btn-outline d-none d-lg-inline-flex"
-                       href="{{ route('login') }}">
+                       href="{{ route('userlogin') }}">
                         <i class="fa-solid fa-right-to-bracket me-1"></i> Sign in
                     </a>
                 @endauth

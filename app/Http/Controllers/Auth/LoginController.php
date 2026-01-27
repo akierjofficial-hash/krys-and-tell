@@ -18,7 +18,7 @@ class LoginController extends Controller
     }
 
     /**
-     * Handle login
+     * Handle login (STAFF/ADMIN ONLY)
      */
     public function login(Request $request)
     {
@@ -36,8 +36,20 @@ class LoginController extends Controller
         }
 
         $user = Auth::user();
+        $role = strtolower((string)($user->role ?? ''));
 
-        // Optional: inactive accounts
+        // ✅ BLOCK normal users from staff/admin portal (BEFORE session regenerate)
+        if (!in_array($role, ['admin', 'staff'], true)) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('userlogin')->withErrors([
+                'email' => 'Patient/users must sign in using the User Login page.',
+            ])->withInput();
+        }
+
+        // ✅ Optional: inactive accounts (staff/admin only)
         if (isset($user->is_active) && !$user->is_active) {
             Auth::logout();
             $request->session()->invalidate();
@@ -48,20 +60,20 @@ class LoginController extends Controller
             ])->withInput();
         }
 
-        // Regenerate session AFTER successful login checks
+        // ✅ Prevent session fixation (ONLY AFTER passing checks)
         $request->session()->regenerate();
 
-        // Optional: Track last login (safe)
+        // ✅ Optional: Track last login (safe)
         try {
             if (Schema::hasColumn($user->getTable(), 'last_login_at')) {
                 $user->forceFill(['last_login_at' => now()])->save();
             }
         } catch (\Throwable $e) {
-            // Ignore if the column/table doesn't exist or DB blocks it
+            // ignore
         }
 
-        // ✅ Respect intended URL (booking will go back after login)
-        $fallback = match ($user->role ?? null) {
+        // ✅ Respect intended URL
+        $fallback = match ($role) {
             'admin' => route('admin.dashboard'),
             'staff' => route('staff.dashboard'),
             default => route('public.home'),

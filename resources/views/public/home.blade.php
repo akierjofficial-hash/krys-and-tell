@@ -1,5 +1,5 @@
 @extends('layouts.public')
-@section('title', 'Krys & Tell — Dental Center')
+@section('title', 'Krys&Tell — Dental Center')
 
 @section('content')
 <section class="kt-hero position-relative overflow-hidden">

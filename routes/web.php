@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\GoogleController;
 
 // ✅ User controllers
 use App\Http\Controllers\User\UserProfileController;
+use App\Http\Controllers\Auth\UserLoginController;
 
 // Staff controllers
 use App\Http\Controllers\Staff\DashboardController;
@@ -34,6 +35,8 @@ use App\Http\Controllers\Admin\AdminAppointmentController;
 use App\Http\Controllers\Admin\AdminPatientController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminDoctorController;
+use App\Http\Controllers\Admin\AdminUserAccountsController;
+
 
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
@@ -70,8 +73,13 @@ Route::get('/services/{service}', [PublicServiceController::class, 'show'])->nam
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
+    // ✅ Staff/Admin login
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
+
+    // ✅ User login (public users)
+    Route::get('/userlogin', [UserLoginController::class, 'show'])->name('userlogin');
+    Route::post('/userlogin', [UserLoginController::class, 'login'])->name('userlogin.submit');
 });
 
 /*
@@ -91,7 +99,11 @@ Route::middleware('auth')->group(function () {
     Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
     Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('user.profile.password');
 
+    // ✅ Staff/Admin logout (works for anyone, but fine)
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    // ✅ User logout (clean + safe under auth)
+    Route::post('/userlogout', [UserLoginController::class, 'logout'])->name('userlogout');
 
     // ✅ Portal redirect based on role
     Route::get('/portal', function () {
@@ -145,6 +157,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/doctors/{doctor}/edit', [AdminDoctorController::class, 'edit'])->name('doctors.edit');
             Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
             Route::post('/doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggleActive');
+            // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only, full CRUD
+            Route::resource('user-accounts', AdminUserAccountsController::class)->names('user_accounts');
+
         });
 
     /*

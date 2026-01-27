@@ -1,5 +1,5 @@
 @extends('layouts.public')
-@section('title', 'Contact — Krys & Tell')
+@section('title', 'Contact — Krys&Tell')
 
 @section('content')
 @php
