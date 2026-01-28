@@ -37,7 +37,6 @@ use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminDoctorController;
 use App\Http\Controllers\Admin\AdminUserAccountsController;
 
-
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
@@ -46,7 +45,6 @@ use App\Http\Controllers\Public\PublicBookingController;
 |--------------------------------------------------------------------------
 | GOOGLE AUTH ROUTES (PUBLIC)
 |--------------------------------------------------------------------------
-| Callback must be accessible even for guests.
 */
 Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
@@ -99,10 +97,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
     Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('user.profile.password');
 
-    // ✅ Staff/Admin logout (works for anyone, but fine)
+    // ✅ Staff/Admin logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-    // ✅ User logout (clean + safe under auth)
+    // ✅ User logout
     Route::post('/userlogout', [UserLoginController::class, 'logout'])->name('userlogout');
 
     // ✅ Portal redirect based on role
@@ -132,7 +130,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/schedule', [AdminScheduleController::class, 'index'])->name('schedule.index');
             Route::get('/schedule/events', [AdminScheduleController::class, 'events'])->name('schedule.events');
 
-            // Users / Staff Accounts
+            // Users / Staff Accounts (admin + staff only – filtering handled in controller)
             Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
             Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
             Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
@@ -140,11 +138,9 @@ Route::middleware('auth')->group(function () {
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
             Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
-
             Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');
 
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
-
             Route::get('/appointments', [AdminAppointmentController::class, 'index'])->name('appointments.index');
 
             Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
@@ -157,9 +153,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/doctors/{doctor}/edit', [AdminDoctorController::class, 'edit'])->name('doctors.edit');
             Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
             Route::post('/doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggleActive');
-            // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only, full CRUD
-            Route::resource('user-accounts', AdminUserAccountsController::class)->names('user_accounts');
 
+            // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only
+            // ✅ NO CREATE/STORE (users create via Google login)
+            Route::resource('user-accounts', AdminUserAccountsController::class)
+                ->except(['create', 'store'])
+                ->names('user_accounts');
         });
 
     /*
