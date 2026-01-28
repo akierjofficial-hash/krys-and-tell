@@ -40,6 +40,7 @@ use App\Http\Controllers\Admin\AdminUserAccountsController;
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
+use App\Http\Controllers\Public\MessengerBookingController; // ✅ ADD THIS
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,11 @@ Route::post('/contact', [PublicContactMessageController::class, 'store'])->name(
 /** Public services */
 Route::get('/services', [PublicServiceController::class, 'index'])->name('public.services.index');
 Route::get('/services/{service}', [PublicServiceController::class, 'show'])->name('public.services.show');
+
+/** ✅ Messenger booking (PUBLIC, no login) */
+Route::get('/messenger-book', [MessengerBookingController::class, 'create'])->name('messenger.book.create');
+Route::post('/messenger-book', [MessengerBookingController::class, 'store'])->name('messenger.book.store');
+Route::get('/messenger-book/success', [MessengerBookingController::class, 'success'])->name('messenger.book.success');
 
 /*
 |--------------------------------------------------------------------------
