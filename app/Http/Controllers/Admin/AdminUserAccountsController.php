@@ -35,7 +35,7 @@ class AdminUserAccountsController extends Controller
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%");
+                  ->orWhere('email', 'like', "%{$q}%");
             });
         }
 
@@ -53,7 +53,6 @@ class AdminUserAccountsController extends Controller
         $this->ensureIsUser($user);
 
         $hasActive = Schema::hasColumn((new User)->getTable(), 'is_active');
-
         return view('admin.user_accounts.edit', compact('user', 'hasActive'));
     }
 
@@ -97,13 +96,12 @@ class AdminUserAccountsController extends Controller
         try {
             DB::transaction(function () use ($user) {
 
-                // ✅ Prevent foreign key errors (common cause why delete "doesn't work")
+                // ✅ Prevent foreign key issues if appointments link to user_id
                 if (Schema::hasTable('appointments')) {
                     $hasUserId = Schema::hasColumn('appointments', 'user_id');
                     $hasPublicEmail = Schema::hasColumn('appointments', 'public_email');
 
                     if ($hasUserId) {
-                        // preserve email in appointments if possible
                         if ($hasPublicEmail) {
                             DB::table('appointments')
                                 ->where('user_id', $user->id)

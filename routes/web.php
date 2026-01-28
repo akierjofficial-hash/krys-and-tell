@@ -130,7 +130,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/schedule', [AdminScheduleController::class, 'index'])->name('schedule.index');
             Route::get('/schedule/events', [AdminScheduleController::class, 'events'])->name('schedule.events');
 
-            // Users / Staff Accounts (admin + staff only – filtering handled in controller)
+            // Users / Staff Accounts (admin + staff only)
             Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
             Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
             Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
@@ -156,8 +156,10 @@ Route::middleware('auth')->group(function () {
 
             // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only
             // ✅ NO CREATE/STORE (users create via Google login)
+            // ✅ FIX: force {user} param so destroy/edit/update binds correctly
             Route::resource('user-accounts', AdminUserAccountsController::class)
-                ->except(['create', 'store'])
+                ->only(['index', 'edit', 'update', 'destroy'])
+                ->parameters(['user-accounts' => 'user'])
                 ->names('user_accounts');
         });
 

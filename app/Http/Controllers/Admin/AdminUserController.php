@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\User;
-use App\Models\ActivityLog; // ✅ add
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -16,10 +16,19 @@ class AdminUserController extends Controller
     public function index(Request $request)
     {
         $q = $request->string('q')->toString();
-        $role = $request->string('role')->toString(); // admin|staff|''
+        $role = $request->string('role')->toString();     // admin|staff|''
         $status = $request->string('status')->toString(); // active|inactive|''
 
+        // ✅ Only show Admin/Staff here (never show patients/users)
+        $allowedRoles = ['admin', 'staff'];
+
+        // ✅ If role filter is invalid, ignore it
+        if (!in_array($role, $allowedRoles, true)) {
+            $role = '';
+        }
+
         $users = User::query()
+            ->whereIn('role', $allowedRoles)
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -108,7 +117,6 @@ class AdminUserController extends Controller
         return back()->with('success', 'User status updated.');
     }
 
-    // ✅ NEW: Activity Log page
     public function activity(User $user)
     {
         $logs = ActivityLog::query()
@@ -119,44 +127,40 @@ class AdminUserController extends Controller
 
         return view('admin.users.activity', compact('user', 'logs'));
     }
+
     public function destroy(User $user)
-{
-    $me = auth()->user();
+    {
+        $me = auth()->user();
 
-    // ✅ Prevent deleting yourself
-    if ($me && $me->id === $user->id) {
-        return back()->with('error', "You can't delete your own account.");
-    }
+        if ($me && $me->id === $user->id) {
+            return back()->with('error', "You can't delete your own account.");
+        }
 
-    // ✅ Prevent deleting the last admin
-    if (($user->role ?? '') === 'admin') {
-        $otherAdmins = User::where('role', 'admin')
-            ->where('id', '!=', $user->id)
-            ->count();
+        if (($user->role ?? '') === 'admin') {
+            $otherAdmins = User::where('role', 'admin')
+                ->where('id', '!=', $user->id)
+                ->count();
 
-        if ($otherAdmins <= 0) {
-            return back()->with('error', "You can't delete the last admin account.");
+            if ($otherAdmins <= 0) {
+                return back()->with('error', "You can't delete the last admin account.");
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($user) {
+                Appointment::where('user_id', $user->id)
+                    ->whereNull('public_email')
+                    ->update(['public_email' => $user->email]);
+
+                Appointment::where('user_id', $user->id)
+                    ->update(['user_id' => null]);
+
+                $user->delete();
+            });
+
+            return back()->with('success', 'User deleted successfully.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');
         }
     }
-
-    try {
-        DB::transaction(function () use ($user) {
-            // ✅ Keep appointment history: move user-linked appointments to public_email fallback
-            Appointment::where('user_id', $user->id)
-                ->whereNull('public_email')
-                ->update(['public_email' => $user->email]);
-
-            Appointment::where('user_id', $user->id)
-                ->update(['user_id' => null]);
-
-            // ✅ Delete user
-            $user->delete();
-        });
-
-        return back()->with('success', 'User deleted successfully.');
-    } catch (\Throwable $e) {
-        return back()->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');
-    }
-}
-
 }
