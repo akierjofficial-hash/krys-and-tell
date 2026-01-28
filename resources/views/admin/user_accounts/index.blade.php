@@ -12,6 +12,7 @@
         border-radius: 18px;
     }
 
+    /* ===== Header ===== */
     .head{
         display:flex;
         align-items:flex-end;
@@ -35,6 +36,7 @@
         font-size: 13px;
     }
 
+    /* ===== Glass cards ===== */
     .glass{
         position:relative;
         overflow:hidden;
@@ -57,6 +59,17 @@
     }
     .glass-inner{ position:relative; z-index:1; }
 
+    /* ✅ Dark mode glass */
+    html[data-theme="dark"] .glass{
+        background: rgba(17,24,39,.78);
+        border-color: rgba(148,163,184,.18);
+        box-shadow: 0 18px 48px rgba(0,0,0,.45);
+    }
+    html[data-theme="dark"] .glass::before{
+        opacity: .55;
+    }
+
+    /* ===== Alerts ===== */
     .alertx{
         border-radius: 16px;
         border: 1px solid rgba(148,163,184,.18);
@@ -64,7 +77,9 @@
         font-weight: 900;
     }
 
+    /* ===== Filters ===== */
     .filters{ padding: 14px 14px; }
+
     .filters .form-control,
     .filters .form-select{
         border-radius: 14px;
@@ -76,7 +91,31 @@
         box-shadow: 0 12px 18px rgba(15,23,42,.06);
         transition: .15s ease;
     }
+    .filters .form-control:focus,
+    .filters .form-select:focus{
+        outline: none;
+        box-shadow: 0 18px 28px rgba(37,99,235,.12);
+        border-color: rgba(37,99,235,.35);
+        background: #fff;
+    }
 
+    /* ✅ Dark mode inputs/selects */
+    html[data-theme="dark"] .filters .form-control,
+    html[data-theme="dark"] .filters .form-select{
+        background: rgba(2,6,23,.35);
+        border-color: rgba(148,163,184,.18);
+        box-shadow: 0 14px 24px rgba(0,0,0,.35);
+        color: var(--text);
+    }
+    html[data-theme="dark"] .filters .form-control::placeholder{
+        color: rgba(248,250,252,.55);
+    }
+    html[data-theme="dark"] .filters .form-select option{
+        background: rgba(2,6,23,.95);
+        color: var(--text);
+    }
+
+    /* ===== Buttons (filter/reset + actions) ===== */
     .btnx{
         border-radius: 14px;
         font-weight: 950;
@@ -85,18 +124,67 @@
         transition: .15s ease;
         border: 1px solid rgba(148,163,184,.22);
         background: rgba(255,255,255,.70);
+        color: var(--text);
     }
     .btnx:hover{ transform: translateY(-1px); }
 
+    /* ✅ Dark mode buttons */
+    html[data-theme="dark"] .btnx{
+        background: rgba(2,6,23,.30);
+        border-color: rgba(148,163,184,.18);
+        box-shadow: 0 14px 24px rgba(0,0,0,.35);
+        color: var(--text);
+    }
+
+    /* ===== Table card ===== */
     .table-card{ overflow:hidden; border-radius: 22px; }
     .table{ margin:0; }
 
+    /* ✅ Dark mode table header */
+    .table thead th{
+        background: rgba(248,250,252,.85) !important;
+        color: rgba(15,23,42,.55) !important;
+        font-weight: 950 !important;
+        font-size: 11px;
+        letter-spacing: .35px;
+        text-transform: uppercase;
+        border-bottom: 1px solid rgba(148,163,184,.18) !important;
+        white-space: nowrap;
+        padding: 14px 12px !important;
+    }
+    html[data-theme="dark"] .table thead th{
+        background: rgba(17,24,39,.65) !important;
+        color: rgba(248,250,252,.70) !important;
+        border-bottom-color: rgba(148,163,184,.18) !important;
+    }
+
+    .table tbody td{
+        border-color: rgba(148,163,184,.16) !important;
+        color: var(--text) !important;
+        font-weight: 850;
+        vertical-align: middle;
+        padding: 14px 12px !important;
+        white-space: nowrap;
+    }
+
+    .table tbody tr{
+        transition: .15s ease;
+    }
+    .table tbody tr:hover{
+        background: rgba(37,99,235,.06) !important;
+    }
+    html[data-theme="dark"] .table tbody tr:hover{
+        background: rgba(96,165,250,.10) !important;
+    }
+
+    /* ===== Email text ===== */
     .email{
         font-size: 12px;
         color: var(--muted);
         font-weight: 900;
     }
 
+    /* ===== Avatar + name ===== */
     .urow{
         display:flex;
         align-items:center;
@@ -113,6 +201,12 @@
         border: 1px solid rgba(37,99,235,.18);
         flex: 0 0 auto;
     }
+    html[data-theme="dark"] .avatar{
+        background: rgba(96,165,250,.12);
+        border-color: rgba(96,165,250,.20);
+        color: #93c5fd;
+    }
+
     .uname{
         font-weight: 950;
         overflow:hidden;
@@ -121,6 +215,7 @@
         max-width: 320px;
     }
 
+    /* ===== Status badges ===== */
     .badge-soft{
         display:inline-flex;
         align-items:center;
@@ -134,11 +229,31 @@
         color: var(--text);
     }
     .dot{ width: 8px; height: 8px; border-radius: 999px; }
+
     .st-active{ background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.18); color: #16a34a; }
     .st-active .dot{ background: #22c55e; }
+
     .st-inactive{ background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.18); color: var(--text); }
     .st-inactive .dot{ background: rgba(148,163,184,.95); }
 
+    /* ✅ Dark mode badge text clarity */
+    html[data-theme="dark"] .badge-soft{
+        background: rgba(148,163,184,.10);
+        border-color: rgba(148,163,184,.18);
+        color: rgba(248,250,252,.90);
+    }
+    html[data-theme="dark"] .st-active{
+        color: #86efac;
+        background: rgba(34,197,94,.12);
+        border-color: rgba(34,197,94,.22);
+    }
+    html[data-theme="dark"] .st-inactive{
+        color: rgba(248,250,252,.85);
+        background: rgba(148,163,184,.10);
+        border-color: rgba(148,163,184,.18);
+    }
+
+    /* ===== Row action buttons ===== */
     .abtn{
         border-radius: 14px !important;
         font-weight: 950 !important;
@@ -147,8 +262,16 @@
         background: rgba(255,255,255,.70) !important;
         transition: .15s ease;
         box-shadow: 0 12px 18px rgba(15,23,42,.06);
+        color: var(--text) !important;
     }
     .abtn:hover{ transform: translateY(-1px); }
+
+    html[data-theme="dark"] .abtn{
+        background: rgba(2,6,23,.30) !important;
+        border-color: rgba(148,163,184,.18) !important;
+        box-shadow: 0 14px 24px rgba(0,0,0,.35);
+        color: var(--text) !important;
+    }
 
     .abtn-danger{
         background: rgba(239,68,68,.12) !important;
@@ -157,6 +280,13 @@
     }
     .abtn-danger:hover{ background: rgba(239,68,68,.18) !important; }
 
+    html[data-theme="dark"] .abtn-danger{
+        background: rgba(239,68,68,.14) !important;
+        border-color: rgba(239,68,68,.22) !important;
+        color: #fecaca !important;
+    }
+
+    /* ===== Footer ===== */
     .footer{
         display:flex;
         align-items:center;
