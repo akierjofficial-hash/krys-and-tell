@@ -45,7 +45,14 @@ class UserLoginController extends Controller
             ]);
         }
 
-        return redirect()->intended(route('public.home'));
+        $redirect = $request->input('redirect');
+
+if ($redirect) {
+    return redirect()->to($redirect);
+}
+
+return redirect()->intended(route('public.home'));
+
     }
 
     public function logout(Request $request)

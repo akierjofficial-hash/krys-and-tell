@@ -56,7 +56,15 @@
                             <a class="btn kt-btn kt-btn-outline flex-grow-1" href="{{ url('/services/' . $service->id) }}">
                                 View details
                             </a>
-                            <a class="btn kt-btn kt-btn-primary text-white flex-grow-1" href="{{ url('/book/' . $service->id) }}">
+
+                            {{-- ✅ FIXED: Book should go to USER login, not staff/admin login --}}
+                            @php
+                                $bookUrl = url('/book/' . $service->id);
+                                $loginThenBackToBook = route('userlogin', ['redirect' => $bookUrl]);
+                            @endphp
+
+                            <a class="btn kt-btn kt-btn-primary text-white flex-grow-1"
+                               href="{{ auth()->check() ? $bookUrl : $loginThenBackToBook }}">
                                 <i class="fa-solid fa-calendar-check me-1"></i> Book
                             </a>
                         </div>
@@ -188,7 +196,7 @@
     .service-top{ padding: 16px 14px 10px; }
     .service-body{ padding: 12px 14px 4px; }
     .service-actions{ padding: 12px 14px 14px; flex-direction: column; }
-    .svc-chip{ display:none; } /* keeps header clean on very small screens */
+    .svc-chip{ display:none; }
     .service-ico{ width:50px; height:50px; border-radius: 16px; }
     .service-title{ font-size: 1.08rem; }
 }
