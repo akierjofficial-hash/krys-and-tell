@@ -1,6 +1,11 @@
 @extends('layouts.guest')
 
 @section('content')
+@php
+    $redirect = request('redirect');
+    $backUrl = $redirect ?: route('public.home');
+@endphp
+
 <style>
     :root{
         /* Match public.blade.php (beige / brand theme) */
@@ -323,7 +328,7 @@
         <div class="card">
 
             <div class="top-row">
-                <a class="back-btn" href="{{ route('public.home') }}" aria-label="Back to site">
+                <a class="back-btn" href="{{ $backUrl }}" aria-label="Back">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/>
                     </svg>
@@ -355,7 +360,8 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('userlogin.submit') }}">
+            {{-- ✅ Keep redirect query param when submitting --}}
+            <form method="POST" action="{{ route('userlogin.submit', ['redirect' => request('redirect')]) }}">
                 @csrf
 
                 <div class="field">
@@ -398,7 +404,6 @@
                     </div>
                 </div>
 
-                {{-- ✅ Removed Forgot Password (as requested) --}}
                 <div class="row">
                     <label class="check">
                         <input type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
@@ -407,7 +412,6 @@
                 </div>
 
                 <button type="submit" class="btn">
-                    {{-- ✅ Tooth icon like your reference (filled + shine) --}}
                     <svg width="18" height="18" viewBox="0 0 64 64" aria-hidden="true">
                         <path fill="rgba(255,255,255,.96)" d="M32 6c-8.6 0-16 6.9-16 15.7 0 6 2.5 10.2 4.8 14.1 1.9 3.2 3.7 6.2 3.7 10.2 0 8 4.2 14 7.5 14 3.3 0 5.3-6.1 6-10.6.4-2.6.7-4.4 2-4.4s1.6 1.8 2 4.4c.7 4.5 2.7 10.6 6 10.6 3.3 0 7.5-6 7.5-14 0-4 1.8-7 3.7-10.2 2.3-3.9 4.8-8.1 4.8-14.1C48 12.9 40.6 6 32 6z"/>
                         <path fill="#fff" opacity=".9" d="M25.2 16.8c2.6-2 7.2-2.2 10.1-.6 1.1.6 1.6 1.4.8 2.2-1.9 1.8-8.6 1.9-11.9.3-1.4-.7-1.2-1.3 1-1.9z"/>
@@ -418,8 +422,8 @@
 
                 <div class="divider">Or continue with</div>
 
-                {{-- Google only (already working in your system) --}}
-                <a class="btn-google" href="{{ route('google.redirect') }}">
+                {{-- ✅ Keep redirect param for Google too --}}
+                <a class="btn-google" href="{{ route('google.redirect', ['redirect' => request('redirect')]) }}">
                     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                         <path fill="#EA4335" d="M24 9.5c3.54 0 6.01 1.53 7.39 2.81l5.06-5.06C33.36 4.3 29.08 2 24 2 14.73 2 6.98 7.3 3.08 15.02l6.1 4.74C11.2 13.5 17.08 9.5 24 9.5z"/>
                         <path fill="#4285F4" d="M46.5 24c0-1.64-.15-3.22-.43-4.74H24v9h12.7c-.55 2.97-2.2 5.48-4.7 7.17l7.2 5.6C43.76 36.97 46.5 30.98 46.5 24z"/>
@@ -430,7 +434,6 @@
                     Continue with Google
                 </a>
 
-                {{-- ✅ Removed Staff/Admin login link (as requested) --}}
                 <div class="footer-links">
                     <a href="{{ route('public.home') }}">Back to site</a>
                 </div>

@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 class UserLoginController extends Controller
 {
-    public function show()
+    public function show(Request $request)
     {
         return view('auth.userlogin');
     }
@@ -45,14 +45,18 @@ class UserLoginController extends Controller
             ]);
         }
 
+        /**
+         * ✅ Redirect priority:
+         * 1) explicit ?redirect=/somewhere (like /book/ID)
+         * 2) intended URL (Laravel auth protected page)
+         * 3) fallback to Services page
+         */
         $redirect = $request->input('redirect');
+        if ($redirect) {
+            return redirect()->to($redirect);
+        }
 
-if ($redirect) {
-    return redirect()->to($redirect);
-}
-
-return redirect()->intended(route('public.home'));
-
+        return redirect()->intended(route('public.services.index'));
     }
 
     public function logout(Request $request)
