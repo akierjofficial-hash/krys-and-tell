@@ -32,7 +32,7 @@ class UserLoginController extends Controller
         $request->session()->regenerate();
 
         $u = Auth::user();
-        $role = strtolower((string)($u->role ?? ''));
+        $role = strtolower((string) ($u->role ?? ''));
 
         // ✅ Allow ONLY role=user in /userlogin
         if ($role !== 'user') {
@@ -45,18 +45,23 @@ class UserLoginController extends Controller
             ]);
         }
 
+        // ✅ IMPORTANT: prevent old intended URLs (like /profile) from overriding
+        $request->session()->forget('url.intended');
+
         /**
-         * ✅ Redirect priority:
-         * 1) explicit ?redirect=/somewhere (like /book/ID)
-         * 2) intended URL (Laravel auth protected page)
-         * 3) fallback to Services page
+         * ✅ Redirect rules:
+         * 1) If explicit redirect is provided (and is a safe internal path), go there
+         * 2) Otherwise ALWAYS go to Services page
          */
         $redirect = $request->input('redirect');
-        if ($redirect) {
+
+        // Only allow internal redirects (security + avoids weird redirects)
+        if (is_string($redirect) && $redirect !== '' && str_starts_with($redirect, '/')) {
             return redirect()->to($redirect);
         }
 
-        return redirect()->intended(route('public.services.index'));
+        // ✅ Force services page (NOT profile)
+        return redirect()->route('public.services.index');
     }
 
     public function logout(Request $request)
