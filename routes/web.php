@@ -22,6 +22,7 @@ use App\Http\Controllers\Staff\PatientImportExportController;
 use App\Http\Controllers\Staff\ApprovalRequestController;
 use App\Http\Controllers\Staff\VisitImportExportController;
 use App\Http\Controllers\Staff\InstallmentImportExportController;
+use App\Http\Controllers\Staff\LiveSnapshotController as StaffLiveSnapshotController;
 
 // ✅ Contact inbox controllers
 use App\Http\Controllers\Public\ContactMessageController as PublicContactMessageController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\Admin\AdminPatientController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminDoctorController;
 use App\Http\Controllers\Admin\AdminUserAccountsController;
+use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotController;
 
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
@@ -132,6 +134,9 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
+            // ✅ AJAX realtime snapshots (polling)
+            Route::get('/live/snapshot', [AdminLiveSnapshotController::class, 'snapshot'])->name('live.snapshot');
+
             // Schedule (READ-ONLY)
             Route::get('/schedule', [AdminScheduleController::class, 'index'])->name('schedule.index');
             Route::get('/schedule/events', [AdminScheduleController::class, 'events'])->name('schedule.events');
@@ -180,6 +185,9 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+            // ✅ AJAX realtime snapshots (polling)
+            Route::get('/live/snapshot', [StaffLiveSnapshotController::class, 'snapshot'])->name('live.snapshot');
             Route::get('/dashboard/calendar/events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar.events');
 
             // ✅ Approval Requests

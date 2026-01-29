@@ -898,7 +898,7 @@
 $routeName = request()->route() ? request()->route()->getName() : '';
 @endphp
 
-<body data-page="{{ $routeName }}">
+<body data-page="{{ $routeName }}" data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('staff.live.snapshot') }}" data-kt-live-interval="@yield('kt_live_interval', 8000)">
     <div class="layout">
 
         <!-- mobile overlay -->
@@ -1669,6 +1669,8 @@ setInterval(pollMessages, 6000);
 
     })();
     </script>
+
+<script src="{{ asset('js/kt-live.js') }}?v=1"></script>
 
 </body>
 </html>

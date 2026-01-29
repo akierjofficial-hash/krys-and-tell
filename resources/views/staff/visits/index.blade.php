@@ -1,5 +1,8 @@
 @extends('layouts.staff')
 
+@section('kt_live_scope', 'visits')
+@section('kt_live_interval', 12000)
+
 @section('content')
 
 <style>

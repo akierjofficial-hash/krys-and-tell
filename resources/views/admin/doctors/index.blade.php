@@ -1,5 +1,8 @@
 @extends('layouts.admin')
 
+@section('kt_live_scope', 'doctors')
+@section('kt_live_interval', 20000)
+
 @push('styles')
 <style>
     .page-head{

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Krys&Tell — Admin</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap"
@@ -370,7 +371,7 @@
     @stack('styles')
 </head>
 
-<body>
+<body data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}" data-kt-live-interval="@yield('kt_live_interval', 10000)">
     <div class="app-bg">
         <div class="shell">
 
@@ -458,6 +459,8 @@
             </main>
         </div>
     </div>
+
+    <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
 
     <script>
     (function() {

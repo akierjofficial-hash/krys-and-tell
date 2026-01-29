@@ -1,5 +1,8 @@
 @extends('layouts.admin')
 
+@section('kt_live_scope', 'patients')
+@section('kt_live_interval', 15000)
+
 @push('styles')
 <style>
     /* ===== Header (dashboard vibe) ===== */

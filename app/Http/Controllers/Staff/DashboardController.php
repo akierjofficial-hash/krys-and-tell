@@ -125,96 +125,55 @@ class DashboardController extends Controller
     }
 
     public function calendarEvents(Request $request)
-    {
-        $start = Carbon::parse($request->get('start'));
-        $end   = Carbon::parse($request->get('end'));
+{
+    $start = Carbon::parse($request->get('start'));
+    $end   = Carbon::parse($request->get('end'));
+    $today = Carbon::today()->toDateString();
 
-        $events = [];
+    $events = [];
 
-        $appointments = Appointment::with(['patient', 'service'])
-            ->whereBetween('appointment_date', [$start->toDateString(), $end->toDateString()])
-            ->get();
+    // ✅ Appointments only (UPCOMING only)
+    $appointments = Appointment::with(['patient', 'service'])
+        ->whereBetween('appointment_date', [$start->toDateString(), $end->toDateString()])
+        ->whereDate('appointment_date', '>=', $today) // only coming appointments
+        ->get();
 
-        foreach ($appointments as $a) {
-            $date = Carbon::parse($a->appointment_date);
-            $time = $a->appointment_time ?? '09:00:00';
+    foreach ($appointments as $a) {
+        $date = Carbon::parse($a->appointment_date);
+        $time = $a->appointment_time ?? '09:00:00';
 
-            $startDt = Carbon::parse($date->format('Y-m-d') . ' ' . $time);
-            $endDt = $startDt->copy()->addMinutes(60);
+        $startDt = Carbon::parse($date->format('Y-m-d') . ' ' . $time);
+        $endDt   = $startDt->copy()->addMinutes(60);
 
-            $patient = trim(($a->patient?->first_name ?? '') . ' ' . ($a->patient?->last_name ?? ''));
-            $service = $a->service?->name ?? 'Appointment';
+        $patient = trim(($a->patient?->first_name ?? '') . ' ' . ($a->patient?->last_name ?? ''));
+        $service = $a->service?->name ?? 'Appointment';
 
-            $status = strtolower((string)($a->status ?? 'confirmed'));
+        $status = strtolower((string)($a->status ?? 'confirmed'));
 
-            $color = match (true) {
-                str_contains($status, 'cancel') => '#ef4444',
-                str_contains($status, 'pend')   => '#f59e0b',
-                str_contains($status, 'done') || str_contains($status, 'complete') => '#22c55e',
-                default => '#3b82f6',
-            };
+        $color = match (true) {
+            str_contains($status, 'cancel') => '#ef4444',
+            str_contains($status, 'pend')   => '#f59e0b',
+            str_contains($status, 'done') || str_contains($status, 'complete') => '#22c55e',
+            default => '#3b82f6',
+        };
 
-            $events[] = [
-                'title' => ($patient ?: 'Patient') . ' — ' . $service,
-                'start' => $startDt->toIso8601String(),
-                'end'   => $endDt->toIso8601String(),
-                'backgroundColor' => $color,
-                'borderColor'     => $color,
-                'textColor'       => '#ffffff',
-                'extendedProps' => [
-                    'type' => 'appointment',
-                    'url' => route('staff.appointments.show', ['appointment' => $a->id]),
-                ],
-            ];
-        }
-
-        try {
-            $plans = InstallmentPlan::with(['payments', 'visit.patient'])->get();
-            $today = Carbon::today();
-
-            foreach ($plans as $plan) {
-                $startDate = Carbon::parse($plan->start_date);
-                $months = (int)($plan->months ?? 0);
-                if ($months <= 0) continue;
-
-                for ($m = 1; $m <= $months; $m++) {
-                    $due = $startDate->copy()->addMonths($m - 1);
-                    if ($due->lt($start) || $due->gt($end)) continue;
-
-                    $paid = 0.0;
-                    if ($m === 1) {
-                        $paid = (float)($plan->downpayment ?? 0);
-                    } else {
-                        $p = $plan->payments->firstWhere('month_number', $m);
-                        $paid = (float)($p->amount ?? 0);
-                    }
-
-                    if ($paid > 0) continue;
-
-                    $patient = $plan->visit?->patient;
-                    $name = trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''));
-                    if ($name === '') $name = 'Patient';
-
-                    $isOverdue = $due->lt($today);
-                    $color = $isOverdue ? '#ef4444' : '#f97316';
-
-                    $events[] = [
-                        'title' => 'Installment Due — ' . $name,
-                        'start' => $due->toDateString(),
-                        'allDay' => true,
-                        'backgroundColor' => $color,
-                        'borderColor'     => $color,
-                        'textColor'       => '#ffffff',
-                        'extendedProps' => [
-                            'type' => 'installment',
-                            'url'  => route('staff.installments.show', ['plan' => $plan->id]),
-                        ],
-                    ];
-                }
-            }
-        } catch (\Throwable $e) {
-        }
-
-        return response()->json($events);
+        $events[] = [
+            'title' => ($patient ?: 'Patient') . ' — ' . $service,
+            'start' => $startDt->toIso8601String(),
+            'end'   => $endDt->toIso8601String(),
+            'backgroundColor' => $color,
+            'borderColor'     => $color,
+            'textColor'       => '#ffffff',
+            'extendedProps' => [
+                'type' => 'appointment',
+                'url' => route('staff.appointments.show', ['appointment' => $a->id]),
+            ],
+        ];
     }
+
+    // ❌ Removed installment due events entirely
+
+    return response()->json($events);
+}
+
 }
