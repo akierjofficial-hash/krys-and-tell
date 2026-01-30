@@ -75,7 +75,6 @@ class PatientController extends Controller
 
     public function store(Request $request)
     {
-        // ✅ Validate patient base (same as your current form, plus optional email)
         $validated = $request->validate([
             // Patient core
             'first_name'     => 'required|string|max:255',
@@ -111,7 +110,6 @@ class PatientController extends Controller
             'physician_name'        => 'nullable|string|max:255',
             'physician_specialty'   => 'nullable|string|max:255',
 
-            // medical yes/no (we will build as radio/select later, optional now)
             'good_health'           => 'nullable|in:0,1',
             'under_treatment'       => 'nullable|in:0,1',
             'treatment_condition'   => 'nullable|string|max:255',
@@ -147,17 +145,16 @@ class PatientController extends Controller
             'medical_conditions.*'      => 'nullable|string|max:80',
             'medical_conditions_other'  => 'nullable|string|max:255',
 
-            // Signatures (base64 PNG strings)
+            // Signatures (optional)
             'patient_info_signature'    => 'nullable|string|max:800000',
 
-            // Informed consent (optional for now)
+            // Informed consent (optional)
             'consent_initials'          => 'nullable|array',
             'consent_initials.*'        => 'nullable|string|max:10',
             'consent_patient_signature' => 'nullable|string|max:800000',
             'consent_dentist_signature' => 'nullable|string|max:800000',
         ]);
 
-        // ✅ Duplicate check (keep your current behavior)
         $forceCreate = $request->boolean('force_create');
 
         if (!$forceCreate) {
@@ -165,7 +162,6 @@ class PatientController extends Controller
             $last  = mb_strtolower(trim($validated['last_name']));
             $birth = $validated['birthdate'] ?? null;
 
-            // ✅ ONLY consider duplicates if SAME first+last AND SAME birthdate
             $dupes = Patient::query()
                 ->whereRaw('LOWER(first_name) = ? AND LOWER(last_name) = ?', [$first, $last])
                 ->when($birth, fn ($q) => $q->whereDate('birthdate', $birth))
@@ -180,13 +176,11 @@ class PatientController extends Controller
             }
         }
 
-        // Split out patient core data
         $patientData = collect($validated)->only([
             'first_name','last_name','middle_name','birthdate','gender',
             'contact_number','email','address','notes',
         ])->toArray();
 
-        // Build info record data
         $infoData = [
             'nickname'            => $validated['nickname'] ?? null,
             'occupation'          => $validated['occupation'] ?? null,
@@ -244,17 +238,14 @@ class PatientController extends Controller
             'medical_conditions_other' => $validated['medical_conditions_other'] ?? null,
         ];
 
-        // Consent data
         $consentData = [
             'initials' => !empty($validated['consent_initials']) ? $validated['consent_initials'] : null,
         ];
 
-        // ✅ Save everything atomically
-        $patient = null; // ✅ avoids undefined variable with "&$patient"
+        $patient = null;
         DB::transaction(function () use ($patientData, $infoData, $consentData, $request, &$patient) {
             $patient = Patient::create($patientData);
 
-            // ---- Patient Info Record ----
             $sigInfoPath = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
             if ($sigInfoPath) {
                 $infoData['signature_path'] = $sigInfoPath;
@@ -266,7 +257,6 @@ class PatientController extends Controller
                 $infoData
             ));
 
-            // ---- Informed Consent ----
             $sigConsentPatientPath = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
             if ($sigConsentPatientPath) {
                 $consentData['patient_signature_path'] = $sigConsentPatientPath;
@@ -301,7 +291,6 @@ class PatientController extends Controller
             $age = Carbon::parse($patient->birthdate)->age;
         }
 
-        // Optional: prepare signature as base64 for PDF
         $signatureBase64 = null;
         if ($info && $info->signature_path) {
             $abs = public_path('storage/' . $info->signature_path);
@@ -326,20 +315,17 @@ class PatientController extends Controller
     {
         $patient->loadMissing(['informationRecord', 'informedConsent']);
 
-        // Visits
         $visits = $patient->visits()
             ->with(['procedures.service'])
             ->orderByDesc('visit_date')
             ->paginate(10, ['*'], 'visits_page');
 
-        // Appointments
         $appointments = $patient->appointments()
             ->with('service')
             ->orderByDesc('appointment_date')
             ->orderByDesc('appointment_time')
             ->paginate(10, ['*'], 'appointments_page');
 
-        // ✅ Cash Payments (now needs visit procedures/services for "Treatment" pills)
         $payments = $patient->payments()
             ->with(['visit.procedures.service'])
             ->orderByDesc('payment_date')
@@ -348,13 +334,11 @@ class PatientController extends Controller
         $cashTotalPaid = (float) $patient->payments()->sum('amount');
         $cashPaymentsCount = (int) $patient->payments()->count();
 
-        // Installment Plans
         $installmentPlans = InstallmentPlan::where('patient_id', $patient->id)
             ->with(['service', 'visit'])
             ->orderByDesc('created_at')
             ->get();
 
-        // Installment Payments
         $installmentPayments = InstallmentPayment::whereHas('plan', function ($q) use ($patient) {
                 $q->where('patient_id', $patient->id);
             })
@@ -373,10 +357,8 @@ class PatientController extends Controller
         $grandTotalPaid = $cashTotalPaid + $installmentTotalPaid;
         $paymentsAllCount = $cashPaymentsCount + $installmentPaymentsCount;
 
-        // Keep old variable for compatibility (your UI used $totalPaid before)
         $totalPaid = $cashTotalPaid;
 
-        // Tab persistence
         $activeTab = request('tab', 'tab-info');
         $validTabs = ['tab-info','tab-consent','tab-visits','tab-appts','tab-payments'];
         if (!in_array($activeTab, $validTabs, true)) $activeTab = 'tab-info';
@@ -421,8 +403,8 @@ class PatientController extends Controller
             'address'        => 'required|string|max:500',
             'notes'          => 'nullable|string|max:1000',
 
-            // Info record
-            'nickname'            => 'required|string|max:255',
+            // Info record (✅ nickname now OPTIONAL)
+            'nickname'            => 'nullable|string|max:255',
             'occupation'          => 'required|string|max:255',
             'dental_insurance'    => 'nullable|string|max:255',
             'effective_date'      => 'nullable|date',
@@ -479,12 +461,11 @@ class PatientController extends Controller
             'consent_patient_signature' => 'nullable|string|max:800000',
             'consent_dentist_signature' => 'nullable|string|max:800000',
 
-            // Consent
-            'consent_initials'     => 'required|array',
+            // Consent (✅ not required; hidden inputs still provide "No")
+            'consent_initials'     => 'nullable|array',
             'consent_initials.*'   => 'nullable|string|max:10',
         ]);
 
-        // Update patient core
         $patient->update([
             'first_name'     => $validated['first_name'],
             'last_name'      => $validated['last_name'],
@@ -497,11 +478,10 @@ class PatientController extends Controller
             'notes'          => $validated['notes'] ?? null,
         ]);
 
-        // Update/create info record
         $info = $patient->informationRecord()->firstOrNew([]);
 
         $info->fill([
-            'nickname'            => $validated['nickname'],
+            'nickname'            => $validated['nickname'] ?? null,
             'occupation'          => $validated['occupation'],
             'dental_insurance'    => $validated['dental_insurance'] ?? null,
             'effective_date'      => $validated['effective_date'] ?? null,
@@ -522,26 +502,27 @@ class PatientController extends Controller
             'physician_name'      => $validated['physician_name'] ?? null,
             'physician_specialty' => $validated['physician_specialty'] ?? null,
 
-            'good_health'         => $request->has('good_health') ? (bool) ((int) $request->input('good_health')) : null,
-            'under_treatment'     => $request->has('under_treatment') ? (bool) ((int) $request->input('under_treatment')) : null,
+            // ✅ Use your helper for nullable booleans (consistent with store)
+            'good_health'         => $this->nullableBool($request, 'good_health'),
+            'under_treatment'     => $this->nullableBool($request, 'under_treatment'),
             'treatment_condition' => $validated['treatment_condition'] ?? null,
 
-            'serious_illness'         => $request->has('serious_illness') ? (bool) ((int) $request->input('serious_illness')) : null,
+            'serious_illness'         => $this->nullableBool($request, 'serious_illness'),
             'serious_illness_details' => $validated['serious_illness_details'] ?? null,
 
-            'hospitalized'        => $request->has('hospitalized') ? (bool) ((int) $request->input('hospitalized')) : null,
+            'hospitalized'        => $this->nullableBool($request, 'hospitalized'),
             'hospitalized_reason' => $validated['hospitalized_reason'] ?? null,
 
-            'taking_medication'   => $request->has('taking_medication') ? (bool) ((int) $request->input('taking_medication')) : null,
+            'taking_medication'   => $this->nullableBool($request, 'taking_medication'),
             'medications'         => $validated['medications'] ?? null,
-            'takes_aspirin'       => $request->has('takes_aspirin') ? (bool) ((int) $request->input('takes_aspirin')) : null,
+            'takes_aspirin'       => $this->nullableBool($request, 'takes_aspirin'),
 
             'allergies'           => !empty($validated['allergies']) ? array_values(array_filter($validated['allergies'])) : null,
             'allergies_other'     => $validated['allergies_other'] ?? null,
 
-            'tobacco_use'         => $request->has('tobacco_use') ? (bool) ((int) $request->input('tobacco_use')) : null,
-            'alcohol_use'         => $request->has('alcohol_use') ? (bool) ((int) $request->input('alcohol_use')) : null,
-            'dangerous_drugs'     => $request->has('dangerous_drugs') ? (bool) ((int) $request->input('dangerous_drugs')) : null,
+            'tobacco_use'         => $this->nullableBool($request, 'tobacco_use'),
+            'alcohol_use'         => $this->nullableBool($request, 'alcohol_use'),
+            'dangerous_drugs'     => $this->nullableBool($request, 'dangerous_drugs'),
 
             'bleeding_time'       => $validated['bleeding_time'] ?? null,
 
@@ -552,7 +533,6 @@ class PatientController extends Controller
             'medical_conditions_other' => $validated['medical_conditions_other'] ?? null,
         ]);
 
-        // Optional: replace signature only if user drew a new one
         if ($request->filled('patient_info_signature')) {
             $path = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
             if ($path) {
@@ -564,10 +544,11 @@ class PatientController extends Controller
         $info->patient_id = $patient->id;
         $info->save();
 
-        // Update/create consent
         $consent = $patient->informedConsent()->firstOrNew([]);
         $consent->patient_id = $patient->id;
-        $consent->initials = $validated['consent_initials'];
+
+        // ✅ keep initials nullable (if none submitted, store null)
+        $consent->initials = $validated['consent_initials'] ?? null;
 
         if ($request->filled('consent_patient_signature')) {
             $path = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
