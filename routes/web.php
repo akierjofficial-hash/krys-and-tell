@@ -236,17 +236,23 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [PaymentController::class, 'index'])->name('index');
                 Route::get('/choose', [PaymentController::class, 'choosePlan'])->name('choose');
 
+                // ✅ ADD THIS (must be ABOVE /{payment} routes)
+                Route::get('/cash/patient/{patient}', [PaymentController::class, 'cashPatient'])
+                    ->name('cash.patient');
+
                 Route::get('/create/cash', [PaymentController::class, 'createCash'])->name('create.cash');
                 Route::post('/store/cash', [PaymentController::class, 'storeCash'])->name('store.cash');
 
                 Route::get('/create/installment', [PaymentController::class, 'createInstallment'])->name('create.installment');
                 Route::post('/store/installment', [PaymentController::class, 'storeInstallment'])->name('store.installment');
 
+                // ⚠️ keep these LAST
                 Route::get('/{payment}', [PaymentController::class, 'show'])->name('show');
                 Route::get('/{payment}/edit', [PaymentController::class, 'edit'])->name('edit');
                 Route::put('/{payment}', [PaymentController::class, 'update'])->name('update');
                 Route::delete('/{payment}', [PaymentController::class, 'destroy'])->name('destroy');
             });
+
 
             // Installments
             Route::prefix('installments')->name('installments.')->group(function () {

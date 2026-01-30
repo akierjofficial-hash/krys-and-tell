@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\InstallmentPlan;
 use App\Models\Visit;
 use App\Models\Appointment;
+use App\Models\Patient;
 
 class PaymentController extends Controller
 {
@@ -48,6 +49,20 @@ class PaymentController extends Controller
 
         return true;
     }
+
+    public function cashPatient(Patient $patient)
+{
+    $payments = Payment::with(['visit.procedures.service', 'visit.patient'])
+        ->whereIn('method', ['Cash', 'GCash', 'Card', 'Bank Transfer'])
+        ->whereHas('visit', fn($q) => $q->where('patient_id', $patient->id))
+        ->orderByDesc('payment_date')
+        ->limit(200)
+        ->get();
+
+    $html = view('staff.payments._cash_patient_details', compact('payments', 'patient'))->render();
+
+    return response()->json(['html' => $html]);
+}
 
     private function visitPaid(Visit $visit): float
     {
