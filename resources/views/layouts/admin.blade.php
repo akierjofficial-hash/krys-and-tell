@@ -366,12 +366,144 @@
             padding: 14px 14px 18px;
         }
     }
+
+    /* ----------------------------------------------------------
+       ✅ Approval bell (Admin) — same UX as Staff
+       ---------------------------------------------------------- */
+    .kt-top-icon{
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        transition: .15s ease;
+    }
+    .kt-top-icon:hover{ background: rgba(255,255,255,.06); }
+
+    .kt-dot{
+        position:absolute;
+        top: 9px;
+        right: 9px;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background:#ef4444;
+        box-shadow: 0 0 0 2px rgba(255,255,255,.95);
+    }
+    html[data-theme="dark"] .kt-dot{
+        box-shadow: 0 0 0 2px rgba(2,6,23,.85);
+    }
+
+    .kt-popover{
+        position:absolute;
+        top: 54px;
+        right: 0;
+        width: 380px;
+        max-width: calc(100vw - 24px);
+        border-radius: 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        z-index: 2500;
+        overflow:hidden;
+
+        opacity:0;
+        transform: translateY(-8px) scale(.98);
+        pointer-events:none;
+        visibility:hidden;
+        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s linear 180ms;
+    }
+    .kt-popover.show{
+        opacity:1;
+        transform: translateY(0) scale(1);
+        pointer-events:auto;
+        visibility:visible;
+        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s;
+    }
+    .kt-popover .kt-pop-h{
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+    }
+    .kt-popover .kt-pop-title{ font-weight: 900; font-size: 14px; margin:0; }
+    .kt-popover .kt-badge{
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(13,110,253,.12);
+        border: 1px solid rgba(13,110,253,.22);
+        color: var(--text);
+    }
+    .kt-popover .kt-pop-body{ padding: 10px; max-height: 360px; overflow:auto; }
+    .kt-popover .kt-item{
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 14px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+    }
+    .kt-popover .kt-item:last-child{ margin-bottom:0; }
+    .kt-popover .kt-item .top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+    .kt-popover .kt-item .name{ font-weight: 900; font-size: 13px; margin:0; line-height:1.2; }
+    .kt-popover .kt-item .meta{ font-size: 12px; opacity: .95; margin-top: 4px; }
+    .kt-popover .kt-actions{ display:flex; gap:8px; margin-top: 10px; }
+    .kt-popover .kt-actions form{ margin:0; }
+    .kt-popover .btn-mini{ padding: 6px 10px; border-radius: 10px; font-weight: 800; font-size: 12px; }
+    .kt-popover .btn-approve{ background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.25); color: #16a34a !important; }
+    .kt-popover .btn-decline{ background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.25); color: #ef4444 !important; }
+
+    .kt-nav-badge{
+        margin-left:auto;
+        min-width: 20px;
+        height: 18px;
+        padding: 0 6px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        font-size: 11px;
+        font-weight: 950;
+        border-radius: 999px;
+        background: rgba(239, 68, 68, .22);
+        border: 1px solid rgba(239, 68, 68, .35);
+        color: #fff;
+        line-height: 1;
+    }
     </style>
 
     @stack('styles')
 </head>
 
 <body data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}" data-kt-live-interval="@yield('kt_live_interval', 10000)">
+
+    @php
+        // ✅ Approval requests for bell + sidebar badge
+        $pendingApprovals = 0;
+        $pendingItems = collect();
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
+                && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+
+                $pendingItems = \App\Models\Appointment::query()
+                    ->with(['service','doctor','patient'])
+                    ->where('status', 'pending')
+                    ->orderByDesc('created_at')
+                    ->take(8)
+                    ->get();
+
+                $pendingApprovals = $pendingItems->count();
+            }
+        } catch (\Throwable $e) {
+            $pendingApprovals = 0;
+            $pendingItems = collect();
+        }
+    @endphp
     <div class="app-bg">
         <div class="shell">
 
@@ -415,6 +547,13 @@
                         <i class="fa fa-calendar-days"></i> Appointments
                     </a>
 
+                    <a href="{{ route('admin.approvals.index') }}"
+                        class="{{ request()->is('admin/approvals*') ? 'active' : '' }}">
+                        <i class="fa fa-bell"></i> Approval Requests
+                        <span id="adminApprovalNavBadge"
+                              class="kt-nav-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
+                    </a>
+
                     <a href="{{ route('admin.patients.index') }}"
                         class="{{ request()->is('admin/patients*') ? 'active' : '' }}">
                         <i class="fa fa-users"></i> Patients
@@ -447,12 +586,98 @@
             </aside>
 
             <main class="main">
-                {{-- mobile menu button --}}
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                {{-- Top bar: menu (left) + approval bell (right) --}}
+                <div class="d-flex align-items-center mb-3">
                     <button class="menu-toggle" id="menuToggle" type="button" title="Menu">
                         <i class="fa fa-bars"></i>
                     </button>
-                    <div></div>
+
+                    <div class="ms-auto d-flex align-items-center gap-2 position-relative">
+                        {{-- Bell button --}}
+                        <button type="button" id="adminApprovalBell" class="kt-top-icon position-relative border-0"
+                            title="Approval Requests" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa-solid fa-bell"></i>
+                            <span id="adminApprovalDot" class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
+                        </button>
+
+                        {{-- Dropdown card --}}
+                        <div id="adminApprovalPopover" class="kt-popover" aria-hidden="true">
+                            <div class="kt-pop-h">
+                                <p class="kt-pop-title mb-0">Approval Requests</p>
+                                <div class="d-flex align-items-center gap-2">
+                                    <a href="{{ route('admin.approvals.index') }}" class="btn btn-sm btn-outline-secondary" style="border-radius:999px;font-weight:800;">View all</a>
+                                    <span class="kt-badge">
+                                        <span id="adminApprovalBadge">{{ $pendingApprovals }}</span> pending
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- Flash message --}}
+                            <div id="adminApprovalFlash" class="px-3 pt-3 d-none"></div>
+
+                            <div class="kt-pop-body" id="adminApprovalList">
+                                @if($pendingItems->isEmpty())
+                                    <div class="text-center py-3" id="adminApprovalEmpty">
+                                        <div class="fw-bold">No pending requests</div>
+                                        <div class="small text-muted">You're all caught up.</div>
+                                    </div>
+                                @else
+                                    @foreach($pendingItems as $a)
+                                        @php
+                                            $displayName =
+                                                $a->public_name
+                                                ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').' '.($a->public_last_name ?? ''))
+                                                ?: ($a->patient->name ?? 'Patient');
+
+                                            $serviceName = $a->service->name ?? 'Service';
+                                            $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
+
+                                            $date = $a->appointment_date ?? null;
+                                            $time = $a->appointment_time ?? null;
+                                        @endphp
+
+                                        <div class="kt-item" data-approval-id="{{ $a->id }}">
+                                            <div class="top">
+                                                <div>
+                                                    <p class="name">{{ $displayName }}</p>
+                                                    <div class="meta">
+                                                        <div><b>{{ $serviceName }}</b></div>
+                                                        <div>
+                                                            {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
+                                                            @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                        </div>
+                                                        <div class="small text-muted">Doctor: {{ $doctorName }}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="small text-muted text-end">
+                                                    {{ optional($a->created_at)->diffForHumans() }}
+                                                </div>
+                                            </div>
+
+                                            <div class="kt-actions">
+                                                <form class="admin-approval-form" data-action="approve" method="POST"
+                                                    action="{{ route('admin.approvals.approve', $a->id) }}">
+                                                    @csrf
+                                                    <button class="btn btn-mini btn-approve" type="submit">
+                                                        <i class="fa-solid fa-check me-1"></i> Approve
+                                                    </button>
+                                                </form>
+
+                                                <form class="admin-approval-form" data-action="decline" method="POST"
+                                                    action="{{ route('admin.approvals.decline', $a->id) }}">
+                                                    @csrf
+                                                    <button class="btn btn-mini btn-decline" type="submit">
+                                                        <i class="fa-solid fa-xmark me-1"></i> Decline
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 @yield('content')
@@ -508,6 +733,235 @@
         window.addEventListener('resize', () => {
             if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
         });
+
+        // =========================
+        // ✅ Approval popover (bell) + AJAX approve/decline + LIVE polling
+        // =========================
+        const bell = document.getElementById('adminApprovalBell');
+        const pop = document.getElementById('adminApprovalPopover');
+        const badgeEl = document.getElementById('adminApprovalBadge');
+        const dotEl = document.getElementById('adminApprovalDot');
+        const navBadgeEl = document.getElementById('adminApprovalNavBadge');
+        const flashEl = document.getElementById('adminApprovalFlash');
+        const listEl = document.getElementById('adminApprovalList');
+
+        const csrf =
+            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+            document.querySelector('input[name="_token"]')?.value ||
+            '';
+
+        const widgetUrl = @json(route('admin.approvals.widget'));
+
+        function escapeHtml(str) {
+            return (str ?? '').toString()
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function setCount(n) {
+            n = Number(n || 0);
+            if (badgeEl) badgeEl.textContent = String(n);
+            if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
+            if (navBadgeEl) {
+                navBadgeEl.textContent = String(n);
+                navBadgeEl.classList.toggle('d-none', n <= 0);
+            }
+        }
+
+        function showFlash(type, text) {
+            if (!flashEl) return;
+            flashEl.classList.remove('d-none');
+            flashEl.innerHTML = `
+                <div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px; border-radius:14px;">
+                    ${escapeHtml(text)}
+                </div>
+            `;
+            window.clearTimeout(showFlash._t);
+            showFlash._t = window.setTimeout(() => flashEl.classList.add('d-none'), 2500);
+        }
+
+        function ensureEmptyState() {
+            if (!listEl) return;
+            const anyItem = listEl.querySelector('.kt-item');
+            if (!anyItem) {
+                listEl.innerHTML = `
+                    <div class="text-center py-3" id="adminApprovalEmpty">
+                        <div class="fw-bold">No pending requests</div>
+                        <div class="small text-muted">You're all caught up.</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function postAction(form) {
+            const item = form.closest('.kt-item');
+            const action = form.dataset.action || 'approve';
+            const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
+
+            try {
+                const body = new URLSearchParams();
+                body.set('_token', csrf);
+
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrf,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || data.ok === false) {
+                    showFlash('danger', data.message || 'Action failed. Please try again.');
+                    btns.forEach(b => b.disabled = false);
+                    return;
+                }
+
+                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
+                if (item) item.remove();
+
+                if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
+                else {
+                    const current = Number(badgeEl?.textContent || 0);
+                    setCount(Math.max(0, current - 1));
+                }
+
+                ensureEmptyState();
+            } catch (e) {
+                showFlash('danger', 'Network error. Please try again.');
+                btns.forEach(b => b.disabled = false);
+            }
+        }
+
+        function closePopover() {
+            if (!pop) return;
+            pop.classList.remove('show');
+            pop.setAttribute('aria-hidden', 'true');
+            bell?.setAttribute('aria-expanded', 'false');
+        }
+
+        function togglePopover(e) {
+            e?.stopPropagation();
+            if (!pop) return;
+            const isOpen = pop.classList.contains('show');
+            if (isOpen) closePopover();
+            else {
+                pop.classList.add('show');
+                pop.setAttribute('aria-hidden', 'false');
+                bell?.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        pop?.addEventListener('submit', function(e) {
+            const form = e.target.closest('form.approval-form');
+            if (!form) return;
+            e.preventDefault();
+            e.stopPropagation();
+            postAction(form);
+        });
+
+        bell?.addEventListener('click', togglePopover);
+        pop?.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', closePopover);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
+
+        // ----- live polling -----
+        let lastPending = Number(badgeEl?.textContent || 0);
+        let polling = false;
+
+        function renderItems(items) {
+            if (!listEl) return;
+            if (!Array.isArray(items) || items.length === 0) {
+                ensureEmptyState();
+                return;
+            }
+
+            const htmlItems = items.map(i => {
+                const id = Number(i.id || 0);
+                const patient = escapeHtml(i.patient || 'N/A');
+                const service = escapeHtml(i.service || 'N/A');
+                const doctor  = escapeHtml(i.doctor  || '—');
+                const date    = escapeHtml(i.date    || '—');
+                const time    = escapeHtml(i.time    || '—');
+                const approveUrl = escapeHtml(i.approve_url || '');
+                const declineUrl = escapeHtml(i.decline_url || '');
+
+                return `
+                    <div class="kt-item" data-approval-id="${id}">
+                        <div class="top">
+                            <div>
+                                <p class="name">${patient}</p>
+                                <div class="meta">
+                                    <div><b>${service}</b></div>
+                                    <div>${date} • ${time}</div>
+                                    <div class="small text-muted">Doctor: ${doctor}</div>
+                                </div>
+                            </div>
+                            <div class="small text-muted text-end">Pending</div>
+                        </div>
+
+                        <div class="kt-actions">
+                            <form class="approval-form" data-action="approve" method="POST" action="${approveUrl}">
+                                <button class="btn btn-mini btn-approve" type="submit">
+                                    <i class="fa-solid fa-check me-1"></i> Approve
+                                </button>
+                            </form>
+
+                            <form class="approval-form" data-action="decline" method="POST" action="${declineUrl}">
+                                <button class="btn btn-mini btn-decline" type="submit">
+                                    <i class="fa-solid fa-xmark me-1"></i> Decline
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            listEl.innerHTML = htmlItems;
+        }
+
+        async function pollApprovals() {
+            if (polling) return;
+            if (document.hidden) return;
+
+            polling = true;
+            try {
+                const res = await fetch(widgetUrl + '?limit=8', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    cache: 'no-store'
+                });
+
+                if (!res.ok) throw new Error('poll failed');
+
+                const data = await res.json().catch(() => ({}));
+                const pendingCount = Number(data.pendingCount || 0);
+                setCount(pendingCount);
+                renderItems(data.items || []);
+
+                if (pendingCount > lastPending) {
+                    // subtle ping
+                    bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
+                    setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
+                }
+
+                lastPending = pendingCount;
+            } catch (e) {
+                // silent
+            } finally {
+                polling = false;
+            }
+        }
+
+        pollApprovals();
+        setInterval(pollApprovals, 5000);
 
     })();
     </script>

@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\AdminPatientController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminDoctorController;
 use App\Http\Controllers\Admin\AdminUserAccountsController;
+use App\Http\Controllers\Admin\AdminApprovalRequestController;
 use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotController;
 
 // Public controllers
@@ -153,6 +154,12 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
             Route::get('/appointments', [AdminAppointmentController::class, 'index'])->name('appointments.index');
+
+            // ✅ Approval Requests (same as Staff)
+            Route::get('/approvals', [AdminApprovalRequestController::class, 'index'])->name('approvals.index');
+            Route::get('/approvals/widget', [AdminApprovalRequestController::class, 'widget'])->name('approvals.widget');
+            Route::post('/approvals/{appointment}/approve', [AdminApprovalRequestController::class, 'approve'])->name('approvals.approve');
+            Route::post('/approvals/{appointment}/decline', [AdminApprovalRequestController::class, 'decline'])->name('approvals.decline');
 
             Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
             Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
