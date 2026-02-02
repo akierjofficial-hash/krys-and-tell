@@ -18,8 +18,8 @@
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+    {{-- ✅ IMPORTANT: removed "defer" so Bootstrap is available for inline scripts --}}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
     /* ==========================================================
@@ -540,6 +540,7 @@
         display: flex;
         gap: 8px;
         margin-top: 10px;
+        flex-wrap: wrap;
     }
 
     .kt-popover .kt-actions form { margin: 0; }
@@ -561,6 +562,16 @@
         background: rgba(239, 68, 68, .15);
         border: 1px solid rgba(239, 68, 68, .25);
         color: #ef4444 !important;
+    }
+
+    /* ✅ NEW: Edit button (bell popover) */
+    .kt-popover .btn-edit{
+        background: rgba(37, 99, 235, .15);
+        border: 1px solid rgba(37, 99, 235, .25);
+        color: #2563eb !important;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
     }
 
     /* ---------- Mobile Sidebar Drawer ---------- */
@@ -1086,6 +1097,12 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                                         </div>
 
                                         <div class="kt-actions">
+                                            {{-- ✅ NEW: Edit button inside bell popover --}}
+                                            <a class="btn btn-mini btn-edit"
+                                               href="{{ route('staff.approvals.index', ['edit' => $a->id]) }}">
+                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                                            </a>
+
                                             <form class="approval-form" data-action="approve" method="POST"
                                                 action="{{ route('staff.approvals.approve', $a->id) }}">
                                                 @csrf
@@ -1365,6 +1382,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             '';
 
         const widgetUrl = @json(route('staff.approvals.widget'));
+        // ✅ NEW: approvals index url for bell "Edit" links
+        const approvalsIndexUrl = @json(route('staff.approvals.index'));
 
         function closePopover() {
             if (!pop) return;
@@ -1519,6 +1538,10 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                         </div>
 
                         <div class="kt-actions">
+                            <a class="btn btn-mini btn-edit" href="${approvalsIndexUrl}?edit=${id}">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                            </a>
+
                             <form class="approval-form" data-action="approve" method="POST" action="${approveUrl}">
                                 <button class="btn btn-mini btn-approve" type="submit">
                                     <i class="fa-solid fa-check me-1"></i> Approve
@@ -1576,103 +1599,98 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         setInterval(pollApprovals, 5000);
 
         // =========================
-        // ✅ Messages realtime polling (AJAX) + badges
+        // ✅ Messages realtime polling (AJAX) + badges (widget endpoint)
         // =========================
-        // =========================
-// ✅ Messages realtime polling (AJAX) + badges (widget endpoint)
-// =========================
-const msgWidgetUrl = @json(route('staff.messages.widget'));
-const msgNavBadge = document.getElementById('msgNavBadge');
-const msgTopDot = document.getElementById('msgTopDot');
+        const msgWidgetUrl = @json(route('staff.messages.widget'));
+        const msgNavBadge = document.getElementById('msgNavBadge');
+        const msgTopDot = document.getElementById('msgTopDot');
 
-let msgSince = localStorage.getItem('kt_msg_since') || '';
-let msgPolling = false;
-let msgLastUnread = Number(msgNavBadge?.textContent || 0);
+        let msgSince = localStorage.getItem('kt_msg_since') || '';
+        let msgPolling = false;
+        let msgLastUnread = Number(msgNavBadge?.textContent || 0);
 
-function setUnreadMessages(n) {
-    n = Number(n || 0);
+        function setUnreadMessages(n) {
+            n = Number(n || 0);
 
-    if (msgNavBadge) {
-        msgNavBadge.textContent = String(n);
-        msgNavBadge.classList.toggle('d-none', n <= 0);
-    }
+            if (msgNavBadge) {
+                msgNavBadge.textContent = String(n);
+                msgNavBadge.classList.toggle('d-none', n <= 0);
+            }
 
-    if (msgTopDot) {
-        msgTopDot.classList.toggle('d-none', n <= 0);
-    }
+            if (msgTopDot) {
+                msgTopDot.classList.toggle('d-none', n <= 0);
+            }
 
-    window.dispatchEvent(new CustomEvent('kt:messages:count', { detail: { unreadCount: n } }));
-}
-
-function normalizeMsg(m){
-    return {
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        message: m.message,
-        created_human: m.created_at, // ✅ matches your index listener
-        show_url: m.show_url
-    };
-}
-
-async function pollMessages() {
-    if (msgPolling) return;
-    if (document.hidden) return;
-
-    msgPolling = true;
-
-    const prevSince = msgSince;
-
-    try {
-        const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
-        const res = await fetch(url, {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            cache: 'no-store'
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error('messages poll failed');
-
-        const unread = Number(data.unreadCount || 0);
-        setUnreadMessages(unread);
-
-        const latest = Array.isArray(data.latest) ? data.latest : [];
-        if (latest[0]?.created_at_iso) {
-            msgSince = latest[0].created_at_iso;
-            localStorage.setItem('kt_msg_since', msgSince);
+            window.dispatchEvent(new CustomEvent('kt:messages:count', { detail: { unreadCount: n } }));
         }
 
-        // compute "new messages" client-side from latest list
-        let newMsgs = [];
-        if (prevSince) {
-            newMsgs = latest.filter(x => x.created_at_iso && x.created_at_iso > prevSince);
-        } else if (Number(data.newCount || 0) > 0) {
-            newMsgs = latest.slice(0, Math.min(5, latest.length));
+        function normalizeMsg(m){
+            return {
+                id: m.id,
+                name: m.name,
+                email: m.email,
+                message: m.message,
+                created_human: m.created_at, // ✅ matches your index listener
+                show_url: m.show_url
+            };
         }
 
-        if (newMsgs.length > 0) {
-            window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
-            window.dispatchEvent(new CustomEvent('kt:messages:new', {
-                detail: { messages: newMsgs.map(normalizeMsg) }
-            }));
+        async function pollMessages() {
+            if (msgPolling) return;
+            if (document.hidden) return;
+
+            msgPolling = true;
+
+            const prevSince = msgSince;
+
+            try {
+                const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    cache: 'no-store'
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.ok) throw new Error('messages poll failed');
+
+                const unread = Number(data.unreadCount || 0);
+                setUnreadMessages(unread);
+
+                const latest = Array.isArray(data.latest) ? data.latest : [];
+                if (latest[0]?.created_at_iso) {
+                    msgSince = latest[0].created_at_iso;
+                    localStorage.setItem('kt_msg_since', msgSince);
+                }
+
+                // compute "new messages" client-side from latest list
+                let newMsgs = [];
+                if (prevSince) {
+                    newMsgs = latest.filter(x => x.created_at_iso && x.created_at_iso > prevSince);
+                } else if (Number(data.newCount || 0) > 0) {
+                    newMsgs = latest.slice(0, Math.min(5, latest.length));
+                }
+
+                if (newMsgs.length > 0) {
+                    window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
+                    window.dispatchEvent(new CustomEvent('kt:messages:new', {
+                        detail: { messages: newMsgs.map(normalizeMsg) }
+                    }));
+                }
+
+                msgLastUnread = unread;
+            } catch (e) {
+                // silent
+            } finally {
+                msgPolling = false;
+            }
         }
 
-        msgLastUnread = unread;
-    } catch (e) {
-        // silent
-    } finally {
-        msgPolling = false;
-    }
-}
-
-pollMessages();
-setInterval(pollMessages, 6000);
-
+        pollMessages();
+        setInterval(pollMessages, 6000);
 
     })();
     </script>
 
-<script src="{{ asset('js/kt-live.js') }}?v=1"></script>
-
+    <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
 </body>
 </html>
