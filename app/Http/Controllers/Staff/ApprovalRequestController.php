@@ -86,6 +86,11 @@ class ApprovalRequestController extends Controller
                 $doctorId = $a->doctor_id ?? null;
             }
 
+            $noteRaw = '';
+            if (Schema::hasColumn('appointments', 'staff_note')) {
+                $noteRaw = (string)($a->staff_note ?? '');
+            }
+
             return [
                 'id'      => $a->id,
                 'patient' => $patientName,
@@ -105,6 +110,9 @@ class ApprovalRequestController extends Controller
                 'date_raw'   => $dateRaw,
                 'time_raw'   => $timeRaw,
 
+                // ✅ note prefill
+                'staff_note' => $noteRaw,
+
                 'approve_url' => route('staff.approvals.approve', $a),
                 'decline_url' => route('staff.approvals.decline', $a),
                 'index_url'   => route('staff.approvals.index'),
@@ -119,10 +127,11 @@ class ApprovalRequestController extends Controller
 
     /**
      * ✅ Approve booking
-     * Now supports staff edits before approving:
+     * Supports staff edits + staff_note (reason) before approving:
      * - doctor_id
      * - appointment_date (Y-m-d)
      * - appointment_time (H:i)
+     * - staff_note (string)
      */
     public function approve(Request $request, Appointment $appointment)
     {
@@ -139,16 +148,31 @@ class ApprovalRequestController extends Controller
             }
             $isWalkIn = ($service instanceof Service) ? $this->isWalkIn($service) : false;
 
-            // Accept optional edited fields
+            // ✅ Original values (to detect changes)
+            $origDate = null;
+            $origTime = null;
+            $origDoctorId = null;
+
+            try {
+                if (!empty($appointment->appointment_date)) {
+                    $origDate = Carbon::parse($appointment->appointment_date)->toDateString();
+                }
+                if (!empty($appointment->appointment_time)) {
+                    $origTime = Carbon::parse($appointment->appointment_time)->format('H:i');
+                }
+            } catch (\Throwable $e) {}
+
+            if (Schema::hasColumn('appointments', 'doctor_id')) {
+                $origDoctorId = $appointment->doctor_id ? (int) $appointment->doctor_id : null;
+            }
+
             $request->validate([
-                'doctor_id' => $doctorRequired
-                    ? ['nullable', 'integer', 'exists:doctors,id']
-                    : ['nullable', 'integer', 'exists:doctors,id'],
-
+                'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
                 'appointment_date' => ['nullable', 'date', 'after_or_equal:today'],
-
-                // walk-in: time not required; scheduled: we accept H:i (if provided)
                 'appointment_time' => $isWalkIn ? ['nullable'] : ['nullable', 'date_format:H:i'],
+
+                // ✅ note/reason (optional, but may be required if schedule changed)
+                'staff_note' => ['nullable', 'string', 'max:2000'],
             ]);
 
             $finalDate = $request->filled('appointment_date')
@@ -185,6 +209,20 @@ class ApprovalRequestController extends Controller
                 throw new \RuntimeException('Please select a time before approving.');
             }
 
+            // ✅ Detect if staff changed patient’s requested schedule
+            $changedDate   = ($origDate && $finalDate && $finalDate !== $origDate);
+            $changedTime   = ($origTime && $finalTime && $finalTime !== $origTime);
+            $changedDoctor = ($origDoctorId && $finalDoctorId && (int)$finalDoctorId !== (int)$origDoctorId);
+
+            $scheduleChanged = ($changedDate || $changedTime || $changedDoctor);
+
+            $note = trim((string)$request->input('staff_note', ''));
+
+            // ✅ Require note ONLY if schedule changed AND staff_note column exists
+            if ($scheduleChanged && Schema::hasColumn('appointments', 'staff_note') && $note === '') {
+                throw new \RuntimeException('Please add a note/reason to the patient when changing doctor/date/time.');
+            }
+
             // ✅ Validate slot availability for scheduled services (exclude this appointment itself)
             if (!$isWalkIn && !empty($finalTime)) {
                 $slots = $this->computeHourlySlots($finalDate, $finalDoctorId, $appointment->id);
@@ -193,7 +231,7 @@ class ApprovalRequestController extends Controller
                 }
             }
 
-            DB::transaction(function () use ($appointment, $finalDate, $finalTime, $finalDoctorId, $isWalkIn) {
+            DB::transaction(function () use ($appointment, $finalDate, $finalTime, $finalDoctorId, $isWalkIn, $request, $note) {
                 $appointment->loadMissing('user');
 
                 // ✅ Ensure patient record exists if patient_id column exists
@@ -222,6 +260,11 @@ class ApprovalRequestController extends Controller
 
                 if (Schema::hasColumn('appointments', 'appointment_time')) {
                     $appointment->appointment_time = $isWalkIn ? null : $finalTime;
+                }
+
+                // ✅ Save staff note (only if request includes it AND column exists)
+                if ($request->has('staff_note') && Schema::hasColumn('appointments', 'staff_note')) {
+                    $appointment->staff_note = ($note !== '') ? $note : null;
                 }
 
                 // If scheduled and duration_minutes missing, enforce the 1-hour block

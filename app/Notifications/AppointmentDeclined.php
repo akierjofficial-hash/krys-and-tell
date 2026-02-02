@@ -21,7 +21,7 @@ class AppointmentDeclined extends Notification
 
     public function toMail($notifiable): MailMessage
     {
-        $a = $this->appointment->loadMissing(['service', 'doctor']);
+        $a = $this->appointment->loadMissing(['service', 'doctor', 'patient', 'user']);
 
         $dt = null;
         try {
@@ -33,9 +33,16 @@ class AppointmentDeclined extends Notification
         $service = optional($a->service)->name ?? 'Dental Appointment';
         $when    = $dt ? $dt->format('M d, Y h:i A') : '—';
 
+        $patientName =
+            data_get($notifiable, 'name')
+            ?: ($a->public_name
+                ?? trim(($a->public_first_name ?? '') . ' ' . ($a->public_middle_name ? $a->public_middle_name . ' ' : '') . ($a->public_last_name ?? '')))
+            ?: ($a->patient->name ?? null)
+            ?: 'there';
+
         return (new MailMessage)
             ->subject("Booking Declined: {$service}")
-            ->greeting('Hi '.$notifiable->name.',')
+            ->greeting('Hi '.$patientName.',')
             ->line('Your booking request was declined.')
             ->line("**Requested schedule:** {$when}")
             ->line("**Service:** {$service}")

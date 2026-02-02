@@ -35,6 +35,7 @@
                  data-doctor-id="{{ $r->doctor_id ?? '' }}"
                  data-date-raw="{{ $r->appointment_date ? \Carbon\Carbon::parse($r->appointment_date)->toDateString() : '' }}"
                  data-time-raw="{{ $r->appointment_time ? \Carbon\Carbon::parse($r->appointment_time)->format('H:i') : '' }}"
+                 data-note-raw="{{ $r->staff_note ?? '' }}"
                  data-approve-url="{{ route('staff.approvals.approve', $r) }}">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
@@ -114,7 +115,7 @@
 
             <div class="mb-2">
                 <div class="fw-semibold" id="eaPatientLabel">Patient</div>
-                <div class="small text-muted" id="eaHint">Select doctor/date/time then approve.</div>
+                <div class="small text-muted" id="eaHint">Select doctor/date/time then approve. Add note/reason if changed.</div>
             </div>
 
             <div class="mb-3">
@@ -136,12 +137,20 @@
                 <div class="small text-muted mt-1">Must be today or later.</div>
             </div>
 
-            <div class="mb-2">
+            <div class="mb-3">
                 <label class="form-label">Time</label>
                 <select class="form-select" id="eaTime" name="appointment_time">
                     <option value="">— Select time —</option>
                 </select>
                 <div class="small text-muted mt-1" id="eaTimeHelp"></div>
+            </div>
+
+            {{-- ✅ NEW: staff note / reason --}}
+            <div class="mb-2">
+                <label class="form-label">Note / Reason to patient</label>
+                <textarea class="form-control" id="eaNote" name="staff_note" rows="3"
+                    placeholder="Example: Your requested doctor is unavailable that time, so we moved you to Dr. Santos at 2:00 PM."></textarea>
+                <div class="small text-muted mt-1">This note will be included in the approval email.</div>
             </div>
 
             <div class="alert alert-danger d-none mt-3" id="eaError" style="border-radius:14px;"></div>
@@ -186,6 +195,7 @@
     const eaTimeHelp = document.getElementById('eaTimeHelp');
     const eaError = document.getElementById('eaError');
     const eaPatientLabel = document.getElementById('eaPatientLabel');
+    const eaNote = document.getElementById('eaNote');
 
     const seen = new Set(
         Array.from(grid.querySelectorAll('[data-appointment-id]'))
@@ -262,7 +272,6 @@
                 throw new Error(data?.message || 'Failed to load slots.');
             }
 
-            // walk-in: no slots
             if(data?.meta?.walk_in){
                 eaTime.innerHTML = `<option value="">Walk-in (no time slots)</option>`;
                 eaTime.disabled = true;
@@ -299,6 +308,7 @@
         const doctorId = item.doctor_id ?? '';
         const dateRaw = item.date_raw ?? '';
         const timeRaw = item.time_raw ?? '';
+        const noteRaw = item.staff_note ?? '';
 
         return `
         <div class="col-lg-6 col-xl-4"
@@ -307,6 +317,7 @@
             data-doctor-id="${esc(doctorId)}"
             data-date-raw="${esc(dateRaw)}"
             data-time-raw="${esc(timeRaw)}"
+            data-note-raw="${esc(noteRaw)}"
             data-approve-url="${esc(item.approve_url)}">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
@@ -467,22 +478,21 @@
         const doctorId = card.getAttribute('data-doctor-id') || '';
         const dateRaw = card.getAttribute('data-date-raw') || '';
         const timeRaw = card.getAttribute('data-time-raw') || '';
+        const noteRaw = card.getAttribute('data-note-raw') || '';
         const approveUrl = card.getAttribute('data-approve-url') || '';
 
         eaApproveUrl.value = approveUrl;
         eaServiceId.value = serviceId;
         eaAppointmentId.value = apptId;
 
-        // label patient name
         const name = card.querySelector('.fw-bold')?.textContent?.trim() || 'Patient';
         if(eaPatientLabel) eaPatientLabel.textContent = name;
 
-        // prefill fields
         if(eaDoctor) eaDoctor.value = doctorId;
         if(eaDate) eaDate.value = dateRaw;
         if(eaTime) eaTime.value = '';
+        if(eaNote) eaNote.value = noteRaw;
 
-        // load slots then preselect time if it exists
         await loadSlots();
         if(timeRaw && eaTime && !eaTime.disabled){
             const opt = eaTime.querySelector(`option[value="${CSS.escape(timeRaw)}"]`);
@@ -495,7 +505,7 @@
     eaDoctor?.addEventListener('change', loadSlots);
     eaDate?.addEventListener('change', loadSlots);
 
-    // ✅ Submit modal form (Save & Approve)
+    // ✅ Submit modal form (Save & Approve) + staff_note
     eaForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         setError('');
@@ -511,6 +521,7 @@
         fd.append('doctor_id', eaDoctor?.value || '');
         fd.append('appointment_date', eaDate?.value || '');
         fd.append('appointment_time', eaTime?.disabled ? '' : (eaTime?.value || ''));
+        fd.append('staff_note', eaNote?.value || '');
 
         const submitBtn = eaForm.querySelector('button[type="submit"]');
         if(submitBtn){ submitBtn.disabled = true; submitBtn.style.opacity = '.7'; }
@@ -532,7 +543,6 @@
                 throw new Error(data.message || 'Approval failed');
             }
 
-            // remove card from grid
             const apptId = eaAppointmentId?.value;
             const card = apptId ? grid.querySelector(`[data-appointment-id="${CSS.escape(apptId)}"]`) : null;
             if(card) card.remove();
@@ -555,7 +565,6 @@
         }
     });
 
-    // poll now + every 5s
     poll();
     setInterval(poll, 5000);
 })();
