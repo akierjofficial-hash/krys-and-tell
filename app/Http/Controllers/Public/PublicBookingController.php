@@ -7,10 +7,13 @@ use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\Service;
+use App\Mail\NewBookingNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class PublicBookingController extends Controller
 {
@@ -58,7 +61,7 @@ class PublicBookingController extends Controller
             'successAppointment' => $successAppointment,
             'needsDetails' => $needsDetails,
             'profile' => $profile,
-            'isWalkIn' => $this->isWalkIn($service), // ✅ keep blade+controller consistent
+            'isWalkIn' => $this->isWalkIn($service),
         ]);
     }
 
@@ -177,7 +180,8 @@ class PublicBookingController extends Controller
             try { $birthdate = Carbon::parse($profile['birthdate'])->toDateString(); } catch (\Throwable $e) {}
         }
 
-        return DB::transaction(function () use (
+        // ✅ Save first (transaction), then email AFTER commit
+        $appointment = DB::transaction(function () use (
             $request,
             $service,
             $date,
@@ -224,7 +228,7 @@ class PublicBookingController extends Controller
 
             // ✅ only set time if scheduled
             if (!$isWalkIn && Schema::hasColumn('appointments', 'appointment_time')) {
-                $appointment->appointment_time = $time;
+                $appointment->appointment_time = $time; // "H:i" => MySQL time becomes "H:i:s"
             }
 
             // ✅ Scheduled bookings block 1 hour; Walk-ins: do NOT block chairs
@@ -277,18 +281,46 @@ class PublicBookingController extends Controller
                 $appointment->user_id = $user->id;
             }
 
+            // If logged-in, always trust user email
             if ($user && Schema::hasColumn('appointments', 'public_email')) {
                 $appointment->public_email = $user->email;
             }
 
             $appointment->save();
 
-            return redirect()
-                ->route('public.booking.create', $service->id)
-                ->with('booking_success', true)
-                ->with('success_appointment_id', $appointment->id);
+            return $appointment;
         });
+
+        // ✅ Send clinic notification email (won't block booking if email fails)
+        $this->notifyClinicNewBooking($appointment);
+
+        return redirect()
+            ->route('public.booking.create', $service->id)
+            ->with('booking_success', true)
+            ->with('success_appointment_id', $appointment->id);
     }
+
+    /**
+     * ✅ Notify clinic email that a new booking was submitted.
+     * Uses MAIL_FROM_ADDRESS as default receiver, fallback to krysandt@gmail.com.
+     */
+    private function notifyClinicNewBooking(Appointment $appointment): void
+{
+    try {
+        // Ensure relations exist for the email template
+        $appointment->loadMissing(['service', 'doctor']);
+
+        // Receiver (clinic inbox)
+        // Optional: set MAIL_BOOKINGS_TO in .env, fallback to MAIL_FROM_ADDRESS
+        $to = env('MAIL_BOOKINGS_TO', config('mail.from.address') ?: 'krysandt@gmail.com');
+
+        Mail::to($to)->send(new NewBookingNotification($appointment));
+    } catch (\Throwable $e) {
+        Log::warning('Booking email notification failed: ' . $e->getMessage(), [
+            'appointment_id' => $appointment->id ?? null,
+        ]);
+    }
+}
 
     private function computeHourlySlots(string $date, ?int $doctorId): array
     {
@@ -327,7 +359,7 @@ class PublicBookingController extends Controller
         if (Schema::hasColumn('appointments', 'status')) {
             $bookedQuery->where(function ($q) {
                 $q->whereNull('status')
-                  ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
+                    ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
             });
         }
 
