@@ -12,6 +12,7 @@ class Appointment extends Model
     protected $fillable = [
     'patient_id',
     'service_id',
+    'doctor_id',
     'appointment_date',
     'appointment_time',
     'duration_minutes',
@@ -19,6 +20,7 @@ class Appointment extends Model
     'notes',
     'dentist_name',
 ];
+
 
 
     public function user()
