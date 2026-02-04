@@ -2,68 +2,82 @@
 
 namespace App\Services;
 
-use App\Models\Appointment;
 use App\Models\PushSubscription;
+use App\Models\Appointment;
 use Illuminate\Support\Facades\Log;
-use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
+use Minishlink\WebPush\Subscription;
 
 class WebPushService
 {
     /**
-     * Send a "New booking" push to all staff + admins who enabled push.
+     * Notify all subscribed staff/admin devices when a new booking is created.
+     * IMPORTANT: This method must never throw, or booking will 500.
      */
-    public function sendNewBooking(Appointment $appointment): void
+    public function notifyNewBooking(Appointment $appointment): void
     {
-        $publicKey = config('webpush.vapid.public_key');
-        $privateKey = config('webpush.vapid.private_key');
-        $subject = config('webpush.vapid.subject') ?: config('app.url');
-
-        if (!$publicKey || !$privateKey) {
-            // Not configured (safe no-op)
-            return;
-        }
-
-        // Build a human-friendly message
-        $name = $appointment->public_name
-            ?? trim(($appointment->public_first_name ?? '').' '.($appointment->public_last_name ?? ''))
-            ?: 'New patient';
-
-        $service = $appointment->relationLoaded('service') ? ($appointment->service?->name ?? null) : null;
-        $service = $service ?: ($appointment->service_id ? 'New service request' : 'New booking request');
-
-        $date = $appointment->appointment_date ? (string) $appointment->appointment_date : null;
-        $time = $appointment->appointment_time ? (string) $appointment->appointment_time : null;
-
-        $when = trim(($date ? $date : '').($time ? ' '.$time : ''));
-        if ($when === '') $when = 'Walk-in / time not set';
-
-        $payload = [
-            'title' => 'New booking request',
-            'body'  => "$name • $service • $when",
-            // This route exists in routes/web.php (added in this patch).
-            'url'   => url('/approvals'),
-            'icon'  => url('/images/pwa/icon-192.png'),
-        ];
-
-        $auth = [
-            'VAPID' => [
-                'subject' => $subject,
-                'publicKey' => $publicKey,
-                'privateKey' => $privateKey,
-            ],
-        ];
-
+        // Build a friendly message (safe fallbacks)
+        $serviceName = null;
         try {
-            $webPush = new WebPush($auth);
+            $serviceName = optional($appointment->service)->name;
+        } catch (\Throwable $e) {
+            // ignore
+        }
+        $serviceName = $serviceName ?: ($appointment->service_name ?? 'Booking');
 
-            $subs = PushSubscription::query()
-                ->whereIn('role', ['admin', 'staff'])
-                ->get();
+        $patientName = $appointment->patient_name
+            ?? $appointment->full_name
+            ?? $appointment->name
+            ?? $appointment->public_name
+            ?? $appointment->public_full_name
+            ?? 'A patient';
 
-            if ($subs->isEmpty()) return;
+        $title = 'New Booking Request';
+        $body  = "{$patientName} • {$serviceName}";
+
+        // Safer default: open homepage (works for both staff/admin)
+        // You can change this later to a shared /approvals redirect route if you want.
+        $url   = '/';
+
+        $this->sendToAll($title, $body, $url);
+    }
+
+    /**
+     * Send a push notification to all saved subscriptions.
+     */
+    public function sendToAll(string $title, string $body, string $url = '/'): void
+    {
+        try {
+            $publicKey  = env('VAPID_PUBLIC_KEY');
+            $privateKey = env('VAPID_PRIVATE_KEY');
+            $subject    = env('VAPID_SUBJECT');
+
+            if (!$publicKey || !$privateKey || !$subject) {
+                Log::warning('WebPush: Missing VAPID env vars. Push skipped.');
+                return;
+            }
+
+            $subs = PushSubscription::query()->get();
+            if ($subs->isEmpty()) {
+                return;
+            }
+
+            $webPush = new WebPush([
+                'VAPID' => [
+                    'subject' => $subject,
+                    'publicKey' => $publicKey,
+                    'privateKey' => $privateKey,
+                ],
+            ]);
+
+            $payload = json_encode([
+                'title' => $title,
+                'body'  => $body,
+                'url'   => $url,
+            ], JSON_UNESCAPED_SLASHES);
 
             foreach ($subs as $s) {
+                // Your DB columns are expected to be: endpoint, public_key, auth_token, content_encoding
                 $subscription = Subscription::create([
                     'endpoint' => $s->endpoint,
                     'publicKey' => $s->public_key,
@@ -71,31 +85,33 @@ class WebPushService
                     'contentEncoding' => $s->content_encoding ?: 'aesgcm',
                 ]);
 
-                $webPush->queueNotification($subscription, json_encode($payload, JSON_UNESCAPED_SLASHES));
+                $webPush->queueNotification($subscription, $payload);
             }
 
             foreach ($webPush->flush() as $report) {
-                if ($report->isSuccess()) continue;
-
-                // If the subscription is gone/invalid, remove it.
-                $endpoint = method_exists($report, 'getRequest') ? (string) $report->getRequest()->getUri() : null;
-                $statusCode = null;
-
-                try {
-                    $response = $report->getResponse();
-                    $statusCode = $response?->getStatusCode();
-                } catch (\Throwable $e) {
-                    // ignore
+                if ($report->isSuccess()) {
+                    continue;
                 }
 
-                if ($endpoint && in_array($statusCode, [404, 410], true)) {
+                // Remove expired subscriptions (410 Gone) so it doesn’t keep failing
+                $endpoint = method_exists($report, 'getRequest') && $report->getRequest()
+                    ? (string) $report->getRequest()->getUri()
+                    : null;
+
+                $reason = $report->getReason();
+
+                Log::warning('WebPush failed: ' . $reason, [
+                    'endpoint' => $endpoint,
+                ]);
+
+                // If endpoint expired, delete it
+                if ($endpoint && str_contains((string) $reason, '410')) {
                     PushSubscription::where('endpoint', $endpoint)->delete();
                 }
             }
         } catch (\Throwable $e) {
-            Log::warning('Web push send failed: '.$e->getMessage(), [
-                'appointment_id' => $appointment->id ?? null,
-            ]);
+            // IMPORTANT: never break bookings
+            Log::error('WebPush exception (ignored): ' . $e->getMessage());
         }
     }
 }
