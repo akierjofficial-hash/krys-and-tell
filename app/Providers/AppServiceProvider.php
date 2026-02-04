@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Listeners\UpdateLastLogin;
+use App\Observers\AppointmentObserver;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,5 +36,6 @@ class AppServiceProvider extends ServiceProvider
 
         // ✅ Track last login (Laravel 11/12 - no EventServiceProvider by default)
         Event::listen(Login::class, UpdateLastLogin::class);
+        Appointment::observe(AppointmentObserver::class);
     }
 }
