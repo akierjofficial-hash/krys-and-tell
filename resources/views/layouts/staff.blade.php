@@ -38,14 +38,7 @@
            + Motion Pack (loader, modal confirm, toasts, micro-animations)
            ========================================================== */
 
-    body {
-        overflow-x: hidden;
-    }
-
-    /* PWA push button state */
-    .kt-push-enabled {
-        box-shadow: 0 0 0 4px rgba(34, 197, 94, .18) !important;
-    }
+    body { overflow-x: hidden; }
 
     /* ---------- Theme Tokens (LOCKED) ---------- */
     html {
@@ -122,14 +115,10 @@
         --bs-tertiary-bg: var(--kt-surface) !important;
     }
 
-    html {
-        --kt-sidebar-w: 245px !important;
-    }
+    html { --kt-sidebar-w: 245px !important; }
 
     /* ---------- Base ---------- */
-    * {
-        box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
         font-family: 'Poppins', sans-serif;
@@ -138,24 +127,12 @@
         margin: 0;
     }
 
-    a {
-        color: var(--kt-primary);
-    }
+    a { color: var(--kt-primary); }
+    a:hover { opacity: .92; }
 
-    a:hover {
-        opacity: .92;
-    }
+    .text-muted, small, .small { color: var(--kt-muted) !important; }
 
-    .text-muted,
-    small,
-    .small {
-        color: var(--kt-muted) !important;
-    }
-
-    hr {
-        border-color: var(--kt-border) !important;
-        opacity: 1;
-    }
+    hr { border-color: var(--kt-border) !important; opacity: 1; }
 
     html[data-theme="dark"] .content .text-dark,
     html[data-theme="dark"] .content .text-black,
@@ -164,11 +141,7 @@
     }
 
     /* ---------- Layout ---------- */
-    .layout {
-        display: flex;
-        min-height: 100vh;
-        width: 100%;
-    }
+    .layout { display: flex; min-height: 100vh; width: 100%; }
 
     /* ---------- Sidebar ---------- */
     .sidebar {
@@ -188,214 +161,167 @@
     }
 
     .brand {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 10px 18px 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, .15);
-        margin-bottom: 14px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        padding:10px 10px 18px 10px;
+        border-bottom:1px solid rgba(255,255,255,.15);
+        margin-bottom:14px;
     }
 
-    .brand-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-    }
+    .brand-left { display:flex; align-items:center; gap:10px; min-width:0; }
 
     .brand .logo {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, .18);
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-        flex: 0 0 auto;
+        width:44px; height:44px;
+        border-radius:12px;
+        background:rgba(255,255,255,.18);
+        display:grid; place-items:center;
+        overflow:hidden;
+        flex:0 0 auto;
     }
 
-    .brand .logo img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
+    .brand .logo img { width:100%; height:100%; object-fit:cover; display:block; }
 
     .brand h4 {
-        margin: 0;
-        font-weight: 800;
-        font-size: 16px;
-        line-height: 1.1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        margin:0;
+        font-weight:800;
+        font-size:16px;
+        line-height:1.1;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
     }
 
     .brand small {
-        display: block;
-        font-size: 12px;
-        color: rgba(255, 255, 255, .75) !important;
-        margin-top: 2px;
+        display:block;
+        font-size:12px;
+        color:rgba(255,255,255,.75) !important;
+        margin-top:2px;
     }
 
     .theme-toggle {
-        border: 1px solid rgba(255, 255, 255, .18);
-        background: rgba(255, 255, 255, .10);
-        color: #fff;
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-        transition: .18s ease;
-        flex: 0 0 auto;
+        border:1px solid rgba(255,255,255,.18);
+        background:rgba(255,255,255,.10);
+        color:#fff;
+        width:40px; height:40px;
+        border-radius:12px;
+        display:grid; place-items:center;
+        cursor:pointer;
+        transition:.18s ease;
+        flex:0 0 auto;
     }
 
-    .theme-toggle:hover {
-        background: rgba(255, 255, 255, .16);
-        transform: translateY(-1px);
-    }
+    .theme-toggle:hover { background:rgba(255,255,255,.16); transform: translateY(-1px); }
 
     .sidebar-menu {
-        margin-top: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        flex: 1;
-        overflow-y: auto;
-        padding-right: 6px;
+        margin-top:12px;
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+        flex:1;
+        overflow-y:auto;
+        padding-right:6px;
     }
 
-    .sidebar-menu::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .sidebar-menu::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, .18);
-        border-radius: 999px;
-    }
-
-    .sidebar-menu::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, .06);
-    }
+    .sidebar-menu::-webkit-scrollbar { width:8px; }
+    .sidebar-menu::-webkit-scrollbar-thumb { background:rgba(255,255,255,.18); border-radius:999px; }
+    .sidebar-menu::-webkit-scrollbar-track { background:rgba(255,255,255,.06); }
 
     .sidebar-menu a {
-        padding: 12px;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: rgba(255, 255, 255, .9);
-        text-decoration: none;
-        border-radius: 12px;
-        transition: .18s ease;
-        position: relative;
-        /* ✅ for badges */
+        padding:12px;
+        font-size:14px;
+        display:flex;
+        align-items:center;
+        gap:12px;
+        color:rgba(255,255,255,.9);
+        text-decoration:none;
+        border-radius:12px;
+        transition:.18s ease;
+        position:relative; /* ✅ for badges */
     }
 
     .sidebar-menu a:hover {
-        background: rgba(255, 255, 255, .14);
+        background:rgba(255,255,255,.14);
         transform: translateX(2px);
-        color: #fff;
+        color:#fff;
     }
 
     .sidebar-menu a.active {
-        background: rgba(255, 255, 255, .18);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
-        color: #fff;
+        background:rgba(255,255,255,.18);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+        color:#fff;
     }
 
     /* ✅ Messages unread badge (sidebar) */
     .kt-nav-badge {
-        position: absolute;
-        top: 8px;
-        right: 10px;
-        min-width: 20px;
-        height: 18px;
-        padding: 0 6px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: 950;
-        border-radius: 999px;
-        background: rgba(239, 68, 68, .22);
-        border: 1px solid rgba(239, 68, 68, .35);
-        color: #fff;
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, .12);
-        line-height: 1;
+        position:absolute;
+        top:8px; right:10px;
+        min-width:20px;
+        height:18px;
+        padding:0 6px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        font-size:11px;
+        font-weight:950;
+        border-radius:999px;
+        background:rgba(239,68,68,.22);
+        border:1px solid rgba(239,68,68,.35);
+        color:#fff;
+        box-shadow:0 0 0 2px rgba(255,255,255,.12);
+        line-height:1;
     }
 
     .sidebar-footer {
-        margin-top: auto;
-        padding-top: 14px;
-        border-top: 1px solid rgba(255, 255, 255, .15);
+        margin-top:auto;
+        padding-top:14px;
+        border-top:1px solid rgba(255,255,255,.15);
     }
 
     .logout-btn {
-        width: 100%;
-        border: none;
-        padding: 12px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, .14);
-        color: #fff;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: .18s ease;
+        width:100%;
+        border:none;
+        padding:12px;
+        border-radius:12px;
+        background:rgba(255,255,255,.14);
+        color:#fff;
+        font-weight:700;
+        display:flex;
+        align-items:center;
+        gap:12px;
+        transition:.18s ease;
     }
 
     .logout-btn:hover {
-        background: rgba(220, 53, 69, 0.95);
+        background:rgba(220, 53, 69, 0.95);
         transform: translateY(-1px);
     }
 
     /* ---------- Content ---------- */
     .content {
-        flex: 1;
-        width: 100%;
-        min-width: 0;
-        overflow-x: hidden;
-        padding: 16px;
-        color: var(--kt-text);
-        position: relative;
+        flex:1;
+        width:100%;
+        min-width:0;
+        overflow-x:hidden;
+        padding:16px;
+        color:var(--kt-text);
+        position:relative;
     }
 
-    @media (min-width: 768px) {
-        .content {
-            padding: 22px;
-        }
-    }
-
-    @media (min-width: 1200px) {
-        .content {
-            padding: 28px;
-        }
-    }
+    @media (min-width: 768px) { .content { padding:22px; } }
+    @media (min-width: 1200px) { .content { padding:28px; } }
 
     html[data-theme="dark"] .content {
         background:
             radial-gradient(900px 420px at 15% 0%, rgba(96, 165, 250, .06), transparent 55%),
             radial-gradient(900px 420px at 95% 10%, rgba(167, 139, 250, .05), transparent 55%);
-        border-radius: 18px;
+        border-radius:18px;
     }
 
     /* ---------- Global Surfaces ---------- */
-    .card,
-    .kt-card,
-    .section-box,
-    .welcome,
-    .stat-card,
-    .list-item,
-    .receipt-container,
-    .modal-content,
-    .dropdown-menu,
-    .toast,
-    .offcanvas,
-    .list-group-item {
+    .card, .kt-card, .section-box, .welcome, .stat-card, .list-item, .receipt-container,
+    .modal-content, .dropdown-menu, .toast, .offcanvas, .list-group-item {
         background: var(--kt-surface);
         border: 1px solid var(--kt-border);
         box-shadow: var(--kt-shadow);
@@ -404,15 +330,8 @@
     }
 
     /* ---------- Tables ---------- */
-    .table,
-    table {
-        color: var(--kt-text);
-    }
-
-    .table td,
-    .table th {
-        border-color: var(--kt-border) !important;
-    }
+    .table, table { color: var(--kt-text); }
+    .table td, .table th { border-color: var(--kt-border) !important; }
 
     .table thead th {
         background: rgba(248, 250, 252, .95);
@@ -428,41 +347,26 @@
         color: var(--kt-muted) !important;
     }
 
-    .table tbody td {
-        color: var(--kt-text);
-        vertical-align: middle;
-    }
+    .table tbody td { color: var(--kt-text); vertical-align: middle; }
 
     html[data-theme="dark"] .table tbody td {
         border-color: rgba(148, 163, 184, .18) !important;
     }
 
-    .table tbody tr:hover {
-        background: rgba(13, 110, 253, .06) !important;
-    }
+    .table tbody tr:hover { background: rgba(13, 110, 253, .06) !important; }
+    html[data-theme="dark"] .table tbody tr:hover { background: rgba(96, 165, 250, .08) !important; }
 
-    html[data-theme="dark"] .table tbody tr:hover {
-        background: rgba(96, 165, 250, .08) !important;
-    }
-
-    .table-responsive {
-        background: transparent !important;
-        border: 0 !important;
-        box-shadow: none !important;
-    }
+    .table-responsive { background: transparent !important; border: 0 !important; box-shadow: none !important; }
 
     /* ---------- Inputs ---------- */
-    .form-control,
-    .form-select,
-    .input-group-text {
+    .form-control, .form-select, .input-group-text {
         background: var(--kt-input-bg) !important;
         color: var(--kt-text) !important;
         border-color: var(--kt-input-border) !important;
         border-radius: 12px !important;
     }
 
-    .form-control:focus,
-    .form-select:focus {
+    .form-control:focus, .form-select:focus {
         border-color: rgba(96, 165, 250, .55) !important;
         box-shadow: 0 0 0 3px rgba(96, 165, 250, .18) !important;
     }
@@ -503,9 +407,7 @@
         transition: .15s ease;
     }
 
-    .kt-top-icon:hover {
-        background: var(--kt-surface-2);
-    }
+    .kt-top-icon:hover { background: var(--kt-surface-2); }
 
     .kt-dot {
         position: absolute;
@@ -518,79 +420,7 @@
         box-shadow: 0 0 0 2px rgba(255, 255, 255, .95);
     }
 
-    html[data-theme="dark"] .kt-dot {
-        box-shadow: 0 0 0 2px rgba(2, 6, 23, .85);
-    }
-
-    
-    /* ✅ Notification badges (top icons) */
-    .kt-top-badge{
-        position:absolute;
-        top:6px;
-        right:6px;
-        min-width:18px;
-        height:18px;
-        padding:0 5px;
-        border-radius:999px;
-        background:#ef4444;
-        color:#fff;
-        font-size:11px;
-        font-weight:950;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        line-height:1;
-        box-shadow:0 0 0 2px rgba(255,255,255,.95);
-        animation: ktBadgePulse 1.35s ease-in-out infinite;
-    }
-    
-    html[data-theme="dark"] .kt-top-badge{
-        box-shadow:0 0 0 2px rgba(2,6,23,.85);
-    }
-    
-    @keyframes ktBadgePulse{
-        0%,100%{transform:scale(1);}
-        50%{transform:scale(1.14);}
-    }
-    
-    /* ✅ Icon attention animations */
-    .kt-top-icon.is-alert{
-        box-shadow:0 0 0 4px rgba(13,110,253,.18);
-    }
-
-    .kt-top-icon.is-alert-success{
-        box-shadow:0 0 0 4px rgba(34,197,94,.18);
-    }
-    
-    .kt-top-icon.is-ring i{
-        transform-origin: 50% 0%;
-        animation: ktBellRing 900ms ease-in-out;
-    }
-    
-    @keyframes ktBellRing{
-        0%{transform:rotate(0);}
-        10%{transform:rotate(18deg);}
-        20%{transform:rotate(-16deg);}
-        30%{transform:rotate(14deg);}
-        40%{transform:rotate(-12deg);}
-        50%{transform:rotate(10deg);}
-        60%{transform:rotate(-8deg);}
-        70%{transform:rotate(6deg);}
-        80%{transform:rotate(-4deg);}
-        90%{transform:rotate(2deg);}
-        100%{transform:rotate(0);}
-    }
-    
-    .kt-top-icon.is-bounce i{
-        animation: ktBounce 650ms cubic-bezier(.2,.9,.2,1);
-    }
-    
-    @keyframes ktBounce{
-        0%{transform:translateY(0) scale(1);}
-        35%{transform:translateY(-4px) scale(1.03);}
-        70%{transform:translateY(0) scale(1);}
-        100%{transform:translateY(0) scale(1);}
-    }
+    html[data-theme="dark"] .kt-dot { box-shadow: 0 0 0 2px rgba(2, 6, 23, .85); }
 
     .kt-popover {
         position: absolute;
@@ -629,11 +459,7 @@
         gap: 10px;
     }
 
-    .kt-popover .kt-pop-title {
-        font-weight: 900;
-        font-size: 14px;
-        margin: 0;
-    }
+    .kt-popover .kt-pop-title { font-weight: 900; font-size: 14px; margin: 0; }
 
     .kt-popover .kt-badge {
         font-size: 12px;
@@ -644,11 +470,7 @@
         color: var(--kt-text);
     }
 
-    .kt-popover .kt-pop-body {
-        padding: 10px;
-        max-height: 360px;
-        overflow: auto;
-    }
+    .kt-popover .kt-pop-body { padding: 10px; max-height: 360px; overflow: auto; }
 
     .kt-popover .kt-item {
         border: 1px solid var(--kt-border);
@@ -658,9 +480,7 @@
         margin-bottom: 10px;
     }
 
-    .kt-popover .kt-item:last-child {
-        margin-bottom: 0;
-    }
+    .kt-popover .kt-item:last-child { margin-bottom: 0; }
 
     .kt-popover .kt-item .top {
         display: flex;
@@ -669,29 +489,12 @@
         gap: 10px;
     }
 
-    .kt-popover .kt-item .name {
-        font-weight: 900;
-        font-size: 13px;
-        margin: 0;
-        line-height: 1.2;
-    }
+    .kt-popover .kt-item .name { font-weight: 900; font-size: 13px; margin: 0; line-height: 1.2; }
 
-    .kt-popover .kt-item .meta {
-        font-size: 12px;
-        opacity: .95;
-        margin-top: 4px;
-    }
+    .kt-popover .kt-item .meta { font-size: 12px; opacity: .95; margin-top: 4px; }
 
-    .kt-popover .kt-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-        flex-wrap: wrap;
-    }
-
-    .kt-popover .kt-actions form {
-        margin: 0;
-    }
+    .kt-popover .kt-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .kt-popover .kt-actions form { margin: 0; }
 
     .kt-popover .btn-mini {
         padding: 6px 10px;
@@ -722,6 +525,20 @@
         align-items: center;
     }
 
+    /* ==========================================================
+       ✅ Push button: horn always, turns green when enabled
+       ========================================================== */
+    #ktPushBtn {
+        transition: background 140ms ease, box-shadow 140ms ease, color 140ms ease, border-color 140ms ease;
+    }
+
+    #ktPushBtn.kt-push-enabled {
+        color: #16a34a !important;
+        border-color: rgba(34, 197, 94, .35) !important;
+        background: rgba(34, 197, 94, .10) !important;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, .16) !important;
+    }
+
     /* ---------- Mobile Sidebar Drawer ---------- */
     .side-overlay {
         position: fixed;
@@ -733,10 +550,7 @@
         transition: opacity .18s ease;
     }
 
-    .side-overlay.show {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .side-overlay.show { opacity: 1; pointer-events: auto; }
 
     .menu-toggle {
         display: none;
@@ -751,14 +565,10 @@
         color: var(--kt-text);
     }
 
-    .menu-toggle:hover {
-        background: var(--kt-surface-2);
-    }
+    .menu-toggle:hover { background: var(--kt-surface-2); }
 
     @media (max-width: 900px) {
-        .menu-toggle {
-            display: grid;
-        }
+        .menu-toggle { display: grid; }
 
         .sidebar {
             position: fixed;
@@ -770,24 +580,19 @@
             transition: transform .18s ease;
         }
 
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .content {
-            padding: 14px;
-        }
+        .sidebar.open { transform: translateX(0); }
+        .content { padding: 14px; }
     }
 
     /* ==========================================================
            ✅ DARK MODE HAMMER
            ========================================================== */
-    html[data-theme="dark"] body .content {
-        color: var(--kt-text) !important;
-    }
+    html[data-theme="dark"] body .content { color: var(--kt-text) !important; }
 
-    html[data-theme="dark"] body .content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
-        textarea, select) {
+    html[data-theme="dark"] body .content :is(
+        input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+        textarea, select
+    ) {
         background: var(--kt-input-bg) !important;
         color: var(--kt-text) !important;
         border-color: var(--kt-input-border) !important;
@@ -810,9 +615,9 @@
         opacity: .85;
     }
 
-    html[data-theme="dark"] body .content :is(label, legend, .form-label, .col-form-label, .form-check-label, .input-group-text) {
-        color: var(--kt-text) !important;
-    }
+    html[data-theme="dark"] body .content :is(
+        label, legend, .form-label, .col-form-label, .form-check-label, .input-group-text
+    ) { color: var(--kt-text) !important; }
 
     html[data-theme="dark"] body .content :is(.form-text, .help-text, .hint, .subtitle, .muted, small, .small) {
         color: var(--kt-muted) !important;
@@ -824,10 +629,7 @@
         box-shadow: var(--kt-shadow) !important;
     }
 
-    html[data-theme="dark"] body .content .dropdown-item {
-        color: var(--kt-text) !important;
-    }
-
+    html[data-theme="dark"] body .content .dropdown-item { color: var(--kt-text) !important; }
     html[data-theme="dark"] body .content .dropdown-item:hover {
         background: rgba(96, 165, 250, .10) !important;
     }
@@ -853,13 +655,8 @@
         transition: transform 140ms ease, opacity 140ms ease, background 140ms ease, box-shadow 140ms ease;
     }
 
-    :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active {
-        transform: scale(.98);
-    }
-
-    :where(.btn, button):active {
-        transform: translateY(1px) scale(.99);
-    }
+    :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active { transform: scale(.98); }
+    :where(.btn, button):active { transform: translateY(1px) scale(.99); }
 
     .kt-loader {
         position: fixed;
@@ -877,16 +674,9 @@
         z-index: 9999;
     }
 
-    @media (max-width: 900px) {
-        .kt-loader {
-            left: 0;
-        }
-    }
+    @media (max-width: 900px) { .kt-loader { left: 0; } }
 
-    .kt-loader.is-active {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .kt-loader.is-active { opacity: 1; pointer-events: auto; }
 
     .kt-loader__card {
         min-width: 220px;
@@ -903,9 +693,7 @@
         transition: transform 160ms ease;
     }
 
-    .kt-loader.is-active .kt-loader__card {
-        transform: translateY(0) scale(1);
-    }
+    .kt-loader.is-active .kt-loader__card { transform: translateY(0) scale(1); }
 
     .kt-spinner {
         width: 22px;
@@ -916,16 +704,9 @@
         animation: ktSpin .8s linear infinite;
     }
 
-    @keyframes ktSpin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
+    @keyframes ktSpin { to { transform: rotate(360deg); } }
 
-    .kt-loader__text {
-        font-size: 13px;
-        opacity: .9;
-    }
+    .kt-loader__text { font-size: 13px; opacity: .9; }
 
     .kt-modal {
         position: fixed;
@@ -938,10 +719,7 @@
         z-index: 9998;
     }
 
-    .kt-modal.is-open {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .kt-modal.is-open { opacity: 1; pointer-events: auto; }
 
     .kt-modal__backdrop {
         position: absolute;
@@ -963,21 +741,10 @@
         transition: transform 180ms cubic-bezier(.2, .8, .2, 1);
     }
 
-    .kt-modal.is-open .kt-modal__panel {
-        transform: translateY(0) scale(1);
-    }
+    .kt-modal.is-open .kt-modal__panel { transform: translateY(0) scale(1); }
 
-    .kt-modal__title {
-        margin: 0 0 6px;
-        font-size: 16px;
-        font-weight: 900;
-    }
-
-    .kt-modal__msg {
-        margin: 0 0 14px;
-        font-size: 13px;
-        opacity: .85;
-    }
+    .kt-modal__title { margin: 0 0 6px; font-size: 16px; font-weight: 900; }
+    .kt-modal__msg { margin: 0 0 14px; font-size: 13px; opacity: .85; }
 
     .kt-modal__actions {
         display: flex;
@@ -997,9 +764,7 @@
         user-select: none;
     }
 
-    .kt-btn:active {
-        transform: scale(.98);
-    }
+    .kt-btn:active { transform: scale(.98); }
 
     .kt-btn--ghost {
         background: transparent;
@@ -1053,10 +818,7 @@
         transition: opacity 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
     }
 
-    .kt-toast.show {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    .kt-toast.show { opacity: 1; transform: translateY(0) scale(1); }
 
     .kt-toast .icon {
         width: 34px;
@@ -1067,18 +829,8 @@
         flex: 0 0 auto;
     }
 
-    .kt-toast .title {
-        font-weight: 900;
-        font-size: 13px;
-        margin: 0;
-        line-height: 1.1;
-    }
-
-    .kt-toast .msg {
-        font-size: 12px;
-        opacity: .9;
-        margin: 4px 0 0 0;
-    }
+    .kt-toast .title { font-weight: 900; font-size: 13px; margin: 0; line-height: 1.1; }
+    .kt-toast .msg { font-size: 12px; opacity: .9; margin: 4px 0 0 0; }
 
     .kt-toast .close {
         margin-left: auto;
@@ -1092,9 +844,7 @@
         cursor: pointer;
     }
 
-    .kt-toast .close:hover {
-        background: rgba(148, 163, 184, .12);
-    }
+    .kt-toast .close:hover { background: rgba(148, 163, 184, .12); }
 
     .kt-toast.success .icon {
         background: rgba(34, 197, 94, .14);
@@ -1139,10 +889,10 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         // ✅ unread message badge for sidebar/top
         $unreadMessages = 0;
         try {
-        if (\Illuminate\Support\Facades\Schema::hasTable('contact_messages')
-        && \Illuminate\Support\Facades\Schema::hasColumn('contact_messages', 'read_at')) {
-        $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
-        }
+            if (\Illuminate\Support\Facades\Schema::hasTable('contact_messages')
+                && \Illuminate\Support\Facades\Schema::hasColumn('contact_messages', 'read_at')) {
+                $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
+            }
         } catch (\Throwable $e) { $unreadMessages = 0; }
         @endphp
 
@@ -1222,21 +972,21 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             $pendingItems = collect();
 
             try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
-            && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+                if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
 
-            $pendingItems = \App\Models\Appointment::query()
-            ->with(['service','doctor','patient'])
-            ->where('status', 'pending')
-            ->orderByDesc('created_at')
-            ->take(8)
-            ->get();
+                    $pendingItems = \App\Models\Appointment::query()
+                        ->with(['service','doctor','patient'])
+                        ->where('status', 'pending')
+                        ->orderByDesc('created_at')
+                        ->take(8)
+                        ->get();
 
-            $pendingApprovals = $pendingItems->count();
-            }
+                    $pendingApprovals = $pendingItems->count();
+                }
             } catch (\Throwable $e) {
-            $pendingApprovals = 0;
-            $pendingItems = collect();
+                $pendingApprovals = 0;
+                $pendingItems = collect();
             }
             @endphp
 
@@ -1247,25 +997,24 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                 {{-- Right side --}}
                 <div class="ms-auto d-flex align-items-center gap-2 position-relative">
-                    {{-- ✅ Messages icon (badge + animation) --}}
-<a id="msgIconTop" href="{{ route('staff.messages.index') }}"
-   class="kt-top-icon position-relative text-decoration-none" title="Messages">
-    <i class="fa-solid fa-message"></i>
-    <span id="msgTopBadge" class="kt-top-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
-</a>
+                    {{-- ✅ Messages icon (with dot) --}}
+                    <a href="{{ route('staff.messages.index') }}"
+                        class="kt-top-icon position-relative text-decoration-none" title="Messages">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span id="msgTopDot" class="kt-dot {{ $unreadMessages > 0 ? '' : 'd-none' }}"></span>
+                    </a>
 
                     {{-- ✅ Push notifications (PWA) --}}
-                    <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Enable push notifications">
-                        <i class="fa-solid fa-bolt"></i>
+                    <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Push notifications">
+                        <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
                     </button>
 
-
-                    {{-- Approval button (badge + ring animation) --}}
-<button type="button" id="approvalBell" class="kt-top-icon position-relative border-0"
-        title="Approval Requests" aria-haspopup="true" aria-expanded="false">
-    <i class="fa-solid fa-bell"></i>
-    <span id="approvalTopBadge" class="kt-top-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
-</button>
+                    {{-- Bell button --}}
+                    <button type="button" id="approvalBell" class="kt-top-icon position-relative border-0"
+                        title="Approval Requests" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="approvalDot" class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
+                    </button>
 
                     {{-- Dropdown card --}}
                     <div id="approvalPopover" class="kt-popover" aria-hidden="true">
@@ -1281,70 +1030,69 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                         <div class="kt-pop-body" id="approvalList">
                             @if($pendingItems->isEmpty())
-                            <div class="text-center py-3" id="approvalEmpty">
-                                <div class="fw-bold">No pending requests</div>
-                                <div class="small text-muted">You're all caught up.</div>
-                            </div>
+                                <div class="text-center py-3" id="approvalEmpty">
+                                    <div class="fw-bold">No pending requests</div>
+                                    <div class="small text-muted">You're all caught up.</div>
+                                </div>
                             @else
-                            @foreach($pendingItems as $a)
-                            @php
-                            $displayName =
-                            $a->public_name
-                            ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').'
-                            '.($a->public_last_name ?? ''))
-                            ?: ($a->patient->name ?? 'Patient');
+                                @foreach($pendingItems as $a)
+                                    @php
+                                    $displayName =
+                                        $a->public_name
+                                        ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').' '.($a->public_last_name ?? ''))
+                                        ?: ($a->patient->name ?? 'Patient');
 
-                            $serviceName = $a->service->name ?? 'Service';
-                            $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
+                                    $serviceName = $a->service->name ?? 'Service';
+                                    $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
 
-                            $date = $a->appointment_date ?? null;
-                            $time = $a->appointment_time ?? null;
-                            @endphp
+                                    $date = $a->appointment_date ?? null;
+                                    $time = $a->appointment_time ?? null;
+                                    @endphp
 
-                            <div class="kt-item" data-approval-id="{{ $a->id }}">
-                                <div class="top">
-                                    <div>
-                                        <p class="name">{{ $displayName }}</p>
-                                        <div class="meta">
-                                            <div><b>{{ $serviceName }}</b></div>
+                                    <div class="kt-item" data-approval-id="{{ $a->id }}">
+                                        <div class="top">
                                             <div>
-                                                {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
-                                                @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                <p class="name">{{ $displayName }}</p>
+                                                <div class="meta">
+                                                    <div><b>{{ $serviceName }}</b></div>
+                                                    <div>
+                                                        {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
+                                                        @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                    </div>
+                                                    <div class="small text-muted">Doctor: {{ $doctorName }}</div>
+                                                </div>
                                             </div>
-                                            <div class="small text-muted">Doctor: {{ $doctorName }}</div>
+
+                                            <div class="small text-muted text-end">
+                                                {{ optional($a->created_at)->diffForHumans() }}
+                                            </div>
+                                        </div>
+
+                                        <div class="kt-actions">
+                                            {{-- ✅ Edit button --}}
+                                            <a class="btn btn-mini btn-edit"
+                                                href="{{ route('staff.approvals.index', ['edit' => $a->id]) }}">
+                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                                            </a>
+
+                                            <form class="approval-form" data-action="approve" method="POST"
+                                                action="{{ route('staff.approvals.approve', $a->id) }}">
+                                                @csrf
+                                                <button class="btn btn-mini btn-approve" type="submit">
+                                                    <i class="fa-solid fa-check me-1"></i> Approve
+                                                </button>
+                                            </form>
+
+                                            <form class="approval-form" data-action="decline" method="POST"
+                                                action="{{ route('staff.approvals.decline', $a->id) }}">
+                                                @csrf
+                                                <button class="btn btn-mini btn-decline" type="submit">
+                                                    <i class="fa-solid fa-xmark me-1"></i> Decline
+                                                </button>
+                                            </form>
                                         </div>
                                     </div>
-
-                                    <div class="small text-muted text-end">
-                                        {{ optional($a->created_at)->diffForHumans() }}
-                                    </div>
-                                </div>
-
-                                <div class="kt-actions">
-                                    {{-- ✅ NEW: Edit button inside bell popover --}}
-                                    <a class="btn btn-mini btn-edit"
-                                        href="{{ route('staff.approvals.index', ['edit' => $a->id]) }}">
-                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit
-                                    </a>
-
-                                    <form class="approval-form" data-action="approve" method="POST"
-                                        action="{{ route('staff.approvals.approve', $a->id) }}">
-                                        @csrf
-                                        <button class="btn btn-mini btn-approve" type="submit">
-                                            <i class="fa-solid fa-check me-1"></i> Approve
-                                        </button>
-                                    </form>
-
-                                    <form class="approval-form" data-action="decline" method="POST"
-                                        action="{{ route('staff.approvals.decline', $a->id) }}">
-                                        @csrf
-                                        <button class="btn btn-mini btn-decline" type="submit">
-                                            <i class="fa-solid fa-xmark me-1"></i> Decline
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            @endforeach
+                                @endforeach
                             @endif
                         </div>
                     </div>
@@ -1487,9 +1235,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             return el;
         }
 
-        window.KTToast = {
-            show: showToast
-        };
+        window.KTToast = { show: showToast };
 
         // =========================
         // Global Loader (CONTENT ONLY)
@@ -1536,12 +1282,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         let pendingAction = null;
 
-        function openConfirm({
-            title = 'Confirm action',
-            message = 'Are you sure?',
-            onYes = null,
-            yesText = 'Continue'
-        } = {}) {
+        function openConfirm({ title = 'Confirm action', message = 'Are you sure?', onYes = null, yesText = 'Continue' } = {}) {
             if (!modal) return;
 
             pendingAction = onYes;
@@ -1607,7 +1348,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         const pop = document.getElementById('approvalPopover');
 
         const badgeEl = document.getElementById('approvalBadge');
-        const topBadgeEl = document.getElementById('approvalTopBadge');
+        const dotEl = document.getElementById('approvalDot');
         const flashEl = document.getElementById('approvalFlash');
         const listEl = document.getElementById('approvalList');
 
@@ -1617,7 +1358,6 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             '';
 
         const widgetUrl = @json(route('staff.approvals.widget'));
-        // ✅ NEW: approvals index url for bell "Edit" links
         const approvalsIndexUrl = @json(route('staff.approvals.index'));
 
         function closePopover() {
@@ -1641,14 +1381,10 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         }
 
         function setCount(n) {
-    n = Number(n || 0);
-    if (badgeEl) badgeEl.textContent = String(n);
-
-    if (topBadgeEl) {
-        topBadgeEl.textContent = String(n);
-        topBadgeEl.classList.toggle('d-none', n <= 0);
-    }
-}
+            n = Number(n || 0);
+            if (badgeEl) badgeEl.textContent = String(n);
+            if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
+        }
 
         function showFlash(type, text) {
             if (!flashEl) return;
@@ -1709,8 +1445,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     return;
                 }
 
-                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' :
-                    'Booking declined.'));
+                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
                 if (item) item.remove();
 
                 if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
@@ -1738,9 +1473,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         pop?.addEventListener('click', (e) => e.stopPropagation());
 
         document.addEventListener('click', closePopover);
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closePopover();
-        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
 
         // ---------- ✅ LIVE: Poll widget() every 5s ----------
         let lastPending = Number(badgeEl?.textContent || 0);
@@ -1810,10 +1543,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             polling = true;
             try {
                 const res = await fetch(widgetUrl + '?limit=8', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     cache: 'no-store'
                 });
 
@@ -1828,8 +1558,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 if (pendingCount > lastPending) {
                     window.KTToast?.show('info', 'New booking', 'A new approval request arrived.', 2200);
 
-                    bell?.classList.add('is-ring', 'is-alert-success');
-                    setTimeout(() => bell?.classList.remove('is-ring', 'is-alert-success'), 900);
+                    bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
+                    setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
                 }
 
                 lastPending = pendingCount;
@@ -1848,39 +1578,25 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         // =========================
         const msgWidgetUrl = @json(route('staff.messages.widget'));
         const msgNavBadge = document.getElementById('msgNavBadge');
-        const msgTopBadge = document.getElementById('msgTopBadge');
-        const msgIconTop = document.getElementById('msgIconTop');
+        const msgTopDot = document.getElementById('msgTopDot');
 
         let msgSince = localStorage.getItem('kt_msg_since') || '';
         let msgPolling = false;
-        let msgLastUnread = Number(msgNavBadge?.textContent || 0);
 
         function setUnreadMessages(n) {
-    n = Number(n || 0);
+            n = Number(n || 0);
 
-    if (msgNavBadge) {
-        msgNavBadge.textContent = String(n);
-        msgNavBadge.classList.toggle('d-none', n <= 0);
-    }
+            if (msgNavBadge) {
+                msgNavBadge.textContent = String(n);
+                msgNavBadge.classList.toggle('d-none', n <= 0);
+            }
 
-    if (msgTopBadge) {
-        msgTopBadge.textContent = String(n);
-        msgTopBadge.classList.toggle('d-none', n <= 0);
-    }
-
-    window.dispatchEvent(new CustomEvent('kt:messages:count', {
-        detail: { unreadCount: n }
-    }));
-}
-
-            if (msgTopBadge) {
-                msgTopBadge.classList.toggle('d-none', n <= 0);
+            if (msgTopDot) {
+                msgTopDot.classList.toggle('d-none', n <= 0);
             }
 
             window.dispatchEvent(new CustomEvent('kt:messages:count', {
-                detail: {
-                    unreadCount: n
-                }
+                detail: { unreadCount: n }
             }));
         }
 
@@ -1904,13 +1620,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             const prevSince = msgSince;
 
             try {
-                const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(
-                    msgSince)) : '');
+                const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
                 const res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     cache: 'no-store'
                 });
 
@@ -1926,7 +1638,6 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     localStorage.setItem('kt_msg_since', msgSince);
                 }
 
-                // compute "new messages" client-side from latest list
                 let newMsgs = [];
                 if (prevSince) {
                     newMsgs = latest.filter(x => x.created_at_iso && x.created_at_iso > prevSince);
@@ -1936,16 +1647,10 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                 if (newMsgs.length > 0) {
                     window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
-                    msgIconTop?.classList.add('is-bounce', 'is-alert');
-                    setTimeout(() => msgIconTop?.classList.remove('is-bounce', 'is-alert'), 900);
                     window.dispatchEvent(new CustomEvent('kt:messages:new', {
-                        detail: {
-                            messages: newMsgs.map(normalizeMsg)
-                        }
+                        detail: { messages: newMsgs.map(normalizeMsg) }
                     }));
                 }
-
-                msgLastUnread = unread;
             } catch (e) {
                 // silent
             } finally {
@@ -1966,18 +1671,72 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js', {
-                scope: '/'
-            }).catch(() => {});
+            navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
         });
     }
     </script>
+
     <script>
     // Bind push enable button (requires user click)
     if (window.KTPush) {
         window.KTPush.bind('#ktPushBtn');
     }
-    </script>
+
+    // ✅ FORCE PUSH ICON: always bullhorn (on/off) — safe, no page freeze
+    (() => {
+        const btn = document.getElementById('ktPushBtn');
+        if (!btn) return;
+
+        let fixing = false;
+
+        const ensureBullhorn = () => {
+            if (fixing) return;
+            fixing = true;
+
+            try {
+                // Remove any injected svg/layers
+                btn.querySelectorAll('svg, span.fa-layers').forEach(n => n.remove());
+
+                // Ensure exactly ONE <i>
+                let icon = btn.querySelector('i');
+                if (!icon) {
+                    icon = document.createElement('i');
+                    btn.prepend(icon);
+                }
+                btn.querySelectorAll('i').forEach((n, idx) => { if (idx > 0) n.remove(); });
+
+                // Force bullhorn classes always
+                icon.className = 'fa-solid fa-bullhorn';
+                icon.setAttribute('aria-hidden', 'true');
+            } finally {
+                fixing = false;
+            }
+        };
+
+        ensureBullhorn();
+
+        const obs = new MutationObserver(() => {
+            if (fixing) return;
+            // Defer to avoid fighting the same tick as kt-push.js
+            requestAnimationFrame(ensureBullhorn);
+        });
+
+        // ✅ Watch BOTH DOM changes and class changes (subtree includes the <i>)
+        obs.observe(btn, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        // Extra: after click, re-apply (some libs change icon after async promise)
+        btn.addEventListener('click', () => setTimeout(ensureBullhorn, 0), { passive: true });
+        btn.addEventListener('click', () => setTimeout(ensureBullhorn, 250), { passive: true });
+        btn.addEventListener('click', () => setTimeout(ensureBullhorn, 800), { passive: true });
+    })();
+</script>
+
+
 </body>
 
 </html>
