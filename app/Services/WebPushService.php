@@ -2,21 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\PushSubscription;
 use App\Models\Appointment;
+use App\Models\PushSubscription;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
 
 class WebPushService
 {
-    /**
-     * Notify all subscribed staff/admin devices when a new booking is created.
-     * IMPORTANT: This method must never throw, or booking will 500.
-     */
     public function notifyNewBooking(Appointment $appointment): void
     {
-        // Build a friendly message (safe fallbacks)
         $serviceName = null;
         try {
             $serviceName = optional($appointment->service)->name;
@@ -35,18 +30,23 @@ class WebPushService
         $title = 'New Booking Request';
         $body  = "{$patientName} • {$serviceName}";
 
-        // Safer default: open homepage (works for both staff/admin)
-        // You can change this later to a shared /approvals redirect route if you want.
-        $url   = '/';
-
-        $this->sendToAll($title, $body, $url);
+        $this->sendToAll($title, $body, '/');
     }
 
-    /**
-     * Send a push notification to all saved subscriptions.
-     */
     public function sendToAll(string $title, string $body, string $url = '/'): void
     {
+        // ✅ Silence ONLY the GMP/BCMath notice from minishlink/web-push
+        $oldReporting = error_reporting();
+        $noticeNeedle = 'install the GMP or BCMath extension';
+
+        $handler = set_error_handler(function ($severity, $message, $file, $line) use ($noticeNeedle) {
+            if (is_string($message) && str_contains($message, $noticeNeedle)) {
+                Log::warning('WebPush notice (ignored): ' . $message);
+                return true; // handled; do not convert to exception
+            }
+            return false; // let Laravel handle other errors normally
+        });
+
         try {
             $publicKey  = env('VAPID_PUBLIC_KEY');
             $privateKey = env('VAPID_PRIVATE_KEY');
@@ -58,9 +58,7 @@ class WebPushService
             }
 
             $subs = PushSubscription::query()->get();
-            if ($subs->isEmpty()) {
-                return;
-            }
+            if ($subs->isEmpty()) return;
 
             $webPush = new WebPush([
                 'VAPID' => [
@@ -77,7 +75,6 @@ class WebPushService
             ], JSON_UNESCAPED_SLASHES);
 
             foreach ($subs as $s) {
-                // Your DB columns are expected to be: endpoint, public_key, auth_token, content_encoding
                 $subscription = Subscription::create([
                     'endpoint' => $s->endpoint,
                     'publicKey' => $s->public_key,
@@ -89,29 +86,29 @@ class WebPushService
             }
 
             foreach ($webPush->flush() as $report) {
-                if ($report->isSuccess()) {
-                    continue;
-                }
+                if ($report->isSuccess()) continue;
 
-                // Remove expired subscriptions (410 Gone) so it doesn’t keep failing
                 $endpoint = method_exists($report, 'getRequest') && $report->getRequest()
                     ? (string) $report->getRequest()->getUri()
                     : null;
 
-                $reason = $report->getReason();
+                $reason = (string) $report->getReason();
 
                 Log::warning('WebPush failed: ' . $reason, [
                     'endpoint' => $endpoint,
                 ]);
 
-                // If endpoint expired, delete it
-                if ($endpoint && str_contains((string) $reason, '410')) {
+                // Expired subscription: remove
+                if ($endpoint && str_contains($reason, '410')) {
                     PushSubscription::where('endpoint', $endpoint)->delete();
                 }
             }
         } catch (\Throwable $e) {
-            // IMPORTANT: never break bookings
+            // IMPORTANT: never break booking flow
             Log::error('WebPush exception (ignored): ' . $e->getMessage());
+        } finally {
+            if ($handler !== null) restore_error_handler();
+            error_reporting($oldReporting);
         }
     }
 }
