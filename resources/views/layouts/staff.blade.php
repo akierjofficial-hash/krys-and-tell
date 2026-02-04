@@ -522,6 +522,76 @@
         box-shadow: 0 0 0 2px rgba(2, 6, 23, .85);
     }
 
+    
+    /* ✅ Notification badges (top icons) */
+    .kt-top-badge{
+        position:absolute;
+        top:6px;
+        right:6px;
+        min-width:18px;
+        height:18px;
+        padding:0 5px;
+        border-radius:999px;
+        background:#ef4444;
+        color:#fff;
+        font-size:11px;
+        font-weight:950;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        line-height:1;
+        box-shadow:0 0 0 2px rgba(255,255,255,.95);
+        animation: ktBadgePulse 1.35s ease-in-out infinite;
+    }
+    
+    html[data-theme="dark"] .kt-top-badge{
+        box-shadow:0 0 0 2px rgba(2,6,23,.85);
+    }
+    
+    @keyframes ktBadgePulse{
+        0%,100%{transform:scale(1);}
+        50%{transform:scale(1.14);}
+    }
+    
+    /* ✅ Icon attention animations */
+    .kt-top-icon.is-alert{
+        box-shadow:0 0 0 4px rgba(13,110,253,.18);
+    }
+
+    .kt-top-icon.is-alert-success{
+        box-shadow:0 0 0 4px rgba(34,197,94,.18);
+    }
+    
+    .kt-top-icon.is-ring i{
+        transform-origin: 50% 0%;
+        animation: ktBellRing 900ms ease-in-out;
+    }
+    
+    @keyframes ktBellRing{
+        0%{transform:rotate(0);}
+        10%{transform:rotate(18deg);}
+        20%{transform:rotate(-16deg);}
+        30%{transform:rotate(14deg);}
+        40%{transform:rotate(-12deg);}
+        50%{transform:rotate(10deg);}
+        60%{transform:rotate(-8deg);}
+        70%{transform:rotate(6deg);}
+        80%{transform:rotate(-4deg);}
+        90%{transform:rotate(2deg);}
+        100%{transform:rotate(0);}
+    }
+    
+    .kt-top-icon.is-bounce i{
+        animation: ktBounce 650ms cubic-bezier(.2,.9,.2,1);
+    }
+    
+    @keyframes ktBounce{
+        0%{transform:translateY(0) scale(1);}
+        35%{transform:translateY(-4px) scale(1.03);}
+        70%{transform:translateY(0) scale(1);}
+        100%{transform:translateY(0) scale(1);}
+    }
+
     .kt-popover {
         position: absolute;
         top: 54px;
@@ -1177,12 +1247,12 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                 {{-- Right side --}}
                 <div class="ms-auto d-flex align-items-center gap-2 position-relative">
-                    {{-- ✅ Messages icon (with dot) --}}
-                    <a href="{{ route('staff.messages.index') }}"
-                        class="kt-top-icon position-relative text-decoration-none" title="Messages">
-                        <i class="fa-solid fa-envelope"></i>
-                        <span id="msgTopDot" class="kt-dot {{ $unreadMessages > 0 ? '' : 'd-none' }}"></span>
-                    </a>
+                    {{-- ✅ Messages icon (badge + animation) --}}
+<a id="msgIconTop" href="{{ route('staff.messages.index') }}"
+   class="kt-top-icon position-relative text-decoration-none" title="Messages">
+    <i class="fa-solid fa-message"></i>
+    <span id="msgTopBadge" class="kt-top-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
+</a>
 
                     {{-- ✅ Push notifications (PWA) --}}
                     <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Enable push notifications">
@@ -1190,12 +1260,12 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     </button>
 
 
-                    {{-- Bell button --}}
-                    <button type="button" id="approvalBell" class="kt-top-icon position-relative border-0"
-                        title="Approval Requests" aria-haspopup="true" aria-expanded="false">
-                        <i class="fa-solid fa-bell"></i>
-                        <span id="approvalDot" class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
-                    </button>
+                    {{-- Approval button (badge + ring animation) --}}
+<button type="button" id="approvalBell" class="kt-top-icon position-relative border-0"
+        title="Approval Requests" aria-haspopup="true" aria-expanded="false">
+    <i class="fa-solid fa-bell"></i>
+    <span id="approvalTopBadge" class="kt-top-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
+</button>
 
                     {{-- Dropdown card --}}
                     <div id="approvalPopover" class="kt-popover" aria-hidden="true">
@@ -1537,7 +1607,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         const pop = document.getElementById('approvalPopover');
 
         const badgeEl = document.getElementById('approvalBadge');
-        const dotEl = document.getElementById('approvalDot');
+        const topBadgeEl = document.getElementById('approvalTopBadge');
         const flashEl = document.getElementById('approvalFlash');
         const listEl = document.getElementById('approvalList');
 
@@ -1571,10 +1641,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         }
 
         function setCount(n) {
-            n = Number(n || 0);
-            if (badgeEl) badgeEl.textContent = String(n);
-            if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
-        }
+    n = Number(n || 0);
+    if (badgeEl) badgeEl.textContent = String(n);
+
+    if (topBadgeEl) {
+        topBadgeEl.textContent = String(n);
+        topBadgeEl.classList.toggle('d-none', n <= 0);
+    }
+}
 
         function showFlash(type, text) {
             if (!flashEl) return;
@@ -1754,8 +1828,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 if (pendingCount > lastPending) {
                     window.KTToast?.show('info', 'New booking', 'A new approval request arrived.', 2200);
 
-                    bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
-                    setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
+                    bell?.classList.add('is-ring', 'is-alert-success');
+                    setTimeout(() => bell?.classList.remove('is-ring', 'is-alert-success'), 900);
                 }
 
                 lastPending = pendingCount;
@@ -1774,22 +1848,33 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         // =========================
         const msgWidgetUrl = @json(route('staff.messages.widget'));
         const msgNavBadge = document.getElementById('msgNavBadge');
-        const msgTopDot = document.getElementById('msgTopDot');
+        const msgTopBadge = document.getElementById('msgTopBadge');
+        const msgIconTop = document.getElementById('msgIconTop');
 
         let msgSince = localStorage.getItem('kt_msg_since') || '';
         let msgPolling = false;
         let msgLastUnread = Number(msgNavBadge?.textContent || 0);
 
         function setUnreadMessages(n) {
-            n = Number(n || 0);
+    n = Number(n || 0);
 
-            if (msgNavBadge) {
-                msgNavBadge.textContent = String(n);
-                msgNavBadge.classList.toggle('d-none', n <= 0);
-            }
+    if (msgNavBadge) {
+        msgNavBadge.textContent = String(n);
+        msgNavBadge.classList.toggle('d-none', n <= 0);
+    }
 
-            if (msgTopDot) {
-                msgTopDot.classList.toggle('d-none', n <= 0);
+    if (msgTopBadge) {
+        msgTopBadge.textContent = String(n);
+        msgTopBadge.classList.toggle('d-none', n <= 0);
+    }
+
+    window.dispatchEvent(new CustomEvent('kt:messages:count', {
+        detail: { unreadCount: n }
+    }));
+}
+
+            if (msgTopBadge) {
+                msgTopBadge.classList.toggle('d-none', n <= 0);
             }
 
             window.dispatchEvent(new CustomEvent('kt:messages:count', {
@@ -1851,6 +1936,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                 if (newMsgs.length > 0) {
                     window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
+                    msgIconTop?.classList.add('is-bounce', 'is-alert');
+                    setTimeout(() => msgIconTop?.classList.remove('is-bounce', 'is-alert'), 900);
                     window.dispatchEvent(new CustomEvent('kt:messages:new', {
                         detail: {
                             messages: newMsgs.map(normalizeMsg)

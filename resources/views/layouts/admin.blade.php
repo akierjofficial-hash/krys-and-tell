@@ -24,8 +24,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-    /* PWA push button state */
+    /* ==========================================================
+       ✅ Push Button Premium State (ON)
+       Works if JS toggles: .is-on OR your existing .kt-push-enabled
+       ========================================================== */
+
+    #ktPushBtn { position: relative; overflow: visible; }
+
+    /* Keep existing compatibility */
     .kt-push-enabled { box-shadow: 0 0 0 4px rgba(34,197,94,.18) !important; }
+
+    /* Premium ON styling */
+    #ktPushBtn.is-on,
+    #ktPushBtn.kt-push-enabled{
+        background: rgba(34,197,94,.12) !important;
+        border-color: rgba(34,197,94,.25) !important;
+        box-shadow: 0 0 0 0 rgba(34,197,94,.45) !important;
+        animation: ktPulse 1.6s infinite;
+    }
+
+    #ktPushBtn.is-on::after,
+    #ktPushBtn.kt-push-enabled::after{
+        content:'';
+        position:absolute;
+        top:6px; right:6px;
+        width:9px; height:9px;
+        border-radius:999px;
+        background:#22c55e;
+        box-shadow:0 0 0 6px rgba(34,197,94,.20);
+        pointer-events:none;
+    }
+
+    @keyframes ktPulse{
+        0%   { transform: scale(1);   box-shadow:0 0 0 0 rgba(34,197,94,.45); }
+        60%  { transform: scale(1.05);box-shadow:0 0 0 14px rgba(34,197,94,0); }
+        100% { transform: scale(1);   box-shadow:0 0 0 0 rgba(34,197,94,0); }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+        #ktPushBtn.is-on,
+        #ktPushBtn.kt-push-enabled{ animation:none !important; }
+        #ktPushBtn.is-on::after,
+        #ktPushBtn.kt-push-enabled::after{ box-shadow:none !important; }
+    }
 
     :root {
         --primary: #155AC1;
@@ -103,20 +144,20 @@
     }
 
     .brand {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
         padding: 10px 10px 14px;
         border-bottom: 1px solid var(--border);
         margin-bottom: 10px;
     }
 
     .brand-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        min-width:0;
     }
 
     .logo {
@@ -167,43 +208,29 @@
         flex: 0 0 auto;
     }
 
-    html[data-theme="dark"] .theme-toggle {
-        background: rgba(2, 6, 23, .35) !important;
-    }
-
-    .theme-toggle:hover {
-        transform: translateY(-1px);
-    }
+    html[data-theme="dark"] .theme-toggle { background: rgba(2, 6, 23, .35) !important; }
+    .theme-toggle:hover { transform: translateY(-1px); }
 
     .navx {
         margin-top: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 0 6px;
-        flex: 1;
-        overflow-y: auto;
-        min-height: 0;
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+        padding:0 6px;
+        flex:1;
+        overflow-y:auto;
+        min-height:0;
     }
 
-    .navx::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .navx::-webkit-scrollbar-thumb {
-        background: rgba(148, 163, 184, .18);
-        border-radius: 999px;
-    }
-
-    .navx::-webkit-scrollbar-track {
-        background: transparent;
-    }
+    .navx::-webkit-scrollbar { width: 8px; }
+    .navx::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .18); border-radius: 999px; }
+    .navx::-webkit-scrollbar-track { background: transparent; }
 
     .navx a {
         text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        display:flex;
+        align-items:center;
+        gap:10px;
         padding: 11px 12px;
         border-radius: 14px;
         color: var(--text);
@@ -213,15 +240,8 @@
         overflow: hidden;
     }
 
-    .navx a i {
-        width: 18px;
-        color: var(--muted);
-    }
-
-    .navx a:hover {
-        background: rgba(37, 99, 235, .08);
-        transform: translateY(-1px);
-    }
+    .navx a i { width: 18px; color: var(--muted); }
+    .navx a:hover { background: rgba(37, 99, 235, .08); transform: translateY(-1px); }
 
     .navx a.active {
         background: linear-gradient(135deg, rgba(37, 99, 235, .95), rgba(124, 58, 237, .85));
@@ -229,32 +249,25 @@
         box-shadow: 0 14px 26px rgba(37, 99, 235, .18);
     }
 
-    .navx a.active i {
-        color: #fff;
-    }
+    .navx a.active i { color: #fff; }
 
     .side-footer {
-        margin-top: auto;
+        margin-top:auto;
         padding: 12px 6px 0;
         border-top: 1px solid var(--border);
     }
 
     .logout-btn {
-        width: 100%;
-        border-radius: 14px;
-        font-weight: 950;
-        padding: 10px 12px;
+        width:100%;
+        border-radius:14px;
+        font-weight:950;
+        padding:10px 12px;
     }
 
     /* ===== Main ===== */
-    .main {
-        flex: 1;
-        padding: 18px 20px 26px;
-        min-width: 0;
-    }
+    .main { flex:1; padding: 18px 20px 26px; min-width:0; }
 
-    /* Card base used everywhere */
-    .cardx {
+    .cardx{
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
@@ -278,15 +291,8 @@
     }
 
     /* Tables dark-safe */
-    .table {
-        color: var(--text) !important;
-    }
-
-    .table> :not(caption)>*>* {
-        background-color: transparent !important;
-        color: inherit !important;
-        border-color: var(--border) !important;
-    }
+    .table { color: var(--text) !important; }
+    .table> :not(caption)>*>* { background-color: transparent !important; color: inherit !important; border-color: var(--border) !important; }
 
     .table thead th {
         background: var(--table-head) !important;
@@ -295,9 +301,7 @@
         border-color: var(--border) !important;
     }
 
-    html[data-theme="dark"] .table tbody tr:hover {
-        background: var(--table-row-hover) !important;
-    }
+    html[data-theme="dark"] .table tbody tr:hover { background: var(--table-row-hover) !important; }
 
     /* FullCalendar dark-safe */
     html[data-theme="dark"] .fc,
@@ -309,13 +313,9 @@
     }
 
     html[data-theme="dark"] .fc-theme-standard td,
-    html[data-theme="dark"] .fc-theme-standard th {
-        border-color: rgba(148, 163, 184, .18) !important;
-    }
+    html[data-theme="dark"] .fc-theme-standard th { border-color: rgba(148, 163, 184, .18) !important; }
 
-    html[data-theme="dark"] .fc .fc-toolbar-title {
-        color: var(--text) !important;
-    }
+    html[data-theme="dark"] .fc .fc-toolbar-title { color: var(--text) !important; }
 
     html[data-theme="dark"] .fc .fc-button {
         background: rgba(17, 24, 39, .92) !important;
@@ -325,9 +325,7 @@
         font-weight: 950 !important;
     }
 
-    html[data-theme="dark"] .fc .fc-day-today {
-        background: rgba(96, 165, 250, .10) !important;
-    }
+    html[data-theme="dark"] .fc .fc-day-today { background: rgba(96, 165, 250, .10) !important; }
 
     /* ===== Mobile Responsive Sidebar Drawer ===== */
     .side-overlay {
@@ -340,10 +338,7 @@
         transition: opacity .18s ease;
     }
 
-    .side-overlay.show {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .side-overlay.show { opacity: 1; pointer-events: auto; }
 
     .menu-toggle {
         display: none;
@@ -358,9 +353,7 @@
     }
 
     @media (max-width: 900px) {
-        .menu-toggle {
-            display: grid;
-        }
+        .menu-toggle { display: grid; }
 
         .side {
             position: fixed;
@@ -372,13 +365,8 @@
             transition: transform .18s ease;
         }
 
-        .side.open {
-            transform: translateX(0);
-        }
-
-        .main {
-            padding: 14px 14px 18px;
-        }
+        .side.open { transform: translateX(0); }
+        .main { padding: 14px 14px 18px; }
     }
 
     /* ----------------------------------------------------------
@@ -396,6 +384,7 @@
         color: var(--text);
         transition: .15s ease;
     }
+
     .kt-top-icon:hover{ background: rgba(255,255,255,.06); }
 
     .kt-dot{
@@ -408,9 +397,8 @@
         background:#ef4444;
         box-shadow: 0 0 0 2px rgba(255,255,255,.95);
     }
-    html[data-theme="dark"] .kt-dot{
-        box-shadow: 0 0 0 2px rgba(2,6,23,.85);
-    }
+
+    html[data-theme="dark"] .kt-dot{ box-shadow: 0 0 0 2px rgba(2,6,23,.85); }
 
     .kt-popover{
         position:absolute;
@@ -421,7 +409,7 @@
         border-radius: 16px;
         background: var(--surface);
         border: 1px solid var(--border);
-        box-shadow: var(--shadow);
+        box-shadow: var(--card-shadow);
         z-index: 2500;
         overflow:hidden;
 
@@ -431,6 +419,7 @@
         visibility:hidden;
         transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s linear 180ms;
     }
+
     .kt-popover.show{
         opacity:1;
         transform: translateY(0) scale(1);
@@ -438,6 +427,7 @@
         visibility:visible;
         transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s;
     }
+
     .kt-popover .kt-pop-h{
         padding: 12px 14px;
         border-bottom: 1px solid var(--border);
@@ -446,7 +436,9 @@
         justify-content:space-between;
         gap:10px;
     }
+
     .kt-popover .kt-pop-title{ font-weight: 900; font-size: 14px; margin:0; }
+
     .kt-popover .kt-badge{
         font-size: 12px;
         padding: 4px 10px;
@@ -455,7 +447,9 @@
         border: 1px solid rgba(13,110,253,.22);
         color: var(--text);
     }
+
     .kt-popover .kt-pop-body{ padding: 10px; max-height: 360px; overflow:auto; }
+
     .kt-popover .kt-item{
         border: 1px solid var(--border);
         background: var(--surface);
@@ -463,12 +457,16 @@
         padding: 10px 12px;
         margin-bottom: 10px;
     }
+
     .kt-popover .kt-item:last-child{ margin-bottom:0; }
+
     .kt-popover .kt-item .top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
     .kt-popover .kt-item .name{ font-weight: 900; font-size: 13px; margin:0; line-height:1.2; }
     .kt-popover .kt-item .meta{ font-size: 12px; opacity: .95; margin-top: 4px; }
+
     .kt-popover .kt-actions{ display:flex; gap:8px; margin-top: 10px; }
     .kt-popover .kt-actions form{ margin:0; }
+
     .kt-popover .btn-mini{ padding: 6px 10px; border-radius: 10px; font-weight: 800; font-size: 12px; }
     .kt-popover .btn-approve{ background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.25); color: #16a34a !important; }
     .kt-popover .btn-decline{ background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.25); color: #ef4444 !important; }
@@ -518,6 +516,7 @@
             $pendingItems = collect();
         }
     @endphp
+
     <div class="app-bg">
         <div class="shell">
 
@@ -675,7 +674,7 @@
                                             </div>
 
                                             <div class="kt-actions">
-                                                <form class="admin-approval-form" data-action="approve" method="POST"
+                                                <form class="approval-form" data-action="approve" method="POST"
                                                     action="{{ route('admin.approvals.approve', $a->id) }}">
                                                     @csrf
                                                     <button class="btn btn-mini btn-approve" type="submit">
@@ -683,7 +682,7 @@
                                                     </button>
                                                 </form>
 
-                                                <form class="admin-approval-form" data-action="decline" method="POST"
+                                                <form class="approval-form" data-action="decline" method="POST"
                                                     action="{{ route('admin.approvals.decline', $a->id) }}">
                                                     @csrf
                                                     <button class="btn btn-mini btn-decline" type="submit">
@@ -723,7 +722,6 @@
             }
         }
 
-        // theme init
         const saved = localStorage.getItem('admin_theme') || 'light';
         applyTheme(saved);
 
@@ -749,7 +747,6 @@
 
         overlay?.addEventListener('click', closeSidebar);
 
-        // auto-close when resizing to desktop
         window.addEventListener('resize', () => {
             if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
         });
@@ -925,6 +922,7 @@
                                     <div class="small text-muted">Doctor: ${doctor}</div>
                                 </div>
                             </div>
+
                             <div class="small text-muted text-end">Pending</div>
                         </div>
 
@@ -967,7 +965,6 @@
                 renderItems(data.items || []);
 
                 if (pendingCount > lastPending) {
-                    // subtle ping
                     bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
                     setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
                 }
@@ -1003,5 +1000,4 @@
     }
 </script>
 </body>
-
 </html>
