@@ -492,7 +492,9 @@
     @stack('styles')
 </head>
 
-<body data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}" data-kt-live-interval="@yield('kt_live_interval', 10000)">
+<body data-kt-live-scope="@yield('kt_live_scope')"
+      data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}"
+      data-kt-live-interval="@yield('kt_live_interval', 10000)">
 
     @php
         // ✅ Approval requests for bell + sidebar badge
@@ -606,9 +608,9 @@
                     </button>
 
                     <div class="ms-auto d-flex align-items-center gap-2 position-relative">
-                        {{-- ✅ Push notifications (PWA) --}}
+                        {{-- ✅ Push notifications (PWA) — ALWAYS BULLHORN --}}
                         <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Enable push notifications">
-                            <i class="fa-solid fa-bolt"></i>
+                            <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
                         </button>
 
                         {{-- Bell button --}}
@@ -985,19 +987,74 @@
 
     @stack('scripts')
 
-{{-- ✅ PWA Service Worker --}}
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
-        });
-    }
-</script>
-<script>
-    // Bind push enable button (requires user click)
-    if (window.KTPush) {
-        window.KTPush.bind('#ktPushBtn');
-    }
-</script>
+    {{-- ✅ PWA Service Worker --}}
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+            });
+        }
+    </script>
+
+    <script>
+        // ✅ ADMIN: Push bind + force bullhorn icon ALWAYS (on/off)
+        (() => {
+            const btn = document.getElementById('ktPushBtn');
+            if (!btn) return;
+
+            // bind once (requires user click)
+            if (window.KTPush) {
+                window.KTPush.bind('#ktPushBtn');
+            }
+
+            let fixing = false;
+
+            const ensureBullhorn = () => {
+                if (fixing) return;
+                fixing = true;
+
+                try {
+                    // remove any injected icon wrappers
+                    btn.querySelectorAll('svg, span.fa-layers').forEach(n => n.remove());
+
+                    // ensure exactly one <i>
+                    let icon = btn.querySelector('i');
+                    if (!icon) {
+                        icon = document.createElement('i');
+                        btn.prepend(icon);
+                    }
+                    btn.querySelectorAll('i').forEach((n, idx) => { if (idx > 0) n.remove(); });
+
+                    // force bullhorn classes (do NOT touch button classes)
+                    icon.className = 'fa-solid fa-bullhorn';
+                    icon.setAttribute('aria-hidden', 'true');
+                } finally {
+                    fixing = false;
+                }
+            };
+
+            ensureBullhorn();
+
+            const obs = new MutationObserver(() => {
+                if (fixing) return;
+                requestAnimationFrame(ensureBullhorn);
+            });
+
+            // watch DOM + class changes (includes <i> class swaps)
+            obs.observe(btn, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class']
+            });
+
+            // extra safety after click (some toggles are async)
+            btn.addEventListener('click', () => {
+                setTimeout(ensureBullhorn, 0);
+                setTimeout(ensureBullhorn, 250);
+                setTimeout(ensureBullhorn, 800);
+            }, { passive: true });
+        })();
+    </script>
 </body>
 </html>
