@@ -5,7 +5,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
     <title>Krys&Tell — Admin</title>
+
+    {{-- ✅ PWA (Installable App) --}}
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#B07C58">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Krys&Tell">
+    <link rel="apple-touch-icon" href="/images/pwa/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/pwa/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/images/pwa/icon-512.png">
 
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -13,6 +24,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
+    /* PWA push button state */
+    .kt-push-enabled { box-shadow: 0 0 0 4px rgba(34,197,94,.18) !important; }
+
     :root {
         --primary: #155AC1;
         --primary-2: #759EDB;
@@ -593,6 +607,11 @@
                     </button>
 
                     <div class="ms-auto d-flex align-items-center gap-2 position-relative">
+                        {{-- ✅ Push notifications (PWA) --}}
+                        <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Enable push notifications">
+                            <i class="fa-solid fa-bolt"></i>
+                        </button>
+
                         {{-- Bell button --}}
                         <button type="button" id="adminApprovalBell" class="kt-top-icon position-relative border-0"
                             title="Approval Requests" aria-haspopup="true" aria-expanded="false">
@@ -686,6 +705,7 @@
     </div>
 
     <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
+    <script src="{{ asset('js/kt-push.js') }}?v=1"></script>
 
     <script>
     (function() {
@@ -967,6 +987,21 @@
     </script>
 
     @stack('scripts')
+
+{{-- ✅ PWA Service Worker --}}
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+        });
+    }
+</script>
+<script>
+    // Bind push enable button (requires user click)
+    if (window.KTPush) {
+        window.KTPush.bind('#ktPushBtn');
+    }
+</script>
 </body>
 
 </html>

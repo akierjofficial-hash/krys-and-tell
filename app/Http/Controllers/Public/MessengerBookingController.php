@@ -106,6 +106,14 @@ class MessengerBookingController extends Controller
 
         $appt->save();
 
+        // ✅ Send Web Push notification to all staff/admin (if enabled)
+        try {
+            $appt->loadMissing(['service']);
+            app(\App\Services\WebPushService::class)->sendNewBooking($appt);
+        } catch (\Throwable $e) {
+            // silent
+        }
+
         return redirect()->route('messenger.book.success');
     }
 

@@ -44,6 +44,7 @@ use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotContro
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\MessengerBookingController; // ✅ ADD THIS
+use App\Http\Controllers\PushSubscriptionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -122,6 +123,21 @@ Route::middleware('auth')->group(function () {
             default => redirect()->route('profile.show'),
         };
     })->name('portal');
+
+    // ✅ Approvals redirect for staff/admin (used by push notifications)
+    Route::middleware('role:admin,staff')->get('/approvals', function () {
+        $role = auth()->user()->role ?? 'user';
+
+        return match ($role) {
+            'admin' => redirect()->route('admin.approvals.index'),
+            'staff' => redirect()->route('staff.approvals.index'),
+            default => abort(403),
+        };
+    })->name('approvals.portal');
+
+    // ✅ Web Push subscription endpoints (staff/admin only)
+    Route::middleware('role:admin,staff')->post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::middleware('role:admin,staff')->post('/push/unsubscribe', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
 
     /*
     |--------------------------------------------------------------------------

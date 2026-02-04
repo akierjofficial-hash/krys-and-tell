@@ -294,6 +294,14 @@ class PublicBookingController extends Controller
         // ✅ Send clinic notification email (won't block booking if email fails)
         $this->notifyClinicNewBooking($appointment);
 
+        // ✅ Send Web Push notification to all staff/admin (if enabled)
+        try {
+            $appointment->loadMissing(['service']);
+            app(\App\Services\WebPushService::class)->sendNewBooking($appointment);
+        } catch (\Throwable $e) {
+            // silent
+        }
+
         return redirect()
             ->route('public.booking.create', $service->id)
             ->with('booking_success', true)

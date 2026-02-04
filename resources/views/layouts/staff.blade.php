@@ -6,8 +6,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
 
     <title>Krys&Tell</title>
+
+    {{-- ✅ PWA (Installable App) --}}
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#B07C58">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Krys&Tell">
+    <link rel="apple-touch-icon" href="/images/pwa/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/pwa/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/images/pwa/icon-512.png">
 
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
@@ -27,7 +38,14 @@
            + Motion Pack (loader, modal confirm, toasts, micro-animations)
            ========================================================== */
 
-    body { overflow-x: hidden; }
+    body {
+        overflow-x: hidden;
+    }
+
+    /* PWA push button state */
+    .kt-push-enabled {
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, .18) !important;
+    }
 
     /* ---------- Theme Tokens (LOCKED) ---------- */
     html {
@@ -104,10 +122,14 @@
         --bs-tertiary-bg: var(--kt-surface) !important;
     }
 
-    html { --kt-sidebar-w: 245px !important; }
+    html {
+        --kt-sidebar-w: 245px !important;
+    }
 
     /* ---------- Base ---------- */
-    * { box-sizing: border-box; }
+    * {
+        box-sizing: border-box;
+    }
 
     body {
         font-family: 'Poppins', sans-serif;
@@ -116,10 +138,19 @@
         margin: 0;
     }
 
-    a { color: var(--kt-primary); }
-    a:hover { opacity: .92; }
+    a {
+        color: var(--kt-primary);
+    }
 
-    .text-muted, small, .small { color: var(--kt-muted) !important; }
+    a:hover {
+        opacity: .92;
+    }
+
+    .text-muted,
+    small,
+    .small {
+        color: var(--kt-muted) !important;
+    }
 
     hr {
         border-color: var(--kt-border) !important;
@@ -237,12 +268,18 @@
         padding-right: 6px;
     }
 
-    .sidebar-menu::-webkit-scrollbar { width: 8px; }
+    .sidebar-menu::-webkit-scrollbar {
+        width: 8px;
+    }
+
     .sidebar-menu::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, .18);
         border-radius: 999px;
     }
-    .sidebar-menu::-webkit-scrollbar-track { background: rgba(255, 255, 255, .06); }
+
+    .sidebar-menu::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, .06);
+    }
 
     .sidebar-menu a {
         padding: 12px;
@@ -254,7 +291,8 @@
         text-decoration: none;
         border-radius: 12px;
         transition: .18s ease;
-        position: relative; /* ✅ for badges */
+        position: relative;
+        /* ✅ for badges */
     }
 
     .sidebar-menu a:hover {
@@ -270,23 +308,23 @@
     }
 
     /* ✅ Messages unread badge (sidebar) */
-    .kt-nav-badge{
-        position:absolute;
+    .kt-nav-badge {
+        position: absolute;
         top: 8px;
         right: 10px;
         min-width: 20px;
         height: 18px;
         padding: 0 6px;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         font-size: 11px;
         font-weight: 950;
         border-radius: 999px;
         background: rgba(239, 68, 68, .22);
         border: 1px solid rgba(239, 68, 68, .35);
         color: #fff;
-        box-shadow: 0 0 0 2px rgba(255,255,255,.12);
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, .12);
         line-height: 1;
     }
 
@@ -326,8 +364,17 @@
         position: relative;
     }
 
-    @media (min-width: 768px) { .content { padding: 22px; } }
-    @media (min-width: 1200px) { .content { padding: 28px; } }
+    @media (min-width: 768px) {
+        .content {
+            padding: 22px;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .content {
+            padding: 28px;
+        }
+    }
 
     html[data-theme="dark"] .content {
         background:
@@ -337,8 +384,18 @@
     }
 
     /* ---------- Global Surfaces ---------- */
-    .card, .kt-card, .section-box, .welcome, .stat-card, .list-item, .receipt-container,
-    .modal-content, .dropdown-menu, .toast, .offcanvas, .list-group-item {
+    .card,
+    .kt-card,
+    .section-box,
+    .welcome,
+    .stat-card,
+    .list-item,
+    .receipt-container,
+    .modal-content,
+    .dropdown-menu,
+    .toast,
+    .offcanvas,
+    .list-group-item {
         background: var(--kt-surface);
         border: 1px solid var(--kt-border);
         box-shadow: var(--kt-shadow);
@@ -347,8 +404,15 @@
     }
 
     /* ---------- Tables ---------- */
-    .table, table { color: var(--kt-text); }
-    .table td, .table th { border-color: var(--kt-border) !important; }
+    .table,
+    table {
+        color: var(--kt-text);
+    }
+
+    .table td,
+    .table th {
+        border-color: var(--kt-border) !important;
+    }
 
     .table thead th {
         background: rgba(248, 250, 252, .95);
@@ -373,8 +437,13 @@
         border-color: rgba(148, 163, 184, .18) !important;
     }
 
-    .table tbody tr:hover { background: rgba(13, 110, 253, .06) !important; }
-    html[data-theme="dark"] .table tbody tr:hover { background: rgba(96, 165, 250, .08) !important; }
+    .table tbody tr:hover {
+        background: rgba(13, 110, 253, .06) !important;
+    }
+
+    html[data-theme="dark"] .table tbody tr:hover {
+        background: rgba(96, 165, 250, .08) !important;
+    }
 
     .table-responsive {
         background: transparent !important;
@@ -383,14 +452,17 @@
     }
 
     /* ---------- Inputs ---------- */
-    .form-control, .form-select, .input-group-text {
+    .form-control,
+    .form-select,
+    .input-group-text {
         background: var(--kt-input-bg) !important;
         color: var(--kt-text) !important;
         border-color: var(--kt-input-border) !important;
         border-radius: 12px !important;
     }
 
-    .form-control:focus, .form-select:focus {
+    .form-control:focus,
+    .form-select:focus {
         border-color: rgba(96, 165, 250, .55) !important;
         box-shadow: 0 0 0 3px rgba(96, 165, 250, .18) !important;
     }
@@ -431,7 +503,9 @@
         transition: .15s ease;
     }
 
-    .kt-top-icon:hover { background: var(--kt-surface-2); }
+    .kt-top-icon:hover {
+        background: var(--kt-surface-2);
+    }
 
     .kt-dot {
         position: absolute;
@@ -514,7 +588,9 @@
         margin-bottom: 10px;
     }
 
-    .kt-popover .kt-item:last-child { margin-bottom: 0; }
+    .kt-popover .kt-item:last-child {
+        margin-bottom: 0;
+    }
 
     .kt-popover .kt-item .top {
         display: flex;
@@ -543,7 +619,9 @@
         flex-wrap: wrap;
     }
 
-    .kt-popover .kt-actions form { margin: 0; }
+    .kt-popover .kt-actions form {
+        margin: 0;
+    }
 
     .kt-popover .btn-mini {
         padding: 6px 10px;
@@ -565,7 +643,7 @@
     }
 
     /* ✅ NEW: Edit button (bell popover) */
-    .kt-popover .btn-edit{
+    .kt-popover .btn-edit {
         background: rgba(37, 99, 235, .15);
         border: 1px solid rgba(37, 99, 235, .25);
         color: #2563eb !important;
@@ -603,10 +681,14 @@
         color: var(--kt-text);
     }
 
-    .menu-toggle:hover { background: var(--kt-surface-2); }
+    .menu-toggle:hover {
+        background: var(--kt-surface-2);
+    }
 
     @media (max-width: 900px) {
-        .menu-toggle { display: grid; }
+        .menu-toggle {
+            display: grid;
+        }
 
         .sidebar {
             position: fixed;
@@ -618,14 +700,21 @@
             transition: transform .18s ease;
         }
 
-        .sidebar.open { transform: translateX(0); }
-        .content { padding: 14px; }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .content {
+            padding: 14px;
+        }
     }
 
     /* ==========================================================
            ✅ DARK MODE HAMMER
            ========================================================== */
-    html[data-theme="dark"] body .content { color: var(--kt-text) !important; }
+    html[data-theme="dark"] body .content {
+        color: var(--kt-text) !important;
+    }
 
     html[data-theme="dark"] body .content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
         textarea, select) {
@@ -665,8 +754,13 @@
         box-shadow: var(--kt-shadow) !important;
     }
 
-    html[data-theme="dark"] body .content .dropdown-item { color: var(--kt-text) !important; }
-    html[data-theme="dark"] body .content .dropdown-item:hover { background: rgba(96, 165, 250, .10) !important; }
+    html[data-theme="dark"] body .content .dropdown-item {
+        color: var(--kt-text) !important;
+    }
+
+    html[data-theme="dark"] body .content .dropdown-item:hover {
+        background: rgba(96, 165, 250, .10) !important;
+    }
 
     html[data-theme="dark"] body .content :is(input[readonly], textarea[readonly]) {
         background: rgba(2, 6, 23, .55) !important;
@@ -689,12 +783,19 @@
         transition: transform 140ms ease, opacity 140ms ease, background 140ms ease, box-shadow 140ms ease;
     }
 
-    :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active { transform: scale(.98); }
-    :where(.btn, button):active { transform: translateY(1px) scale(.99); }
+    :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active {
+        transform: scale(.98);
+    }
+
+    :where(.btn, button):active {
+        transform: translateY(1px) scale(.99);
+    }
 
     .kt-loader {
         position: fixed;
-        top: 0; right: 0; bottom: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
         left: var(--kt-sidebar-w, 245px);
         display: grid;
         place-items: center;
@@ -706,7 +807,11 @@
         z-index: 9999;
     }
 
-    @media (max-width: 900px) { .kt-loader { left: 0; } }
+    @media (max-width: 900px) {
+        .kt-loader {
+            left: 0;
+        }
+    }
 
     .kt-loader.is-active {
         opacity: 1;
@@ -728,7 +833,9 @@
         transition: transform 160ms ease;
     }
 
-    .kt-loader.is-active .kt-loader__card { transform: translateY(0) scale(1); }
+    .kt-loader.is-active .kt-loader__card {
+        transform: translateY(0) scale(1);
+    }
 
     .kt-spinner {
         width: 22px;
@@ -739,9 +846,16 @@
         animation: ktSpin .8s linear infinite;
     }
 
-    @keyframes ktSpin { to { transform: rotate(360deg); } }
+    @keyframes ktSpin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
-    .kt-loader__text { font-size: 13px; opacity: .9; }
+    .kt-loader__text {
+        font-size: 13px;
+        opacity: .9;
+    }
 
     .kt-modal {
         position: fixed;
@@ -754,7 +868,10 @@
         z-index: 9998;
     }
 
-    .kt-modal.is-open { opacity: 1; pointer-events: auto; }
+    .kt-modal.is-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
 
     .kt-modal__backdrop {
         position: absolute;
@@ -776,10 +893,21 @@
         transition: transform 180ms cubic-bezier(.2, .8, .2, 1);
     }
 
-    .kt-modal.is-open .kt-modal__panel { transform: translateY(0) scale(1); }
+    .kt-modal.is-open .kt-modal__panel {
+        transform: translateY(0) scale(1);
+    }
 
-    .kt-modal__title { margin: 0 0 6px; font-size: 16px; font-weight: 900; }
-    .kt-modal__msg { margin: 0 0 14px; font-size: 13px; opacity: .85; }
+    .kt-modal__title {
+        margin: 0 0 6px;
+        font-size: 16px;
+        font-weight: 900;
+    }
+
+    .kt-modal__msg {
+        margin: 0 0 14px;
+        font-size: 13px;
+        opacity: .85;
+    }
 
     .kt-modal__actions {
         display: flex;
@@ -799,7 +927,9 @@
         user-select: none;
     }
 
-    .kt-btn:active { transform: scale(.98); }
+    .kt-btn:active {
+        transform: scale(.98);
+    }
 
     .kt-btn--ghost {
         background: transparent;
@@ -853,7 +983,10 @@
         transition: opacity 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
     }
 
-    .kt-toast.show { opacity: 1; transform: translateY(0) scale(1); }
+    .kt-toast.show {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 
     .kt-toast .icon {
         width: 34px;
@@ -864,8 +997,18 @@
         flex: 0 0 auto;
     }
 
-    .kt-toast .title { font-weight: 900; font-size: 13px; margin: 0; line-height: 1.1; }
-    .kt-toast .msg { font-size: 12px; opacity: .9; margin: 4px 0 0 0; }
+    .kt-toast .title {
+        font-weight: 900;
+        font-size: 13px;
+        margin: 0;
+        line-height: 1.1;
+    }
+
+    .kt-toast .msg {
+        font-size: 12px;
+        opacity: .9;
+        margin: 4px 0 0 0;
+    }
 
     .kt-toast .close {
         margin-left: auto;
@@ -879,7 +1022,9 @@
         cursor: pointer;
     }
 
-    .kt-toast .close:hover { background: rgba(148, 163, 184, .12); }
+    .kt-toast .close:hover {
+        background: rgba(148, 163, 184, .12);
+    }
 
     .kt-toast.success .icon {
         background: rgba(34, 197, 94, .14);
@@ -911,7 +1056,9 @@
 $routeName = request()->route() ? request()->route()->getName() : '';
 @endphp
 
-<body data-page="{{ $routeName }}" data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('staff.live.snapshot') }}" data-kt-live-interval="@yield('kt_live_interval', 8000)">
+<body data-page="{{ $routeName }}" data-kt-live-scope="@yield('kt_live_scope')"
+    data-kt-live-snapshot-url="{{ route('staff.live.snapshot') }}"
+    data-kt-live-interval="@yield('kt_live_interval', 8000)">
     <div class="layout">
 
         <!-- mobile overlay -->
@@ -919,14 +1066,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         <!-- SIDEBAR -->
         @php
-            // ✅ unread message badge for sidebar/top
-            $unreadMessages = 0;
-            try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('contact_messages')
-                    && \Illuminate\Support\Facades\Schema::hasColumn('contact_messages', 'read_at')) {
-                    $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
-                }
-            } catch (\Throwable $e) { $unreadMessages = 0; }
+        // ✅ unread message badge for sidebar/top
+        $unreadMessages = 0;
+        try {
+        if (\Illuminate\Support\Facades\Schema::hasTable('contact_messages')
+        && \Illuminate\Support\Facades\Schema::hasColumn('contact_messages', 'read_at')) {
+        $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
+        }
+        } catch (\Throwable $e) { $unreadMessages = 0; }
         @endphp
 
         <div class="sidebar" id="staffSidebar">
@@ -981,7 +1128,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 <a href="{{ route('staff.messages.index') }}"
                     class="{{ request()->routeIs('staff.messages.*') ? 'active' : '' }}">
                     <i class="fa fa-inbox"></i> Messages
-                    <span id="msgNavBadge" class="kt-nav-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
+                    <span id="msgNavBadge"
+                        class="kt-nav-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
                 </a>
             </div>
 
@@ -1004,21 +1152,21 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             $pendingItems = collect();
 
             try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
-                    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+            if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
+            && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
 
-                    $pendingItems = \App\Models\Appointment::query()
-                        ->with(['service','doctor','patient'])
-                        ->where('status', 'pending')
-                        ->orderByDesc('created_at')
-                        ->take(8)
-                        ->get();
+            $pendingItems = \App\Models\Appointment::query()
+            ->with(['service','doctor','patient'])
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')
+            ->take(8)
+            ->get();
 
-                    $pendingApprovals = $pendingItems->count();
-                }
+            $pendingApprovals = $pendingItems->count();
+            }
             } catch (\Throwable $e) {
-                $pendingApprovals = 0;
-                $pendingItems = collect();
+            $pendingApprovals = 0;
+            $pendingItems = collect();
             }
             @endphp
 
@@ -1031,11 +1179,16 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 <div class="ms-auto d-flex align-items-center gap-2 position-relative">
                     {{-- ✅ Messages icon (with dot) --}}
                     <a href="{{ route('staff.messages.index') }}"
-                       class="kt-top-icon position-relative text-decoration-none"
-                       title="Messages">
+                        class="kt-top-icon position-relative text-decoration-none" title="Messages">
                         <i class="fa-solid fa-envelope"></i>
                         <span id="msgTopDot" class="kt-dot {{ $unreadMessages > 0 ? '' : 'd-none' }}"></span>
                     </a>
+
+                    {{-- ✅ Push notifications (PWA) --}}
+                    <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Enable push notifications">
+                        <i class="fa-solid fa-bolt"></i>
+                    </button>
+
 
                     {{-- Bell button --}}
                     <button type="button" id="approvalBell" class="kt-top-icon position-relative border-0"
@@ -1058,69 +1211,70 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                         <div class="kt-pop-body" id="approvalList">
                             @if($pendingItems->isEmpty())
-                                <div class="text-center py-3" id="approvalEmpty">
-                                    <div class="fw-bold">No pending requests</div>
-                                    <div class="small text-muted">You're all caught up.</div>
-                                </div>
+                            <div class="text-center py-3" id="approvalEmpty">
+                                <div class="fw-bold">No pending requests</div>
+                                <div class="small text-muted">You're all caught up.</div>
+                            </div>
                             @else
-                                @foreach($pendingItems as $a)
-                                    @php
-                                        $displayName =
-                                            $a->public_name
-                                            ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').' '.($a->public_last_name ?? ''))
-                                            ?: ($a->patient->name ?? 'Patient');
+                            @foreach($pendingItems as $a)
+                            @php
+                            $displayName =
+                            $a->public_name
+                            ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').'
+                            '.($a->public_last_name ?? ''))
+                            ?: ($a->patient->name ?? 'Patient');
 
-                                        $serviceName = $a->service->name ?? 'Service';
-                                        $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
+                            $serviceName = $a->service->name ?? 'Service';
+                            $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
 
-                                        $date = $a->appointment_date ?? null;
-                                        $time = $a->appointment_time ?? null;
-                                    @endphp
+                            $date = $a->appointment_date ?? null;
+                            $time = $a->appointment_time ?? null;
+                            @endphp
 
-                                    <div class="kt-item" data-approval-id="{{ $a->id }}">
-                                        <div class="top">
+                            <div class="kt-item" data-approval-id="{{ $a->id }}">
+                                <div class="top">
+                                    <div>
+                                        <p class="name">{{ $displayName }}</p>
+                                        <div class="meta">
+                                            <div><b>{{ $serviceName }}</b></div>
                                             <div>
-                                                <p class="name">{{ $displayName }}</p>
-                                                <div class="meta">
-                                                    <div><b>{{ $serviceName }}</b></div>
-                                                    <div>
-                                                        {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
-                                                        @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
-                                                    </div>
-                                                    <div class="small text-muted">Doctor: {{ $doctorName }}</div>
-                                                </div>
+                                                {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
+                                                @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
                                             </div>
-
-                                            <div class="small text-muted text-end">
-                                                {{ optional($a->created_at)->diffForHumans() }}
-                                            </div>
-                                        </div>
-
-                                        <div class="kt-actions">
-                                            {{-- ✅ NEW: Edit button inside bell popover --}}
-                                            <a class="btn btn-mini btn-edit"
-                                               href="{{ route('staff.approvals.index', ['edit' => $a->id]) }}">
-                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
-                                            </a>
-
-                                            <form class="approval-form" data-action="approve" method="POST"
-                                                action="{{ route('staff.approvals.approve', $a->id) }}">
-                                                @csrf
-                                                <button class="btn btn-mini btn-approve" type="submit">
-                                                    <i class="fa-solid fa-check me-1"></i> Approve
-                                                </button>
-                                            </form>
-
-                                            <form class="approval-form" data-action="decline" method="POST"
-                                                action="{{ route('staff.approvals.decline', $a->id) }}">
-                                                @csrf
-                                                <button class="btn btn-mini btn-decline" type="submit">
-                                                    <i class="fa-solid fa-xmark me-1"></i> Decline
-                                                </button>
-                                            </form>
+                                            <div class="small text-muted">Doctor: {{ $doctorName }}</div>
                                         </div>
                                     </div>
-                                @endforeach
+
+                                    <div class="small text-muted text-end">
+                                        {{ optional($a->created_at)->diffForHumans() }}
+                                    </div>
+                                </div>
+
+                                <div class="kt-actions">
+                                    {{-- ✅ NEW: Edit button inside bell popover --}}
+                                    <a class="btn btn-mini btn-edit"
+                                        href="{{ route('staff.approvals.index', ['edit' => $a->id]) }}">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                                    </a>
+
+                                    <form class="approval-form" data-action="approve" method="POST"
+                                        action="{{ route('staff.approvals.approve', $a->id) }}">
+                                        @csrf
+                                        <button class="btn btn-mini btn-approve" type="submit">
+                                            <i class="fa-solid fa-check me-1"></i> Approve
+                                        </button>
+                                    </form>
+
+                                    <form class="approval-form" data-action="decline" method="POST"
+                                        action="{{ route('staff.approvals.decline', $a->id) }}">
+                                        @csrf
+                                        <button class="btn btn-mini btn-decline" type="submit">
+                                            <i class="fa-solid fa-xmark me-1"></i> Decline
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            @endforeach
                             @endif
                         </div>
                     </div>
@@ -1215,10 +1369,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         function toastIcon(type) {
             switch (type) {
-                case 'success': return '<i class="fa-solid fa-check"></i>';
-                case 'danger':  return '<i class="fa-solid fa-triangle-exclamation"></i>';
-                case 'warning': return '<i class="fa-solid fa-circle-exclamation"></i>';
-                default:        return '<i class="fa-solid fa-circle-info"></i>';
+                case 'success':
+                    return '<i class="fa-solid fa-check"></i>';
+                case 'danger':
+                    return '<i class="fa-solid fa-triangle-exclamation"></i>';
+                case 'warning':
+                    return '<i class="fa-solid fa-circle-exclamation"></i>';
+                default:
+                    return '<i class="fa-solid fa-circle-info"></i>';
             }
         }
 
@@ -1259,7 +1417,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             return el;
         }
 
-        window.KTToast = { show: showToast };
+        window.KTToast = {
+            show: showToast
+        };
 
         // =========================
         // Global Loader (CONTENT ONLY)
@@ -1306,7 +1466,12 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
         let pendingAction = null;
 
-        function openConfirm({ title = 'Confirm action', message = 'Are you sure?', onYes = null, yesText = 'Continue' } = {}) {
+        function openConfirm({
+            title = 'Confirm action',
+            message = 'Are you sure?',
+            onYes = null,
+            yesText = 'Continue'
+        } = {}) {
             if (!modal) return;
 
             pendingAction = onYes;
@@ -1470,7 +1635,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     return;
                 }
 
-                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
+                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' :
+                    'Booking declined.'));
                 if (item) item.remove();
 
                 if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
@@ -1498,7 +1664,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         pop?.addEventListener('click', (e) => e.stopPropagation());
 
         document.addEventListener('click', closePopover);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePopover();
+        });
 
         // ---------- ✅ LIVE: Poll widget() every 5s ----------
         let lastPending = Number(badgeEl?.textContent || 0);
@@ -1516,9 +1684,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 const id = Number(i.id || 0);
                 const patient = escapeHtml(i.patient || 'N/A');
                 const service = escapeHtml(i.service || 'N/A');
-                const doctor  = escapeHtml(i.doctor  || '—');
-                const date    = escapeHtml(i.date    || '—');
-                const time    = escapeHtml(i.time    || '—');
+                const doctor = escapeHtml(i.doctor || '—');
+                const date = escapeHtml(i.date || '—');
+                const time = escapeHtml(i.time || '—');
 
                 const approveUrl = escapeHtml(i.approve_url || '');
                 const declineUrl = escapeHtml(i.decline_url || '');
@@ -1568,7 +1736,10 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             polling = true;
             try {
                 const res = await fetch(widgetUrl + '?limit=8', {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     cache: 'no-store'
                 });
 
@@ -1621,10 +1792,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 msgTopDot.classList.toggle('d-none', n <= 0);
             }
 
-            window.dispatchEvent(new CustomEvent('kt:messages:count', { detail: { unreadCount: n } }));
+            window.dispatchEvent(new CustomEvent('kt:messages:count', {
+                detail: {
+                    unreadCount: n
+                }
+            }));
         }
 
-        function normalizeMsg(m){
+        function normalizeMsg(m) {
             return {
                 id: m.id,
                 name: m.name,
@@ -1644,9 +1819,13 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             const prevSince = msgSince;
 
             try {
-                const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
+                const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(
+                    msgSince)) : '');
                 const res = await fetch(url, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     cache: 'no-store'
                 });
 
@@ -1673,7 +1852,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 if (newMsgs.length > 0) {
                     window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
                     window.dispatchEvent(new CustomEvent('kt:messages:new', {
-                        detail: { messages: newMsgs.map(normalizeMsg) }
+                        detail: {
+                            messages: newMsgs.map(normalizeMsg)
+                        }
                     }));
                 }
 
@@ -1692,5 +1873,24 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     </script>
 
     <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
+    <script src="{{ asset('js/kt-push.js') }}?v=1"></script>
+
+    {{-- ✅ PWA Service Worker --}}
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js', {
+                scope: '/'
+            }).catch(() => {});
+        });
+    }
+    </script>
+    <script>
+    // Bind push enable button (requires user click)
+    if (window.KTPush) {
+        window.KTPush.bind('#ktPushBtn');
+    }
+    </script>
 </body>
+
 </html>
