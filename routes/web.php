@@ -44,6 +44,7 @@ use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotContro
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\MessengerBookingController; // ✅ ADD THIS
+use App\Http\Controllers\Public\PublicInstallmentController;
 use App\Http\Controllers\PushSubscriptionController;
 
 /*
@@ -106,6 +107,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [UserProfileController::class, 'index'])->name('profile.show');
     Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
     Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('user.profile.password');
+
+    // ✅ Public user: Installment plans (read-only)
+    Route::get('/my/installments', [PublicInstallmentController::class, 'index'])->name('public.installments.index');
+    Route::get('/my/installments/{plan}', [PublicInstallmentController::class, 'show'])->name('public.installments.show');
 
     // ✅ Staff/Admin logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');

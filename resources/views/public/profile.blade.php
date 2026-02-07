@@ -28,6 +28,10 @@
                             <i class="fa-solid fa-calendar-check me-1"></i> Book an Appointment
                         </a>
 
+                        <a class="btn kt-btn kt-btn-outline" href="{{ route('public.installments.index') }}">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> My Installment Plans
+                        </a>
+
                         @if(in_array(auth()->user()->role ?? '', ['admin','staff']))
                             <a class="btn kt-btn kt-btn-outline" href="{{ route('portal') }}">
                                 <i class="fa-solid fa-gauge me-1"></i> Go to Portal
