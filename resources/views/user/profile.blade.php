@@ -3,14 +3,37 @@
 
 @section('content')
 @php
-    /** Badge helper */
+    /**
+     * ✅ STATUS + COLOR (patient-friendly labels)
+     * - scheduled/approved/confirmed => Upcoming
+     * - canceled/cancelled => Cancelled
+     * - completed/done => Completed
+     */
     $badge = function ($status) {
         $s = strtolower(trim((string)($status ?? 'pending')));
 
+        // Pending
         if ($s === '' || $s === 'pending') return ['Pending', 'warning'];
-        if (in_array($s, ['approved','confirmed','accepted','approved_request','approve'], true)) return ['Approved', 'success'];
-        if (in_array($s, ['declined','rejected','cancelled','canceled'], true)) return ['Declined', 'danger'];
-        if (in_array($s, ['done','completed','finished'], true)) return ['Completed', 'secondary'];
+
+        // Upcoming (active)
+        if (in_array($s, ['approved','confirmed','scheduled','accepted'], true)) {
+            return ['Upcoming', 'primary'];
+        }
+
+        // Cancelled
+        if (in_array($s, ['cancelled','canceled'], true)) {
+            return ['Cancelled', 'danger'];
+        }
+
+        // Declined / Rejected by clinic
+        if (in_array($s, ['declined','rejected'], true)) {
+            return ['Declined', 'danger'];
+        }
+
+        // Completed
+        if (in_array($s, ['done','completed','finished'], true)) {
+            return ['Completed', 'secondary'];
+        }
 
         return [ucfirst($s), 'secondary'];
     };
@@ -20,15 +43,18 @@
         catch (\Throwable $e) { return '—'; }
     };
 
+    // ✅ returns null if empty (so we can show "Walk-in" cleanly)
     $fmtTime = function ($t) {
         try {
-            if (!$t) return '';
+            if (!$t) return null;
             return \Carbon\Carbon::parse($t)->format('h:i A');
         } catch (\Throwable $e) {
-            return (string)$t;
+            $t = (string)$t;
+            return $t !== '' ? $t : null;
         }
     };
 
+    // ✅ doctor name will reflect staff edits IF staff saves doctor_id (best)
     $doctorName = function ($a) {
         return $a->doctor->name ?? ($a->dentist_name ?? '—');
     };
@@ -169,7 +195,7 @@
                     <div class="kt-card-tight">
                         <div class="head">
                             <div class="sec-title" style="font-size:1.05rem;margin:0;">Upcoming Schedule</div>
-                            <div class="sec-sub" style="margin:4px 0 0;">Your approved/confirmed appointments will show here.</div>
+                            <div class="sec-sub" style="margin:4px 0 0;">Your appointments will show here.</div>
                         </div>
                         <div class="body">
                             @forelse($upcoming as $a)
@@ -191,7 +217,9 @@
 
                                     <div class="kt-appt-meta">
                                         <i class="fa-regular fa-calendar me-1"></i> {{ $d }}
-                                        @if($t) • <i class="fa-regular fa-clock me-1"></i> {{ $t }} @endif
+                                        •
+                                        <i class="fa-regular fa-clock me-1"></i>
+                                        {{ $t ?: 'Walk-in' }}
                                     </div>
 
                                     <div class="kt-appt-sub">
@@ -201,7 +229,7 @@
                             @empty
                                 <div class="text-center py-3">
                                     <div style="font-weight:950;">No upcoming appointments</div>
-                                    <div class="kt-help-note">Book a service and wait for staff approval.</div>
+                                    <div class="kt-help-note">Book a service and wait for staff update/approval.</div>
                                 </div>
                             @endforelse
                         </div>
@@ -235,7 +263,9 @@
 
                                     <div class="kt-appt-meta">
                                         <i class="fa-regular fa-calendar me-1"></i> {{ $d }}
-                                        @if($t) • <i class="fa-regular fa-clock me-1"></i> {{ $t }} @endif
+                                        •
+                                        <i class="fa-regular fa-clock me-1"></i>
+                                        {{ $t ?: 'Walk-in' }}
                                     </div>
 
                                     <div class="kt-appt-sub">
@@ -396,7 +426,10 @@
 
                         <div class="mt-3 d-grid gap-2">
                             @forelse($upcoming as $a)
-                                @php [$label, $type] = $badge($a->status); @endphp
+                                @php
+                                    [$label, $type] = $badge($a->status);
+                                    $t = $fmtTime($a->appointment_time);
+                                @endphp
                                 <div class="kt-appt">
                                     <div class="d-flex justify-content-between align-items-start gap-2">
                                         <div style="min-width:0;">
@@ -404,8 +437,7 @@
                                                 {{ $a->service->name ?? 'Service' }}
                                             </div>
                                             <div class="text-muted-2" style="font-weight:650;font-size:12px;">
-                                                {{ $fmtDate($a->appointment_date) }}
-                                                @if($a->appointment_time) • {{ $fmtTime($a->appointment_time) }} @endif
+                                                {{ $fmtDate($a->appointment_date) }} • {{ $t ?: 'Walk-in' }}
                                             </div>
                                             <div class="text-muted-2" style="font-weight:650;font-size:12px;">
                                                 Doctor: {{ $doctorName($a) }}
@@ -520,16 +552,21 @@
                                         <th>Service</th>
                                         <th>Date</th>
                                         <th>Time</th>
+                                        <th>Doctor</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($history as $a)
-                                        @php [$label, $type] = $badge($a->status); @endphp
+                                        @php
+                                            [$label, $type] = $badge($a->status);
+                                            $t = $fmtTime($a->appointment_time);
+                                        @endphp
                                         <tr>
                                             <td>{{ $a->service->name ?? 'Service' }}</td>
                                             <td>{{ $fmtDate($a->appointment_date) }}</td>
-                                            <td>{{ $fmtTime($a->appointment_time) }}</td>
+                                            <td>{{ $t ?: 'Walk-in' }}</td>
+                                            <td>{{ $doctorName($a) }}</td>
                                             <td>
                                                 <span class="badge bg-{{ $type }}" style="border-radius:999px;font-weight:900;">
                                                     {{ $label }}
@@ -538,7 +575,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="text-center text-muted">No records found.</td>
+                                            <td colspan="5" class="text-center text-muted">No records found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
