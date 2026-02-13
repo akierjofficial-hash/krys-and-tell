@@ -61,6 +61,8 @@ class PublicInstallmentController extends Controller
                     'service',
                     'patient',
                     'visit.patient',
+                    'visit.doctor',
+                    'payments.visit.doctor',
                     'payments' => fn ($q) => $q->orderBy('month_number')->orderBy('payment_date'),
                 ])
                 ->where(function ($q) use ($patientIds) {
@@ -82,26 +84,31 @@ class PublicInstallmentController extends Controller
     }
 
     public function show(InstallmentPlan $plan)
-    {
-        $patientIds = $this->patientIdsForCurrentUser();
+{
+    $patientIds = $this->patientIdsForCurrentUser();
 
-        // ✅ Enforce ownership (must belong to this user)
-        $ownerPatientId = $plan->patient_id
-            ?? $plan->visit?->patient_id
-            ?? $plan->patient?->id
-            ?? $plan->visit?->patient?->id;
+    // ✅ Enforce ownership (must belong to this user)
+    $ownerPatientId = $plan->patient_id
+        ?? $plan->visit?->patient_id
+        ?? $plan->patient?->id
+        ?? $plan->visit?->patient?->id;
 
-        if (empty($patientIds) || !$ownerPatientId || !in_array((int)$ownerPatientId, array_map('intval', $patientIds), true)) {
-            abort(403);
-        }
-
-        $plan->load([
-            'service',
-            'patient',
-            'visit.patient',
-            'payments' => fn ($q) => $q->orderBy('month_number')->orderBy('payment_date'),
-        ]);
-
-        return view('public.installments.show', compact('plan'));
+    if (empty($patientIds) || !$ownerPatientId || !in_array((int)$ownerPatientId, array_map('intval', $patientIds), true)) {
+        abort(403);
     }
+
+    // ✅ Load dentist/doctor info for plan + every payment's visit
+    $plan->load([
+        'service',
+        'patient',
+        'visit.patient',
+        'visit.doctor',
+        'payments' => fn ($q) => $q->orderBy('month_number')->orderBy('payment_date'),
+        'payments.visit',
+        'payments.visit.doctor',
+    ]);
+
+    return view('public.installments.show', compact('plan'));
+}
+
 }

@@ -6,7 +6,7 @@
 <style>
     /* ==========================================================
        Public Installment Show (read-only)
-       Inspired by staff/payments/installment/show.blade.php
+       Mobile improved: table becomes "payment cards" on small screens
        ========================================================== */
 
     :root{
@@ -167,6 +167,7 @@
         background: var(--i-surface);
         min-width:0;
     }
+
     table{ width: 100%; border-collapse: separate; border-spacing: 0; }
     thead th{
         font-size: 12px;
@@ -201,6 +202,85 @@
         line-height: 1.6;
         font-size: 13px;
     }
+
+    /* ==========================================================
+       ✅ Mobile improvements
+       - tighter header + panels
+       - table becomes "card rows" with labels
+       ========================================================== */
+    @media (max-width: 640px){
+        .i-card-head{ padding: 12px 12px; }
+        .i-card-body{ padding: 12px; }
+
+        .i-title{ font-size: 22px; }
+        .i-subtitle{ font-size: 12.5px; }
+
+        .i-kv{ grid-template-columns: 110px 1fr; font-size: 12.5px; }
+        .i-panel{ padding: 12px; border-radius: 16px; }
+        .i-amount{ font-size: 20px; }
+
+        .i-table-wrap{
+            border-radius: 16px;
+            background: transparent;
+            border: none;
+            overflow: visible;
+        }
+
+        /* turn table into stacked cards */
+        table, thead, tbody, th, td, tr{ display: block; width: 100%; }
+        thead{ display: none; }
+
+        tbody tr{
+            background: var(--i-surface);
+            border: 1px solid rgba(17,17,17,.10);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 18px rgba(0,0,0,.04);
+        }
+
+        tbody td{
+            border-bottom: 1px solid rgba(17,17,17,.08);
+            padding: 10px 12px;
+            font-size: 13.5px;
+
+            /* label + value layout */
+            display: grid;
+            grid-template-columns: 96px 1fr;
+            gap: 10px;
+            align-items: start;
+            text-align: left !important;
+            white-space: normal;
+            word-break: break-word;
+        }
+        tbody td:last-child{ border-bottom: none; }
+
+        tbody td::before{
+            content: attr(data-label);
+            font-size: 11px;
+            font-weight: 950;
+            letter-spacing: .35px;
+            text-transform: uppercase;
+            color: rgba(23,23,23,.55);
+        }
+
+        /* make amount pop a bit */
+        .i-amt{
+            font-weight: 950;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* badges slightly smaller on mobile */
+        .i-badge{ font-size: 11px; padding: 5px 8px; }
+
+        /* empty rows (colspan) render clean */
+        tr.i-empty-row td{
+            display: block;
+        }
+        tr.i-empty-row td::before{
+            display: none;
+        }
+    }
 </style>
 
 @php
@@ -219,6 +299,12 @@
     $downpayment = (float)($plan->downpayment ?? 0);
 
     $payments = $plan->payments ?? collect();
+
+    // ✅ Base dentist (from plan's original visit)
+    $baseVisit = $plan->visit ?? null;
+    $baseDentist = trim((string)($baseVisit?->dentist_name ?? ''));
+    if ($baseDentist === '') $baseDentist = trim((string)($baseVisit?->doctor?->name ?? ''));
+    if ($baseDentist === '') $baseDentist = '—';
 
     // ✅ DP detection (new + legacy)
     $planStartStr = $startDate ? $startDate->toDateString() : null;
@@ -261,12 +347,20 @@
     // DP display
     $showDpRow = ($downpayment > 0) || (bool)$dpPayment;
     $dpAmount = $dpPayment?->amount ?? ($downpayment > 0 ? $downpayment : null);
-    $dpDate = $dpPayment?->payment_date
-        ? Carbon::parse($dpPayment->payment_date)
-        : ($startDate ? $startDate->copy() : null);
+    $dpDate = $dpPayment?->payment_date ? Carbon::parse($dpPayment->payment_date) : ($startDate ? $startDate->copy() : null);
     $dpMethod = $dpPayment?->method ?? '—';
     $dpNotes = trim((string)($dpPayment?->notes ?? 'Downpayment'));
     if ($dpNotes === '') $dpNotes = 'Downpayment';
+
+    // ✅ DP dentist (from DP payment's visit; fallback to base visit)
+    $dpDentist = '—';
+    if ($dpPayment) {
+        $dpDentist = trim((string)($dpPayment?->visit?->dentist_name ?? ''));
+        if ($dpDentist === '') $dpDentist = trim((string)($dpPayment?->visit?->doctor?->name ?? ''));
+        if ($dpDentist === '') $dpDentist = $baseDentist;
+    } else {
+        $dpDentist = $baseDentist;
+    }
 
     // Fixed-term map
     $paymentsByMonth = $payments
@@ -275,11 +369,11 @@
 
     // Open-contract list (exclude DP / legacy shift)
     $openPayments = $payments
-        ->filter(function($p) use ($shift){
-            return (int)($p->month_number ?? -1) >= (1 + $shift);
-        })
+        ->filter(fn($p) => (int)($p->month_number ?? -1) >= (1 + $shift))
         ->sortBy(fn($p) => (int)($p->month_number ?? 0))
         ->values();
+
+    $colLabel = $isOpen ? 'Payment' : 'Month';
 @endphp
 
 <section class="section section-soft">
@@ -338,6 +432,9 @@
 
                             <div class="i-k">Term</div>
                             <div class="i-v">{{ $isOpen ? 'Open Contract (Unlimited)' : ($months . ' month(s)') }}</div>
+
+                            <div class="i-k">Primary Dentist</div>
+                            <div class="i-v">{{ $baseDentist }}</div>
                         </div>
                     </div>
 
@@ -354,31 +451,33 @@
                     </div>
                 </div>
 
-                <div class="i-table-wrap table-responsive">
+                <div class="i-table-wrap">
                     <table>
                         <thead>
                             <tr>
-                                <th style="width:120px;">{{ $isOpen ? 'Payment' : 'Month' }}</th>
+                                <th style="width:120px;">{{ $colLabel }}</th>
                                 <th style="width:140px;">Date</th>
                                 <th>Notes</th>
+                                <th style="width:170px;">Dentist</th>
                                 <th style="width:120px;">Method</th>
                                 <th style="width:120px;" class="text-end">Amount</th>
                                 <th style="width:110px;">Status</th>
                             </tr>
                         </thead>
-                        <tbody>
 
+                        <tbody>
                             {{-- ✅ DP Row --}}
                             @if($showDpRow)
                                 <tr>
-                                    <td style="font-weight:950;">DP</td>
-                                    <td class="muted">{{ $dpDate ? $dpDate->format('M d, Y') : '—' }}</td>
-                                    <td class="muted">{{ $dpNotes }}</td>
-                                    <td class="muted">{{ $dpMethod ?: '—' }}</td>
-                                    <td class="text-end" style="font-weight:950;">
+                                    <td data-label="{{ $colLabel }}" style="font-weight:950;">DP</td>
+                                    <td data-label="Date" class="muted">{{ $dpDate ? $dpDate->format('M d, Y') : '—' }}</td>
+                                    <td data-label="Notes" class="muted">{{ $dpNotes }}</td>
+                                    <td data-label="Dentist" class="muted">{{ $dpDentist }}</td>
+                                    <td data-label="Method" class="muted">{{ $dpMethod ?: '—' }}</td>
+                                    <td data-label="Amount" class="text-end i-amt" style="font-weight:950;">
                                         {{ $dpAmount !== null ? '₱'.number_format((float)$dpAmount, 2) : '—' }}
                                     </td>
-                                    <td>
+                                    <td data-label="Status">
                                         <span class="i-badge {{ ($dpAmount !== null && (float)$dpAmount > 0) ? 'st-paid' : 'st-pending' }}">
                                             <span class="i-dot"></span> {{ ($dpAmount !== null && (float)$dpAmount > 0) ? 'PAID' : 'PENDING' }}
                                         </span>
@@ -386,29 +485,36 @@
                                 </tr>
                             @endif
 
-                            {{-- ✅ OPEN CONTRACT: list Payment #1, #2, #3... --}}
+                            {{-- ✅ OPEN CONTRACT --}}
                             @if($isOpen)
                                 @if($openPayments->isEmpty())
-                                    <tr>
-                                        <td colspan="6" class="muted">No payments yet (besides downpayment).</td>
+                                    <tr class="i-empty-row">
+                                        <td colspan="7" class="muted">No payments yet (besides downpayment).</td>
                                     </tr>
                                 @else
                                     @foreach($openPayments as $p)
                                         @php
                                             $uiNo = (int)($p->month_number ?? 0) - $shift;
                                             $pDate = $p->payment_date ? Carbon::parse($p->payment_date) : null;
+
                                             $notes = trim((string)($p->notes ?? ''));
                                             if ($notes === '' && $p->visit_id) $notes = 'Visit #' . $p->visit_id;
+
+                                            $dentist = trim((string)($p->visit?->dentist_name ?? ''));
+                                            if ($dentist === '') $dentist = trim((string)($p->visit?->doctor?->name ?? ''));
+                                            if ($dentist === '') $dentist = '—';
                                         @endphp
+
                                         <tr>
-                                            <td style="font-weight:950;">Payment #{{ $uiNo }}</td>
-                                            <td class="muted">{{ $pDate ? $pDate->format('M d, Y') : '—' }}</td>
-                                            <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
-                                            <td class="muted">{{ $p->method ?? '—' }}</td>
-                                            <td class="text-end" style="font-weight:950;">
+                                            <td data-label="Payment" style="font-weight:950;">Payment #{{ $uiNo }}</td>
+                                            <td data-label="Date" class="muted">{{ $pDate ? $pDate->format('M d, Y') : '—' }}</td>
+                                            <td data-label="Notes" class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
+                                            <td data-label="Dentist" class="muted">{{ $dentist }}</td>
+                                            <td data-label="Method" class="muted">{{ $p->method ?? '—' }}</td>
+                                            <td data-label="Amount" class="text-end i-amt" style="font-weight:950;">
                                                 {{ $p->amount !== null ? '₱'.number_format((float)$p->amount, 2) : '—' }}
                                             </td>
-                                            <td>
+                                            <td data-label="Status">
                                                 <span class="i-badge st-paid">
                                                     <span class="i-dot"></span> PAID
                                                 </span>
@@ -443,17 +549,25 @@
                                             if ($notes === '' && $pay?->visit_id) $notes = 'Visit #' . $pay->visit_id;
 
                                             $rowPaid = (bool) $pay;
+
+                                            $dentist = '—';
+                                            if ($pay) {
+                                                $dentist = trim((string)($pay->visit?->dentist_name ?? ''));
+                                                if ($dentist === '') $dentist = trim((string)($pay->visit?->doctor?->name ?? ''));
+                                                if ($dentist === '') $dentist = '—';
+                                            }
                                         @endphp
 
                                         <tr>
-                                            <td style="font-weight:950;">{{ $i }}</td>
-                                            <td class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
-                                            <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
-                                            <td class="muted">{{ $pay?->method ?? '—' }}</td>
-                                            <td class="text-end" style="font-weight:950;">
+                                            <td data-label="Month" style="font-weight:950;">{{ $i }}</td>
+                                            <td data-label="Date" class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
+                                            <td data-label="Notes" class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
+                                            <td data-label="Dentist" class="muted">{{ $dentist }}</td>
+                                            <td data-label="Method" class="muted">{{ $pay?->method ?? '—' }}</td>
+                                            <td data-label="Amount" class="text-end i-amt" style="font-weight:950;">
                                                 {{ $amount !== null ? '₱'.number_format((float)$amount, 2) : '—' }}
                                             </td>
-                                            <td>
+                                            <td data-label="Status">
                                                 <span class="i-badge {{ $rowPaid ? 'st-paid' : 'st-pending' }}">
                                                     <span class="i-dot"></span> {{ $rowPaid ? 'PAID' : 'PENDING' }}
                                                 </span>
@@ -461,12 +575,11 @@
                                         </tr>
                                     @endfor
                                 @else
-                                    <tr>
-                                        <td colspan="6" class="muted">No monthly installments configured.</td>
+                                    <tr class="i-empty-row">
+                                        <td colspan="7" class="muted">No monthly installments configured.</td>
                                     </tr>
                                 @endif
                             @endif
-
                         </tbody>
                     </table>
                 </div>
@@ -478,7 +591,6 @@
 
             </div>
         </div>
-
     </div>
 </section>
 
