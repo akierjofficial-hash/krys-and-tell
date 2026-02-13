@@ -1131,610 +1131,640 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     </div>
 
     <script>
-    (function() {
-        // =========================
-        // Theme
-        // =========================
-        const html = document.documentElement;
-        const btnTheme = document.getElementById('themeToggle');
-        const icon = document.getElementById('themeIcon');
+(function() {
+    // =========================
+    // Theme
+    // =========================
+    const html = document.documentElement;
+    const btnTheme = document.getElementById('themeToggle');
+    const icon = document.getElementById('themeIcon');
 
-        function applyTheme(theme) {
-            html.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
+    function applyTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
 
-            if (icon) {
-                icon.classList.remove('fa-moon', 'fa-sun');
-                icon.classList.add(theme === 'dark' ? 'fa-sun' : 'fa-moon');
-            }
+        if (icon) {
+            icon.classList.remove('fa-moon', 'fa-sun');
+            icon.classList.add(theme === 'dark' ? 'fa-sun' : 'fa-moon');
         }
+    }
 
-        const saved = localStorage.getItem('theme') || 'light';
-        applyTheme(saved);
+    const saved = localStorage.getItem('theme') || 'light';
+    applyTheme(saved);
 
-        btnTheme?.addEventListener('click', function() {
-            const next = (html.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
-            applyTheme(next);
-        });
+    btnTheme?.addEventListener('click', function() {
+        const next = (html.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+        applyTheme(next);
+    });
 
-        // =========================
-        // Sidebar drawer (mobile)
-        // =========================
-        const side = document.getElementById('staffSidebar');
-        const overlay = document.getElementById('sideOverlay');
-        const btnMenu = document.getElementById('menuToggle');
+    // =========================
+    // Sidebar drawer (mobile)
+    // =========================
+    const side = document.getElementById('staffSidebar');
+    const overlay = document.getElementById('sideOverlay');
+    const btnMenu = document.getElementById('menuToggle');
 
-        function closeSidebar() {
-            side?.classList.remove('open');
-            overlay?.classList.remove('show');
+    function closeSidebar() {
+        side?.classList.remove('open');
+        overlay?.classList.remove('show');
+    }
+
+    btnMenu?.addEventListener('click', () => {
+        side?.classList.toggle('open');
+        overlay?.classList.toggle('show');
+    });
+
+    overlay?.addEventListener('click', closeSidebar);
+
+    window.addEventListener('resize', () => {
+        if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
+    });
+
+    // =========================
+    // Toast helper
+    // =========================
+    const toastWrap = document.getElementById('ktToasts');
+
+    function toastIcon(type) {
+        switch (type) {
+            case 'success': return '<i class="fa-solid fa-check"></i>';
+            case 'danger':  return '<i class="fa-solid fa-triangle-exclamation"></i>';
+            case 'warning': return '<i class="fa-solid fa-circle-exclamation"></i>';
+            default:        return '<i class="fa-solid fa-circle-info"></i>';
         }
+    }
 
-        btnMenu?.addEventListener('click', () => {
-            side?.classList.toggle('open');
-            overlay?.classList.toggle('show');
-        });
+    function escapeHtml(str) {
+        return (str ?? '').toString()
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
 
-        overlay?.addEventListener('click', closeSidebar);
+    function showToast(type, title, message, ms = 2600) {
+        if (!toastWrap) return;
 
-        window.addEventListener('resize', () => {
-            if (!window.matchMedia('(max-width: 900px)').matches) closeSidebar();
-        });
+        const el = document.createElement('div');
+        el.className = `kt-toast ${type || 'info'}`;
+        el.innerHTML = `
+            <div class="icon">${toastIcon(type)}</div>
+            <div>
+                <p class="title">${escapeHtml(title || 'Notice')}</p>
+                <p class="msg">${escapeHtml(message || '')}</p>
+            </div>
+            <button class="close" type="button" aria-label="Close">&times;</button>
+        `;
 
-        // =========================
-        // Toast helper
-        // =========================
-        const toastWrap = document.getElementById('ktToasts');
+        toastWrap.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
 
-        function toastIcon(type) {
-            switch (type) {
-                case 'success':
-                    return '<i class="fa-solid fa-check"></i>';
-                case 'danger':
-                    return '<i class="fa-solid fa-triangle-exclamation"></i>';
-                case 'warning':
-                    return '<i class="fa-solid fa-circle-exclamation"></i>';
-                default:
-                    return '<i class="fa-solid fa-circle-info"></i>';
-            }
-        }
-
-        function escapeHtml(str) {
-            return (str ?? '').toString()
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
-        }
-
-        function showToast(type, title, message, ms = 2600) {
-            if (!toastWrap) return;
-
-            const el = document.createElement('div');
-            el.className = `kt-toast ${type || 'info'}`;
-            el.innerHTML = `
-                <div class="icon">${toastIcon(type)}</div>
-                <div>
-                    <p class="title">${escapeHtml(title || 'Notice')}</p>
-                    <p class="msg">${escapeHtml(message || '')}</p>
-                </div>
-                <button class="close" type="button" aria-label="Close">&times;</button>
-            `;
-
-            toastWrap.appendChild(el);
-            requestAnimationFrame(() => el.classList.add('show'));
-
-            const close = () => {
-                el.classList.remove('show');
-                setTimeout(() => el.remove(), 200);
-            };
-
-            el.querySelector('.close')?.addEventListener('click', close);
-            if (ms > 0) setTimeout(close, ms);
-
-            return el;
-        }
-
-        window.KTToast = { show: showToast };
-
-        // =========================
-        // Global Loader (CONTENT ONLY)
-        // =========================
-        const loader = document.getElementById('ktLoader');
-        const KTLoader = {
-            show() {
-                if (!loader) return;
-                loader.classList.add('is-active');
-                loader.setAttribute('aria-hidden', 'false');
-            },
-            hide() {
-                if (!loader) return;
-                loader.classList.remove('is-active');
-                loader.setAttribute('aria-hidden', 'true');
-            }
+        const close = () => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 200);
         };
-        window.KTLoader = KTLoader;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => KTLoader.hide(), 80);
-        });
+        el.querySelector('.close')?.addEventListener('click', close);
+        if (ms > 0) setTimeout(close, ms);
 
-        window.addEventListener('beforeunload', () => KTLoader.show());
+        return el;
+    }
 
-        document.addEventListener('submit', (e) => {
-            const form = e.target;
-            if (!form || !form.matches('form')) return;
+    window.KTToast = { show: showToast };
 
-            if (form.hasAttribute('data-no-loader')) return;
-            if (form.classList.contains('approval-form')) return;
-            if (form.closest('#approvalPopover')) return;
-
-            KTLoader.show();
-        });
-
-        // =========================
-        // Confirm Modal (data-confirm)
-        // =========================
-        const modal = document.getElementById('ktConfirm');
-        const msgEl = document.getElementById('ktConfirmMsg');
-        const titleEl = document.getElementById('ktConfirmTitle');
-        const yesBtn = document.getElementById('ktConfirmYes');
-
-        let pendingAction = null;
-
-        function openConfirm({ title = 'Confirm action', message = 'Are you sure?', onYes = null, yesText = 'Continue' } = {}) {
-            if (!modal) return;
-
-            pendingAction = onYes;
-            if (titleEl) titleEl.textContent = title;
-            if (msgEl) msgEl.textContent = message;
-            if (yesBtn) yesBtn.textContent = yesText;
-
-            modal.classList.add('is-open');
-            modal.setAttribute('aria-hidden', 'false');
-            setTimeout(() => yesBtn?.focus(), 0);
+    // =========================
+    // ✅ Global Loader (CONTENT ONLY) — FIXED for Back/Forward (BFCache)
+    // =========================
+    const loader = document.getElementById('ktLoader');
+    const KTLoader = {
+        show() {
+            if (!loader) return;
+            loader.classList.add('is-active');
+            loader.setAttribute('aria-hidden', 'false');
+        },
+        hide() {
+            if (!loader) return;
+            loader.classList.remove('is-active');
+            loader.setAttribute('aria-hidden', 'true');
         }
+    };
+    window.KTLoader = KTLoader;
 
-        function closeConfirm() {
-            if (!modal) return;
-            modal.classList.remove('is-open');
-            modal.setAttribute('aria-hidden', 'true');
-            pendingAction = null;
-        }
+    const hideLoaderSoon = () => requestAnimationFrame(() => KTLoader.hide());
 
-        modal?.addEventListener('click', (e) => {
-            if (e.target && e.target.hasAttribute('data-close')) closeConfirm();
-        });
+    // Normal first load
+    window.addEventListener('DOMContentLoaded', () => setTimeout(() => KTLoader.hide(), 80));
+    window.addEventListener('load', hideLoaderSoon);
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal?.classList.contains('is-open')) closeConfirm();
-        });
+    // ✅ Critical: when returning via browser back/forward (BFCache)
+    window.addEventListener('pageshow', () => hideLoaderSoon());
+    window.addEventListener('pagehide', (e) => { if (e.persisted) KTLoader.hide(); });
 
-        yesBtn?.addEventListener('click', () => {
-            if (typeof pendingAction === 'function') pendingAction();
-            closeConfirm();
-        });
+    // Extra safety: if tab becomes visible again, hide loader
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) KTLoader.hide();
+    });
 
-        document.addEventListener('click', (e) => {
-            const el = e.target.closest('[data-confirm]');
-            if (!el) return;
+    // Show loader when leaving page (navigation/refresh)
+    window.addEventListener('beforeunload', () => KTLoader.show());
 
-            const msg = el.getAttribute('data-confirm') || 'Are you sure?';
-            const title = el.getAttribute('data-confirm-title') || 'Confirm action';
-            const yesText = el.getAttribute('data-confirm-yes') || 'Continue';
+    // Optional: show loader for normal <a> navigation (non-ajax)
+    document.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href]');
+        if (!a) return;
 
-            const sel = el.getAttribute('data-confirm-form');
-            const form = sel ? document.querySelector(sel) : el.closest('form');
+        if (a.hasAttribute('data-no-loader')) return;
+        if (a.closest('#approvalPopover')) return; // keep popover interactions clean
+        if (e.defaultPrevented) return;
 
-            e.preventDefault();
+        // Only left click with no modifiers
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
-            openConfirm({
-                title,
-                message: msg,
-                yesText,
-                onYes: () => {
-                    if (form) {
-                        KTLoader.show();
-                        form.submit();
-                    }
+        const href = a.getAttribute('href') || '';
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+        const target = (a.getAttribute('target') || '').toLowerCase();
+        if (target && target !== '_self') return;
+
+        KTLoader.show();
+    });
+
+    // Show loader on form submit (except excluded)
+    document.addEventListener('submit', (e) => {
+        const form = e.target;
+        if (!form || !form.matches('form')) return;
+
+        if (form.hasAttribute('data-no-loader')) return;
+        if (form.classList.contains('approval-form')) return;
+        if (form.closest('#approvalPopover')) return;
+
+        KTLoader.show();
+    });
+
+    // =========================
+    // Confirm Modal (data-confirm)
+    // =========================
+    const modal = document.getElementById('ktConfirm');
+    const msgEl = document.getElementById('ktConfirmMsg');
+    const titleEl = document.getElementById('ktConfirmTitle');
+    const yesBtn = document.getElementById('ktConfirmYes');
+
+    let pendingAction = null;
+
+    function openConfirm({ title = 'Confirm action', message = 'Are you sure?', onYes = null, yesText = 'Continue' } = {}) {
+        if (!modal) return;
+
+        pendingAction = onYes;
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+        if (yesBtn) yesBtn.textContent = yesText;
+
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        setTimeout(() => yesBtn?.focus(), 0);
+    }
+
+    function closeConfirm() {
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        pendingAction = null;
+    }
+
+    modal?.addEventListener('click', (e) => {
+        if (e.target && e.target.hasAttribute('data-close')) closeConfirm();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('is-open')) closeConfirm();
+    });
+
+    yesBtn?.addEventListener('click', () => {
+        if (typeof pendingAction === 'function') pendingAction();
+        closeConfirm();
+    });
+
+    document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-confirm]');
+        if (!el) return;
+
+        const msg = el.getAttribute('data-confirm') || 'Are you sure?';
+        const title = el.getAttribute('data-confirm-title') || 'Confirm action';
+        const yesText = el.getAttribute('data-confirm-yes') || 'Continue';
+
+        const sel = el.getAttribute('data-confirm-form');
+        const form = sel ? document.querySelector(sel) : el.closest('form');
+
+        e.preventDefault();
+
+        openConfirm({
+            title,
+            message: msg,
+            yesText,
+            onYes: () => {
+                if (form) {
+                    KTLoader.show();
+                    form.submit();
                 }
-            });
-        });
-
-        // =========================
-        // Approval popover (bell) + AJAX approve/decline + ✅ LIVE POLLING
-        // =========================
-        const bell = document.getElementById('approvalBell');
-        const pop = document.getElementById('approvalPopover');
-
-        const badgeEl = document.getElementById('approvalBadge');
-        const dotEl = document.getElementById('approvalDot');
-        const flashEl = document.getElementById('approvalFlash');
-        const listEl = document.getElementById('approvalList');
-
-        const csrf =
-            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
-            document.querySelector('input[name="_token"]')?.value ||
-            '';
-
-        const widgetUrl = @json(route('staff.approvals.widget'));
-        const approvalsIndexUrl = @json(route('staff.approvals.index'));
-
-        function closePopover() {
-            if (!pop) return;
-            pop.classList.remove('show');
-            pop.setAttribute('aria-hidden', 'true');
-            bell?.setAttribute('aria-expanded', 'false');
-        }
-
-        function togglePopover(e) {
-            e?.stopPropagation();
-            if (!pop) return;
-
-            const isOpen = pop.classList.contains('show');
-            if (isOpen) closePopover();
-            else {
-                pop.classList.add('show');
-                pop.setAttribute('aria-hidden', 'false');
-                bell?.setAttribute('aria-expanded', 'true');
             }
+        });
+    });
+
+    // =========================
+    // Approval popover (bell) + AJAX approve/decline + ✅ LIVE POLLING
+    // =========================
+    const bell = document.getElementById('approvalBell');
+    const pop = document.getElementById('approvalPopover');
+
+    const badgeEl = document.getElementById('approvalBadge');
+    const dotEl = document.getElementById('approvalDot');
+    const flashEl = document.getElementById('approvalFlash');
+    const listEl = document.getElementById('approvalList');
+
+    const csrf =
+        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+        document.querySelector('input[name="_token"]')?.value ||
+        '';
+
+    const widgetUrl = @json(route('staff.approvals.widget'));
+    const approvalsIndexUrl = @json(route('staff.approvals.index'));
+
+    function closePopover() {
+        if (!pop) return;
+        pop.classList.remove('show');
+        pop.setAttribute('aria-hidden', 'true');
+        bell?.setAttribute('aria-expanded', 'false');
+    }
+
+    function togglePopover(e) {
+        e?.stopPropagation();
+        if (!pop) return;
+
+        const isOpen = pop.classList.contains('show');
+        if (isOpen) closePopover();
+        else {
+            pop.classList.add('show');
+            pop.setAttribute('aria-hidden', 'false');
+            bell?.setAttribute('aria-expanded', 'true');
         }
+    }
 
-        function setCount(n) {
-            n = Number(n || 0);
-            if (badgeEl) badgeEl.textContent = String(n);
-            if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
-        }
+    function setCount(n) {
+        n = Number(n || 0);
+        if (badgeEl) badgeEl.textContent = String(n);
+        if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
+    }
 
-        function showFlash(type, text) {
-            if (!flashEl) return;
+    function showFlash(type, text) {
+        if (!flashEl) return;
 
-            flashEl.classList.remove('d-none');
-            flashEl.innerHTML = `
-                <div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px;">
-                    ${escapeHtml(text)}
+        flashEl.classList.remove('d-none');
+        flashEl.innerHTML = `
+            <div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px;">
+                ${escapeHtml(text)}
+            </div>
+        `;
+
+        window.clearTimeout(showFlash._t);
+        showFlash._t = window.setTimeout(() => flashEl.classList.add('d-none'), 2500);
+
+        window.KTToast?.show(type, type === 'danger' ? 'Error' : 'Success', text, 2400);
+    }
+
+    function ensureEmptyState() {
+        if (!listEl) return;
+        const anyItem = listEl.querySelector('.kt-item');
+        if (!anyItem) {
+            listEl.innerHTML = `
+                <div class="text-center py-3" id="approvalEmpty">
+                    <div class="fw-bold">No pending requests</div>
+                    <div class="small text-muted">You're all caught up.</div>
                 </div>
             `;
-
-            window.clearTimeout(showFlash._t);
-            showFlash._t = window.setTimeout(() => flashEl.classList.add('d-none'), 2500);
-
-            window.KTToast?.show(type, type === 'danger' ? 'Error' : 'Success', text, 2400);
         }
+    }
 
-        function ensureEmptyState() {
-            if (!listEl) return;
-            const anyItem = listEl.querySelector('.kt-item');
-            if (!anyItem) {
-                listEl.innerHTML = `
-                    <div class="text-center py-3" id="approvalEmpty">
-                        <div class="fw-bold">No pending requests</div>
-                        <div class="small text-muted">You're all caught up.</div>
-                    </div>
-                `;
-            }
-        }
+    async function postAction(form) {
+        const item = form.closest('.kt-item');
+        const action = form.dataset.action || 'approve';
 
-        async function postAction(form) {
-            const item = form.closest('.kt-item');
-            const action = form.dataset.action || 'approve';
+        const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
+        btns.forEach(b => b.disabled = true);
 
-            const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
-            btns.forEach(b => b.disabled = true);
+        try {
+            const body = new URLSearchParams();
+            body.set('_token', csrf);
 
-            try {
-                const body = new URLSearchParams();
-                body.set('_token', csrf);
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body
+            });
 
-                const res = await fetch(form.action, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrf,
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body
-                });
+            const data = await res.json().catch(() => ({}));
 
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok || data.ok === false) {
-                    showFlash('danger', data.message || 'Action failed. Please try again.');
-                    btns.forEach(b => b.disabled = false);
-                    return;
-                }
-
-                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
-                if (item) item.remove();
-
-                if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
-                else {
-                    const current = Number(badgeEl?.textContent || 0);
-                    setCount(Math.max(0, current - 1));
-                }
-
-                ensureEmptyState();
-            } catch (e) {
-                showFlash('danger', 'Network error. Please try again.');
+            if (!res.ok || data.ok === false) {
+                showFlash('danger', data.message || 'Action failed. Please try again.');
                 btns.forEach(b => b.disabled = false);
-            }
-        }
-
-        pop?.addEventListener('submit', function(e) {
-            const form = e.target.closest('form.approval-form');
-            if (!form) return;
-            e.preventDefault();
-            e.stopPropagation();
-            postAction(form);
-        });
-
-        bell?.addEventListener('click', togglePopover);
-        pop?.addEventListener('click', (e) => e.stopPropagation());
-
-        document.addEventListener('click', closePopover);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
-
-        // ---------- ✅ LIVE: Poll widget() every 5s ----------
-        let lastPending = Number(badgeEl?.textContent || 0);
-        let polling = false;
-
-        function renderItems(items) {
-            if (!listEl) return;
-
-            if (!Array.isArray(items) || items.length === 0) {
-                ensureEmptyState();
                 return;
             }
 
-            const htmlItems = items.map(i => {
-                const id = Number(i.id || 0);
-                const patient = escapeHtml(i.patient || 'N/A');
-                const service = escapeHtml(i.service || 'N/A');
-                const doctor = escapeHtml(i.doctor || '—');
-                const date = escapeHtml(i.date || '—');
-                const time = escapeHtml(i.time || '—');
+            showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
+            if (item) item.remove();
 
-                const approveUrl = escapeHtml(i.approve_url || '');
-                const declineUrl = escapeHtml(i.decline_url || '');
+            if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
+            else {
+                const current = Number(badgeEl?.textContent || 0);
+                setCount(Math.max(0, current - 1));
+            }
 
-                return `
-                    <div class="kt-item" data-approval-id="${id}">
-                        <div class="top">
-                            <div>
-                                <p class="name">${patient}</p>
-                                <div class="meta">
-                                    <div><b>${service}</b></div>
-                                    <div>${date} • ${time}</div>
-                                    <div class="small text-muted">Doctor: ${doctor}</div>
-                                </div>
+            ensureEmptyState();
+        } catch (e) {
+            showFlash('danger', 'Network error. Please try again.');
+            btns.forEach(b => b.disabled = false);
+        }
+    }
+
+    pop?.addEventListener('submit', function(e) {
+        const form = e.target.closest('form.approval-form');
+        if (!form) return;
+        e.preventDefault();
+        e.stopPropagation();
+        postAction(form);
+    });
+
+    bell?.addEventListener('click', togglePopover);
+    pop?.addEventListener('click', (e) => e.stopPropagation());
+
+    document.addEventListener('click', closePopover);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
+
+    // ---------- ✅ LIVE: Poll widget() every 5s ----------
+    let lastPending = Number(badgeEl?.textContent || 0);
+    let polling = false;
+
+    function renderItems(items) {
+        if (!listEl) return;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            ensureEmptyState();
+            return;
+        }
+
+        const htmlItems = items.map(i => {
+            const id = Number(i.id || 0);
+            const patient = escapeHtml(i.patient || 'N/A');
+            const service = escapeHtml(i.service || 'N/A');
+            const doctor = escapeHtml(i.doctor || '—');
+            const date = escapeHtml(i.date || '—');
+            const time = escapeHtml(i.time || '—');
+
+            const approveUrl = escapeHtml(i.approve_url || '');
+            const declineUrl = escapeHtml(i.decline_url || '');
+
+            return `
+                <div class="kt-item" data-approval-id="${id}">
+                    <div class="top">
+                        <div>
+                            <p class="name">${patient}</p>
+                            <div class="meta">
+                                <div><b>${service}</b></div>
+                                <div>${date} • ${time}</div>
+                                <div class="small text-muted">Doctor: ${doctor}</div>
                             </div>
-                            <div class="small text-muted text-end">Pending</div>
                         </div>
-
-                        <div class="kt-actions">
-                            <a class="btn btn-mini btn-edit" href="${approvalsIndexUrl}?edit=${id}">
-                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
-                            </a>
-
-                            <form class="approval-form" data-action="approve" method="POST" action="${approveUrl}">
-                                <button class="btn btn-mini btn-approve" type="submit">
-                                    <i class="fa-solid fa-check me-1"></i> Approve
-                                </button>
-                            </form>
-
-                            <form class="approval-form" data-action="decline" method="POST" action="${declineUrl}">
-                                <button class="btn btn-mini btn-decline" type="submit">
-                                    <i class="fa-solid fa-xmark me-1"></i> Decline
-                                </button>
-                            </form>
-                        </div>
+                        <div class="small text-muted text-end">Pending</div>
                     </div>
-                `;
-            }).join('');
 
-            listEl.innerHTML = htmlItems;
-        }
+                    <div class="kt-actions">
+                        <a class="btn btn-mini btn-edit" href="${approvalsIndexUrl}?edit=${id}">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                        </a>
 
-        async function pollApprovals() {
-            if (polling) return;
-            if (document.hidden) return;
+                        <form class="approval-form" data-action="approve" method="POST" action="${approveUrl}">
+                            <button class="btn btn-mini btn-approve" type="submit">
+                                <i class="fa-solid fa-check me-1"></i> Approve
+                            </button>
+                        </form>
 
-            polling = true;
-            try {
-                const res = await fetch(widgetUrl + '?limit=8', {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    cache: 'no-store'
-                });
+                        <form class="approval-form" data-action="decline" method="POST" action="${declineUrl}">
+                            <button class="btn btn-mini btn-decline" type="submit">
+                                <i class="fa-solid fa-xmark me-1"></i> Decline
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }).join('');
 
-                if (!res.ok) throw new Error('poll failed');
-
-                const data = await res.json();
-                const pendingCount = Number(data.pendingCount || 0);
-                setCount(pendingCount);
-
-                renderItems(data.items || []);
-
-                if (pendingCount > lastPending) {
-                    window.KTToast?.show('info', 'New booking', 'A new approval request arrived.', 2200);
-
-                    bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
-                    setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
-                }
-
-                lastPending = pendingCount;
-            } catch (e) {
-                // silent
-            } finally {
-                polling = false;
-            }
-        }
-
-        pollApprovals();
-        setInterval(pollApprovals, 5000);
-
-        // =========================
-        // ✅ Messages realtime polling (AJAX) + badges (widget endpoint)
-        // =========================
-        const msgWidgetUrl = @json(route('staff.messages.widget'));
-        const msgNavBadge = document.getElementById('msgNavBadge');
-        const msgTopDot = document.getElementById('msgTopDot');
-
-        let msgSince = localStorage.getItem('kt_msg_since') || '';
-        let msgPolling = false;
-
-        function setUnreadMessages(n) {
-            n = Number(n || 0);
-
-            if (msgNavBadge) {
-                msgNavBadge.textContent = String(n);
-                msgNavBadge.classList.toggle('d-none', n <= 0);
-            }
-
-            if (msgTopDot) {
-                msgTopDot.classList.toggle('d-none', n <= 0);
-            }
-
-            window.dispatchEvent(new CustomEvent('kt:messages:count', {
-                detail: { unreadCount: n }
-            }));
-        }
-
-        function normalizeMsg(m) {
-            return {
-                id: m.id,
-                name: m.name,
-                email: m.email,
-                message: m.message,
-                created_human: m.created_at, // ✅ matches your index listener
-                show_url: m.show_url
-            };
-        }
-
-        async function pollMessages() {
-            if (msgPolling) return;
-            if (document.hidden) return;
-
-            msgPolling = true;
-
-            const prevSince = msgSince;
-
-            try {
-                const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
-                const res = await fetch(url, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    cache: 'no-store'
-                });
-
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.ok) throw new Error('messages poll failed');
-
-                const unread = Number(data.unreadCount || 0);
-                setUnreadMessages(unread);
-
-                const latest = Array.isArray(data.latest) ? data.latest : [];
-                if (latest[0]?.created_at_iso) {
-                    msgSince = latest[0].created_at_iso;
-                    localStorage.setItem('kt_msg_since', msgSince);
-                }
-
-                let newMsgs = [];
-                if (prevSince) {
-                    newMsgs = latest.filter(x => x.created_at_iso && x.created_at_iso > prevSince);
-                } else if (Number(data.newCount || 0) > 0) {
-                    newMsgs = latest.slice(0, Math.min(5, latest.length));
-                }
-
-                if (newMsgs.length > 0) {
-                    window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
-                    window.dispatchEvent(new CustomEvent('kt:messages:new', {
-                        detail: { messages: newMsgs.map(normalizeMsg) }
-                    }));
-                }
-            } catch (e) {
-                // silent
-            } finally {
-                msgPolling = false;
-            }
-        }
-
-        pollMessages();
-        setInterval(pollMessages, 6000);
-
-    })();
-    </script>
-
-    <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
-    <script src="{{ asset('js/kt-push.js') }}?v=1"></script>
-
-    {{-- ✅ PWA Service Worker --}}
-    <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
-        });
-    }
-    </script>
-
-    <script>
-    // Bind push enable button (requires user click)
-    if (window.KTPush) {
-        window.KTPush.bind('#ktPushBtn');
+        listEl.innerHTML = htmlItems;
     }
 
-    // ✅ FORCE PUSH ICON: always bullhorn (on/off) — safe, no page freeze
-    (() => {
-        const btn = document.getElementById('ktPushBtn');
-        if (!btn) return;
+    async function pollApprovals() {
+        if (polling) return;
+        if (document.hidden) return;
 
-        let fixing = false;
+        polling = true;
+        try {
+            const res = await fetch(widgetUrl + '?limit=8', {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store'
+            });
 
-        const ensureBullhorn = () => {
-            if (fixing) return;
-            fixing = true;
+            if (!res.ok) throw new Error('poll failed');
 
-            try {
-                // Remove any injected svg/layers
-                btn.querySelectorAll('svg, span.fa-layers').forEach(n => n.remove());
+            const data = await res.json();
+            const pendingCount = Number(data.pendingCount || 0);
+            setCount(pendingCount);
 
-                // Ensure exactly ONE <i>
-                let icon = btn.querySelector('i');
-                if (!icon) {
-                    icon = document.createElement('i');
-                    btn.prepend(icon);
-                }
-                btn.querySelectorAll('i').forEach((n, idx) => { if (idx > 0) n.remove(); });
+            renderItems(data.items || []);
 
-                // Force bullhorn classes always
-                icon.className = 'fa-solid fa-bullhorn';
-                icon.setAttribute('aria-hidden', 'true');
-            } finally {
-                fixing = false;
+            if (pendingCount > lastPending) {
+                window.KTToast?.show('info', 'New booking', 'A new approval request arrived.', 2200);
+
+                bell?.style.setProperty('box-shadow', '0 0 0 4px rgba(34,197,94,.18)');
+                setTimeout(() => bell?.style.removeProperty('box-shadow'), 600);
             }
+
+            lastPending = pendingCount;
+        } catch (e) {
+            // silent
+        } finally {
+            polling = false;
+        }
+    }
+
+    pollApprovals();
+    setInterval(pollApprovals, 5000);
+
+    // =========================
+    // ✅ Messages realtime polling (AJAX) + badges (widget endpoint)
+    // =========================
+    const msgWidgetUrl = @json(route('staff.messages.widget'));
+    const msgNavBadge = document.getElementById('msgNavBadge');
+    const msgTopDot = document.getElementById('msgTopDot');
+
+    let msgSince = localStorage.getItem('kt_msg_since') || '';
+    let msgPolling = false;
+
+    function setUnreadMessages(n) {
+        n = Number(n || 0);
+
+        if (msgNavBadge) {
+            msgNavBadge.textContent = String(n);
+            msgNavBadge.classList.toggle('d-none', n <= 0);
+        }
+
+        if (msgTopDot) {
+            msgTopDot.classList.toggle('d-none', n <= 0);
+        }
+
+        window.dispatchEvent(new CustomEvent('kt:messages:count', {
+            detail: { unreadCount: n }
+        }));
+    }
+
+    function normalizeMsg(m) {
+        return {
+            id: m.id,
+            name: m.name,
+            email: m.email,
+            message: m.message,
+            created_human: m.created_at, // ✅ matches your index listener
+            show_url: m.show_url
         };
+    }
 
-        ensureBullhorn();
+    async function pollMessages() {
+        if (msgPolling) return;
+        if (document.hidden) return;
 
-        const obs = new MutationObserver(() => {
-            if (fixing) return;
-            // Defer to avoid fighting the same tick as kt-push.js
-            requestAnimationFrame(ensureBullhorn);
-        });
+        msgPolling = true;
 
-        // ✅ Watch BOTH DOM changes and class changes (subtree includes the <i>)
-        obs.observe(btn, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class']
-        });
+        const prevSince = msgSince;
 
-        // Extra: after click, re-apply (some libs change icon after async promise)
-        btn.addEventListener('click', () => setTimeout(ensureBullhorn, 0), { passive: true });
-        btn.addEventListener('click', () => setTimeout(ensureBullhorn, 250), { passive: true });
-        btn.addEventListener('click', () => setTimeout(ensureBullhorn, 800), { passive: true });
-    })();
+        try {
+            const url = msgWidgetUrl + '?limit=20' + (msgSince ? ('&since=' + encodeURIComponent(msgSince)) : '');
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store'
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) throw new Error('messages poll failed');
+
+            const unread = Number(data.unreadCount || 0);
+            setUnreadMessages(unread);
+
+            const latest = Array.isArray(data.latest) ? data.latest : [];
+            if (latest[0]?.created_at_iso) {
+                msgSince = latest[0].created_at_iso;
+                localStorage.setItem('kt_msg_since', msgSince);
+            }
+
+            let newMsgs = [];
+            if (prevSince) {
+                newMsgs = latest.filter(x => x.created_at_iso && x.created_at_iso > prevSince);
+            } else if (Number(data.newCount || 0) > 0) {
+                newMsgs = latest.slice(0, Math.min(5, latest.length));
+            }
+
+            if (newMsgs.length > 0) {
+                window.KTToast?.show('info', 'New message', 'A new contact message arrived.', 2200);
+                window.dispatchEvent(new CustomEvent('kt:messages:new', {
+                    detail: { messages: newMsgs.map(normalizeMsg) }
+                }));
+            }
+        } catch (e) {
+            // silent
+        } finally {
+            msgPolling = false;
+        }
+    }
+
+    pollMessages();
+    setInterval(pollMessages, 6000);
+
+})();
 </script>
+
+<script src="{{ asset('js/kt-live.js') }}?v=1"></script>
+<script src="{{ asset('js/kt-push.js') }}?v=1"></script>
+
+{{-- ✅ PWA Service Worker --}}
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+    });
+}
+</script>
+
+<script>
+// Bind push enable button (requires user click)
+if (window.KTPush) {
+    window.KTPush.bind('#ktPushBtn');
+}
+
+// ✅ FORCE PUSH ICON: always bullhorn (on/off) — safe, no page freeze
+(() => {
+    const btn = document.getElementById('ktPushBtn');
+    if (!btn) return;
+
+    let fixing = false;
+
+    const ensureBullhorn = () => {
+        if (fixing) return;
+        fixing = true;
+
+        try {
+            // Remove any injected svg/layers
+            btn.querySelectorAll('svg, span.fa-layers').forEach(n => n.remove());
+
+            // Ensure exactly ONE <i>
+            let icon = btn.querySelector('i');
+            if (!icon) {
+                icon = document.createElement('i');
+                btn.prepend(icon);
+            }
+            btn.querySelectorAll('i').forEach((n, idx) => { if (idx > 0) n.remove(); });
+
+            // Force bullhorn classes always
+            icon.className = 'fa-solid fa-bullhorn';
+            icon.setAttribute('aria-hidden', 'true');
+        } finally {
+            fixing = false;
+        }
+    };
+
+    ensureBullhorn();
+
+    const obs = new MutationObserver(() => {
+        if (fixing) return;
+        requestAnimationFrame(ensureBullhorn);
+    });
+
+    // ✅ Watch BOTH DOM changes and class changes (subtree includes the <i>)
+    obs.observe(btn, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+    });
+
+    // Extra: after click, re-apply
+    btn.addEventListener('click', () => setTimeout(ensureBullhorn, 0), { passive: true });
+    btn.addEventListener('click', () => setTimeout(ensureBullhorn, 250), { passive: true });
+    btn.addEventListener('click', () => setTimeout(ensureBullhorn, 800), { passive: true });
+})();
+</script>
+
 
 
 </body>

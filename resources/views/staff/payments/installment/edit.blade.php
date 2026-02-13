@@ -225,6 +225,15 @@
     }
 </style>
 
+@php
+    $openOld = old('is_open_contract');
+    $isOpen = !is_null($openOld)
+        ? (bool)$openOld
+        : (bool)($plan->is_open_contract ?? false);
+
+    $openMonthlyVal = old('open_monthly_payment', $plan->open_monthly_payment ?? '');
+@endphp
+
 <div class="page-head form-max">
     <div>
         <h2 class="page-title">Edit Installment Plan</h2>
@@ -310,13 +319,6 @@
 
                 {{-- Open Contract --}}
                 <div class="col-12">
-                    @php
-                        $openOld = old('is_open_contract');
-                        $isOpen = !is_null($openOld)
-                            ? (bool)$openOld
-                            : (bool)($plan->is_open_contract ?? false);
-                    @endphp
-
                     <div class="form-check" style="margin-top:2px;">
                         <input class="form-check-input" type="checkbox" id="isOpenContract" name="is_open_contract" value="1"
                             {{ $isOpen ? 'checked' : '' }}>
@@ -327,6 +329,21 @@
                             If enabled, months will be removed (no fixed schedule). Payments will be auto-numbered (Payment #1, #2, #3...).
                         </div>
                     </div>
+                </div>
+
+                {{-- ✅ Open Contract Monthly Payment --}}
+                <div class="col-12 col-md-6 d-none" id="openMonthlyWrap">
+                    <label class="form-labelx">Monthly Payment (Open Contract) <span class="text-danger">*</span></label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        id="openMonthlyInput"
+                        name="open_monthly_payment"
+                        class="inputx"
+                        value="{{ $openMonthlyVal }}"
+                    >
+                    <div class="helper">Example: 2000 — this will auto-fill in Pay page Amount Paid (editable).</div>
                 </div>
 
                 {{-- Months --}}
@@ -341,7 +358,7 @@
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Start Date <span class="text-danger">*</span></label>
                     <input type="date" name="start_date" class="inputx"
-                           value="{{ old('start_date', optional($plan->start_date)->format('Y-m-d')) }}" required>
+                           value="{{ old('start_date', $plan->start_date ? \Carbon\Carbon::parse($plan->start_date)->format('Y-m-d') : '') }}" required>
                 </div>
 
                 {{-- Balance --}}
@@ -372,32 +389,53 @@
 </div>
 
 <script>
-// ✅ Same behavior as create: disable months so browser validation won't block submit
-function toggleMonthsEdit() {
+function toggleOpenEdit() {
     const cb = document.getElementById('isOpenContract');
-    const wrap = document.getElementById('monthsWrap');
+
+    const monthsWrap = document.getElementById('monthsWrap');
     const months = document.getElementById('monthsInput');
+
+    const openWrap = document.getElementById('openMonthlyWrap');
+    const openMonthly = document.getElementById('openMonthlyInput');
 
     const on = cb && cb.checked;
 
-    if (wrap) wrap.style.display = on ? 'none' : '';
-    if (!months) return;
+    // Months
+    if (monthsWrap) monthsWrap.style.display = on ? 'none' : '';
+    if (months){
+        if (on){
+            months.required = false;
+            months.disabled = true;
+            months.value = '';
+        } else {
+            months.disabled = false;
+            months.required = true;
+            if (months.value === '' || Number(months.value) < 1) months.value = 6;
+        }
+    }
 
-    if (on) {
-        months.required = false;
-        months.disabled = true;  // not sent to server + no HTML5 validation
-        months.value = '';       // do NOT use 0 (min=1)
-    } else {
-        months.disabled = false;
-        months.required = true;
-        if (months.value === '' || Number(months.value) < 1) months.value = 6;
+    // Open Monthly Payment
+    if (openWrap) openWrap.classList.toggle('d-none', !on);
+    if (openMonthly){
+        if (on){
+            openMonthly.disabled = false;
+            openMonthly.required = true;
+
+            // normalize if empty
+            if (openMonthly.value === '') openMonthly.value = '0.00';
+        } else {
+            openMonthly.required = false;
+            openMonthly.disabled = true;
+        }
     }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     const cb = document.getElementById('isOpenContract');
-    if (cb) cb.addEventListener('change', toggleMonthsEdit);
-    toggleMonthsEdit();
+    if (cb) cb.addEventListener('change', toggleOpenEdit);
+
+    // Init state
+    toggleOpenEdit();
 });
 </script>
 

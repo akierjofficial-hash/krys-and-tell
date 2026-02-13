@@ -8,6 +8,7 @@ use App\Models\InstallmentPlan;
 use App\Models\Visit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Models\Doctor;
 
 class InstallmentPaymentController extends Controller
 {
@@ -129,6 +130,12 @@ class InstallmentPaymentController extends Controller
     {
         $plan->loadMissing(['patient', 'service', 'visit', 'payments']);
 
+        // ✅ Dentists list for dropdown
+        $doctors = Doctor::active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'specialty']);
+
         $this->ensureDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
@@ -147,7 +154,7 @@ class InstallmentPaymentController extends Controller
                 ->values();
 
             $maxMonths = null; // unlimited
-            return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths', 'isOpen'));
+            return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths', 'isOpen', 'doctors'));
         }
 
         $maxMonths = max(0, (int)($plan->months ?? 0));
@@ -183,7 +190,7 @@ class InstallmentPaymentController extends Controller
         }
 
         $isOpen = false;
-        return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths', 'isOpen'));
+        return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths', 'isOpen', 'doctors'));
     }
 
     public function store(Request $request, InstallmentPlan $plan)
@@ -192,9 +199,13 @@ class InstallmentPaymentController extends Controller
 
         $isOpen = (bool)($plan->is_open_contract ?? false);
 
+        // ✅ If there are dentists, require selection; otherwise optional (fallback to base visit dentist)
+        $hasDoctors = Doctor::active()->exists();
+
         // ✅ FIX: month_number should NOT be required for open contract
         $rules = [
             'month_number' => $isOpen ? 'nullable|integer|min:1' : 'required|integer|min:1',
+            'doctor_id'    => $hasDoctors ? 'required|exists:doctors,id' : 'nullable|exists:doctors,id',
             'amount'       => 'required|numeric|min:0',
             'method'       => 'required|string|max:50',
             'payment_date' => 'required|date',
@@ -230,7 +241,17 @@ class InstallmentPaymentController extends Controller
             return back()->withErrors('Amount exceeds the remaining balance.')->withInput();
         }
 
-        $baseVisit  = $plan->visit;
+        // ✅ Determine assigned dentist (selected or fallback)
+        $baseVisit = $plan->visit;
+
+        $doctor = null;
+        if ($request->filled('doctor_id')) {
+            $doctor = Doctor::find((int)$request->doctor_id);
+        }
+
+        $assignedDoctorId = $doctor?->id ?? $baseVisit?->doctor_id;
+        $assignedDentistName = $doctor?->name ?? $baseVisit?->dentist_name;
+
         $visitDate  = $request->payment_date;
         $visitNotes = trim((string)$request->notes);
 
@@ -244,8 +265,8 @@ class InstallmentPaymentController extends Controller
 
         $visit = Visit::create([
             'patient_id'   => $plan->patient_id,
-            'doctor_id'    => $baseVisit?->doctor_id,
-            'dentist_name' => $baseVisit?->dentist_name,
+            'doctor_id'    => $assignedDoctorId,
+            'dentist_name' => $assignedDentistName,
             'visit_date'   => $visitDate,
             'status'       => 'completed',
             'notes'        => $visitNotes,
@@ -285,13 +306,20 @@ class InstallmentPaymentController extends Controller
         if ((int)$payment->installment_plan_id !== (int)$plan->id) abort(404);
 
         $plan->loadMissing(['patient', 'service', 'payments']);
+        $payment->loadMissing('visit');
+
+        // ✅ Dentists list for dropdown
+        $doctors = Doctor::active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'specialty']);
 
         $this->ensureDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
         $return = $this->safeReturn($request->query('return')) ?? route('staff.installments.show', $plan->id);
 
-        return view('staff.payments.installment.edit-payment', compact('plan', 'payment', 'return'));
+        return view('staff.payments.installment.edit-payment', compact('plan', 'payment', 'return', 'doctors'));
     }
 
     public function update(Request $request, InstallmentPlan $plan, InstallmentPayment $payment)
@@ -302,6 +330,7 @@ class InstallmentPaymentController extends Controller
             'amount'       => 'required|numeric|min:0',
             'method'       => 'required|string|max:50',
             'payment_date' => 'required|date',
+            'doctor_id'    => 'nullable|exists:doctors,id',
             'notes'        => 'nullable|string|max:2000',
             'return'       => 'nullable|string',
         ]);
@@ -343,6 +372,15 @@ class InstallmentPaymentController extends Controller
             $visit = Visit::find($payment->visit_id);
             if ($visit) {
                 $visit->visit_date = $request->payment_date;
+
+                // ✅ Update dentist on linked visit (if provided)
+                if ($request->filled('doctor_id')) {
+                    $doc = Doctor::find((int)$request->doctor_id);
+                    if ($doc) {
+                        $visit->doctor_id = $doc->id;
+                        $visit->dentist_name = $doc->name;
+                    }
+                }
 
                 $n = trim((string)$request->notes);
                 if ($n !== '') $visit->notes = $n;

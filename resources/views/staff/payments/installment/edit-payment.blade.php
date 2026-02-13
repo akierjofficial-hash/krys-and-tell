@@ -280,6 +280,10 @@
 
     $planTotal = (float)($plan->total_cost ?? 0);
     $planBal   = (float)($plan->balance ?? 0);
+
+    $docVal = old('doctor_id', $payment->visit?->doctor_id);
+    $hasDocs = isset($doctors) && count($doctors);
+    $hasVisit = !empty($payment->visit_id);
 @endphp
 
 <div class="page-head">
@@ -351,6 +355,31 @@
                     <input type="date" name="payment_date" class="inputx"
                            value="{{ old('payment_date', $payDate) }}" required>
                     <div class="helper">If linked to a Visit, it can also update the Visit date (based on your controller logic).</div>
+                </div>
+
+                {{-- ✅ NEW: Assigned Dentist --}}
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">Assigned Dentist</label>
+
+                    <select name="doctor_id" class="selectx" {{ $hasDocs ? '' : 'disabled' }}>
+                        <option value="" {{ $docVal ? '' : 'selected' }}>
+                            {{ $hasVisit ? 'Select dentist (updates Visit)' : 'No linked visit' }}
+                        </option>
+
+                        @foreach(($doctors ?? []) as $d)
+                            <option value="{{ $d->id }}" {{ (string)$docVal === (string)$d->id ? 'selected' : '' }}>
+                                {{ $d->name }}{{ !empty($d->specialty) ? ' — '.$d->specialty : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    @if(!$hasDocs)
+                        <div class="helper">No active dentists found. Add dentists in Admin → Doctors (set Active).</div>
+                    @elseif(!$hasVisit)
+                        <div class="helper">This payment has no linked visit, so dentist update will not apply.</div>
+                    @else
+                        <div class="helper">Changing dentist will update the linked Visit’s assigned dentist.</div>
+                    @endif
                 </div>
 
                 <div class="col-12 col-md-6">

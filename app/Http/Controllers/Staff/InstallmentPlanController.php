@@ -20,7 +20,6 @@ class InstallmentPlanController extends Controller
 
     private function findDownpaymentPayment(InstallmentPlan $plan): ?InstallmentPayment
     {
-        // Load if missing (fast), but caller should refresh after mutations.
         $plan->loadMissing('payments');
 
         $down  = (float)($plan->downpayment ?? 0);
@@ -30,10 +29,8 @@ class InstallmentPlanController extends Controller
             $m     = (int)($p->month_number ?? -1);
             $notes = strtolower((string)($p->notes ?? ''));
 
-            // month 0 = downpayment (new format)
             if ($m === 0) return true;
 
-            // legacy: month 1 + notes/amount match
             if ($m === 1) {
                 if (str_contains($notes, 'downpayment')) return true;
 
@@ -87,13 +84,11 @@ class InstallmentPlanController extends Controller
             'notes'               => 'Downpayment',
         ]);
 
-        // IMPORTANT: refresh so future computations see it
         $this->refreshPayments($plan);
     }
 
     private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
-        // Always refresh here for correctness (payments may have just changed)
         $this->refreshPayments($plan);
 
         $totalCost = (float)($plan->total_cost ?? 0);
@@ -102,7 +97,6 @@ class InstallmentPlanController extends Controller
         $paymentsTotal = (float)$plan->payments->sum('amount');
         $hasDpRecord   = $this->hasDownpaymentRecord($plan);
 
-        // If no DP record exists (legacy), treat downpayment as paid
         $paid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
 
         $balance = max(0, $totalCost - $paid);
@@ -111,7 +105,6 @@ class InstallmentPlanController extends Controller
             ? InstallmentPlan::STATUS_FULLY_PAID
             : InstallmentPlan::STATUS_PARTIALLY_PAID;
 
-        // ✅ Preserve COMPLETED state for Open Contract, but still update balance
         $current = strtolower(trim((string)($plan->status ?? '')));
         if ($current === strtolower(InstallmentPlan::STATUS_COMPLETED)) {
             $plan->balance = $balance;
@@ -138,7 +131,6 @@ class InstallmentPlanController extends Controller
                 $m     = (int)($dp->month_number ?? -1);
                 $notes = strtolower((string)($dp->notes ?? ''));
 
-                // delete only if it's clearly a downpayment record
                 if ($m === 0 || ($m === 1 && str_contains($notes, 'downpayment'))) {
                     $dp->delete();
                     $this->refreshPayments($plan);
@@ -156,13 +148,10 @@ class InstallmentPlanController extends Controller
         if ($dp) {
             $m = (int)($dp->month_number ?? -1);
 
-            // keep notes clean
             $payload['notes'] = ($m === 1) ? 'Downpayment' : ($dp->notes ?: 'Downpayment');
             $payload['method'] = $dp->method ?? 'Cash';
 
             $dp->update($payload);
-
-            // refresh to reflect updated amount immediately
             $this->refreshPayments($plan);
             return;
         }
@@ -236,6 +225,7 @@ class InstallmentPlanController extends Controller
             'downpayment'     => 'required|numeric|min:0|lte:total_cost',
             'is_open_contract'=> 'nullable|boolean',
             'months'          => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
+            'open_monthly_payment' => $isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
             'start_date'      => 'required|date',
         ]);
 
@@ -244,7 +234,6 @@ class InstallmentPlanController extends Controller
         if ($request->filled('visit_id')) {
             $visit = Visit::with(['patient', 'procedures.service'])->findOrFail($request->visit_id);
         } else {
-            // Appointment -> create Visit so plan always has visit_id
             $app = Appointment::with(['patient', 'service'])->findOrFail($request->appointment_id);
 
             $visit = Visit::create([
@@ -279,12 +268,13 @@ class InstallmentPlanController extends Controller
             'downpayment'       => (float)$request->downpayment,
             'is_open_contract'  => $isOpen,
             'months'            => $isOpen ? 0 : (int)$request->months,
+            // ✅ SAVE OPEN CONTRACT MONTHLY PAYMENT
+            'open_monthly_payment' => $isOpen ? (float)$request->open_monthly_payment : null,
             'start_date'        => $request->start_date,
             'status'            => InstallmentPlan::STATUS_PARTIALLY_PAID,
             'balance'           => 0,
         ]);
 
-        // DP is month 0
         if ((float)$request->downpayment > 0) {
             InstallmentPayment::create([
                 'installment_plan_id' => $plan->id,
@@ -347,6 +337,7 @@ class InstallmentPlanController extends Controller
             'downpayment'      => 'required|numeric|min:0|lte:total_cost',
             'is_open_contract' => 'nullable|boolean',
             'months'           => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
+            'open_monthly_payment' => $isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
             'start_date'       => 'required|date',
         ]);
 
@@ -355,6 +346,8 @@ class InstallmentPlanController extends Controller
             'downpayment'      => (float)$request->downpayment,
             'is_open_contract' => $isOpen,
             'months'           => $isOpen ? 0 : (int)$request->months,
+            // ✅ UPDATE OPEN CONTRACT MONTHLY PAYMENT
+            'open_monthly_payment' => $isOpen ? (float)$request->open_monthly_payment : null,
             'start_date'       => $request->start_date,
         ]);
 
@@ -373,18 +366,15 @@ class InstallmentPlanController extends Controller
             ->with('success', 'Installment deleted successfully');
     }
 
-    // ✅ OPEN CONTRACT: Mark as completed even if not fully paid
     public function complete(Request $request, InstallmentPlan $plan)
     {
         if (!(bool)($plan->is_open_contract ?? false)) {
             return back()->with('error', 'Only Open Contract plans can be marked as completed.');
         }
 
-        // ✅ MUST MATCH DB CHECK CONSTRAINT (no uppercase)
         $plan->status = InstallmentPlan::STATUS_COMPLETED;
         $plan->save();
 
-        // keep balance updated, but preserve Completed
         $this->recomputePlan($plan);
 
         return redirect()
@@ -392,7 +382,6 @@ class InstallmentPlanController extends Controller
             ->with('success', 'Installment plan marked as Completed.');
     }
 
-    // ✅ OPEN CONTRACT: Reopen completed plan
     public function reopen(Request $request, InstallmentPlan $plan)
     {
         if (!(bool)($plan->is_open_contract ?? false)) {

@@ -307,12 +307,10 @@
                                     return trim($name.' '.trim($tooth.' '.$surface).$noteLabel);
                                 })->filter()->implode(', ');
 
-                                // due: prefer visit->price if present, else sum of procedure prices
                                 $due = $visit->price !== null
                                     ? (float) $visit->price
                                     : (float) ($procs->sum('price') ?? 0);
 
-                                // paid: use relation if exists, else fallback query
                                 $paid = 0.0;
                                 if (property_exists($visit, 'total_paid') && $visit->total_paid !== null) {
                                     $paid = (float) $visit->total_paid;
@@ -324,7 +322,6 @@
                                     }
                                 }
 
-                                // don't allow if already on installment plan
                                 $inInstallment = \App\Models\InstallmentPlan::where('visit_id', $visit->id)->exists();
 
                                 $balance = max($due - $paid, 0);
@@ -405,7 +402,7 @@
                     </div>
                 </div>
 
-                {{-- Total Cost (ALWAYS required, even for Open Contract) --}}
+                {{-- Total Cost --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Total Cost <span class="text-danger">*</span></label>
                     <input
@@ -426,7 +423,7 @@
                             <div class="v" id="balanceText">₱0.00</div>
                         </div>
                         <div id="monthlyWrap">
-                            <div class="k">Monthly</div>
+                            <div class="k" id="monthlyLabel">Monthly</div>
                             <div class="v" id="monthlyText">₱0.00</div>
                         </div>
                     </div>
@@ -456,8 +453,23 @@
                         <label class="form-check-label" for="isOpenContract" style="font-weight:950; color:var(--text);">
                             Open Contract (no fixed months — pay any amount until fully paid)
                         </label>
-                        <div class="helper">If enabled, Payment Term is hidden (Total Cost is still required).</div>
+                        <div class="helper">If enabled, Payment Term is hidden and you must set Monthly Payment (auto-fills in Pay page).</div>
                     </div>
+                </div>
+
+                {{-- ✅ Open Contract Monthly Payment --}}
+                <div class="col-12 col-md-6 d-none" id="openMonthlyWrap">
+                    <label class="form-labelx">Monthly Payment (Open Contract) <span class="text-danger">*</span></label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        id="openMonthlyInput"
+                        name="open_monthly_payment"
+                        class="inputx"
+                        value="{{ old('open_monthly_payment') }}"
+                    >
+                    <div class="helper">Example: 2000 — this will automatically appear as Amount Paid in Pay page (editable).</div>
                 </div>
 
                 {{-- Payment Term --}}
@@ -521,9 +533,13 @@
 
     const totalCostInput    = document.getElementById('totalCostInput');
     const downpaymentInput  = document.getElementById('downpaymentInput');
+
     const monthsWrap        = document.getElementById('monthsWrap');
     const monthsInput       = document.getElementById('monthsInput');
     const isOpenContract    = document.getElementById('isOpenContract');
+
+    const openMonthlyWrap   = document.getElementById('openMonthlyWrap');
+    const openMonthlyInput  = document.getElementById('openMonthlyInput');
 
     const startDateInput    = document.getElementById('startDateInput');
 
@@ -532,10 +548,11 @@
 
     const calcSummary       = document.getElementById('calcSummary');
     const balanceText       = document.getElementById('balanceText');
-    const monthlyWrap       = document.getElementById('monthlyWrap');
     const monthlyText       = document.getElementById('monthlyText');
+    const monthlyLabel      = document.getElementById('monthlyLabel');
 
     let autoDownpayment = true;
+    let openMonthlyTouched = false;
 
     function n(v){
         const x = parseFloat(v);
@@ -552,21 +569,27 @@
         const amt = n(opt.getAttribute('data-amount'));
         const tx  = opt.getAttribute('data-treatments') || '';
         const dt  = opt.getAttribute('data-date') || '';
-        const type = opt.getAttribute('data-type') || '';
 
-        // total cost (required always)
+        // total cost
         if (totalCostInput) totalCostInput.value = amt ? amt.toFixed(2) : '0.00';
 
         // treatments
         if (treatmentsBox) treatmentsBox.value = tx;
         if (treatmentsHidden) treatmentsHidden.value = tx;
 
-        // start date auto-fill if we have a date
+        // start date
         if (startDateInput && dt) startDateInput.value = dt;
 
-        // default downpayment = 50% (only if we are in auto mode)
+        // default downpayment 50%
         autoDownpayment = true;
         if (downpaymentInput) downpaymentInput.value = (amt / 2).toFixed(2);
+
+        // suggest open monthly (only if user hasn't typed)
+        if (openMonthlyInput && !openMonthlyTouched && !openMonthlyInput.value){
+            const bal = Math.max(amt - n(downpaymentInput?.value), 0);
+            const guessMonths = Math.max(1, Math.round(n(monthsInput?.value) || 6));
+            openMonthlyInput.value = (bal / guessMonths).toFixed(2);
+        }
 
         recalc();
     }
@@ -579,20 +602,41 @@
         }
     }
 
-    function toggleMonths(){
-        const on = isOpenContract && isOpenContract.checked;
+    function toggleOpenContractUI(){
+        const open = !!(isOpenContract && isOpenContract.checked);
 
-        if (monthsWrap) monthsWrap.style.display = on ? 'none' : '';
-        if (!monthsInput) return;
+        // Months UI (fixed-term)
+        if (monthsWrap) monthsWrap.style.display = open ? 'none' : '';
+        if (monthsInput){
+            if (open){
+                monthsInput.required = false;
+                monthsInput.disabled = true;
+                monthsInput.value = '';
+            } else {
+                monthsInput.disabled = false;
+                monthsInput.required = true;
+                if (monthsInput.value === '' || Number(monthsInput.value) < 1) monthsInput.value = 6;
+            }
+        }
 
-        if (on){
-            monthsInput.required = false;
-            monthsInput.disabled = true;
-            monthsInput.value = '';
-        } else {
-            monthsInput.disabled = false;
-            monthsInput.required = true;
-            if (monthsInput.value === '' || Number(monthsInput.value) < 1) monthsInput.value = 6;
+        // Open monthly UI
+        if (openMonthlyWrap) openMonthlyWrap.classList.toggle('d-none', !open);
+        if (openMonthlyInput){
+            if (open){
+                openMonthlyInput.disabled = false;
+                openMonthlyInput.required = true;
+
+                if (!openMonthlyTouched && !openMonthlyInput.value){
+                    const total = n(totalCostInput?.value);
+                    const down  = n(downpaymentInput?.value);
+                    const bal   = Math.max(total - down, 0);
+                    const guessMonths = Math.max(1, Math.round(n(monthsInput?.value) || 6));
+                    openMonthlyInput.value = (bal / guessMonths).toFixed(2);
+                }
+            } else {
+                openMonthlyInput.required = false;
+                openMonthlyInput.disabled = true;
+            }
         }
 
         recalc();
@@ -602,24 +646,24 @@
         const total = n(totalCostInput && totalCostInput.value);
         let down = n(downpaymentInput && downpaymentInput.value);
 
-        // clamp downpayment
         if (down > total) down = total;
 
         const bal = Math.max(total - down, 0);
-
-        const open = isOpenContract && isOpenContract.checked;
-        const months = open ? 0 : Math.max(n(monthsInput && monthsInput.value), 1);
+        const open = !!(isOpenContract && isOpenContract.checked);
 
         if (calcSummary){
             calcSummary.style.display = (totalCostInput && totalCostInput.value !== '') ? '' : 'none';
         }
         if (balanceText) balanceText.textContent = money(bal);
 
-        if (monthlyWrap){
-            monthlyWrap.style.display = open ? 'none' : '';
-        }
-        if (!open && monthlyText){
-            monthlyText.textContent = money(months ? (bal / months) : 0);
+        if (open){
+            if (monthlyLabel) monthlyLabel.textContent = 'Monthly Payment';
+            const om = n(openMonthlyInput && openMonthlyInput.value);
+            if (monthlyText) monthlyText.textContent = money(om);
+        } else {
+            if (monthlyLabel) monthlyLabel.textContent = 'Monthly';
+            const months = Math.max(n(monthsInput && monthsInput.value), 1);
+            if (monthlyText) monthlyText.textContent = money(months ? (bal / months) : 0);
         }
     }
 
@@ -654,7 +698,6 @@
             recalc();
         });
         downpaymentInput.addEventListener('blur', () => {
-            // clamp on blur
             const total = n(totalCostInput && totalCostInput.value);
             let down = n(downpaymentInput.value);
             if (down > total) down = total;
@@ -669,6 +712,12 @@
             if (autoDownpayment && downpaymentInput){
                 downpaymentInput.value = (total / 2).toFixed(2);
             }
+            if (isOpenContract?.checked && openMonthlyInput && !openMonthlyTouched){
+                // keep suggested open monthly updated only if user didn't type
+                const bal = Math.max(total - n(downpaymentInput?.value), 0);
+                const guessMonths = Math.max(1, Math.round(n(monthsInput?.value) || 6));
+                openMonthlyInput.value = (bal / guessMonths).toFixed(2);
+            }
             recalc();
         });
         totalCostInput.addEventListener('blur', () => {
@@ -682,11 +731,32 @@
     }
 
     if (monthsInput){
-        monthsInput.addEventListener('input', recalc);
+        monthsInput.addEventListener('input', () => {
+            if (isOpenContract?.checked && openMonthlyInput && !openMonthlyTouched){
+                const total = n(totalCostInput?.value);
+                const down  = n(downpaymentInput?.value);
+                const bal   = Math.max(total - down, 0);
+                const m     = Math.max(1, Math.round(n(monthsInput.value) || 6));
+                openMonthlyInput.value = (bal / m).toFixed(2);
+            }
+            recalc();
+        });
+    }
+
+    if (openMonthlyInput){
+        openMonthlyInput.addEventListener('input', () => {
+            openMonthlyTouched = true;
+            recalc();
+        });
+        openMonthlyInput.addEventListener('blur', () => {
+            const v = n(openMonthlyInput.value);
+            openMonthlyInput.value = v.toFixed(2);
+            recalc();
+        });
     }
 
     if (isOpenContract){
-        isOpenContract.addEventListener('change', toggleMonths);
+        isOpenContract.addEventListener('change', toggleOpenContractUI);
     }
 
     // Init
@@ -695,7 +765,16 @@
         else if (appointmentSelect && appointmentSelect.value) setFromOption(appointmentSelect.selectedOptions[0]);
         else recalc();
 
-        toggleMonths();
+        // If old value exists, consider it "touched"
+        if (openMonthlyInput && openMonthlyInput.value) openMonthlyTouched = true;
+
+        // Ensure correct enable/disable on load
+        if (openMonthlyInput && !(isOpenContract && isOpenContract.checked)) {
+            openMonthlyInput.disabled = true;
+            openMonthlyInput.required = false;
+        }
+
+        toggleOpenContractUI();
     });
 
 })();

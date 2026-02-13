@@ -25,10 +25,16 @@ class InstallmentPlan extends Model
         'start_date',
         'status',
         'is_open_contract',
+        'open_monthly_payment', // ✅ add this
     ];
 
     protected $casts = [
-        'is_open_contract' => 'boolean',
+        'is_open_contract'      => 'boolean',
+        'open_monthly_payment'  => 'decimal:2',
+        'total_cost'            => 'decimal:2',
+        'downpayment'           => 'decimal:2',
+        'balance'               => 'decimal:2',
+        'start_date'            => 'date',
     ];
 
     protected $attributes = [
@@ -36,10 +42,6 @@ class InstallmentPlan extends Model
         'is_open_contract' => false,
     ];
 
-    /**
-     * Normalize status to prevent DB CHECK constraint violations.
-     * Example: "COMPLETED" -> "Completed"
-     */
     public function setStatusAttribute($value): void
     {
         if ($value === null) {
@@ -67,23 +69,8 @@ class InstallmentPlan extends Model
         $this->attributes['status'] = $map[$v] ?? $value;
     }
 
-    public function visit()
-    {
-        return $this->belongsTo(Visit::class);
-    }
-
-    public function patient()
-    {
-        return $this->belongsTo(Patient::class);
-    }
-
-    public function service()
-    {
-        return $this->belongsTo(Service::class);
-    }
-
-    public function payments()
-    {
-        return $this->hasMany(InstallmentPayment::class, 'installment_plan_id');
-    }
+    public function visit() { return $this->belongsTo(Visit::class); }
+    public function patient() { return $this->belongsTo(Patient::class); }
+    public function service() { return $this->belongsTo(Service::class); }
+    public function payments() { return $this->hasMany(InstallmentPayment::class, 'installment_plan_id'); }
 }

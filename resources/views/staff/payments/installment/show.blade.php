@@ -413,12 +413,10 @@
             @endif
         @endif
 
-        {{-- ✅ Installment Payments: Template --}}
         <a href="{{ route('staff.installments.payments.template', $plan) }}" class="i-btn" title="Download Excel template">
             <i class="fa fa-file-excel"></i> Template
         </a>
 
-        {{-- ✅ Installment Payments: Import --}}
         <form id="installmentPaymentsImportForm"
               action="{{ route('staff.installments.payments.import', $plan) }}"
               method="POST" enctype="multipart/form-data" style="display:inline;">
@@ -441,7 +439,6 @@
     </div>
 </div>
 
-{{-- ✅ Flash messages + import warnings --}}
 @if(session('success'))
     <div class="alert alert-success" style="border-radius:12px; font-weight:800;">
         {{ session('success') }}
@@ -539,6 +536,7 @@
                     <tr>
                         <th style="width:120px;">{{ $isOpen ? 'Payment' : 'Month' }}</th>
                         <th style="width:140px;">Date</th>
+                        <th style="width:180px;">Dentist</th>
                         <th>Notes</th>
                         <th style="width:120px;">Method</th>
                         <th style="width:120px;" class="text-end">Amount</th>
@@ -553,6 +551,7 @@
                         <tr>
                             <td style="font-weight:950;">DP</td>
                             <td class="muted">{{ $dpDate ? $dpDate->format('M d, Y') : '—' }}</td>
+                            <td class="muted">{{ $dpPayment?->visit?->dentist_name ?? $plan->visit?->dentist_name ?? '—' }}</td>
                             <td class="muted">{{ $dpNotes }}</td>
                             <td class="muted">{{ $dpMethod ?: '—' }}</td>
                             <td class="text-end" style="font-weight:950;">
@@ -588,11 +587,11 @@
                         </tr>
                     @endif
 
-                    {{-- ✅ OPEN CONTRACT: list Payment #1, #2, #3... --}}
+                    {{-- ✅ OPEN CONTRACT --}}
                     @if($isOpen)
                         @if($openPayments->isEmpty())
                             <tr>
-                                <td colspan="7" class="muted">No payments yet (besides downpayment).</td>
+                                <td colspan="8" class="muted">No payments yet (besides downpayment).</td>
                             </tr>
                         @else
                             @foreach($openPayments as $p)
@@ -605,6 +604,7 @@
                                 <tr>
                                     <td style="font-weight:950;">Payment #{{ $uiNo }}</td>
                                     <td class="muted">{{ $pDate ? $pDate->format('M d, Y') : '—' }}</td>
+                                    <td class="muted">{{ $p->visit?->dentist_name ?? '—' }}</td>
                                     <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
                                     <td class="muted">{{ $p->method ?? '—' }}</td>
                                     <td class="text-end" style="font-weight:950;">
@@ -665,6 +665,7 @@
                                 <tr>
                                     <td style="font-weight:950;">{{ $i }}</td>
                                     <td class="muted">{{ $showDate ? $showDate->format('M d, Y') : '—' }}</td>
+                                    <td class="muted">{{ $pay?->visit?->dentist_name ?? '—' }}</td>
                                     <td class="muted">{{ $notes !== '' ? $notes : '—' }}</td>
                                     <td class="muted">{{ $pay?->method ?? '—' }}</td>
                                     <td class="text-end" style="font-weight:950;">
@@ -704,7 +705,7 @@
                             @endfor
                         @else
                             <tr>
-                                <td colspan="7" class="muted">No monthly installments configured.</td>
+                                <td colspan="8" class="muted">No monthly installments configured.</td>
                             </tr>
                         @endif
                     @endif

@@ -267,6 +267,10 @@
 
     $isOpenContract = (bool)($plan->is_open_contract ?? false);
 
+    // ✅ monthly amount saved from create/edit (Open Contract)
+    $openMonthly = (float)($plan->open_monthly_payment ?? 0);
+    $openMonthlyAttr = number_format($openMonthly, 2, '.', '');
+
     $payments = $plan->payments ?? collect();
     $paymentsTotal = (float) $payments->sum('amount');
 
@@ -306,29 +310,34 @@
     $remainingBalance = max(0, $total - $totalPaid);
     $remainingBalanceAttr = number_format($remainingBalance, 2, '.', '');
 
-    // ✅ selected month safe-guard (fixed-term)
+    // selected month safe-guard (fixed-term)
     $selectedMonth = (int) old('month_number', $nextMonth ?? 1);
 
-    // ✅ Monthly suggested amount (fixed-term): (Total - Downpayment) / Months
+    // fixed-term suggested amount
     $monthsTerm = max(0, (int)($plan->months ?? 0));
     $principal = max(0, $total - $down);
     $monthlySuggested = ($monthsTerm > 0) ? round($principal / $monthsTerm, 2) : 0.00;
+    $monthlySuggestedAttr = number_format($monthlySuggested, 2, '.', '');
+
+    // ✅ Default amount:
+    // - Open contract -> open_monthly_payment (if > 0) else remaining
+    // - Fixed term -> monthly suggested (if > 0) else remaining
+    $defaultOpenAmount = ($openMonthly > 0) ? min($remainingBalance, $openMonthly) : $remainingBalance;
 
     $computedDefault = $isOpenContract
-        ? $remainingBalance
+        ? $defaultOpenAmount
         : min($remainingBalance, ($monthlySuggested > 0 ? $monthlySuggested : $remainingBalance));
 
     $computedDefaultAttr = number_format($computedDefault, 2, '.', '');
-    $monthlySuggestedAttr = number_format($monthlySuggested, 2, '.', '');
 
-    // ✅ DP date (base month). Month 1 due date = DP date + 1 month.
+    // DP date base
     $dpDateObj = $dpPayment?->payment_date
         ? Carbon::parse($dpPayment->payment_date)
         : ($startDate ? $startDate->copy() : now());
 
     $dpDateStr = $dpDateObj->toDateString();
 
-    // ✅ Map UI month => paid date (YYYY-MM-DD) for fixed-term (uses shift)
+    // Map UI month => paid date (fixed-term)
     $uiPaidDates = [];
     if (!$isOpenContract) {
         for ($i = 1; $i <= $monthsTerm; $i++) {
@@ -343,7 +352,7 @@
         }
     }
 
-    // ✅ Suggested date for initial render:
+    // Suggested date
     $suggestedDate = now()->toDateString();
 
     if ($isOpenContract) {
@@ -368,11 +377,11 @@
         if ($prevDate) {
             $suggestedDate = Carbon::parse($prevDate)->addMonth()->toDateString();
         } else {
-            $suggestedDate = $dpDateObj->copy()->addMonths($sel)->toDateString(); // Month 1 = dp +1 month
+            $suggestedDate = $dpDateObj->copy()->addMonths($sel)->toDateString();
         }
     }
 
-    // ✅ Notes template: use Month 1 notes (first actual installment), then auto-fill for Month 2, 3, ...
+    // Notes template
     $notesTemplate = '';
     if ($isOpenContract) {
         $firstPay = $payments
@@ -382,7 +391,7 @@
 
         $notesTemplate = trim((string)($firstPay?->notes ?? ''));
     } else {
-        $dbMonth1 = 1 + $shift; // Month 1 installment (not DP)
+        $dbMonth1 = 1 + $shift;
         $m1 = $payments->first(function($p) use ($dbMonth1){
             return (int)($p->month_number ?? -999) === (int)$dbMonth1;
         });
@@ -390,8 +399,11 @@
         $notesTemplate = trim((string)($m1?->notes ?? ''));
     }
 
-    // If validation error occurs, keep old('notes'). Otherwise default to template (if any).
     $notesDefault = old('notes', $notesTemplate);
+
+    // Dentist dropdown defaults
+    $docVal = old('doctor_id', $plan->visit?->doctor_id);
+    $hasDocs = isset($doctors) && count($doctors);
 @endphp
 
 <div class="page-head form-max">
@@ -423,6 +435,9 @@
      data-dp-date="{{ $dpDateStr }}"
      data-paid-dates='@json($uiPaidDates)'
      data-note-template='@json($notesTemplate)'
+     data-open-monthly="{{ $openMonthlyAttr }}"
+     data-default-open="{{ number_format($defaultOpenAmount, 2, '.', '') }}"
+     data-default-fixed="{{ $monthlySuggestedAttr }}"
 >
     <div class="card-head">
         <div class="hint">
@@ -467,6 +482,14 @@
                 <div class="k"><i class="fa fa-circle-exclamation"></i> Remaining Balance</div>
                 <div class="v balance">₱{{ number_format($remainingBalance, 2) }}</div>
             </div>
+
+            @if($isOpenContract && $openMonthly > 0)
+                <div class="tile">
+                    <div class="k"><i class="fa fa-calculator"></i> Monthly Payment (Open Contract)</div>
+                    <div class="v">₱{{ number_format($openMonthly, 2) }}</div>
+                    <div class="helper">Auto-filled in Amount Paid (editable).</div>
+                </div>
+            @endif
 
             @if(!$isOpenContract && (int)($plan->months ?? 0) > 0)
                 <div class="tile">
@@ -520,6 +543,7 @@
                     @endif
                 </div>
 
+                {{-- ✅ Amount Paid: auto-pulls Open Contract monthly payment --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount Paid <span class="text-danger">*</span></label>
                     <input
@@ -531,13 +555,13 @@
                         min="0"
                         max="{{ $remainingBalanceAttr }}"
                         value="{{ old('amount', $computedDefaultAttr) }}"
-                        data-suggested="{{ $isOpenContract ? $computedDefaultAttr : $monthlySuggestedAttr }}"
+                        data-suggested="{{ $isOpenContract ? ($openMonthly > 0 ? $openMonthlyAttr : $computedDefaultAttr) : $monthlySuggestedAttr }}"
                         required
                     >
                     @if(!$isOpenContract && (int)($plan->months ?? 0) > 0)
                         <div class="helper">Auto-filled with suggested monthly payment. Edit if the patient pays more.</div>
                     @else
-                        <div class="helper">You can edit this amount anytime.</div>
+                        <div class="helper">Auto-filled from Open Contract Monthly Payment (editable).</div>
                     @endif
                 </div>
 
@@ -556,6 +580,29 @@
                     </div>
                 </div>
 
+                {{-- Assigned Dentist --}}
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">Assigned Dentist {!! $hasDocs ? '<span class="text-danger">*</span>' : '' !!}</label>
+
+                    <select name="doctor_id" class="selectx" {{ $hasDocs ? 'required' : '' }} {{ $hasDocs ? '' : 'disabled' }}>
+                        <option value="" disabled {{ $docVal ? '' : 'selected' }}>Select dentist</option>
+
+                        @forelse($doctors ?? [] as $d)
+                            <option value="{{ $d->id }}" {{ (string)$docVal === (string)$d->id ? 'selected' : '' }}>
+                                {{ $d->name }}{{ !empty($d->specialty) ? ' — '.$d->specialty : '' }}
+                            </option>
+                        @empty
+                            <option value="">No dentists found</option>
+                        @endforelse
+                    </select>
+
+                    @if(!$hasDocs)
+                        <div class="helper">No active dentists found. Add dentists in Admin → Doctors (set Active), then try again.</div>
+                    @else
+                        <div class="helper">This dentist will be assigned to the auto-created <strong>Visit</strong> for this payment.</div>
+                    @endif
+                </div>
+
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Payment Method <span class="text-danger">*</span></label>
                     <select name="method" class="selectx" required>
@@ -571,9 +618,7 @@
                     <label class="form-labelx">Treatment Notes / Visit Notes</label>
                     <textarea id="notesInput" name="notes" rows="3" class="textareax"
                         placeholder="e.g. Upper wire changed, recementation on #11, patient complains of soreness...">{{ $notesDefault }}</textarea>
-                    <div class="helper">
-                        Auto-fills using Month 1 notes (if available). Edit anytime.
-                    </div>
+                    <div class="helper">Auto-fills using Month 1 notes (if available). Edit anytime.</div>
                 </div>
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
@@ -598,10 +643,34 @@
     const monthSelect = document.getElementById('monthSelect');
     const dateInput = document.getElementById('paymentDate');
     const notesInput = document.getElementById('notesInput');
+    const amountInput = document.getElementById('amountPaid');
 
     if (!shell || !dateInput) return;
 
     const isOpen = shell.dataset.open === '1';
+
+    // ✅ for Open Contract: auto-apply monthly payment to amount (unless user already edited)
+    function applyOpenContractAmountIfAllowed(){
+        if (!isOpen || !amountInput) return;
+
+        // if there is server old('amount'), it will be in value already, so don't override
+        // if user touched it, don't override
+        if (amountInput.dataset.touched === '1') return;
+
+        const v = parseFloat(shell.dataset.openMonthly || '0');
+        const fallback = parseFloat(shell.dataset.defaultOpen || '0');
+
+        const val = (v > 0) ? v : fallback;
+        if (val > 0){
+            amountInput.value = val.toFixed(2);
+        }
+    }
+
+    // mark touched
+    if (amountInput){
+        amountInput.addEventListener('input', () => amountInput.dataset.touched = '1');
+        amountInput.addEventListener('change', () => amountInput.dataset.touched = '1');
+    }
 
     function addMonthsSafe(yyyy_mm_dd, monthsToAdd){
         if (!yyyy_mm_dd) return '';
@@ -646,7 +715,7 @@
         return addMonthsSafe(dpDate, uiMonth);
     }
 
-    // Mark if user manually edits date/notes (so we won't override)
+    // touched flags
     dateInput.addEventListener('input', () => dateInput.dataset.touched = '1');
     dateInput.addEventListener('change', () => dateInput.dataset.touched = '1');
 
@@ -655,7 +724,6 @@
         notesInput.addEventListener('change', () => notesInput.dataset.touched = '1');
     }
 
-    // Notes auto-fill: for Month 2+ use Month 1 notes (if exists), unless user already typed
     function applyNotesTemplateIfAllowed(uiMonth){
         if (!notesInput) return;
         if (notesInput.dataset.touched === '1') return;
@@ -681,10 +749,14 @@
             applyNotesTemplateIfAllowed(uiMonth);
         });
 
-        // On load: if the selected month is 2+ and user didn't type notes, auto-apply template
         const initial = parseInt(monthSelect.value || '1', 10);
         applyNotesTemplateIfAllowed(isNaN(initial) ? 1 : initial);
     }
+
+    // ✅ Init
+    window.addEventListener('load', () => {
+        applyOpenContractAmountIfAllowed();
+    });
 })();
 </script>
 
