@@ -52,7 +52,8 @@ class ServiceController extends Controller
             'duration_minutes'   => $isWalkIn ? null : ($validated['duration_minutes'] ?? null),
         ]);
 
-        return redirect()->route('staff.services.index')->with('success', 'Service added successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.services.index')
+            ->with('success', 'Service added successfully!');
     }
 
     public function edit(Service $service)
@@ -88,7 +89,8 @@ class ServiceController extends Controller
             'duration_minutes'   => $isWalkIn ? null : ($validated['duration_minutes'] ?? null),
         ]);
 
-        return redirect()->route('staff.services.index')->with('success', 'Service updated successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.services.index')
+            ->with('success', 'Service updated successfully!');
     }
 
     public function patients(Service $service)
@@ -104,25 +106,28 @@ class ServiceController extends Controller
         return view('staff.services.patients', compact('service', 'patients'));
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $service = Service::withTrashed()->findOrFail($id);
         $service->restore();
 
-        return back()->with('success', 'Service restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.services.index')
+            ->with('success', 'Service restored successfully!');
     }
 
-    public function destroy(Service $service)
+    public function destroy(Request $request, Service $service)
     {
         $name = $service->name ?? ('#'.$service->id);
 
         $service->delete();
 
-        return redirect()->route('staff.services.index')
+        $returnUrl = $this->ktReturnUrl($request, 'staff.services.index');
+
+        return $this->ktRedirectToReturn($request, 'staff.services.index')
             ->with('success', 'Service deleted successfully!')
             ->with('undo', [
                 'message' => 'Service deleted: ' . $name,
-                'url' => route('staff.services.restore', $service->id),
+                'url' => route('staff.services.restore', ['id' => $service->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }

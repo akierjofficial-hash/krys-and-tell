@@ -22,6 +22,7 @@ class InstallmentImportExportController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'return' => ['nullable', 'string'],
         ]);
 
         $import = new InstallmentPlansImport;
@@ -29,14 +30,20 @@ class InstallmentImportExportController extends Controller
         try {
             Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
-            return back()->with('error', 'Installment plan import failed. Please check template and formats.');
+            return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
+                ->with('error', 'Installment plan import failed. Please check template and formats.');
         }
 
         $msg = "Installment plans import finished: {$import->created} created, {$import->skipped} skipped.";
 
-        return !empty($import->errors)
-            ? back()->with('success', $msg)->with('import_warnings', array_slice($import->errors, 0, 200))
-            : back()->with('success', $msg);
+        $redirect = $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
+            ->with('success', $msg);
+
+        if (!empty($import->errors)) {
+            $redirect->with('import_warnings', array_slice($import->errors, 0, 200));
+        }
+
+        return $redirect;
     }
 
     public function paymentsTemplate(InstallmentPlan $plan)
@@ -49,6 +56,7 @@ class InstallmentImportExportController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'return' => ['nullable', 'string'],
         ]);
 
         $import = new InstallmentPaymentsImport($plan);
@@ -56,13 +64,19 @@ class InstallmentImportExportController extends Controller
         try {
             Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
-            return back()->with('error', 'Installment payments import failed. Please check template and formats.');
+            return $this->ktRedirectToReturn($request, 'staff.installments.show', ['plan' => $plan->id])
+                ->with('error', 'Installment payments import failed. Please check template and formats.');
         }
 
         $msg = "Payments import finished: {$import->created} created, {$import->updated} updated, {$import->skipped} skipped.";
 
-        return !empty($import->errors)
-            ? back()->with('success', $msg)->with('import_warnings', array_slice($import->errors, 0, 200))
-            : back()->with('success', $msg);
+        $redirect = $this->ktRedirectToReturn($request, 'staff.installments.show', ['plan' => $plan->id])
+            ->with('success', $msg);
+
+        if (!empty($import->errors)) {
+            $redirect->with('import_warnings', array_slice($import->errors, 0, 200));
+        }
+
+        return $redirect;
     }
 }

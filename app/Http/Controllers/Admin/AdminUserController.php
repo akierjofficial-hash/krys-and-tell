@@ -73,7 +73,8 @@ class AdminUserController extends Controller
         $user->is_active = (bool)($data['is_active'] ?? true);
         $user->save();
 
-        return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
+        return $this->ktRedirectToReturn($request, 'admin.users.index')
+            ->with('success', 'User created successfully.');
     }
 
     public function edit(User $user)
@@ -102,19 +103,22 @@ class AdminUserController extends Controller
 
         $user->save();
 
-        return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
+        return $this->ktRedirectToReturn($request, 'admin.users.index')
+            ->with('success', 'User updated successfully.');
     }
 
-    public function toggleActive(User $user)
+    public function toggleActive(Request $request, User $user)
     {
         if (auth()->id() === $user->id) {
-            return back()->with('error', "You can't deactivate your own account.");
+            return $this->ktRedirectToReturn($request, 'admin.users.index')
+                ->with('error', "You can't deactivate your own account.");
         }
 
         $user->is_active = !$user->is_active;
         $user->save();
 
-        return back()->with('success', 'User status updated.');
+        return $this->ktRedirectToReturn($request, 'admin.users.index')
+            ->with('success', 'User status updated.');
     }
 
     public function activity(User $user)
@@ -128,20 +132,22 @@ class AdminUserController extends Controller
         return view('admin.users.activity', compact('user', 'logs'));
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
         $user->restore();
 
-        return back()->with('success', 'User restored successfully.');
+        return $this->ktRedirectToReturn($request, 'admin.users.index')
+            ->with('success', 'User restored successfully.');
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
         $me = auth()->user();
 
         if ($me && $me->id === $user->id) {
-            return back()->with('error', "You can't delete your own account.");
+            return $this->ktRedirectToReturn($request, 'admin.users.index')
+                ->with('error', "You can't delete your own account.");
         }
 
         if (($user->role ?? '') === 'admin') {
@@ -150,7 +156,8 @@ class AdminUserController extends Controller
                 ->count();
 
             if ($otherAdmins <= 0) {
-                return back()->with('error', "You can't delete the last admin account.");
+                return $this->ktRedirectToReturn($request, 'admin.users.index')
+                    ->with('error', "You can't delete the last admin account.");
             }
         }
 
@@ -166,15 +173,18 @@ class AdminUserController extends Controller
                 $user->delete();
             });
 
-            return back()
+            $returnUrl = $this->ktReturnUrl($request, 'admin.users.index');
+
+            return $this->ktRedirectToReturn($request, 'admin.users.index')
                 ->with('success', 'User deleted successfully.')
                 ->with('undo', [
                     'message' => 'User deleted: ' . (($user->name ?? $user->email) ?: ('#'.$user->id)),
-                    'url' => route('admin.users.restore', $user->id),
+                    'url' => route('admin.users.restore', ['id' => $user->id, 'return' => $returnUrl]),
                     'ms' => 10000,
                 ]);
         } catch (\Throwable $e) {
-            return back()->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');
+            return $this->ktRedirectToReturn($request, 'admin.users.index')
+                ->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');
         }
     }
 }

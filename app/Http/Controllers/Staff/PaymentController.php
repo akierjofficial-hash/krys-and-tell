@@ -214,7 +214,8 @@ class PaymentController extends Controller
             $visit->load('payments');
             $this->updateVisitStatusBasedOnPayments($visit);
 
-            return redirect()->route('staff.payments.index')->with('success', 'Cash payment added!');
+            return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
+                ->with('success', 'Cash payment added!');
         }
 
         if ($request->appointment_id) {
@@ -276,7 +277,7 @@ class PaymentController extends Controller
 
             $appointment->update(['status' => 'completed']);
 
-            return redirect()->route('staff.payments.index')
+            return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
                 ->with('success', 'Cash payment recorded and appointment marked as completed!');
         }
 
@@ -444,7 +445,7 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan created!');
     }
 
@@ -478,11 +479,11 @@ class PaymentController extends Controller
             $this->updateVisitStatusBasedOnPayments($visit);
         }
 
-        return redirect()->route('staff.payments.index')
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
             ->with('success', 'Payment updated!');
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $payment = Payment::withTrashed()->findOrFail($id);
         $visitId = $payment->visit_id;
@@ -496,10 +497,11 @@ class PaymentController extends Controller
             }
         }
 
-        return back()->with('success', 'Payment restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
+            ->with('success', 'Payment restored successfully!');
     }
 
-    public function destroy(Payment $payment)
+    public function destroy(Request $request, Payment $payment)
     {
         $visitId = $payment->visit_id;
         $label = 'Payment #' . $payment->id;
@@ -516,11 +518,13 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect()->route('staff.payments.index')
+        $returnUrl = $this->ktReturnUrl($request, 'staff.payments.index', ['tab' => 'cash']);
+
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
             ->with('success', 'Payment removed!')
             ->with('undo', [
                 'message' => $label . ' deleted.',
-                'url' => route('staff.payments.restore', $payment->id),
+                'url' => route('staff.payments.restore', ['id' => $payment->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Route middleware aliases
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'kt.return' => \App\Http\Middleware\StoreReturnUrl::class,
         ]);
 
         // ✅ Trust Render / proxy headers (fixes http/https form submit issues)

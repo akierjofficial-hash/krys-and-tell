@@ -473,7 +473,7 @@
         </a>
 
         {{-- Visits import --}}
-        <form id="visitImportForm" action="{{ route('staff.visits.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
+        <form id="visitImportForm" action="{{ route('staff.visits.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;" data-kt-return>
             @csrf
             <input id="visitImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
             <button type="button" id="visitImportBtn" class="btnx btn-ghost" title="Import Excel file">
@@ -481,7 +481,7 @@
             </button>
         </form>
 
-        <a href="{{ route('staff.visits.create') }}" class="add-btn">
+        <a href="{{ route('staff.visits.create') }}" class="add-btn" data-kt-return>
             <i class="fa fa-plus"></i> Add Visit
         </a>
     </div>
@@ -631,16 +631,16 @@
 
                             <td class="text-end">
                                 <div class="action-pills">
-                                    <a href="{{ route('staff.visits.edit', [$visit->id, 'return' => url()->full()]) }}" class="pill pill-edit">
+                                    <a href="{{ route('staff.visits.edit', $visit->id) }}" class="pill pill-edit" data-kt-return>
                                         <i class="fa fa-pen"></i> Edit
                                     </a>
 
-                                    <a href="{{ route('staff.visits.show', [$visit->id, 'return' => url()->full()]) }}" class="pill pill-view">
+                                    <a href="{{ route('staff.visits.show', $visit->id) }}" class="pill pill-view" data-kt-return>
                                         <i class="fa fa-eye"></i> View
                                     </a>
 
                                     {{-- ✅ Animated confirm delete --}}
-                                    <form id="del-visit-{{ $visit->id }}" action="{{ route('staff.visits.destroy', $visit->id) }}" method="POST" style="display:inline;">
+                                    <form id="del-visit-{{ $visit->id }}" action="{{ route('staff.visits.destroy', $visit->id) }}" method="POST" style="display:inline;" data-kt-return>
                                         @csrf
                                         @method('DELETE')
                                         <button type="button"
@@ -708,7 +708,7 @@
                                         <i class="fa fa-eye"></i> View Records
                                     </a>
 
-                                    <a href="{{ route('staff.visits.create', ['patient_id' => $patient->id]) }}" class="pill pill-edit">
+                                    <a href="{{ route('staff.visits.create', ['patient_id' => $patient->id]) }}" class="pill pill-edit" data-kt-return>
                                         <i class="fa fa-plus"></i> Add Visit
                                     </a>
                                 </div>
@@ -746,6 +746,13 @@
 
     const searchInput = document.getElementById('visitSearch');
     const sortSelect  = document.getElementById('visitSort');
+
+    if (window.KTListState) {
+        window.KTListState.bindInput('#visitSearch', 'q');
+        window.KTListState.bindSelect('#visitSort', 'sort');
+        window.KTListState.injectReturn();
+    }
+
     const tbody       = document.getElementById('visitTableBody');
     const visibleCountEl = document.getElementById('visibleCount');
     const totalCountEl   = document.getElementById('totalCount');
@@ -910,6 +917,10 @@
         showSkeletonImmediate(260);
         searchInput.value = '';
         if (sortSelect) sortSelect.selectedIndex = 0;
+        if (window.KTListState) {
+            window.KTListState.setParam('q', '');
+            window.KTListState.setParam('sort', '');
+        }
         requestAnimationFrame(() => {
             applyAll();
             hideSkeleton();

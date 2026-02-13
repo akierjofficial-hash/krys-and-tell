@@ -289,7 +289,7 @@ class InstallmentPlanController extends Controller
 
         $this->recomputePlan($plan);
 
-        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan created successfully!');
     }
 
@@ -354,11 +354,11 @@ class InstallmentPlanController extends Controller
         $this->syncDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
-        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan updated successfully!');
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $plan = InstallmentPlan::withTrashed()->findOrFail($id);
 
@@ -368,20 +368,23 @@ class InstallmentPlanController extends Controller
         $this->syncDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
-        return back()->with('success', 'Installment plan restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
+            ->with('success', 'Installment plan restored successfully!');
     }
 
-    public function destroy(InstallmentPlan $plan)
+    public function destroy(Request $request, InstallmentPlan $plan)
     {
         $label = 'Installment plan #' . $plan->id;
 
         $plan->delete();
 
-        return redirect()->route('staff.payments.index', ['tab' => 'installment'])
+        $returnUrl = $this->ktReturnUrl($request, 'staff.payments.index', ['tab' => 'installment']);
+
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment deleted successfully')
             ->with('undo', [
                 'message' => $label . ' deleted.',
-                'url' => route('staff.installments.restore', $plan->id),
+                'url' => route('staff.installments.restore', ['id' => $plan->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }
@@ -397,8 +400,7 @@ class InstallmentPlanController extends Controller
 
         $this->recomputePlan($plan);
 
-        return redirect()
-            ->route('staff.installments.show', $plan)
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan marked as Completed.');
     }
 
@@ -413,8 +415,7 @@ class InstallmentPlanController extends Controller
 
         $this->recomputePlan($plan);
 
-        return redirect()
-            ->route('staff.installments.show', $plan)
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan reopened.');
     }
 }

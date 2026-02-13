@@ -564,7 +564,7 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('staff.appointments.create') }}" class="add-btn">
+        <a href="{{ route('staff.appointments.create') }}" class="add-btn" data-kt-return>
             <i class="fa fa-plus"></i> Add Appointment
         </a>
     </div>
@@ -691,16 +691,16 @@
 
                     <td class="text-end">
                         <div class="action-pills">
-                            <a href="{{ route('staff.appointments.show', $appointment) }}" class="pill pill-view">
+                            <a href="{{ route('staff.appointments.show', $appointment) }}" class="pill pill-view" data-kt-return>
                                 <i class="fa fa-eye"></i> <span>View</span>
                             </a>
 
-                            <a href="{{ route('staff.appointments.edit', $appointment) }}" class="pill pill-edit">
+                            <a href="{{ route('staff.appointments.edit', $appointment) }}" class="pill pill-edit" data-kt-return>
                                 <i class="fa fa-pen"></i> <span>Edit</span>
                             </a>
 
                             {{-- ✅ Animated confirm delete --}}
-                            <form id="del-appt-{{ $appointment->id }}" action="{{ route('staff.appointments.destroy', $appointment) }}" method="POST" style="display:inline;">
+                            <form id="del-appt-{{ $appointment->id }}" action="{{ route('staff.appointments.destroy', $appointment) }}" method="POST" style="display:inline;" data-kt-return>
                                 @csrf
                                 @method('DELETE')
                                 <button type="button"
@@ -765,6 +765,13 @@
     const searchInput = document.getElementById('appointmentSearch');
     const sortSelect  = document.getElementById('appointmentSort');
     const resetBtn    = document.getElementById('clearFilters');
+
+    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
+    if (window.KTListState) {
+        window.KTListState.bindInput('#appointmentSearch', 'q');
+        window.KTListState.bindSelect('#appointmentSort', 'sort');
+        window.KTListState.injectReturn();
+    }
 
     const tbody       = document.getElementById('appointmentTableBody');
     const rowsAll     = Array.from(document.querySelectorAll('.appointment-row'));
@@ -923,6 +930,10 @@
         showSkeletonImmediate(260);
         searchInput.value = '';
         sortSelect.value = 'dt_desc';
+        if (window.KTListState) {
+            window.KTListState.setParam('q', '');
+            window.KTListState.setParam('sort', '');
+        }
         requestAnimationFrame(() => {
             applyAll();
             hideSkeleton();

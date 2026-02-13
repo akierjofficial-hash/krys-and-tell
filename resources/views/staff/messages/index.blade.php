@@ -254,7 +254,7 @@
 
                         <tr class="{{ $isUnread ? 'row-unread' : '' }}"
                             data-msg-id="{{ $m->id }}"
-                            data-href="{{ route('staff.messages.show', $m) }}"
+                            data-kt-href="{{ route('staff.messages.show', $m) }}" data-href="{{ route('staff.messages.show', $m) }}"
                             data-search="{{ strtolower(($m->name ?? '').' '.($m->email ?? '').' '.($m->message ?? '')) }}">
                             <td>
                                 @if($m->read_at)
@@ -290,7 +290,7 @@
 
                             <td>
                                 <a class="btnx btnx-primary"
-                                   href="{{ route('staff.messages.show', $m) }}"
+                                   href="{{ route('staff.messages.show', $m) }}" data-kt-return
                                    onclick="event.stopPropagation();">
                                     <i class="fa-solid fa-eye"></i> View
                                 </a>
@@ -315,6 +315,10 @@
 
 <script>
 (function(){
+    if (window.KTListState) {
+        window.KTListState.bindInput('#msgSearch', 'q');
+        window.KTListState.injectReturn();
+    }
     const input = document.getElementById('msgSearch');
     const tbody = document.getElementById('msgTbody');
     const unreadText = document.getElementById('unreadCountText');
@@ -389,6 +393,7 @@
             const tr = document.createElement('tr');
             tr.className = 'row-unread new-row';
             tr.setAttribute('data-msg-id', String(id));
+            tr.setAttribute('data-kt-href', showUrl);
             tr.setAttribute('data-href', showUrl);
             tr.setAttribute('data-search', (name + ' ' + email + ' ' + message).toLowerCase());
 
@@ -409,13 +414,14 @@
                 <td><div class="preview">${escapeHtml(message)}</div></td>
                 <td class="col-received"><span class="text-muted">${escapeHtml(received)}</span></td>
                 <td>
-                    <a class="btnx btnx-primary" href="${escapeHtml(showUrl)}" onclick="event.stopPropagation();">
+                    <a class="btnx btnx-primary" href="${escapeHtml(showUrl)}" data-kt-return onclick="event.stopPropagation();">
                         <i class="fa-solid fa-eye"></i> View
                     </a>
                 </td>
             `;
 
             tbody.prepend(tr);
+            if (window.KTListState) window.KTListState.injectReturn();
 
             const rows = tbody.querySelectorAll('tr[data-msg-id]');
             if (rows.length > 20) rows[rows.length - 1].remove();

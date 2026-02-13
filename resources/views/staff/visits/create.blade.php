@@ -628,6 +628,7 @@
         <div class="card-bodyx">
             <form action="{{ route('staff.visits.store') }}" method="POST" id="visitForm">
                 @csrf
+    <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
                 @php
                     $selectedPatientId = old('patient_id', $preselectedPatientId ?? null);

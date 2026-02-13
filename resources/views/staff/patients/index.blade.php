@@ -592,7 +592,7 @@
         </a>
 
         {{-- Import --}}
-        <form id="importForm" action="{{ route('staff.patients.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
+        <form id="importForm" data-kt-return action="{{ route('staff.patients.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
             @csrf
             <input id="patientFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
             <button type="button" id="importBtn" class="btnx btn-purple">
@@ -600,7 +600,7 @@
             </button>
         </form>
 
-        <a href="{{ route('staff.patients.create') }}" class="btnx add-btn">
+        <a href="{{ route('staff.patients.create') }}" class="btnx add-btn" data-kt-return>
             <i class="fa fa-plus"></i> Add Patient
         </a>
     </div>
@@ -678,16 +678,16 @@
 
                         <td class="text-end">
                             <div class="action-pills">
-                                <a href="{{ route('staff.patients.edit', $patient->id) }}" class="pill pill-edit">
+                                <a href="{{ route('staff.patients.edit', $patient->id) }}" class="pill pill-edit" data-kt-return>
                                     <i class="fa fa-pen"></i> Edit
                                 </a>
 
-                                <a href="{{ route('staff.patients.show', $patient->id) }}" class="pill pill-view">
+                                <a href="{{ route('staff.patients.show', $patient->id) }}" class="pill pill-view" data-kt-return>
                                     <i class="fa fa-eye"></i> View
                                 </a>
 
                                 {{-- ✅ Animated confirm delete (NO nested forms) --}}
-                                <form id="del-{{ $patient->id }}" action="{{ route('staff.patients.destroy', $patient->id) }}" method="POST" style="display:inline;">
+                                <form id="del-{{ $patient->id }}" data-kt-return action="{{ route('staff.patients.destroy', $patient->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
                                     <button type="button"
@@ -732,6 +732,12 @@
     const resetBtn    = document.getElementById('clearFilters');
 
     const emptyStateRow = document.getElementById('emptyStateRow');
+
+    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
+    if (window.KTListState) {
+        window.KTListState.bindInput('#patientSearch', 'q');
+        window.KTListState.bindSelect('#patientSort', 'sort');
+    }
 
     // Build skeleton rows once
     function buildSkeletonRows(n = 8){
@@ -1068,6 +1074,10 @@
         showSkeletonImmediate(260);
         searchInput.value = '';
         sortSelect.value = 'lname_asc';
+        if (window.KTListState) {
+            window.KTListState.setParam('q', '');
+            window.KTListState.setParam('sort', '');
+        }
         requestAnimationFrame(() => {
             applyAll();
             hideSkeleton();

@@ -85,21 +85,22 @@ class AdminUserAccountsController extends Controller
 
         $user->save();
 
-        return redirect()->route('admin.user_accounts.index')
+        return $this->ktRedirectToReturn($request, 'admin.user_accounts.index')
             ->with('success', 'User account updated.');
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
         $this->ensureIsUser($user);
 
         $user->restore();
 
-        return back()->with('success', 'User account restored successfully.');
+        return $this->ktRedirectToReturn($request, 'admin.user_accounts.index')
+            ->with('success', 'User account restored successfully.');
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
         $this->ensureIsUser($user);
 
@@ -128,15 +129,17 @@ class AdminUserAccountsController extends Controller
                 $user->delete();
             });
 
-            return redirect()->route('admin.user_accounts.index')
+            $returnUrl = $this->ktReturnUrl($request, 'admin.user_accounts.index');
+
+            return $this->ktRedirectToReturn($request, 'admin.user_accounts.index')
                 ->with('success', 'User account deleted.')
                 ->with('undo', [
                     'message' => 'User account deleted: ' . (($user->name ?? $user->email) ?: ('#'.$user->id)),
-                    'url' => route('admin.user_accounts.restore', $user->id),
+                    'url' => route('admin.user_accounts.restore', ['id' => $user->id, 'return' => $returnUrl]),
                     'ms' => 10000,
                 ]);
         } catch (\Throwable $e) {
-            return redirect()->route('admin.user_accounts.index')
+            return $this->ktRedirectToReturn($request, 'admin.user_accounts.index')
                 ->with('error', 'Delete failed (has related records). You can set the account to inactive instead.');
         }
     }

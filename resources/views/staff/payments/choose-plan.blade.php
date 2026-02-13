@@ -243,12 +243,21 @@
     />
 </div>
 
+
+@php
+    $ktReturn = request('return') ?? old('return') ?? session('kt.return_url') ?? route('staff.payments.index');
+    $host = parse_url($ktReturn, PHP_URL_HOST);
+    if ($host && $host !== request()->getHost()) {
+        $ktReturn = route('staff.payments.index');
+    }
+@endphp
+
 <div class="choose-wrap max-wrap">
     <div class="row g-3">
 
         {{-- CASH --}}
         <div class="col-12 col-md-6">
-            <a href="{{ route('staff.payments.create.cash', ['return' => url()->full()]) }}" class="plan-card">
+            <a href="{{ route('staff.payments.create.cash', ['return' => $ktReturn]) }}" class="plan-card">
                 <div class="plan-top">
                     <div class="d-flex align-items-center gap-3">
                         <div class="icon-pill" style="background:linear-gradient(135deg,#0d6efd,#1e90ff);">
@@ -271,7 +280,7 @@
 
         {{-- INSTALLMENT --}}
         <div class="col-12 col-md-6">
-            <a href="{{ route('staff.payments.create.installment', ['return' => url()->full()]) }}" class="plan-card">
+            <a href="{{ route('staff.payments.create.installment', ['return' => $ktReturn]) }}" class="plan-card">
                 <div class="plan-top">
                     <div class="d-flex align-items-center gap-3">
                         <div class="icon-pill" style="background:linear-gradient(135deg,#7c3aed,#6f42c1); box-shadow:0 10px 18px rgba(124,58,237,.22);">

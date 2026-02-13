@@ -74,8 +74,7 @@ class AppointmentController extends Controller
         // Link appointment to public user (optional but helps patient see it)
         $this->syncAppointmentPublicLink($appointment);
 
-        return redirect()
-            ->route('staff.appointments.index')
+        return $this->ktRedirectToReturn($request, 'staff.appointments.index')
             ->with('success', 'Appointment added successfully!');
     }
 
@@ -139,20 +138,20 @@ class AppointmentController extends Controller
         // ✅ Ensure patient/public side can see latest doctor/date/time changes
         $this->syncAppointmentPublicLink($appointment);
 
-        return redirect()
-            ->route('staff.appointments.index')
+        return $this->ktRedirectToReturn($request, 'staff.appointments.index')
             ->with('success', 'Appointment updated successfully!');
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $appointment = Appointment::withTrashed()->findOrFail($id);
         $appointment->restore();
 
-        return back()->with('success', 'Appointment restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.appointments.index')
+            ->with('success', 'Appointment restored successfully!');
     }
 
-    public function destroy(Appointment $appointment)
+    public function destroy(Request $request, Appointment $appointment)
     {
         $label = 'Appointment #' . $appointment->id;
         if (!empty($appointment->appointment_date)) {
@@ -161,12 +160,13 @@ class AppointmentController extends Controller
 
         $appointment->delete();
 
-        return redirect()
-            ->route('staff.appointments.index')
+        $returnUrl = $this->ktReturnUrl($request, 'staff.appointments.index');
+
+        return $this->ktRedirectToReturn($request, 'staff.appointments.index')
             ->with('success', 'Appointment deleted successfully!')
             ->with('undo', [
                 'message' => $label . ' deleted.',
-                'url' => route('staff.appointments.restore', $appointment->id),
+                'url' => route('staff.appointments.restore', ['id' => $appointment->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }

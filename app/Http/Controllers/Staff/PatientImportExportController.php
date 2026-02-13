@@ -19,18 +19,17 @@ class PatientImportExportController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'return' => ['nullable', 'string'],
         ]);
 
         try {
             Excel::import(new PatientsImport, $request->file('file'));
         } catch (\Throwable $e) {
-            return redirect()
-                ->route('staff.patients.index')
+            return $this->ktRedirectToReturn($request, 'staff.patients.index')
                 ->with('error', 'Import failed: Check Birthdate format. Allowed examples: 11/22/2008, 11/22/08, 2008-11-22, or Excel date format.');
         }
 
-        return redirect()
-            ->route('staff.patients.index')
+        return $this->ktRedirectToReturn($request, 'staff.patients.index')
             ->with('success', 'Patients imported successfully!');
     }
 }

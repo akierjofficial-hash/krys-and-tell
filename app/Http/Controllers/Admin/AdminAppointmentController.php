@@ -45,12 +45,15 @@ class AdminAppointmentController extends Controller
         $query = Appointment::query()
             ->with(['patient', 'service'])
             ->when($search !== '', function ($q) use ($search) {
-                $q->whereHas('patient', function ($p) use ($search) {
-                    $p->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere(DB::raw("CONCAT(first_name,' ',last_name)"), 'like', "%{$search}%");
-                })
-                ->orWhere('dentist_name', 'like', "%{$search}%");
+                // Group OR search terms so they don't escape other filters (doctor/service/status)
+                $q->where(function ($w) use ($search) {
+                    $w->whereHas('patient', function ($p) use ($search) {
+                        $p->where('first_name', 'like', "%{$search}%")
+                          ->orWhere('last_name', 'like', "%{$search}%")
+                          ->orWhere(DB::raw("CONCAT(first_name,' ',last_name)"), 'like', "%{$search}%");
+                    })
+                    ->orWhere('dentist_name', 'like', "%{$search}%");
+                });
             })
             ->when($doctor !== '', fn ($q) => $q->where('dentist_name', $doctor))
             ->when($serviceId !== null && $serviceId !== '' && $serviceId !== 'all', fn ($q) => $q->where('service_id', $serviceId))

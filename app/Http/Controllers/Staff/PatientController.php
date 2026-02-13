@@ -275,8 +275,7 @@ class PatientController extends Controller
             ));
         });
 
-        return redirect()
-            ->route('staff.patients.index')
+        return $this->ktRedirectToReturn($request, 'staff.patients.index')
             ->with('success', 'Patient added successfully!');
     }
 
@@ -568,31 +567,32 @@ class PatientController extends Controller
 
         $consent->save();
 
-        return redirect()
-            ->route('staff.patients.show', $patient->id)
+        return $this->ktRedirectToReturn($request, 'staff.patients.index')
             ->with('success', 'Patient record updated successfully!');
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $patient = Patient::withTrashed()->findOrFail($id);
         $patient->restore();
 
-        return back()->with('success', 'Patient restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.patients.index')
+            ->with('success', 'Patient restored successfully!');
     }
 
-    public function destroy(Patient $patient)
+    public function destroy(Request $request, Patient $patient)
     {
         $name = trim(($patient->first_name ?? '').' '.($patient->last_name ?? '')) ?: ('#'.$patient->id);
 
         $patient->delete();
 
-        return redirect()
-            ->route('staff.patients.index')
+        $returnUrl = $this->ktReturnUrl($request, 'staff.patients.index');
+
+        return $this->ktRedirectToReturn($request, 'staff.patients.index')
             ->with('success', 'Patient deleted successfully!')
             ->with('undo', [
                 'message' => 'Patient deleted: ' . $name,
-                'url' => route('staff.patients.restore', $patient->id),
+                'url' => route('staff.patients.restore', ['id' => $patient->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }

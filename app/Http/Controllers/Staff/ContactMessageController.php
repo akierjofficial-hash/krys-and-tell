@@ -13,7 +13,8 @@ class ContactMessageController extends Controller
     {
         $messages = ContactMessage::query()
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         $unreadCount = ContactMessage::query()
             ->whereNull('read_at')
@@ -52,7 +53,8 @@ class ContactMessageController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Marked as read.');
+        return $this->ktRedirectToReturn($request, 'staff.messages.index')
+            ->with('success', 'Marked as read.');
     }
 
     public function restore(Request $request, int $id)
@@ -70,7 +72,8 @@ class ContactMessageController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Message restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.messages.index')
+            ->with('success', 'Message restored successfully!');
     }
 
     public function destroy(Request $request, ContactMessage $message)
@@ -86,16 +89,20 @@ class ContactMessageController extends Controller
                 'ok' => true,
                 'message' => 'Message deleted.',
                 'unreadCount' => $unreadCount,
-                'undoUrl' => route('staff.messages.restore', $message->id),
+                'undoUrl' => route('staff.messages.restore', [
+                    'id' => $message->id,
+                    'return' => $this->ktReturnUrl($request, 'staff.messages.index'),
+                ]),
             ]);
         }
 
-        return redirect()
-            ->route('staff.messages.index')
+        $returnUrl = $this->ktReturnUrl($request, 'staff.messages.index');
+
+        return $this->ktRedirectToReturn($request, 'staff.messages.index')
             ->with('success', 'Message deleted.')
             ->with('undo', [
                 'message' => $label . ' deleted.',
-                'url' => route('staff.messages.restore', $message->id),
+                'url' => route('staff.messages.restore', ['id' => $message->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }

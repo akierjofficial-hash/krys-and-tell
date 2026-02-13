@@ -680,7 +680,7 @@
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('staff.services.create') }}" class="add-btn">
+        <a href="{{ route('staff.services.create') }}" class="add-btn" data-kt-return>
             <i class="fa fa-plus"></i> Add Service
         </a>
     </div>
@@ -768,16 +768,16 @@
 
                         <td class="text-end actions-sticky">
                             <div class="action-pills">
-                                <a href="{{ route('staff.services.edit', $service->id) }}" class="pill pill-edit" title="Edit">
+                                <a href="{{ route('staff.services.edit', $service->id) }}" class="pill pill-edit" title="Edit" data-kt-return>
                                     <i class="fa fa-pen"></i> <span>Edit</span>
                                 </a>
 
-                                <a href="{{ route('staff.services.patients', $service->id) }}" class="pill pill-view" title="Patients">
+                                <a href="{{ route('staff.services.patients', $service->id) }}" class="pill pill-view" title="Patients" data-kt-return>
                                     <i class="fa fa-folder-open"></i> <span>Patients</span>
                                 </a>
 
                                 {{-- ✅ Animated confirm delete --}}
-                                <form id="del-svc-{{ $service->id }}" action="{{ route('staff.services.destroy', $service->id) }}" method="POST" style="display:inline;">
+                                <form id="del-svc-{{ $service->id }}" action="{{ route('staff.services.destroy', $service->id) }}" method="POST" style="display:inline;" data-kt-return>
                                     @csrf
                                     @method('DELETE')
                                     <button type="button"
@@ -836,6 +836,13 @@
     const searchInput = document.getElementById('serviceSearch');
     const sortSelect  = document.getElementById('serviceSort');
     const resetBtn    = document.getElementById('clearFilters');
+
+    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
+    if (window.KTListState) {
+        window.KTListState.bindInput('#serviceSearch', 'q');
+        window.KTListState.bindSelect('#serviceSort', 'sort');
+        window.KTListState.injectReturn();
+    }
 
     const tbody       = document.getElementById('servicesTableBody');
     const rowsAll     = Array.from(document.querySelectorAll('.service-row'));
@@ -985,6 +992,10 @@
         showSkeletonImmediate(260);
         searchInput.value = '';
         sortSelect.value = 'name_asc';
+        if (window.KTListState) {
+            window.KTListState.setParam('q', '');
+            window.KTListState.setParam('sort', '');
+        }
         requestAnimationFrame(() => {
             applyAll();
             hideSkeleton();
@@ -996,6 +1007,7 @@
     searchInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Escape'){
             searchInput.value = '';
+            if (window.KTListState) window.KTListState.setParam('q', '');
             showSkeletonImmediate(220);
             requestAnimationFrame(() => {
                 applyAll();

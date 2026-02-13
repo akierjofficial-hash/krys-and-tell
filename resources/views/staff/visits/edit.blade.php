@@ -537,6 +537,7 @@
         <div class="card-bodyx">
             <form action="{{ route('staff.visits.update', $visit->id) }}" method="POST" id="visitForm">
                 @csrf
+    <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
                 @method('PUT')
 
                 <div class="row g-3">

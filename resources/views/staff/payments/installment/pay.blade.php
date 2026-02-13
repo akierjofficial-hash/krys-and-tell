@@ -502,6 +502,7 @@
 
         <form action="{{ route('staff.installments.pay.store', $plan) }}" method="POST">
             @csrf
+            <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
             <div class="row g-3">
 

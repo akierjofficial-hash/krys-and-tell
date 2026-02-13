@@ -374,6 +374,7 @@
 
                     <form method="POST" action="{{ route('admin.users.store') }}">
                         @csrf
+                        <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
                         <div class="sec mb-3">
                             <div class="sec-title">

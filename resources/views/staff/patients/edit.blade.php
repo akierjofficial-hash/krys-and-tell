@@ -419,6 +419,7 @@ $isMinorChecked = old('is_minor', $info?->is_minor ? 1 : 0) ? true : false;
 
 <form action="{{ route('staff.patients.update', $patient->id) }}" method="POST" id="patientEditForm" class="form-max">
     @csrf
+    <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
     @method('PUT')
 
     {{-- hidden fields for signature canvases (only overwrite if user draws) --}}

@@ -271,6 +271,7 @@
     <div class="card-bodyx">
         <form action="{{ route('staff.installments.update', $plan) }}" method="POST">
             @csrf
+            <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
             @method('PUT')
 
             <div class="row g-3">

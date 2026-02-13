@@ -22,7 +22,15 @@
         $backUrl = $returnUrl;
     }
 
-    // 2) real previous page
+    // 2) stored last list URL (index pages)
+    if (!$backUrl) {
+        $stored = session('kt.return_url');
+        if ($isSafe($stored)) {
+            $backUrl = $stored;
+        }
+    }
+
+    // 3) real previous page
     if (!$backUrl) {
         $prev = url()->previous();
         if ($isSafe($prev) && $prev !== url()->current()) {
@@ -30,7 +38,7 @@
         }
     }
 
-    // 3) fallback
+    // 4) fallback
     if (!$backUrl) {
         $backUrl = $fallback ?: url('/');
     }

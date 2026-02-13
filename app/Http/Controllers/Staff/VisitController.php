@@ -135,7 +135,7 @@ return view('staff.visits.index', compact('view', 'patients'));
             ]);
         }
 
-        return redirect()->route('staff.visits.index')
+        return $this->ktRedirectToReturn($request, 'staff.visits.index')
             ->with('success', 'Visit created successfully.');
     }
 
@@ -209,19 +209,20 @@ return view('staff.visits.index', compact('view', 'patients'));
             ]);
         }
 
-        return redirect()->route('staff.visits.index')
+        return $this->ktRedirectToReturn($request, 'staff.visits.index')
             ->with('success', 'Visit updated successfully!');
     }
 
-    public function restore(int $id)
+    public function restore(Request $request, int $id)
     {
         $visit = Visit::withTrashed()->findOrFail($id);
         $visit->restore();
 
-        return back()->with('success', 'Visit restored successfully!');
+        return $this->ktRedirectToReturn($request, 'staff.visits.index')
+            ->with('success', 'Visit restored successfully!');
     }
 
-    public function destroy(Visit $visit)
+    public function destroy(Request $request, Visit $visit)
     {
         $label = 'Visit #' . $visit->id;
         if (!empty($visit->visit_date)) {
@@ -230,11 +231,13 @@ return view('staff.visits.index', compact('view', 'patients'));
 
         $visit->delete();
 
-        return redirect()->route('staff.visits.index')
+        $returnUrl = $this->ktReturnUrl($request, 'staff.visits.index');
+
+        return $this->ktRedirectToReturn($request, 'staff.visits.index')
             ->with('success', 'Visit deleted successfully!')
             ->with('undo', [
                 'message' => $label . ' deleted.',
-                'url' => route('staff.visits.restore', $visit->id),
+                'url' => route('staff.visits.restore', ['id' => $visit->id, 'return' => $returnUrl]),
                 'ms' => 10000,
             ]);
     }

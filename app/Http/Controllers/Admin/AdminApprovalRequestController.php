@@ -289,7 +289,8 @@ class AdminApprovalRequestController extends Controller
                 ]);
             }
 
-            return redirect()->route('admin.approvals.index')->with('success', 'Booking approved.');
+            return $this->ktRedirectToReturn($request, 'admin.approvals.index')
+                ->with('success', 'Booking approved.');
         } catch (\Throwable $e) {
             report($e);
 
@@ -300,7 +301,8 @@ class AdminApprovalRequestController extends Controller
                 ], 422);
             }
 
-            return redirect()->route('admin.approvals.index')->with('error', $e->getMessage() ?: 'Approval failed.');
+            return $this->ktRedirectToReturn($request, 'admin.approvals.index')
+                ->with('error', $e->getMessage() ?: 'Approval failed.');
         }
     }
 
@@ -351,7 +353,8 @@ class AdminApprovalRequestController extends Controller
                 ]);
             }
 
-            return redirect()->route('admin.approvals.index')->with('success', 'Booking declined.');
+            return $this->ktRedirectToReturn($request, 'admin.approvals.index')
+                ->with('success', 'Booking declined.');
         } catch (\Throwable $e) {
             report($e);
 
@@ -362,7 +365,8 @@ class AdminApprovalRequestController extends Controller
                 ], 422);
             }
 
-            return redirect()->route('admin.approvals.index')->with('error', 'Decline failed.');
+            return $this->ktRedirectToReturn($request, 'admin.approvals.index')
+                ->with('error', 'Decline failed.');
         }
     }
 

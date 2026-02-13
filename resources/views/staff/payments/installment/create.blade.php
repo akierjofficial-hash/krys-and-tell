@@ -283,6 +283,7 @@
     <div class="card-bodyx">
         <form action="{{ route('staff.payments.store.installment') }}" method="POST" id="installmentForm">
             @csrf
+            <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
             <div class="row g-3">
 

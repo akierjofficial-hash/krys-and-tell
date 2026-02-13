@@ -14,8 +14,13 @@ class AdminDoctorController extends Controller
         $status = $request->get('status', '');
 
         $doctors = Doctor::query()
-            ->when($q, fn($qq) => $qq->where('name', 'like', "%{$q}%")
-                                   ->orWhere('email', 'like', "%{$q}%"))
+            ->when($q, function ($qq) use ($q) {
+                // Group OR conditions so they don't escape other filters
+                $qq->where(function ($w) use ($q) {
+                    $w->where('name', 'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%");
+                });
+            })
             ->when($status !== '', fn($qq) => $qq->where('is_active', $status === 'active'))
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -46,7 +51,8 @@ class AdminDoctorController extends Controller
 
         Doctor::create($data);
 
-        return redirect()->route('admin.doctors.index')->with('success', 'Doctor added.');
+        return $this->ktRedirectToReturn($request, 'admin.doctors.index')
+            ->with('success', 'Doctor added.');
     }
 
     public function edit(Doctor $doctor)
@@ -70,12 +76,14 @@ class AdminDoctorController extends Controller
 
         $doctor->update($data);
 
-        return redirect()->route('admin.doctors.index')->with('success', 'Doctor updated.');
+        return $this->ktRedirectToReturn($request, 'admin.doctors.index')
+            ->with('success', 'Doctor updated.');
     }
 
-    public function toggleActive(Doctor $doctor)
+    public function toggleActive(Request $request, Doctor $doctor)
     {
         $doctor->update(['is_active' => !$doctor->is_active]);
-        return back()->with('success', 'Doctor status updated.');
+        return $this->ktRedirectToReturn($request, 'admin.doctors.index')
+            ->with('success', 'Doctor status updated.');
     }
 }

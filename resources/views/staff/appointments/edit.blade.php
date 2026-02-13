@@ -334,6 +334,7 @@
 
         <form action="{{ route('staff.appointments.update', $appointment) }}" method="POST">
             @csrf
+    <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
             @method('PUT')
 
             <div class="row g-3">

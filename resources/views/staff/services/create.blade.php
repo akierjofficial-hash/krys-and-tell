@@ -97,6 +97,7 @@
 <div class="form-card">
     <form action="{{ route('staff.services.store') }}" method="POST">
         @csrf
+            <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
         <div class="grid grid-cols-1 gap-4">
             <div>

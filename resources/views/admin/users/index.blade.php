@@ -292,7 +292,7 @@
             <div class="sub">Admin and staff only</div>
         </div>
 
-        <a href="{{ route('admin.users.create') }}" class="btn btnx btn-cta">
+        <a href="{{ route('admin.users.create') }}" class="btn btnx btn-cta" data-kt-return>
             <i class="fa fa-plus me-2"></i> New User
         </a>
     </div>
@@ -410,16 +410,16 @@
 
                             <td class="text-end">
                                 @if($hasActivityRoute)
-                                    <a href="{{ route('admin.users.activity', $u->id) }}" class="btn btn-sm abtn me-1">
+                                    <a href="{{ route('admin.users.activity', $u->id) }}" class="btn btn-sm abtn me-1" data-kt-return>
                                         <i class="fa-solid fa-clock-rotate-left me-1"></i> Activity
                                     </a>
                                 @endif
 
-                                <a href="{{ route('admin.users.edit', $u->id) }}" class="btn btn-sm abtn me-1">
+                                <a href="{{ route('admin.users.edit', $u->id) }}" class="btn btn-sm abtn me-1" data-kt-return>
                                     <i class="fa fa-pen me-1"></i> Edit
                                 </a>
 
-                                <form class="d-inline" method="POST" action="{{ route('admin.users.toggleActive', $u->id) }}">
+                                <form class="d-inline" method="POST" action="{{ route('admin.users.toggleActive', $u->id) }}" data-kt-return>
                                     @csrf
                                     <button class="btn btn-sm abtn me-1" type="submit">
                                         <i class="fa {{ $isActive ? 'fa-ban' : 'fa-check' }} me-1"></i>
@@ -428,7 +428,7 @@
                                 </form>
 
                                 @if(!$isMe)
-                                    <form class="d-inline"
+                                    <form class="d-inline" data-kt-return
                                           method="POST"
                                           action="{{ route('admin.users.destroy', $u->id) }}"
                                           onsubmit="return confirm('Delete this account permanently? This cannot be undone.');">

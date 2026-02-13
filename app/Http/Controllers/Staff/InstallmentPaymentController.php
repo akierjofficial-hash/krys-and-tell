@@ -296,8 +296,7 @@ class InstallmentPaymentController extends Controller
 
         $this->recomputePlan($plan);
 
-        return redirect()
-            ->route('staff.installments.show', $plan->id)
+        return $this->ktRedirectToReturn($request, 'staff.installments.show', ['plan' => $plan->id])
             ->with('success', 'Installment payment recorded and a visit was created.');
     }
 
@@ -317,7 +316,7 @@ class InstallmentPaymentController extends Controller
         $this->ensureDownpaymentPayment($plan);
         $this->recomputePlan($plan);
 
-        $return = $this->safeReturn($request->query('return')) ?? route('staff.installments.show', $plan->id);
+        $return = $this->ktReturnUrl($request, 'staff.installments.show', ['plan' => $plan->id]);
 
         return view('staff.payments.installment.edit-payment', compact('plan', 'payment', 'return', 'doctors'));
     }
@@ -391,8 +390,7 @@ class InstallmentPaymentController extends Controller
 
         $this->recomputePlan($plan);
 
-        $return = $this->safeReturn($request->input('return')) ?? route('staff.installments.show', $plan->id);
-
-        return redirect($return)->with('success', 'Installment payment updated.');
+        return $this->ktRedirectToReturn($request, 'staff.installments.show', ['plan' => $plan->id])
+            ->with('success', 'Installment payment updated.');
     }
 }

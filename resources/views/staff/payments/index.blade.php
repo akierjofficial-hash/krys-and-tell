@@ -684,7 +684,7 @@ html[data-theme="dark"] .tag {
             <i class="fa fa-rotate-left"></i> Reset
         </button>
 
-        <a href="{{ route('staff.payments.choose') }}" class="add-btn">
+        <a href="{{ route('staff.payments.choose') }}" class="add-btn" data-kt-return>
             <i class="fa fa-plus"></i> Add Payment
         </a>
     </div>
@@ -931,7 +931,7 @@ $cashByPatient = $cashPayments
                 <i class="fa fa-file-excel"></i> Template
             </a>
 
-            <form id="installmentPlanImportForm" action="{{ route('staff.installments.import') }}" method="POST"
+            <form id="installmentPlanImportForm" data-kt-return action="{{ route('staff.installments.import') }}" method="POST"
                 enctype="multipart/form-data" style="display:inline;">
                 @csrf
                 <input id="installmentPlanImportFile" type="file" name="file" accept=".xlsx,.xls,.csv"
@@ -1013,7 +1013,8 @@ $cashByPatient = $cashPayments
                         data-date="{{ $startTs }}"
                         data-amount="{{ $totalCost }}"
                         data-balance="{{ $balance }}"
-                        data-href="{{ route('staff.installments.show', [$plan->id, 'return' => $returnUrl]) }}">
+                        data-kt-href="{{ route('staff.installments.show', $plan->id) }}"
+                        data-href="{{ route('staff.installments.show', $plan->id) }}">
 
                         <td>
                             <div class="pwrap">
@@ -1097,23 +1098,23 @@ $cashByPatient = $cashPayments
                         <td class="text-end nowrap">
                             <div class="action-pills">
                                 @if(!$isPaid)
-                                <a href="{{ route('staff.installments.pay', [$plan->id, 'return' => $returnUrl]) }}"
+                                <a href="{{ route('staff.installments.pay', $plan->id) }}" data-kt-return
                                     class="pill pill-pay" title="Pay">
                                     <i class="fa fa-circle-dollar-to-slot"></i> <span>Pay</span>
                                 </a>
                                 @endif
 
-                                <a href="{{ route('staff.installments.edit', [$plan->id, 'return' => $returnUrl]) }}"
+                                <a href="{{ route('staff.installments.edit', $plan->id) }}" data-kt-return
                                     class="pill pill-edit" title="Edit">
                                     <i class="fa fa-pen"></i> <span>Edit</span>
                                 </a>
 
-                                <a href="{{ route('staff.installments.show', [$plan->id, 'return' => $returnUrl]) }}"
+                                <a href="{{ route('staff.installments.show', $plan->id) }}" data-kt-return
                                     class="pill pill-view" title="View">
                                     <i class="fa fa-eye"></i> <span>View</span>
                                 </a>
 
-                                <form id="del-plan-{{ $plan->id }}"
+                                <form id="del-plan-{{ $plan->id }}" data-kt-return
                                     action="{{ route('staff.installments.destroy', $plan) }}" method="POST"
                                     style="display:inline;">
                                     @csrf
@@ -1150,6 +1151,14 @@ $cashByPatient = $cashPayments
     const sortSelect = document.getElementById('paymentSort');
     const resetBtn = document.getElementById('clearFilters');
 
+    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
+    if (window.KTListState) {
+        window.KTListState.bindInput('#paymentSearch', 'q');
+        window.KTListState.bindSelect('#paymentSort', 'sort');
+        // Ensure initial action links/forms have return=...
+        window.KTListState.injectReturn();
+    }
+
     const cashTbody = document.getElementById('cashTbody');
     const insTbody = document.getElementById('insTbody');
 
@@ -1173,7 +1182,14 @@ $cashByPatient = $cashPayments
         insPlanImportBtn.addEventListener('click', () => insPlanImportFile.click());
         insPlanImportFile.addEventListener('change', () => {
             if (insPlanImportFile.files && insPlanImportFile.files.length) {
-                localStorage.setItem('payments_tab', 'installment');
+                if (window.KTListState) {
+                    window.KTListState.setParam('tab', 'installment');
+                } else {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('tab', 'installment');
+                    const qs = params.toString();
+                    history.replaceState(null, '', window.location.pathname + (qs ? ('?' + qs) : ''));
+                }
                 insPlanImportForm.submit();
             }
         });
@@ -1243,6 +1259,7 @@ $cashByPatient = $cashPayments
             const data = await res.json();
             body.innerHTML = data.html || `<div class="muted">No records.</div>`;
             body.dataset.loaded = '1';
+            if (window.KTListState) window.KTListState.injectReturn(body);
         } catch (e) {
             console.warn(e);
             body.innerHTML = `<div class="muted">Failed to load payments.</div>`;
@@ -1320,25 +1337,38 @@ $cashByPatient = $cashPayments
         if (selected && selected.hidden) sortSelect.value = 'date_desc';
     }
 
-    function showCash(save = true) {
+    function setTabParam(val) {
+        if (window.KTListState) return window.KTListState.setParam('tab', val);
+        const p = new URLSearchParams(window.location.search);
+        p.set('tab', val);
+        history.replaceState(null, '', window.location.pathname + '?' + p.toString());
+    }
+
+    function showCash(updateUrl = true) {
         tabCash.classList.add('active');
         tabInstallment.classList.remove('active');
         cashTable.style.display = 'block';
         installmentTable.style.display = 'none';
-        if (save) localStorage.setItem('payments_tab', 'cash');
+
+        if (updateUrl) setTabParam('cash');
+
         updateSortOptions();
+        if (updateUrl && window.KTListState) window.KTListState.setParam('sort', sortSelect.value);
 
         showSkeletonImmediate(cashTable, 260);
         requestAnimationFrame(() => { applyAll(); hideSkeleton(cashTable); });
     }
 
-    function showInstallment(save = true) {
+    function showInstallment(updateUrl = true) {
         tabInstallment.classList.add('active');
         tabCash.classList.remove('active');
         cashTable.style.display = 'none';
         installmentTable.style.display = 'block';
-        if (save) localStorage.setItem('payments_tab', 'installment');
+
+        if (updateUrl) setTabParam('installment');
+
         updateSortOptions();
+        if (updateUrl && window.KTListState) window.KTListState.setParam('sort', sortSelect.value);
 
         showSkeletonImmediate(installmentTable, 260);
         requestAnimationFrame(() => { applyAll(); hideSkeleton(installmentTable); });
@@ -1352,13 +1382,9 @@ $cashByPatient = $cashPayments
         const tab = (params.get('tab') || '').toLowerCase();
 
         if (tab === 'installment' || tab === 'installments') return showInstallment(false);
-        if (tab === 'cash') return showCash(false);
-
-        const saved = (localStorage.getItem('payments_tab') || '').toLowerCase();
-        if (saved === 'installment') return showInstallment(false);
-
         return showCash(false);
     })();
+
 
     function normalize(s) {
         return (s || '').toString().toLowerCase().trim();
@@ -1440,11 +1466,10 @@ $cashByPatient = $cashPayments
 
     function enableRowClick(rows) {
         rows.forEach(row => {
-            const href = row.dataset.href;
-            if (!href) return;
-
             row.addEventListener('click', (e) => {
                 if (e.target.closest('a,button,form,input,select,textarea,label')) return;
+                const href = row.dataset.href;
+                if (!href) return;
                 window.location.href = href;
             });
         });
@@ -1474,6 +1499,10 @@ $cashByPatient = $cashPayments
         searchInput.value = '';
         sortSelect.value = 'date_desc';
         updateSortOptions();
+        if (window.KTListState) {
+            window.KTListState.setParam('q', '');
+            window.KTListState.setParam('sort', '');
+        }
         requestAnimationFrame(() => {
             applyAll();
             hideSkeleton(card);
@@ -1486,6 +1515,9 @@ $cashByPatient = $cashPayments
             const card = activeCard();
             showSkeletonImmediate(card, 220);
             searchInput.value = '';
+            if (window.KTListState) {
+                window.KTListState.setParam('q', '');
+            }
             requestAnimationFrame(() => {
                 applyAll();
                 hideSkeleton(card);

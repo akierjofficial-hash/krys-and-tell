@@ -436,6 +436,7 @@ html[data-theme="dark"] .warn-box .text-muted{
 
 <form action="{{ route('staff.patients.store') }}" method="POST" id="patientForm" class="form-max">
     @csrf
+    <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
     {{-- ✅ This controls the “Create Anyway” --}}
     <input type="hidden" name="force_create" id="force_create" value="0">

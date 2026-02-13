@@ -149,7 +149,7 @@ Route::middleware('auth')->group(function () {
     | ADMIN ROUTES
     |--------------------------------------------------------------------------
     */
-    Route::middleware('role:admin')
+    Route::middleware(['role:admin','kt.return'])
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
@@ -210,7 +210,7 @@ Route::middleware('auth')->group(function () {
     | STAFF ROUTES
     |--------------------------------------------------------------------------
     */
-    Route::middleware('role:staff')
+    Route::middleware(['role:staff','kt.return'])
         ->prefix('staff')
         ->name('staff.')
         ->group(function () {

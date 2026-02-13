@@ -383,6 +383,7 @@
 
                     <form method="POST" action="{{ route('admin.users.update', $user->id) }}">
                         @csrf
+                        <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
                         @method('PUT')
 
                         <div class="sec mb-3">

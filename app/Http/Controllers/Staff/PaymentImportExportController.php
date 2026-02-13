@@ -12,7 +12,7 @@ class PaymentImportExportController extends Controller
 {
     public function templateCash()
     {
-        return Excel::download(new CashPaymentsTemplateExport, 'cash_payments_template.xlsx');
+        return Excel::download(new CashPaymentsTemplateExport(), 'cash_payments_template.xlsx');
     }
 
     public function importCash(Request $request)
@@ -26,15 +26,15 @@ class PaymentImportExportController extends Controller
         try {
             Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
-            return redirect()
-                ->route('staff.payments.index')
+            return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
                 ->with('error', 'Import failed. Check your template + date formats (mm/dd/yy, mm/dd/yyyy, yyyy-mm-dd, or Excel date).');
         }
 
         $msg = "Imported {$import->inserted} cash payment(s).";
         if ($import->skipped > 0) $msg .= " Skipped {$import->skipped} row(s).";
 
-        $redirect = redirect()->route('staff.payments.index', ['tab' => 'cash'])->with('success', $msg);
+        $redirect = $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
+            ->with('success', $msg);
 
         if (!empty($import->errors)) {
             $redirect->with('import_warnings', array_slice($import->errors, 0, 12));
