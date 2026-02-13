@@ -1115,6 +1115,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     <!-- ✅ Toast container -->
     <div class="kt-toasts" id="ktToasts" aria-live="polite" aria-atomic="true"></div>
 
+    <x-undo-bar />
+
     <!-- ✅ Confirm Modal -->
     <div id="ktConfirm" class="kt-modal" aria-hidden="true">
         <div class="kt-modal__backdrop" data-close></div>

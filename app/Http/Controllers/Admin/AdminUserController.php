@@ -128,6 +128,14 @@ class AdminUserController extends Controller
         return view('admin.users.activity', compact('user', 'logs'));
     }
 
+    public function restore(int $id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return back()->with('success', 'User restored successfully.');
+    }
+
     public function destroy(User $user)
     {
         $me = auth()->user();
@@ -158,7 +166,13 @@ class AdminUserController extends Controller
                 $user->delete();
             });
 
-            return back()->with('success', 'User deleted successfully.');
+            return back()
+                ->with('success', 'User deleted successfully.')
+                ->with('undo', [
+                    'message' => 'User deleted: ' . (($user->name ?? $user->email) ?: ('#'.$user->id)),
+                    'url' => route('admin.users.restore', $user->id),
+                    'ms' => 10000,
+                ]);
         } catch (\Throwable $e) {
             return back()->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');
         }

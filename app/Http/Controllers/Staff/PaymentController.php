@@ -482,9 +482,30 @@ class PaymentController extends Controller
             ->with('success', 'Payment updated!');
     }
 
+    public function restore(int $id)
+    {
+        $payment = Payment::withTrashed()->findOrFail($id);
+        $visitId = $payment->visit_id;
+
+        $payment->restore();
+
+        if ($visitId) {
+            $visit = Visit::with(['procedures', 'payments'])->find($visitId);
+            if ($visit) {
+                $this->updateVisitStatusBasedOnPayments($visit);
+            }
+        }
+
+        return back()->with('success', 'Payment restored successfully!');
+    }
+
     public function destroy(Payment $payment)
     {
         $visitId = $payment->visit_id;
+        $label = 'Payment #' . $payment->id;
+        if (!is_null($payment->amount)) {
+            $label .= ' (₱' . number_format((float)$payment->amount, 2) . ')';
+        }
 
         $payment->delete();
 
@@ -496,7 +517,12 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('staff.payments.index')
-            ->with('success', 'Payment removed!');
+            ->with('success', 'Payment removed!')
+            ->with('undo', [
+                'message' => $label . ' deleted.',
+                'url' => route('staff.payments.restore', $payment->id),
+                'ms' => 10000,
+            ]);
     }
 
     public function show(Payment $payment)

@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InstallmentPlan extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public const STATUS_PENDING        = 'Pending';
     public const STATUS_PARTIALLY_PAID = 'Partially Paid';
@@ -69,8 +70,8 @@ class InstallmentPlan extends Model
         $this->attributes['status'] = $map[$v] ?? $value;
     }
 
-    public function visit() { return $this->belongsTo(Visit::class); }
-    public function patient() { return $this->belongsTo(Patient::class); }
-    public function service() { return $this->belongsTo(Service::class); }
+    public function visit() { return $this->belongsTo(Visit::class)->withTrashed(); }
+    public function patient() { return $this->belongsTo(Patient::class)->withTrashed(); }
+    public function service() { return $this->belongsTo(Service::class)->withTrashed(); }
     public function payments() { return $this->hasMany(InstallmentPayment::class, 'installment_plan_id'); }
 }

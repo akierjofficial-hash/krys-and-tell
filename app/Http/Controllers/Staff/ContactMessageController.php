@@ -55,8 +55,28 @@ class ContactMessageController extends Controller
         return back()->with('success', 'Marked as read.');
     }
 
+    public function restore(Request $request, int $id)
+    {
+        $message = ContactMessage::withTrashed()->findOrFail($id);
+        $message->restore();
+
+        $unreadCount = ContactMessage::query()->whereNull('read_at')->count();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Message restored.',
+                'unreadCount' => $unreadCount,
+            ]);
+        }
+
+        return back()->with('success', 'Message restored successfully!');
+    }
+
     public function destroy(Request $request, ContactMessage $message)
     {
+        $label = 'Message #' . $message->id;
+
         $message->delete();
 
         $unreadCount = ContactMessage::query()->whereNull('read_at')->count();
@@ -66,12 +86,18 @@ class ContactMessageController extends Controller
                 'ok' => true,
                 'message' => 'Message deleted.',
                 'unreadCount' => $unreadCount,
+                'undoUrl' => route('staff.messages.restore', $message->id),
             ]);
         }
 
         return redirect()
             ->route('staff.messages.index')
-            ->with('success', 'Message deleted.');
+            ->with('success', 'Message deleted.')
+            ->with('undo', [
+                'message' => $label . ' deleted.',
+                'url' => route('staff.messages.restore', $message->id),
+                'ms' => 10000,
+            ]);
     }
 
     /**

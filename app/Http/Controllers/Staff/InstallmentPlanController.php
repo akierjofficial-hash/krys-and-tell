@@ -358,12 +358,32 @@ class InstallmentPlanController extends Controller
             ->with('success', 'Installment plan updated successfully!');
     }
 
+    public function restore(int $id)
+    {
+        $plan = InstallmentPlan::withTrashed()->findOrFail($id);
+
+        $plan->restore();
+
+        // keep computations consistent
+        $this->syncDownpaymentPayment($plan);
+        $this->recomputePlan($plan);
+
+        return back()->with('success', 'Installment plan restored successfully!');
+    }
+
     public function destroy(InstallmentPlan $plan)
     {
+        $label = 'Installment plan #' . $plan->id;
+
         $plan->delete();
 
         return redirect()->route('staff.payments.index', ['tab' => 'installment'])
-            ->with('success', 'Installment deleted successfully');
+            ->with('success', 'Installment deleted successfully')
+            ->with('undo', [
+                'message' => $label . ' deleted.',
+                'url' => route('staff.installments.restore', $plan->id),
+                'ms' => 10000,
+            ]);
     }
 
     public function complete(Request $request, InstallmentPlan $plan)

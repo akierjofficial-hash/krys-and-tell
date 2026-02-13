@@ -573,12 +573,27 @@ class PatientController extends Controller
             ->with('success', 'Patient record updated successfully!');
     }
 
+    public function restore(int $id)
+    {
+        $patient = Patient::withTrashed()->findOrFail($id);
+        $patient->restore();
+
+        return back()->with('success', 'Patient restored successfully!');
+    }
+
     public function destroy(Patient $patient)
     {
+        $name = trim(($patient->first_name ?? '').' '.($patient->last_name ?? '')) ?: ('#'.$patient->id);
+
         $patient->delete();
 
         return redirect()
             ->route('staff.patients.index')
-            ->with('success', 'Patient deleted successfully!');
+            ->with('success', 'Patient deleted successfully!')
+            ->with('undo', [
+                'message' => 'Patient deleted: ' . $name,
+                'url' => route('staff.patients.restore', $patient->id),
+                'ms' => 10000,
+            ]);
     }
 }

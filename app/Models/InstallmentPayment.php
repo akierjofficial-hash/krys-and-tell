@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InstallmentPayment extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'installment_plan_id',
@@ -26,11 +27,11 @@ class InstallmentPayment extends Model
 
     public function plan()
     {
-        return $this->belongsTo(InstallmentPlan::class, 'installment_plan_id');
+        return $this->belongsTo(InstallmentPlan::class, 'installment_plan_id')->withTrashed();
     }
 
     public function visit()
     {
-        return $this->belongsTo(Visit::class);
+        return $this->belongsTo(Visit::class)->withTrashed();
     }
 }

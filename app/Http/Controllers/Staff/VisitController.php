@@ -213,9 +213,29 @@ return view('staff.visits.index', compact('view', 'patients'));
             ->with('success', 'Visit updated successfully!');
     }
 
+    public function restore(int $id)
+    {
+        $visit = Visit::withTrashed()->findOrFail($id);
+        $visit->restore();
+
+        return back()->with('success', 'Visit restored successfully!');
+    }
+
     public function destroy(Visit $visit)
     {
+        $label = 'Visit #' . $visit->id;
+        if (!empty($visit->visit_date)) {
+            try { $label .= ' (' . \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y') . ')'; } catch (\Throwable $e) {}
+        }
+
         $visit->delete();
-        return redirect()->route('staff.visits.index')->with('success', 'Visit deleted successfully!');
+
+        return redirect()->route('staff.visits.index')
+            ->with('success', 'Visit deleted successfully!')
+            ->with('undo', [
+                'message' => $label . ' deleted.',
+                'url' => route('staff.visits.restore', $visit->id),
+                'ms' => 10000,
+            ]);
     }
 }

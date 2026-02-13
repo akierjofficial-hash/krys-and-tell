@@ -705,6 +705,9 @@
         </div>
     </div>
 
+
+    <x-undo-bar />
+
     <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
     <script src="{{ asset('js/kt-push.js') }}?v=1"></script>
 

@@ -104,9 +104,26 @@ class ServiceController extends Controller
         return view('staff.services.patients', compact('service', 'patients'));
     }
 
+    public function restore(int $id)
+    {
+        $service = Service::withTrashed()->findOrFail($id);
+        $service->restore();
+
+        return back()->with('success', 'Service restored successfully!');
+    }
+
     public function destroy(Service $service)
     {
+        $name = $service->name ?? ('#'.$service->id);
+
         $service->delete();
-        return redirect()->route('staff.services.index')->with('success', 'Service deleted successfully!');
+
+        return redirect()->route('staff.services.index')
+            ->with('success', 'Service deleted successfully!')
+            ->with('undo', [
+                'message' => 'Service deleted: ' . $name,
+                'url' => route('staff.services.restore', $service->id),
+                'ms' => 10000,
+            ]);
     }
 }

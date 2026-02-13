@@ -21,11 +21,11 @@ class VisitProcedure extends Model
 
     public function visit()
     {
-        return $this->belongsTo(Visit::class);
+        return $this->belongsTo(Visit::class)->withTrashed();
     }
 
     public function service()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class)->withTrashed();
     }
 }

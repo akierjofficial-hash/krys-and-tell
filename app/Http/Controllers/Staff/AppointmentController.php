@@ -144,13 +144,31 @@ class AppointmentController extends Controller
             ->with('success', 'Appointment updated successfully!');
     }
 
+    public function restore(int $id)
+    {
+        $appointment = Appointment::withTrashed()->findOrFail($id);
+        $appointment->restore();
+
+        return back()->with('success', 'Appointment restored successfully!');
+    }
+
     public function destroy(Appointment $appointment)
     {
+        $label = 'Appointment #' . $appointment->id;
+        if (!empty($appointment->appointment_date)) {
+            try { $label .= ' (' . \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y') . ')'; } catch (\Throwable $e) {}
+        }
+
         $appointment->delete();
 
         return redirect()
             ->route('staff.appointments.index')
-            ->with('success', 'Appointment deleted successfully!');
+            ->with('success', 'Appointment deleted successfully!')
+            ->with('undo', [
+                'message' => $label . ' deleted.',
+                'url' => route('staff.appointments.restore', $appointment->id),
+                'ms' => 10000,
+            ]);
     }
 
     /**

@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
             Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggleActive');
             Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+            Route::post('/users/{id}/restore', [AdminUserController::class, 'restore'])->name('users.restore');
             Route::get('/users/{user}/activity', [AdminUserController::class, 'activity'])->name('users.activity');
 
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
@@ -196,6 +197,8 @@ Route::middleware('auth')->group(function () {
             // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only
             // ✅ NO CREATE/STORE (users create via Google login)
             // ✅ FIX: force {user} param so destroy/edit/update binds correctly
+            Route::post('/user-accounts/{id}/restore', [AdminUserAccountsController::class, 'restore'])->name('user_accounts.restore');
+
             Route::resource('user-accounts', AdminUserAccountsController::class)
                 ->only(['index', 'edit', 'update', 'destroy'])
                 ->parameters(['user-accounts' => 'user'])
@@ -233,6 +236,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [StaffContactMessageController::class, 'index'])->name('index');
                 Route::get('/{message}', [StaffContactMessageController::class, 'show'])->name('show');
                 Route::post('/{message}/read', [StaffContactMessageController::class, 'markRead'])->name('read');
+                Route::post('/{id}/restore', [StaffContactMessageController::class, 'restore'])->name('restore');
+                Route::post('/{id}/restore', [StaffContactMessageController::class, 'restore'])->name('restore');
                 Route::delete('/{message}', [StaffContactMessageController::class, 'destroy'])->name('destroy');
             });
 
@@ -246,6 +251,12 @@ Route::middleware('auth')->group(function () {
             // ✅ VISITS IMPORT/TEMPLATE
             Route::get('/visits/template', [VisitImportExportController::class, 'template'])->name('visits.template');
             Route::post('/visits/import', [VisitImportExportController::class, 'import'])->name('visits.import');
+
+            // Undo delete (restore)
+            Route::post('/patients/{id}/restore', [PatientController::class, 'restore'])->name('patients.restore');
+            Route::post('/visits/{id}/restore', [VisitController::class, 'restore'])->name('visits.restore');
+            Route::post('/appointments/{id}/restore', [AppointmentController::class, 'restore'])->name('appointments.restore');
+            Route::post('/services/{id}/restore', [ServiceController::class, 'restore'])->name('services.restore');
 
             // Resources
             Route::resource('patients', PatientController::class);
@@ -274,7 +285,12 @@ Route::middleware('auth')->group(function () {
                 Route::get('/create/installment', [PaymentController::class, 'createInstallment'])->name('create.installment');
                 Route::post('/store/installment', [PaymentController::class, 'storeInstallment'])->name('store.installment');
 
+                // Undo delete (restore)
+                Route::post('/{id}/restore', [PaymentController::class, 'restore'])->name('restore');
+
                 // ⚠️ keep these LAST
+                Route::post('/{id}/restore', [PaymentController::class, 'restore'])->name('restore');
+
                 Route::get('/{payment}', [PaymentController::class, 'show'])->name('show');
                 Route::get('/{payment}/edit', [PaymentController::class, 'edit'])->name('edit');
                 Route::put('/{payment}', [PaymentController::class, 'update'])->name('update');
@@ -295,6 +311,8 @@ Route::middleware('auth')->group(function () {
 
                 Route::get('/{plan}/payments/template', [InstallmentImportExportController::class, 'paymentsTemplate'])->name('payments.template');
                 Route::post('/{plan}/payments/import', [InstallmentImportExportController::class, 'importPayments'])->name('payments.import');
+
+                Route::post('/{id}/restore', [InstallmentPlanController::class, 'restore'])->name('restore');
 
                 Route::get('/{plan}', [InstallmentPlanController::class, 'show'])->name('show');
                 Route::get('/{plan}/edit', [InstallmentPlanController::class, 'edit'])->name('edit');
