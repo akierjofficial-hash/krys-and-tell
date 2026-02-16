@@ -1268,8 +1268,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         if (!document.hidden) KTLoader.hide();
     });
 
-    // Show loader when leaving page (navigation/refresh)
-    window.addEventListener('beforeunload', () => KTLoader.show());
+    // (Removed beforeunload loader to allow BFCache back/forward)
 
     // Optional: show loader for normal <a> navigation (non-ajax)
     document.addEventListener('click', (e) => {

@@ -42,16 +42,13 @@
     if (!$backUrl) {
         $backUrl = $fallback ?: url('/');
     }
-
-    $hasExplicitReturn = $isSafe($returnUrl);
 @endphp
 
 <a
     href="{{ $backUrl }}"
     class="{{ $class }}"
-    @if(!$hasExplicitReturn)
-        onclick="try{const r=document.referrer;if(r){const u=new URL(r);if(u.origin===location.origin){event.preventDefault();history.back();}}}catch(e){}"
-    @endif
+    data-no-loader
+    onclick="try{const r=document.referrer;if(r){const u=new URL(r);if(u.origin===location.origin && history.length>1){event.preventDefault();history.back();return false;}}}catch(e){}"
 >
     @if($icon_class)
         <i class="{{ $icon_class }}"></i>
