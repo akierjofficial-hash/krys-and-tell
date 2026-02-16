@@ -31,6 +31,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     {{-- ✅ IMPORTANT: removed "defer" so Bootstrap is available for inline scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('js/kt-liststate.js') }}?v=2"></script>
+
 
     <style>
     /* ==========================================================
@@ -1697,7 +1699,6 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
 <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
 <script src="{{ asset('js/kt-push.js') }}?v=1"></script>
-<script src="{{ asset('js/kt-liststate.js') }}?v=1"></script>
 
 {{-- ✅ PWA Service Worker --}}
 <script>
