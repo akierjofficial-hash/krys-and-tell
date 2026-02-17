@@ -51,18 +51,18 @@ class PaymentController extends Controller
     }
 
     public function cashPatient(Patient $patient)
-{
-    $payments = Payment::with(['visit.procedures.service', 'visit.patient'])
-        ->whereIn('method', ['Cash', 'GCash', 'Card', 'Bank Transfer'])
-        ->whereHas('visit', fn($q) => $q->where('patient_id', $patient->id))
-        ->orderByDesc('payment_date')
-        ->limit(200)
-        ->get();
+    {
+        $payments = Payment::with(['visit.procedures.service', 'visit.patient'])
+            ->whereIn('method', ['Cash', 'GCash', 'Card', 'Bank Transfer'])
+            ->whereHas('visit', fn($q) => $q->where('patient_id', $patient->id))
+            ->orderByDesc('payment_date')
+            ->limit(200)
+            ->get();
 
-    $html = view('staff.payments._cash_patient_details', compact('payments', 'patient'))->render();
+        $html = view('staff.payments._cash_patient_details', compact('payments', 'patient'))->render();
 
-    return response()->json(['html' => $html]);
-}
+        return response()->json(['html' => $html]);
+    }
 
     private function visitPaid(Visit $visit): float
     {
@@ -324,14 +324,16 @@ class PaymentController extends Controller
     public function storeInstallment(Request $request)
     {
         // ✅ IMPORTANT: months is required UNLESS open contract is enabled
+        // ✅ FIX: open_monthly_payment must be saved/required when open contract
         $request->validate([
-            'visit_id'          => 'nullable|exists:visits,id',
-            'appointment_id'    => 'nullable|exists:appointments,id',
-            'total_cost'        => 'required|numeric|min:0',
-            'downpayment'       => 'required|numeric|min:0',
-            'is_open_contract'  => 'nullable|boolean',
-            'months'            => 'required_unless:is_open_contract,1|integer|min:1',
-            'start_date'        => 'required|date',
+            'visit_id'              => 'nullable|exists:visits,id',
+            'appointment_id'        => 'nullable|exists:appointments,id',
+            'total_cost'            => 'required|numeric|min:0',
+            'downpayment'           => 'required|numeric|min:0',
+            'is_open_contract'      => 'nullable|boolean',
+            'open_monthly_payment'  => 'required_if:is_open_contract,1|numeric|min:0',
+            'months'                => 'required_unless:is_open_contract,1|integer|min:1',
+            'start_date'            => 'required|date',
         ]);
 
         if (!$request->visit_id && !$request->appointment_id) {
@@ -342,8 +344,19 @@ class PaymentController extends Controller
             return back()->withErrors('Please select only one source.')->withInput();
         }
 
+        $total = (float) $request->total_cost;
+        $down  = (float) $request->downpayment;
+
+        // ✅ safety: downpayment should not exceed total
+        if ($down > $total) {
+            return back()->withErrors('Downpayment cannot be greater than Total Cost.')->withInput();
+        }
+
         $isOpen = $request->boolean('is_open_contract');
         $months = $isOpen ? 0 : (int) $request->months; // ✅ never null
+
+        // ✅ FIX: capture open contract monthly payment
+        $openMonthly = $isOpen ? (float) ($request->input('open_monthly_payment') ?? 0) : null;
 
         $patientId = null;
         $serviceId = null;
@@ -405,22 +418,22 @@ class PaymentController extends Controller
             $appointment->update(['status' => 'completed']);
         }
 
-        $total   = (float) $request->total_cost;
-        $down    = (float) $request->downpayment;
         $balance = $total - $down;
 
         // ✅ KEY FIX: months is always a number (0 for open contract)
+        // ✅ KEY FIX: open_monthly_payment is saved on create
         $plan = InstallmentPlan::create([
-            'visit_id'         => $visitId,
-            'patient_id'       => $patientId,
-            'service_id'       => $serviceId,
-            'total_cost'       => $total,
-            'downpayment'      => $down,
-            'balance'          => $balance,
-            'months'           => $months,
-            'start_date'       => $request->start_date,
-            'status'           => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
-            'is_open_contract' => $isOpen,
+            'visit_id'              => $visitId,
+            'patient_id'            => $patientId,
+            'service_id'            => $serviceId,
+            'total_cost'            => $total,
+            'downpayment'           => $down,
+            'balance'               => $balance,
+            'months'                => $months,
+            'start_date'            => $request->start_date,
+            'status'                => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
+            'is_open_contract'      => $isOpen,
+            'open_monthly_payment'  => $openMonthly, // ✅ FIX HERE
         ]);
 
         // ✅ Store downpayment as Month 0 (cleaner for your shift logic)
