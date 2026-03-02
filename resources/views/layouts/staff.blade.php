@@ -21,7 +21,7 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/images/pwa/icon-512.png">
 
     <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@500;700;800&family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
 
     <!-- Font Awesome -->
@@ -1104,6 +1104,596 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
             @yield('content')
 
+            <style id="kt-premium-minimal-pack">
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) {
+                    --pm-accent: #1f5c7f;
+                    --pm-accent-2: #2d6a8c;
+                    --pm-muted: rgba(15, 23, 42, .58);
+                    --pm-line: rgba(15, 23, 42, .12);
+                    --pm-shadow: 0 18px 34px rgba(15, 23, 42, .09);
+                }
+
+                html[data-theme="dark"] body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) {
+                    --pm-muted: rgba(248, 250, 252, .66);
+                    --pm-line: rgba(148, 163, 184, .22);
+                    --pm-shadow: 0 20px 42px rgba(0, 0, 0, .34);
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content {
+                    border-radius: 22px;
+                    background:
+                        radial-gradient(700px 280px at 10% -5%, rgba(31, 92, 127, .10), transparent 60%),
+                        radial-gradient(700px 300px at 90% 0%, rgba(184, 134, 99, .10), transparent 62%),
+                        var(--kt-bg);
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.form-max, .max-wrap, .wrap, .page-wrap) {
+                    max-width: 1200px;
+                    margin-inline: auto;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.page-head, .p-head, .i-head, .head) {
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: space-between;
+                    gap: 14px;
+                    flex-wrap: wrap;
+                    margin-bottom: 16px !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.page-title, .p-title, .i-title, .title) {
+                    margin: 0;
+                    color: var(--kt-text) !important;
+                    font-family: 'Fraunces', serif !important;
+                    font-size: clamp(28px, 3vw, 38px) !important;
+                    font-weight: 700 !important;
+                    letter-spacing: -.02em !important;
+                    line-height: 1.08 !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.subtitle, .p-subtitle, .i-subtitle, .page-subtitle) {
+                    margin-top: 6px !important;
+                    color: var(--pm-muted) !important;
+                    font-size: 13px !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                    font-weight: 700 !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.form-label, .form-labelx, .label, label) {
+                    color: var(--kt-text) !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                    font-weight: 700 !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .helper,
+                    .help-text,
+                    .helptext,
+                    .hint,
+                    .muted,
+                    .muted2,
+                    .mutedx,
+                    .mini-hint,
+                    .txt,
+                    .sub,
+                    .subvalue,
+                    .text-muted
+                ) {
+                    color: var(--pm-muted) !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .card-shell,
+                    .form-card,
+                    .table-shell,
+                    .table-wrap,
+                    .choose-wrap,
+                    .summary-card,
+                    .cardx,
+                    .tile,
+                    .empty-state,
+                    .plan-card,
+                    .visit-row,
+                    .payment-row,
+                    .item,
+                    .odonto-body,
+                    .proc-table,
+                    .p-panel,
+                    .card,
+                    .kt-card
+                ) {
+                    background:
+                        linear-gradient(165deg, rgba(255, 255, 255, .66), rgba(255, 255, 255, .94)),
+                        var(--kt-surface) !important;
+                    border: 1px solid var(--pm-line) !important;
+                    border-radius: 18px !important;
+                    box-shadow: var(--pm-shadow) !important;
+                    transition: border-color .2s ease, transform .16s ease, box-shadow .2s ease;
+                }
+
+                html[data-theme="dark"] body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .card-shell,
+                    .form-card,
+                    .table-shell,
+                    .table-wrap,
+                    .choose-wrap,
+                    .summary-card,
+                    .cardx,
+                    .tile,
+                    .empty-state,
+                    .plan-card,
+                    .visit-row,
+                    .payment-row,
+                    .item,
+                    .odonto-body,
+                    .proc-table,
+                    .p-panel,
+                    .card,
+                    .kt-card
+                ) {
+                    background:
+                        linear-gradient(160deg, rgba(15, 23, 42, .68), rgba(17, 24, 39, .90)),
+                        var(--kt-surface) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .card-shell:hover,
+                    .form-card:hover,
+                    .table-shell:hover,
+                    .table-wrap:hover,
+                    .choose-wrap:hover,
+                    .summary-card:hover,
+                    .cardx:hover,
+                    .tile:hover,
+                    .empty-state:hover,
+                    .plan-card:hover,
+                    .visit-row:hover,
+                    .payment-row:hover,
+                    .item:hover,
+                    .odonto-body:hover,
+                    .proc-table:hover,
+                    .p-panel:hover
+                ) {
+                    border-color: rgba(31, 92, 127, .33) !important;
+                    transform: translateY(-1px);
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.card-head, .cardx-head, .kt-card-h) {
+                    border-bottom: 1px solid var(--pm-line) !important;
+                    background: transparent !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(.section-title, .cardx-title, .summary-ttl, .i-section-title, .notes-title, .p-notes-h) {
+                    color: var(--kt-text) !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                    font-weight: 800 !important;
+                    letter-spacing: -.01em;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .inputx,
+                    .selectx,
+                    .textareax,
+                    .form-input,
+                    .form-select,
+                    .form-textarea,
+                    .readonlyx,
+                    input.form-control,
+                    select.form-select,
+                    textarea.form-control,
+                    .search-box input
+                ) {
+                    border: 1px solid var(--pm-line) !important;
+                    border-radius: 12px !important;
+                    background: var(--kt-input-bg) !important;
+                    color: var(--kt-text) !important;
+                    box-shadow: none !important;
+                    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .inputx:focus,
+                    .selectx:focus,
+                    .textareax:focus,
+                    .form-input:focus,
+                    .form-select:focus,
+                    .form-textarea:focus,
+                    input.form-control:focus,
+                    select.form-select:focus,
+                    textarea.form-control:focus,
+                    .search-box input:focus
+                ) {
+                    border-color: rgba(31, 92, 127, .48) !important;
+                    box-shadow: 0 0 0 3px rgba(31, 92, 127, .14) !important;
+                    background: var(--kt-surface) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content .search-box i {
+                    color: var(--pm-muted) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .btn-ghostx,
+                    .btn-ghost,
+                    .cancel-link,
+                    .p-btn,
+                    .i-btn,
+                    .linkx,
+                    .btn-outline-secondary
+                ) {
+                    border: 1px solid var(--pm-line) !important;
+                    border-radius: 12px !important;
+                    background: var(--kt-surface-2) !important;
+                    color: var(--kt-text) !important;
+                    box-shadow: none !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                    font-weight: 800 !important;
+                    text-decoration: none !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .btn-ghostx:hover,
+                    .btn-ghost:hover,
+                    .cancel-link:hover,
+                    .p-btn:hover,
+                    .i-btn:hover,
+                    .linkx:hover,
+                    .btn-outline-secondary:hover
+                ) {
+                    transform: translateY(-1px);
+                    background: rgba(31, 92, 127, .10) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .btn-primaryx,
+                    .btn-warnx,
+                    .submit-btn,
+                    .add-btn,
+                    .i-btn-primary,
+                    .btn-primary
+                ) {
+                    border: none !important;
+                    border-radius: 12px !important;
+                    color: #fff !important;
+                    background: linear-gradient(135deg, var(--pm-accent), var(--pm-accent-2)) !important;
+                    box-shadow: 0 12px 24px rgba(31, 92, 127, .24) !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                    font-weight: 800 !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .btn-primaryx:hover,
+                    .btn-warnx:hover,
+                    .submit-btn:hover,
+                    .add-btn:hover,
+                    .i-btn-primary:hover,
+                    .btn-primary:hover
+                ) {
+                    transform: translateY(-1px);
+                    box-shadow: 0 16px 28px rgba(31, 92, 127, .28) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .table-shell,
+                    .table-wrap,
+                    .table-responsive,
+                    .table-scroll
+                ) {
+                    border: 1px solid var(--pm-line) !important;
+                    border-radius: 16px !important;
+                    overflow: hidden !important;
+                    background: var(--kt-surface) !important;
+                    box-shadow: var(--pm-shadow) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content table {
+                    margin-bottom: 0 !important;
+                    color: var(--kt-text) !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content table thead th {
+                    background: rgba(148, 163, 184, .10) !important;
+                    color: var(--pm-muted) !important;
+                    border-bottom: 1px solid var(--pm-line) !important;
+                    font-size: 11px !important;
+                    font-weight: 800 !important;
+                    text-transform: uppercase;
+                    letter-spacing: .08em;
+                }
+
+                html[data-theme="dark"] body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content table thead th {
+                    background: rgba(15, 23, 42, .75) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content table :is(td, th) {
+                    border-color: var(--pm-line) !important;
+                    vertical-align: middle;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content table tbody tr:hover {
+                    background: rgba(31, 92, 127, .06) !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content :is(
+                    .pill,
+                    .chip,
+                    .tag,
+                    .badge-soft,
+                    .badge-mini,
+                    .cell-chip,
+                    .count-pill,
+                    .radio-pill
+                ) {
+                    border: 1px solid var(--pm-line) !important;
+                    border-radius: 999px !important;
+                    background: var(--kt-surface-2) !important;
+                    color: var(--pm-muted) !important;
+                    font-family: 'Manrope', 'Poppins', sans-serif !important;
+                    font-weight: 800 !important;
+                }
+
+                body:is(
+                    [data-page^="staff.patients"],
+                    [data-page^="staff.visits"],
+                    [data-page^="staff.payments"],
+                    [data-page^="staff.appointments"],
+                    [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                ) .content .actions-sticky {
+                    border: 1px solid var(--pm-line);
+                    border-radius: 16px;
+                    background: var(--kt-surface);
+                    box-shadow: var(--pm-shadow);
+                    backdrop-filter: blur(8px);
+                }
+
+                @media (max-width: 992px) {
+                    body:is(
+                        [data-page^="staff.patients"],
+                        [data-page^="staff.visits"],
+                        [data-page^="staff.payments"],
+                        [data-page^="staff.appointments"],
+                        [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                    ) .content {
+                        border-radius: 16px;
+                    }
+
+                    body:is(
+                        [data-page^="staff.patients"],
+                        [data-page^="staff.visits"],
+                        [data-page^="staff.payments"],
+                        [data-page^="staff.appointments"],
+                        [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                    ) .content :is(.page-title, .p-title, .i-title, .title) {
+                        font-size: 30px !important;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    body:is(
+                        [data-page^="staff.patients"],
+                        [data-page^="staff.visits"],
+                        [data-page^="staff.payments"],
+                        [data-page^="staff.appointments"],
+                        [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                    ) .content :is(.page-title, .p-title, .i-title, .title) {
+                        font-size: 26px !important;
+                    }
+
+                    body:is(
+                        [data-page^="staff.patients"],
+                        [data-page^="staff.visits"],
+                        [data-page^="staff.payments"],
+                        [data-page^="staff.appointments"],
+                        [data-page^="staff.services"],
+                    [data-page^="staff.installments"]
+                    ) .content :is(.top-actions, .p-actions, .i-actions) {
+                        width: 100%;
+                    }
+                }
+            </style>
+
             <!-- ✅ Global Loader (CONTENT ONLY) -->
             <div id="ktLoader" class="kt-loader" aria-hidden="true">
                 <div class="kt-loader__card" role="status" aria-live="polite">
@@ -1773,3 +2363,5 @@ if (window.KTPush) {
 </body>
 
 </html>
+
+

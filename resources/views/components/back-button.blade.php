@@ -11,44 +11,57 @@
 
     $isSafe = function (?string $url) {
         if (!$url) return false;
+        if (str_starts_with($url, '//')) return false;
+        if (str_starts_with($url, '\\\\')) return false;
+
+        if (str_starts_with($url, '/')) return true;
+
         $host = parse_url($url, PHP_URL_HOST);
-        return !$host || $host === request()->getHost();
+        if (!$host) return false;
+
+        return strcasecmp($host, (string) request()->getHost()) === 0;
     };
 
     $backUrl = null;
+    $backSource = 'fallback';
 
     // 1) explicit ?return=...
     if ($isSafe($returnUrl)) {
         $backUrl = $returnUrl;
+        $backSource = 'explicit';
     }
 
-    // 2) stored last list URL (index pages)
-    if (!$backUrl) {
-        $stored = session('kt.return_url');
-        if ($isSafe($stored)) {
-            $backUrl = $stored;
-        }
-    }
-
-    // 3) real previous page
+    // 2) real previous page
     if (!$backUrl) {
         $prev = url()->previous();
         if ($isSafe($prev) && $prev !== url()->current()) {
             $backUrl = $prev;
+            $backSource = 'previous';
+        }
+    }
+
+    // 3) stored last list URL (index pages)
+    if (!$backUrl) {
+        $stored = session('kt.return_url');
+        if ($isSafe($stored)) {
+            $backUrl = $stored;
+            $backSource = 'stored';
         }
     }
 
     // 4) fallback
     if (!$backUrl) {
         $backUrl = $fallback ?: url('/');
+        $backSource = 'fallback';
     }
 @endphp
 
 <a
     href="{{ $backUrl }}"
     class="{{ $class }}"
+    data-back-source="{{ $backSource }}"
     data-no-loader
-    onclick="try{const r=document.referrer;if(r){const u=new URL(r);if(u.origin===location.origin && history.length>1){event.preventDefault();history.back();return false;}}}catch(e){}"
+    onclick="if(this.dataset.backSource==='previous' && history.length>1){event.preventDefault();history.back();return false;}"
 >
     @if($icon_class)
         <i class="{{ $icon_class }}"></i>

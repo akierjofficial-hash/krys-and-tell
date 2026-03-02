@@ -22,7 +22,10 @@ class Controller extends BaseController
         if (!$url) return false;
 
         // Relative path (including query/hash)
-        if (Str::startsWith($url, '/')) return true;
+        if (Str::startsWith($url, '/')) {
+            // Disallow protocol-relative external targets like //evil.com
+            return !Str::startsWith($url, '//') && !Str::startsWith($url, '\\\\');
+        }
 
         // Absolute URL but only if it matches app host
         $appHost = parse_url(config('app.url'), PHP_URL_HOST);

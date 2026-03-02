@@ -2,562 +2,662 @@
 
 @section('content')
 
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@500;700;800&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css">
 
 <style>
-    /* (YOUR EXISTING CSS - unchanged) */
-    :root{
-        --card-shadow: var(--kt-shadow);
-        --card-border: 1px solid var(--kt-border);
-        --muted: var(--kt-muted);
-        --text: var(--kt-text);
-
-        --blue: #2563eb;
-        --violet:#7c3aed;
-        --green:#22c55e;
-        --amber:#f59e0b;
-
-        --bg1: rgba(59,130,246,.14);
-        --bg2: rgba(124,58,237,.12);
-        --bg3: rgba(34,197,94,.12);
+    :root {
+        --dash-accent: #1f5c7f;
+        --dash-accent-soft: rgba(31, 92, 127, .12);
+        --dash-warm: #b88663;
+        --dash-line: rgba(15, 23, 42, .12);
+        --dash-muted-2: rgba(15, 23, 42, .55);
+        --dash-panel-shadow: 0 18px 34px rgba(15, 23, 42, .08);
     }
 
-    html[data-theme="dark"]{7
-        --bg1: rgba(96,165,250,.08);
-        --bg2: rgba(167,139,250,.07);
-        --bg3: rgba(34,197,94,.06);
+    html[data-theme="dark"] {
+        --dash-line: rgba(148, 163, 184, .2);
+        --dash-muted-2: rgba(248, 250, 252, .62);
+        --dash-accent-soft: rgba(125, 211, 252, .12);
+        --dash-panel-shadow: 0 20px 42px rgba(0, 0, 0, .35);
     }
 
-    .dash-wrap{
-        padding: 12px 0 22px;
-        background:
-            radial-gradient(900px 440px at 12% -10%, var(--bg1), transparent 60%),
-            radial-gradient(900px 440px at 92% 12%, var(--bg2), transparent 55%),
-            radial-gradient(900px 520px at 40% 110%, var(--bg3), transparent 55%);
-        border-radius: 18px;
-    }
-
-    .dash-header{
-        display:flex;
-        align-items:flex-end;
-        justify-content:space-between;
-        gap:16px;
-        margin-bottom: 14px;
-        padding: 0 2px;
-    }
-    .dash-title{
-        font-size: 28px;
-        font-weight: 900;
-        letter-spacing: -0.6px;
-        margin: 0;
-        color: var(--text);
-        line-height: 1.12;
-    }
-    .dash-subtitle{
-        margin-top: 6px;
-        font-size: 13px;
-        color: var(--muted);
-    }
-
-    .welcome{
-        background: var(--kt-surface);
-        border: var(--card-border);
-        box-shadow: var(--card-shadow);
+    .staff-dash {
+        padding: 8px 0 20px;
         border-radius: 20px;
-        padding: 18px 18px;
-        overflow:hidden;
-        position:relative;
-        backdrop-filter: blur(8px);
-    }
-    .welcome::before{
-        content:"";
-        position:absolute;
-        inset:-2px;
         background:
-            radial-gradient(circle at 18% 10%, rgba(37,99,235,.18), transparent 55%),
-            radial-gradient(circle at 85% 30%, rgba(124,58,237,.14), transparent 60%);
-        pointer-events:none;
-        opacity: .9;
+            radial-gradient(680px 300px at 12% -10%, rgba(184, 134, 99, .12), transparent 60%),
+            radial-gradient(760px 360px at 88% 4%, rgba(31, 92, 127, .10), transparent 62%),
+            var(--kt-bg);
     }
-    html[data-theme="dark"] .welcome::before{ opacity: .55; }
 
-    .welcome-inner{
-        position:relative;
-        z-index:1;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:14px;
+    .dash-hero {
+        border: 1px solid var(--dash-line);
+        border-radius: 20px;
+        background:
+            linear-gradient(140deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, .96)),
+            var(--kt-surface);
+        box-shadow: var(--dash-panel-shadow);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
         flex-wrap: wrap;
     }
-    .welcome h3{
+
+    html[data-theme="dark"] .dash-hero {
+        background:
+            linear-gradient(150deg, rgba(15, 23, 42, .76), rgba(17, 24, 39, .92)),
+            var(--kt-surface);
+    }
+
+    .dash-hero .eyebrow {
         margin: 0;
-        font-size: 18px;
-        font-weight: 900;
-        color: var(--text);
-        letter-spacing: -0.25px;
-    }
-    .welcome p{
-        margin: 4px 0 0;
-        font-size: 12.6px;
-        color: var(--muted);
-    }
-
-    .welcome-badge{
-        display:inline-flex;
-        align-items:center;
-        gap:8px;
-        padding: 9px 12px;
-        border-radius: 999px;
-        border: 1px solid rgba(96,165,250,.25);
-        background: var(--kt-primary-soft);
+        text-transform: uppercase;
+        letter-spacing: .18em;
+        font-size: 11px;
         font-weight: 800;
-        font-size: 12px;
-        color: var(--kt-primary);
-        white-space: nowrap;
-        box-shadow: 0 10px 18px rgba(37,99,235,.10);
+        color: var(--dash-muted-2);
     }
 
-    .grid-gap{ row-gap: 14px; }
-
-    .stat-card{
-        padding: 16px 16px;
-        border-radius: 20px;
-        background: var(--kt-surface);
-        border: var(--card-border);
-        box-shadow: var(--card-shadow);
-        display:flex;
-        align-items:center;
-        gap:14px;
-        transition: .18s ease;
-        position:relative;
-        overflow:hidden;
-        height:100%;
-        backdrop-filter: blur(8px);
-        color: var(--text);
-    }
-    .stat-card::after{
-        content:"";
-        position:absolute;
-        inset:-2px;
-        background: radial-gradient(circle at top left, rgba(37,99,235,.14), transparent 55%);
-        opacity: 0;
-        transition: .18s ease;
-        pointer-events:none;
-    }
-    .stat-card:hover{
-        transform: translateY(-2px);
-        box-shadow: 0 22px 44px rgba(0,0,0,.25);
-    }
-    .stat-card:hover::after{ opacity: 1; }
-
-    .stat-icon{
-        width: 52px;
-        height: 52px;
-        border-radius: 18px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-size: 20px;
-        color: #fff;
-        flex:0 0 auto;
-        box-shadow: 0 14px 24px rgba(15,23,42,.18);
-        position:relative;
-        overflow:hidden;
-    }
-    .stat-icon::before{
-        content:"";
-        position:absolute;
-        inset: -40%;
-        background: radial-gradient(circle at 20% 20%, rgba(255,255,255,.35), transparent 55%);
-        transform: rotate(15deg);
-        opacity:.9;
-        pointer-events:none;
-    }
-    .stat-meta small{
-        display:block;
-        font-size: 12px;
-        color: var(--muted);
-        margin-bottom: 4px;
+    .dash-hero .hero-title {
+        margin: 8px 0 0;
+        font-size: clamp(28px, 3.2vw, 38px);
+        line-height: 1.06;
+        letter-spacing: -.02em;
+        color: var(--kt-text);
+        font-family: 'Fraunces', serif;
         font-weight: 700;
     }
-    .stat-meta h4{
-        margin: 0;
-        font-weight: 900;
-        letter-spacing: -0.35px;
-        color: var(--text);
-        font-size: 22px;
+
+    .dash-hero .hero-sub {
+        margin: 10px 0 0;
+        max-width: 560px;
+        font-size: 13.5px;
+        color: var(--dash-muted-2);
+        font-family: 'Manrope', sans-serif;
     }
 
-    .kt-card{
-        background: var(--kt-surface);
-        border: var(--card-border);
-        border-radius: 20px;
-        box-shadow: var(--card-shadow);
-        overflow:hidden;
-        backdrop-filter: blur(10px);
-        color: var(--text);
-    }
-    .kt-card-h{
-        padding: 14px 16px;
-        border-bottom: 1px solid rgba(148,163,184,.16);
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap: 12px;
-    }
-    .kt-card-title{
-        font-weight: 900;
-        color: var(--text);
-        letter-spacing: -0.2px;
-    }
-    .kt-card-b{ padding: 14px 16px; }
-
-    .pill{
-        padding: 6px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 900;
-        border: 1px solid var(--kt-border);
-        background: var(--kt-surface-2);
-        white-space:nowrap;
-        color: var(--muted);
-    }
-
-    .mini-btn{
-        border: 1px solid var(--kt-border);
-        background: var(--kt-surface-2);
-        color: var(--text);
-        padding: 7px 11px;
-        border-radius: 12px;
-        font-weight: 900;
-        font-size: 12px;
-        transition: .15s ease;
-    }
-    .mini-btn:hover{ transform: translateY(-1px); }
-    .mini-btn.active{
-        background: var(--kt-primary-soft);
-        border-color: rgba(96,165,250,.35);
-        color: var(--kt-primary);
-        box-shadow: 0 10px 18px rgba(37,99,235,.10);
-    }
-
-    .list-item{
-        border: 1px solid var(--kt-border);
+    .hero-time {
+        min-width: 220px;
         border-radius: 16px;
-        padding: 12px;
+        border: 1px solid var(--dash-line);
         background: var(--kt-surface-2);
-        transition:.15s ease;
-        color: var(--text);
-    }
-    .list-item:hover{
-        transform: translateY(-1px);
-        box-shadow: 0 18px 28px rgba(0,0,0,.18);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75);
+        padding: 12px 14px;
+        text-align: right;
     }
 
-    /* FullCalendar CSS unchanged... */
-    #ktCalendar{
+    html[data-theme="dark"] .hero-time {
+        box-shadow: none;
+    }
+
+    .hero-time .label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .14em;
+        color: var(--dash-muted-2);
+        font-weight: 800;
+    }
+
+    .hero-time .date {
+        display: block;
+        margin-top: 4px;
+        color: var(--kt-text);
+        font-size: 14px;
+        font-weight: 800;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .hero-time .clock {
+        display: block;
+        margin-top: 2px;
+        color: var(--dash-muted-2);
+        font-size: 13px;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .kpi-card {
+        height: 100%;
+        border: 1px solid var(--dash-line);
         border-radius: 18px;
-        overflow: hidden;
         background: var(--kt-surface);
-        border: 1px solid var(--kt-border);
-        box-shadow: 0 18px 34px rgba(0,0,0,.12);
+        box-shadow: var(--dash-panel-shadow);
+        padding: 14px 15px;
+        transition: transform .15s ease, box-shadow .2s ease;
     }
-    .fc .fc-header-toolbar{
-        margin: 0 !important;
-        padding: 14px 14px 12px;
-        background:
-            radial-gradient(900px 280px at 20% 0%, rgba(37,99,235,.10), transparent 55%),
-            radial-gradient(900px 280px at 80% 0%, rgba(124,58,237,.08), transparent 55%),
-            var(--kt-surface);
-        border-bottom: 1px solid rgba(148,163,184,.16);
+
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 22px 42px rgba(15, 23, 42, .14);
     }
-    .fc .fc-toolbar-title{
-        font-weight: 950;
-        letter-spacing: -0.4px;
-        color: var(--text);
-        font-size: 16px;
+
+    .kpi-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        color: var(--dash-muted-2);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        font-family: 'Manrope', sans-serif;
     }
-    .fc .fc-button{
-        border-radius: 14px !important;
-        border: 1px solid var(--kt-border) !important;
-        background: var(--kt-surface-2) !important;
-        color: var(--text) !important;
-        font-weight: 900 !important;
-        padding: 8px 12px !important;
-        box-shadow: 0 12px 20px rgba(0,0,0,.10) !important;
+
+    .kpi-icon {
+        width: 33px;
+        height: 33px;
+        border-radius: 11px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: var(--dash-accent);
+        background: var(--dash-accent-soft);
+        border: 1px solid rgba(31, 92, 127, .2);
+    }
+
+    .kpi-value {
+        margin: 0;
+        color: var(--kt-text);
+        font-size: 28px;
+        letter-spacing: -.03em;
+        font-weight: 800;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .kpi-note {
+        margin-top: 2px;
+        font-size: 12px;
+        color: var(--dash-muted-2);
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .dash-panel {
+        border: 1px solid var(--dash-line);
+        border-radius: 18px;
+        background: var(--kt-surface);
+        box-shadow: var(--dash-panel-shadow);
+        overflow: hidden;
+    }
+
+    .panel-head {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--dash-line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .panel-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: -.01em;
+        color: var(--kt-text);
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .panel-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 800;
+        background: var(--kt-surface-2);
+        border: 1px solid var(--dash-line);
+        color: var(--dash-muted-2);
+        white-space: nowrap;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .panel-body {
+        padding: 12px;
+    }
+
+    .panel-foot {
+        padding: 0 12px 12px;
+    }
+
+    .dash-action-btn {
+        border-radius: 11px;
+        font-weight: 800;
+        font-size: 12px;
+        padding: 7px 12px;
+    }
+
+    .view-toggle {
+        display: inline-flex;
+        border: 1px solid var(--dash-line);
+        border-radius: 11px;
+        overflow: hidden;
+        background: var(--kt-surface-2);
+    }
+
+    .view-btn {
+        border: 0;
+        background: transparent;
+        color: var(--dash-muted-2);
+        font-size: 12px;
+        font-weight: 800;
+        padding: 7px 11px;
+        transition: .15s ease;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .view-btn.active {
+        color: #fff;
+        background: var(--dash-accent);
+    }
+
+    .dash-list-stack {
+        display: grid;
+        gap: 8px;
+    }
+
+    .dash-list-link {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .dash-list-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        border: 1px solid var(--dash-line);
+        background: var(--kt-surface-2);
+        border-radius: 14px;
+        padding: 10px 11px;
         transition: .15s ease;
     }
-    .fc .fc-button:hover{
-        background: rgba(96,165,250,.10) !important;
-        border-color: rgba(96,165,250,.35) !important;
+
+    .dash-list-item:hover {
+        border-color: rgba(31, 92, 127, .35);
         transform: translateY(-1px);
     }
-    .fc .fc-button-primary:not(:disabled).fc-button-active{
-        background: rgba(96,165,250,.14) !important;
-        border-color: rgba(96,165,250,.35) !important;
-        color: var(--kt-primary) !important;
+
+    .dash-list-title {
+        margin: 0;
+        color: var(--kt-text);
+        font-size: 13.2px;
+        font-weight: 800;
+        line-height: 1.3;
+        font-family: 'Manrope', sans-serif;
     }
-    .fc-theme-standard td,
-    .fc-theme-standard th{ border-color: rgba(148,163,184,.16) !important; }
-    .fc .fc-scrollgrid{ border: 0 !important; }
-    .fc .fc-col-header-cell{ background: rgba(248,250,252,.35); }
-    html[data-theme="dark"] .fc .fc-col-header-cell{ background: rgba(2,6,23,.45) !important; }
-    .fc .fc-col-header-cell-cushion{
-        padding: 10px 8px !important;
-        font-size: 11px;
-        font-weight: 950;
-        letter-spacing: .35px;
+
+    .dash-list-meta {
+        margin: 3px 0 0;
+        color: var(--dash-muted-2);
+        font-size: 12px;
+        line-height: 1.35;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .dash-list-empty {
+        border: 1px dashed var(--dash-line);
+        border-radius: 12px;
+        padding: 12px;
+        color: var(--dash-muted-2);
+        font-size: 12.5px;
+        text-align: center;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .status-pill {
+        flex: 0 0 auto;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: .04em;
         text-transform: uppercase;
-        color: var(--muted);
-    }
-    .fc .fc-daygrid-day{ background: var(--kt-surface); }
-    html[data-theme="dark"] .fc .fc-daygrid-day{ background: rgba(17,24,39,.40) !important; }
-    .fc .fc-daygrid-day-number{
-        font-weight: 950;
-        color: var(--muted);
-        background: rgba(148,163,184,.10);
-        border: 1px solid rgba(148,163,184,.16);
         border-radius: 999px;
-        padding: 2px 8px !important;
-        margin: 8px 8px 0 0;
-        font-size: 11px;
+        padding: 4px 8px;
+        border: 1px solid transparent;
+        font-family: 'Manrope', sans-serif;
     }
-    .fc .fc-day-today{
-        background: rgba(96,165,250,.08) !important;
-        position: relative;
+
+    .status-default {
+        color: #1f5c7f;
+        background: rgba(31, 92, 127, .14);
+        border-color: rgba(31, 92, 127, .3);
     }
-    .fc .fc-day-today::after{
-        content:"";
-        position:absolute;
-        inset:6px;
+
+    .status-warning {
+        color: #9a6700;
+        background: rgba(245, 158, 11, .18);
+        border-color: rgba(245, 158, 11, .35);
+    }
+
+    .status-danger {
+        color: #b42318;
+        background: rgba(239, 68, 68, .16);
+        border-color: rgba(239, 68, 68, .3);
+    }
+
+    .status-success {
+        color: #067647;
+        background: rgba(34, 197, 94, .15);
+        border-color: rgba(34, 197, 94, .3);
+    }
+
+    .status-outline {
+        color: var(--dash-muted-2);
+        background: transparent;
+        border-color: var(--dash-line);
+    }
+
+    #ktCalendar {
+        border: 1px solid var(--dash-line);
         border-radius: 14px;
-        border: 1px solid rgba(96,165,250,.22);
-        pointer-events:none;
-    }
-    .fc .fc-event{
-        border: 0 !important;
-        border-radius: 999px !important;
-        padding: 3px 8px !important;
-        box-shadow: 0 12px 22px rgba(0,0,0,.20);
         overflow: hidden;
+        background: var(--kt-surface);
     }
-    html[data-theme="dark"] .fc .fc-event{
-        border: 1px solid rgba(255,255,255,.10) !important;
-        box-shadow: 0 10px 24px rgba(0,0,0,.35);
+
+    .fc .fc-header-toolbar {
+        margin: 0 !important;
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid var(--dash-line);
+        background: var(--kt-surface);
     }
-    .fc .fc-event .fc-event-main{
+
+    .fc .fc-toolbar-title {
+        font-family: 'Fraunces', serif;
+        font-weight: 700;
+        color: var(--kt-text);
+        font-size: 20px;
+        letter-spacing: -.01em;
+    }
+
+    .fc .fc-button {
+        border-radius: 10px !important;
+        border: 1px solid var(--dash-line) !important;
+        background: var(--kt-surface-2) !important;
+        color: var(--dash-muted-2) !important;
+        box-shadow: none !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        font-family: 'Manrope', sans-serif !important;
+        padding: 7px 10px !important;
+    }
+
+    .fc .fc-button:hover {
+        color: var(--kt-text) !important;
+        border-color: rgba(31, 92, 127, .35) !important;
+    }
+
+    .fc .fc-button-primary:not(:disabled).fc-button-active {
         color: #fff !important;
-        font-weight: 950;
+        border-color: var(--dash-accent) !important;
+        background: var(--dash-accent) !important;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        color: var(--dash-muted-2);
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-size: 10.5px;
+        font-weight: 800;
+        padding: 10px 6px !important;
+        font-family: 'Manrope', sans-serif;
+    }
+
+    .fc-theme-standard td,
+    .fc-theme-standard th {
+        border-color: var(--dash-line) !important;
+    }
+
+    .fc .fc-scrollgrid {
+        border: 0 !important;
+    }
+
+    .fc .fc-daygrid-day-number {
+        color: var(--dash-muted-2);
         font-size: 11px;
-        letter-spacing: .15px;
+        font-weight: 800;
+        margin: 6px 7px 0 0;
+        font-family: 'Manrope', sans-serif;
     }
-    .fc .fc-daygrid-more-link{
-        font-weight: 950;
-        color: var(--kt-primary);
+
+    .fc .fc-day-today {
+        background: rgba(184, 134, 99, .09) !important;
     }
+
+    .fc .fc-event {
+        border-radius: 999px !important;
+        border: 0 !important;
+        padding: 2px 8px !important;
+        box-shadow: none !important;
+    }
+
+    .fc .fc-event .fc-event-main {
+        color: #fff !important;
+        font-size: 11px;
+        font-weight: 700;
+        font-family: 'Manrope', sans-serif;
+    }
+
     .fc .fc-button:focus,
-    .fc a:focus{
+    .fc a:focus {
         box-shadow: none !important;
         outline: none !important;
     }
+
+    @media (max-width: 992px) {
+        .dash-hero {
+            padding: 16px;
+        }
+
+        .hero-time {
+            width: 100%;
+            text-align: left;
+            min-width: 0;
+        }
+    }
 </style>
 
-<div class="dash-wrap">
-
-    <div class="dash-header">
+<div class="staff-dash">
+    <section class="dash-hero mb-3">
         <div>
-            <h2 class="dash-title">Dashboard</h2>
-            <div class="dash-subtitle">Overview of today’s clinic activity</div>
+            <p class="eyebrow">Staff Dashboard</p>
+            <h2 class="hero-title">{{ $greeting }}, {{ $user->name ?? 'Staff' }}</h2>
+            <p class="hero-sub">A clean snapshot of patients, visits, payments, schedules, and approvals for today.</p>
         </div>
-    </div>
 
-    <div class="welcome mb-3">
-        <div class="welcome-inner">
-            <div>
-                <h3>{{ $greeting }}, {{ $user->name ?? 'Staff' }} 👋</h3>
-                <p>Welcome back — here’s a quick snapshot of what’s happening today.</p>
-            </div>
-            <div class="welcome-badge">
-                <i class="fa fa-clock"></i>
-                {{ $displayDate }} • {{ $displayTime }}
-            </div>
+        <div class="hero-time">
+            <span class="label">Current time</span>
+            <span class="date">{{ $displayDate }}</span>
+            <span class="clock">{{ $displayTime }}</span>
         </div>
-    </div>
+    </section>
 
-    {{-- Stats --}}
-    <div class="row grid-gap">
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background:linear-gradient(135deg,#1e90ff,#2563eb);">
-                    <i class="fa fa-users"></i>
+    <div class="row g-3">
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="kpi-card">
+                <div class="kpi-head">
+                    <span>Patients</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-users"></i></span>
                 </div>
-                <div class="stat-meta">
-                    <small>Patients</small>
-                    <h4>{{ $totalPatients }}</h4>
-                </div>
+                <p class="kpi-value">{{ number_format($totalPatients) }}</p>
+                <div class="kpi-note">Registered records</div>
             </div>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background:linear-gradient(135deg,#7c3aed,#6f42c1);">
-                    <i class="fa fa-user-check"></i>
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="kpi-card">
+                <div class="kpi-head">
+                    <span>Today Visits</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-stethoscope"></i></span>
                 </div>
-                <div class="stat-meta">
-                    <small>Today's Visits</small>
-                    <h4>{{ $todaysVisits }}</h4>
-                </div>
+                <p class="kpi-value">{{ number_format($todaysVisits) }}</p>
+                <div class="kpi-note">Completed check-ins</div>
             </div>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background:linear-gradient(135deg,#0ea5e9,#2563eb);">
-                    <i class="fa fa-receipt"></i>
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="kpi-card">
+                <div class="kpi-head">
+                    <span>Today Payments</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-receipt"></i></span>
                 </div>
-                <div class="stat-meta">
-                    <small>Today's Payment</small>
-                    <h4>₱{{ number_format($todaysPayments, 2) }}</h4>
-                </div>
+                <p class="kpi-value">P{{ number_format($todaysPayments, 2) }}</p>
+                <div class="kpi-note">Collected amount</div>
             </div>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#f1a208);">
-                    <i class="fa fa-calendar-days"></i>
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="kpi-card">
+                <div class="kpi-head">
+                    <span>Appointments</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-calendar-check"></i></span>
                 </div>
-                <div class="stat-meta">
-                    <small>Today's Appointments</small>
-                    <h4>{{ $todaysAppointments->count() }}</h4>
-                </div>
+                <p class="kpi-value">{{ number_format($todaysAppointments->count()) }}</p>
+                <div class="kpi-note">Scheduled for today</div>
             </div>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background:linear-gradient(135deg,#22c55e,#17c964);">
-                    <i class="fa fa-wrench"></i>
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="kpi-card">
+                <div class="kpi-head">
+                    <span>Services</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-tooth"></i></span>
                 </div>
-                <div class="stat-meta">
-                    <small>Services</small>
-                    <h4>{{ $services }}</h4>
-                </div>
+                <p class="kpi-value">{{ number_format($services) }}</p>
+                <div class="kpi-note">Available offerings</div>
             </div>
         </div>
     </div>
 
-    {{-- Calendar + Side Panels --}}
-    <div class="row g-3 mt-2">
-        <div class="col-lg-8">
-            <div class="kt-card">
-                <div class="kt-card-h">
-                    <div class="kt-card-title">Calendar Activities</div>
-                    <div class="d-flex gap-2">
-                        <button class="mini-btn active" id="btnMonth">Month</button>
-                        <button class="mini-btn" id="btnWeek">Week</button>
-                        <button class="mini-btn" id="btnDay">Day</button>
+    <div class="row g-3 mt-1">
+        <div class="col-xl-8">
+            <div class="dash-panel">
+                <div class="panel-head">
+                    <h3 class="panel-title">Calendar</h3>
+
+                    <div class="view-toggle">
+                        <button type="button" class="view-btn active" id="btnMonth">Month</button>
+                        <button type="button" class="view-btn" id="btnWeek">Week</button>
+                        <button type="button" class="view-btn" id="btnDay">Day</button>
                     </div>
                 </div>
-                <div class="kt-card-b">
+
+                <div class="panel-body">
                     <div id="ktCalendar"></div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-4">
-
-            {{-- ✅ LIVE APPROVAL REQUESTS CARD (NEW) --}}
-            <div class="kt-card mb-3" id="ktApprovalsCard">
-                <div class="kt-card-h">
-                    <div class="kt-card-title">Approval Requests</div>
-                    <span class="pill">
-                        Pending: <span id="ktApprovalsCount">0</span>
+        <div class="col-xl-4">
+            <div class="dash-panel mb-3" id="ktApprovalsCard">
+                <div class="panel-head">
+                    <h3 class="panel-title">Approval Requests</h3>
+                    <span class="panel-chip">
+                        Pending
+                        <span id="ktApprovalsCount">0</span>
                     </span>
                 </div>
-                <div class="kt-card-b d-grid gap-2" id="ktApprovalsList">
-                    <div class="list-item" style="opacity:.8;">Loading…</div>
+
+                <div class="panel-body dash-list-stack" id="ktApprovalsList">
+                    <div class="dash-list-empty">Loading approval requests...</div>
                 </div>
-                <div class="px-3 pb-3">
-                    <a href="{{ route('staff.approvals.index') }}"
-                       class="btn btn-sm btn-outline-primary"
-                       style="border-radius:12px;font-weight:900;">
-                        Open approvals
-                    </a>
+
+                <div class="panel-foot">
+                    <a href="{{ route('staff.approvals.index') }}" class="btn btn-sm btn-outline-primary dash-action-btn">Open approvals</a>
                 </div>
             </div>
 
-            <div class="kt-card mb-3">
-                <div class="kt-card-h">
-                    <div class="kt-card-title">Today’s Schedule</div>
-                    <span class="pill">{{ now()->format('D, M d') }}</span>
+            <div class="dash-panel mb-3">
+                <div class="panel-head">
+                    <h3 class="panel-title">Today Schedule</h3>
+                    <span class="panel-chip">{{ now()->format('D, M d') }}</span>
                 </div>
 
-                <div class="kt-card-b d-grid gap-2">
+                <div class="panel-body dash-list-stack">
                     @forelse($todaysAppointments->take(6) as $a)
                         @php
-                            $time = $a->appointment_time ? \Carbon\Carbon::parse($a->appointment_time)->format('g:i a') : '—';
-                            $name = trim(($a->patient->first_name ?? '').' '.($a->patient->last_name ?? ''));
-                            $svc  = $a->service->name ?? 'Appointment';
+                            $time = $a->appointment_time ? \Carbon\Carbon::parse($a->appointment_time)->format('g:i a') : '-';
+                            $name = trim(($a->patient->first_name ?? '') . ' ' . ($a->patient->last_name ?? ''));
+                            $svc = $a->service->name ?? 'Appointment';
                             $status = strtolower((string)($a->status ?? 'confirmed'));
-                            $badgeClass = str_contains($status,'cancel') ? 'bg-danger'
-                                : (str_contains($status,'pend') ? 'bg-warning text-dark'
-                                : (str_contains($status,'done') || str_contains($status,'complete') ? 'bg-success' : 'bg-primary'));
+                            $statusClass = str_contains($status, 'cancel') ? 'status-danger'
+                                : (str_contains($status, 'pend') ? 'status-warning'
+                                : (str_contains($status, 'done') || str_contains($status, 'complete') ? 'status-success' : 'status-default'));
                         @endphp
 
-                        <div class="list-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div style="font-weight:900; color:var(--text);">{{ $time }} • {{ $name ?: 'Patient' }}</div>
-                                    <div style="opacity:.8;">{{ $svc }}</div>
-                                </div>
-                                <span class="badge {{ $badgeClass }}" style="border-radius:999px;font-weight:900;">
-                                    {{ ucfirst($status) }}
-                                </span>
+                        <div class="dash-list-item">
+                            <div>
+                                <p class="dash-list-title">{{ $time }} - {{ $name !== '' ? $name : 'Patient' }}</p>
+                                <p class="dash-list-meta">{{ $svc }}</p>
                             </div>
+                            <span class="status-pill {{ $statusClass }}">{{ ucfirst($status) }}</span>
                         </div>
                     @empty
-                        <div class="list-item" style="opacity:.8;">No appointments today.</div>
+                        <div class="dash-list-empty">No appointments scheduled for today.</div>
                     @endforelse
                 </div>
             </div>
 
-            <div class="kt-card">
-                <div class="kt-card-h">
-                    <div class="kt-card-title">Overdue Payments</div>
-                    <span class="pill">Installments</span>
+            <div class="dash-panel mb-3">
+                <div class="panel-head">
+                    <h3 class="panel-title">Upcoming</h3>
+                    <span class="panel-chip">Next queue</span>
                 </div>
 
-                <div class="kt-card-b d-grid gap-2">
+                <div class="panel-body dash-list-stack">
+                    @forelse(($upcomingAppointments ?? collect())->take(5) as $u)
+                        @php
+                            $uDate = $u->appointment_date ? \Carbon\Carbon::parse($u->appointment_date)->format('M d, Y') : '-';
+                            $uTime = $u->appointment_time ? \Carbon\Carbon::parse($u->appointment_time)->format('g:i a') : '-';
+                            $uStatus = strtolower((string)($u->status ?? 'upcoming'));
+                            $uName = trim(($u->patient->first_name ?? '') . ' ' . ($u->patient->last_name ?? ''));
+                        @endphp
+
+                        <a href="{{ route('staff.appointments.show', ['appointment' => $u->id]) }}" class="dash-list-link">
+                            <div class="dash-list-item">
+                                <div>
+                                    <p class="dash-list-title">{{ $uDate }} - {{ $uTime }}</p>
+                                    <p class="dash-list-meta">{{ $uName !== '' ? $uName : 'Appointment' }}</p>
+                                </div>
+                                <span class="status-pill status-outline">{{ ucfirst($uStatus) }}</span>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="dash-list-empty">No upcoming appointments.</div>
+                    @endforelse
+                </div>
+            </div>
+
+            <div class="dash-panel">
+                <div class="panel-head">
+                    <h3 class="panel-title">Overdue Payments</h3>
+                    <span class="panel-chip">Installments</span>
+                </div>
+
+                <div class="panel-body dash-list-stack">
                     @forelse($overdueInstallments ?? [] as $o)
-                        <div class="list-item">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <div style="font-weight:900;">{{ $o['patient'] ?? 'Patient' }}</div>
-                                    <div style="opacity:.8;">
-                                        {{ $o['service'] ?? 'Installment' }} • Due: {{ $o['due_date'] ?? '—' }}
-                                    </div>
-                                </div>
-                                <div style="font-weight:900;">
-                                    ₱{{ number_format($o['amount'] ?? 0, 2) }}
-                                </div>
+                        <div class="dash-list-item">
+                            <div>
+                                <p class="dash-list-title">{{ $o['patient'] ?? 'Patient' }}</p>
+                                <p class="dash-list-meta">{{ $o['service'] ?? 'Installment' }} - Due {{ $o['due_date'] ?? '-' }}</p>
+                                <p class="dash-list-meta">P{{ number_format($o['amount'] ?? 0, 2) }}</p>
                             </div>
-
-                            <div class="mt-2 d-flex gap-2">
-                                <a href="{{ $o['url'] ?? '#' }}" class="btn btn-sm btn-outline-primary" style="border-radius:12px;font-weight:900;">View</a>
-                                <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn btn-sm btn-primary" style="border-radius:12px;font-weight:900;">Go to Payments</a>
+                            <div class="d-flex flex-column gap-1 align-items-end">
+                                <a href="{{ $o['url'] ?? '#' }}" class="btn btn-sm btn-outline-primary dash-action-btn">View</a>
+                                <a href="{{ route('staff.payments.index', ['tab' => 'installment']) }}" class="btn btn-sm btn-primary dash-action-btn">Payments</a>
                             </div>
                         </div>
                     @empty
-                        <div class="list-item" style="opacity:.8;">No overdue installments 🎉</div>
+                        <div class="dash-list-empty">No overdue installments.</div>
                     @endforelse
                 </div>
             </div>
-
         </div>
     </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
@@ -583,15 +683,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         slotMinTime: "08:00:00",
         slotMaxTime: "19:00:00",
-
         events: "{{ route('staff.dashboard.calendar.events') }}",
-
         eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
 
         eventDidMount: function(info){
             info.el.style.cursor = "pointer";
-            info.el.addEventListener("mouseenter", () => { info.el.style.transform = "translateY(-1px)"; });
-            info.el.addEventListener("mouseleave", () => { info.el.style.transform = "translateY(0px)"; });
         },
 
         eventClick: function(info){
@@ -603,8 +699,8 @@ document.addEventListener('DOMContentLoaded', function () {
     calendar.render();
 
     const btnMonth = document.getElementById('btnMonth');
-    const btnWeek  = document.getElementById('btnWeek');
-    const btnDay   = document.getElementById('btnDay');
+    const btnWeek = document.getElementById('btnWeek');
+    const btnDay = document.getElementById('btnDay');
 
     const setActive = (btn) => {
         [btnMonth, btnWeek, btnDay].forEach(b => b?.classList.remove('active'));
@@ -614,58 +710,57 @@ document.addEventListener('DOMContentLoaded', function () {
     setActive(btnMonth);
 
     btnMonth?.addEventListener('click', () => { calendar.changeView('dayGridMonth'); setActive(btnMonth); });
-    btnWeek?.addEventListener('click',  () => { calendar.changeView('timeGridWeek'); setActive(btnWeek); });
-    btnDay?.addEventListener('click',   () => { calendar.changeView('timeGridDay'); setActive(btnDay); });
+    btnWeek?.addEventListener('click', () => { calendar.changeView('timeGridWeek'); setActive(btnWeek); });
+    btnDay?.addEventListener('click', () => { calendar.changeView('timeGridDay'); setActive(btnDay); });
 });
 </script>
 
-{{-- ✅ LIVE APPROVALS POLLING SCRIPT (NEW) --}}
 <script>
 (function(){
     const url = @json(route('staff.approvals.widget'));
     const card = document.getElementById('ktApprovalsCard');
     const countEl = document.getElementById('ktApprovalsCount');
     const listEl = document.getElementById('ktApprovalsList');
-    if(!card || !countEl || !listEl) return;
+    if (!card || !countEl || !listEl) return;
 
     const esc = (s) => String(s ?? '')
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 
     let lastCount = null;
     let loading = false;
 
     function render(items){
         if (!items.length) {
-            listEl.innerHTML = `<div class="list-item" style="opacity:.8;">No pending requests 🎉</div>`;
+            listEl.innerHTML = '<div class="dash-list-empty">No pending requests.</div>';
             return;
         }
 
         listEl.innerHTML = items.map(i => `
-            <div class="list-item">
-                <div style="font-weight:900;">${esc(i.patient)}</div>
-                <div style="opacity:.8;font-size:12.5px;">
-                    ${esc(i.service)} • ${esc(i.date)} ${esc(i.time)}<br>
-                    Doctor: ${esc(i.doctor)}
+            <div class="dash-list-item">
+                <div>
+                    <p class="dash-list-title">${esc(i.patient)}</p>
+                    <p class="dash-list-meta">${esc(i.service)} - ${esc(i.date)} ${esc(i.time)}</p>
+                    <p class="dash-list-meta">Doctor: ${esc(i.doctor)}</p>
                 </div>
             </div>
         `).join('');
     }
 
     async function refresh(){
-        if (loading) return;
-        if (document.hidden) return;
+        if (loading || document.hidden) return;
 
         loading = true;
-        try{
+        try {
             const res = await fetch(url + '?limit=6', {
-                headers: { 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest' },
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 cache: 'no-store'
             });
-            if(!res.ok) throw new Error('fetch failed');
+
+            if (!res.ok) throw new Error('fetch failed');
 
             const data = await res.json();
             const c = parseInt(data.pendingCount || 0, 10);
@@ -676,13 +771,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (lastCount !== null && c > lastCount) {
                 card.style.transition = 'box-shadow .2s ease';
-                card.style.boxShadow = '0 0 0 4px rgba(34,197,94,.18)';
+                card.style.boxShadow = '0 0 0 4px rgba(34, 197, 94, .16)';
                 setTimeout(() => card.style.boxShadow = '', 650);
             }
             lastCount = c;
-        }catch(e){
+        } catch (e) {
             console.warn(e);
-        }finally{
+        } finally {
             loading = false;
         }
     }
