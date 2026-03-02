@@ -12,7 +12,7 @@
                     <i class="fa-solid fa-tooth me-2"></i>
                     About Krys &amp; Tell
                 </div>
-
+                    
                 <h1 class="sec-title mt-3">Gentle dentistry, modern care.</h1>
 
                 <p class="sec-sub mt-2 mb-0">

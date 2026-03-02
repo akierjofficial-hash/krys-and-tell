@@ -244,7 +244,7 @@
                     <input
                         type="number"
                         step="0.01"
-                        min="0"
+                        min="0.01"
                         name="amount"
                         value="{{ old('amount', $payment->amount) }}"
                         class="inputx money"

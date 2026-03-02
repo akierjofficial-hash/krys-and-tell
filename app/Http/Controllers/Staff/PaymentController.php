@@ -9,6 +9,8 @@ use App\Models\InstallmentPlan;
 use App\Models\Visit;
 use App\Models\Appointment;
 use App\Models\Patient;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
@@ -66,6 +68,10 @@ class PaymentController extends Controller
 
     private function visitPaid(Visit $visit): float
     {
+        if (isset($visit->total_paid)) {
+            return (float) ($visit->total_paid ?? 0);
+        }
+
         if (isset($visit->paid_total)) {
             return (float) ($visit->paid_total ?? 0);
         }
@@ -130,14 +136,14 @@ class PaymentController extends Controller
 
         $visits = Visit::with(['patient', 'procedures.service'])
             ->whereHas('procedures')
-            ->withSum('payments as paid_total', 'amount')
+            ->withSum('payments as total_paid', 'amount')
             ->orderByDesc('visit_date')
             ->get()
             ->filter(function (Visit $visit) use ($installmentSet) {
                 if (isset($installmentSet[$visit->id])) return false;
 
                 $due = $this->visitDue($visit);
-                $paid = (float) ($visit->paid_total ?? 0);
+                $paid = (float) ($visit->total_paid ?? 0);
                 $balance = $due - $paid;
 
                 return $due > 0 && $balance > 0;
@@ -162,7 +168,7 @@ class PaymentController extends Controller
         $request->validate([
             'method'         => 'required',
             'payment_date'   => 'required|date',
-            'amount'         => 'required|numeric|min:0',
+            'amount'         => 'required|numeric|gt:0',
             'visit_id'       => 'nullable|exists:visits,id',
             'appointment_id' => 'nullable|exists:appointments,id',
         ]);
@@ -176,43 +182,69 @@ class PaymentController extends Controller
         }
 
         $amount = (float) $request->amount;
+        $epsilon = 0.0001;
 
         if ($request->visit_id) {
-            $visit = Visit::with(['procedures.service', 'payments'])->findOrFail($request->visit_id);
+            DB::transaction(function () use ($request, $amount, $epsilon): void {
+                $visit = Visit::query()
+                    ->with(['procedures.service', 'payments'])
+                    ->lockForUpdate()
+                    ->findOrFail((int) $request->visit_id);
 
-            if ($visit->procedures->isEmpty()) {
-                return back()->withErrors('This visit has no procedures to charge.')->withInput();
-            }
+                if ($visit->procedures->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'visit_id' => 'This visit has no procedures to charge.',
+                    ]);
+                }
 
-            if ($this->hasInstallmentPlanForVisit($visit->id)) {
-                return back()->withErrors('This visit is under an installment plan. Please collect payment from the plan instead.')->withInput();
-            }
+                if ($this->hasInstallmentPlanForVisit($visit->id)) {
+                    throw ValidationException::withMessages([
+                        'visit_id' => 'This visit is under an installment plan. Please collect payment from the plan instead.',
+                    ]);
+                }
 
-            $due = $this->visitDue($visit);
-            $paid = $this->visitPaid($visit);
-            $balance = $due - $paid;
+                $due = $this->visitDue($visit);
+                $paid = $this->visitPaid($visit);
+                $balance = $due - $paid;
 
-            if ($due <= 0 || $balance <= 0) {
-                return back()->withErrors('This visit is already fully paid.')->withInput();
-            }
+                if ($due <= 0 || $balance <= 0) {
+                    throw ValidationException::withMessages([
+                        'visit_id' => 'This visit is already fully paid.',
+                    ]);
+                }
 
-            if ($amount < $balance) {
-                $desiredFinalTotal = $paid + $amount;
-                $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
+                if ($amount > $balance + $epsilon) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Payment amount cannot be greater than the remaining balance.',
+                    ]);
+                }
 
-                $visit->refresh();
-                $visit->load(['procedures.service', 'payments']);
-            }
+                if ($amount + $epsilon < $balance) {
+                    $desiredFinalTotal = $paid + $amount;
+                    $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
 
-            Payment::create([
-                'visit_id'     => $visit->id,
-                'amount'       => $amount,
-                'method'       => $request->method,
-                'payment_date' => $request->payment_date,
-            ]);
+                    $visit->refresh();
+                    $visit->load(['procedures.service', 'payments']);
 
-            $visit->load('payments');
-            $this->updateVisitStatusBasedOnPayments($visit);
+                    $remainingAfterOverride = $this->visitBalance($visit);
+
+                    if ($amount > $remainingAfterOverride + $epsilon) {
+                        throw ValidationException::withMessages([
+                            'amount' => 'Payment amount cannot be greater than the remaining balance.',
+                        ]);
+                    }
+                }
+
+                Payment::create([
+                    'visit_id'     => $visit->id,
+                    'amount'       => $amount,
+                    'method'       => $request->method,
+                    'payment_date' => $request->payment_date,
+                ]);
+
+                $visit->load('payments');
+                $this->updateVisitStatusBasedOnPayments($visit);
+            });
 
             return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
                 ->with('success', 'Cash payment added!');
@@ -221,64 +253,98 @@ class PaymentController extends Controller
         if ($request->appointment_id) {
             $payableStatuses = ['scheduled', 'upcoming', 'approved', 'confirmed'];
 
-            $appointment = Appointment::with(['patient', 'service'])->findOrFail($request->appointment_id);
+            DB::transaction(function () use ($request, $amount, $epsilon, $payableStatuses): void {
+                $appointment = Appointment::query()
+                    ->with(['patient', 'service'])
+                    ->lockForUpdate()
+                    ->findOrFail((int) $request->appointment_id);
 
-            if (!$appointment->patient_id) {
-                return back()->withErrors('This appointment has no patient record yet. Approve it first.')->withInput();
-            }
+                if (!$appointment->patient_id) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment has no patient record yet. Approve it first.',
+                    ]);
+                }
 
-            if (in_array(strtolower((string) $appointment->status), ['completed', 'cancelled', 'declined'], true)) {
-                return back()->withErrors('This appointment is not payable (already completed/cancelled/declined).')->withInput();
-            }
+                $status = strtolower((string) $appointment->status);
+                if (in_array($status, ['completed', 'cancelled', 'declined'], true)) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment is not payable (already completed/cancelled/declined).',
+                    ]);
+                }
 
-            if ($appointment->status && !in_array(strtolower((string) $appointment->status), $payableStatuses, true)) {
-                return back()->withErrors('This appointment status is not payable.')->withInput();
-            }
+                if ($status !== '' && !in_array($status, $payableStatuses, true)) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment status is not payable.',
+                    ]);
+                }
 
-            $visit = Visit::create([
-                'patient_id' => $appointment->patient_id,
-                'visit_date' => now()->toDateString(),
-                'status'     => 'partial',
-            ]);
-
-            if ($appointment->service_id) {
-                $visit->procedures()->create([
-                    'service_id'   => $appointment->service_id,
-                    'tooth_number' => null,
-                    'surface'      => null,
-                    'shade'        => null,
-                    'notes'        => 'From appointment',
-                    'price'        => $appointment->service->base_price ?? 0,
+                $visit = Visit::create([
+                    'patient_id' => $appointment->patient_id,
+                    'visit_date' => now()->toDateString(),
+                    'status'     => 'partial',
                 ]);
-            }
 
-            $visit->load(['procedures.service', 'payments']);
-            $due = $this->visitDue($visit);
-            $paid = $this->visitPaid($visit);
-            $balance = $due - $paid;
+                if ($appointment->service_id) {
+                    $visit->procedures()->create([
+                        'service_id'   => $appointment->service_id,
+                        'tooth_number' => null,
+                        'surface'      => null,
+                        'shade'        => null,
+                        'notes'        => 'From appointment',
+                        'price'        => $appointment->service->base_price ?? 0,
+                    ]);
+                }
 
-            if ($amount < $balance) {
-                $desiredFinalTotal = $paid + $amount;
-                $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
-
-                $visit->refresh();
                 $visit->load(['procedures.service', 'payments']);
-            }
+                $due = $this->visitDue($visit);
+                $paid = $this->visitPaid($visit);
+                $balance = $due - $paid;
 
-            Payment::create([
-                'visit_id'     => $visit->id,
-                'amount'       => $amount,
-                'method'       => $request->method,
-                'payment_date' => $request->payment_date,
-            ]);
+                if ($due <= 0 || $balance <= 0) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment has no payable amount.',
+                    ]);
+                }
 
-            $visit->load(['procedures', 'payments']);
-            $this->updateVisitStatusBasedOnPayments($visit);
+                if ($amount > $balance + $epsilon) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Payment amount cannot be greater than the remaining balance.',
+                    ]);
+                }
 
-            $appointment->update(['status' => 'completed']);
+                if ($amount + $epsilon < $balance) {
+                    $desiredFinalTotal = $paid + $amount;
+                    $this->maybeApplyCustomTotalOverride($visit, $desiredFinalTotal);
+
+                    $visit->refresh();
+                    $visit->load(['procedures.service', 'payments']);
+
+                    $remainingAfterOverride = $this->visitBalance($visit);
+
+                    if ($amount > $remainingAfterOverride + $epsilon) {
+                        throw ValidationException::withMessages([
+                            'amount' => 'Payment amount cannot be greater than the remaining balance.',
+                        ]);
+                    }
+                }
+
+                Payment::create([
+                    'visit_id'     => $visit->id,
+                    'amount'       => $amount,
+                    'method'       => $request->method,
+                    'payment_date' => $request->payment_date,
+                ]);
+
+                $visit->load(['procedures', 'payments']);
+                $this->updateVisitStatusBasedOnPayments($visit);
+
+                $appointment->update([
+                    'status' => $this->visitBalance($visit) <= $epsilon ? 'completed' : 'done',
+                ]);
+            });
 
             return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
-                ->with('success', 'Cash payment recorded and appointment marked as completed!');
+                ->with('success', 'Cash payment recorded and appointment updated!');
         }
 
         return back()->withErrors('Something went wrong. Please try again.')->withInput();
@@ -294,13 +360,13 @@ class PaymentController extends Controller
 
         $visits = Visit::with(['patient', 'procedures.service'])
             ->whereHas('procedures')
-            ->withSum('payments as paid_total', 'amount')
+            ->withSum('payments as total_paid', 'amount')
             ->orderByDesc('visit_date')
             ->get()
             ->filter(function (Visit $visit) use ($installmentSet) {
                 if (isset($installmentSet[$visit->id])) return false;
 
-                $paid = (float) ($visit->paid_total ?? 0);
+                $paid = (float) ($visit->total_paid ?? 0);
                 if ($paid > 0) return false;
 
                 $due = $this->visitDue($visit);
@@ -323,8 +389,6 @@ class PaymentController extends Controller
 
     public function storeInstallment(Request $request)
     {
-        // ✅ IMPORTANT: months is required UNLESS open contract is enabled
-        // ✅ FIX: open_monthly_payment must be saved/required when open contract
         $request->validate([
             'visit_id'              => 'nullable|exists:visits,id',
             'appointment_id'        => 'nullable|exists:appointments,id',
@@ -347,116 +411,135 @@ class PaymentController extends Controller
         $total = (float) $request->total_cost;
         $down  = (float) $request->downpayment;
 
-        // ✅ safety: downpayment should not exceed total
         if ($down > $total) {
             return back()->withErrors('Downpayment cannot be greater than Total Cost.')->withInput();
         }
 
         $isOpen = $request->boolean('is_open_contract');
-        $months = $isOpen ? 0 : (int) $request->months; // ✅ never null
-
-        // ✅ FIX: capture open contract monthly payment
+        $months = $isOpen ? 0 : (int) $request->months;
         $openMonthly = $isOpen ? (float) ($request->input('open_monthly_payment') ?? 0) : null;
+        $payableStatuses = ['scheduled', 'upcoming', 'approved', 'confirmed'];
 
-        $patientId = null;
-        $serviceId = null;
-        $visitId   = null;
+        DB::transaction(function () use ($request, $total, $down, $isOpen, $months, $openMonthly, $payableStatuses): void {
+            $patientId = null;
+            $serviceId = null;
+            $visitId = null;
 
-        if ($request->visit_id) {
-            $visit = Visit::with(['patient', 'procedures.service', 'payments'])->findOrFail($request->visit_id);
+            if ($request->visit_id) {
+                $visit = Visit::query()
+                    ->with(['patient', 'procedures.service', 'payments'])
+                    ->lockForUpdate()
+                    ->findOrFail((int) $request->visit_id);
 
-            if ($this->hasInstallmentPlanForVisit($visit->id)) {
-                return back()->withErrors('This visit already has an installment plan.')->withInput();
+                if ($this->hasInstallmentPlanForVisit($visit->id)) {
+                    throw ValidationException::withMessages([
+                        'visit_id' => 'This visit already has an installment plan.',
+                    ]);
+                }
+
+                if ($visit->procedures->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'visit_id' => 'This visit has no procedures to charge.',
+                    ]);
+                }
+
+                if ($this->visitPaid($visit) > 0) {
+                    throw ValidationException::withMessages([
+                        'visit_id' => 'This visit already has cash payments. Please continue cash payments instead of starting an installment plan.',
+                    ]);
+                }
+
+                $patientId = $visit->patient_id;
+                $serviceId = optional($visit->procedures->first())->service_id;
+                $visitId = $visit->id;
             }
 
-            if ($visit->procedures->isEmpty()) {
-                return back()->withErrors('This visit has no procedures to charge.')->withInput();
+            if ($request->appointment_id) {
+                $appointment = Appointment::query()
+                    ->with(['patient', 'service'])
+                    ->lockForUpdate()
+                    ->findOrFail((int) $request->appointment_id);
+
+                if (!$appointment->patient_id) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment has no patient record yet. Approve it first.',
+                    ]);
+                }
+
+                $status = strtolower((string) $appointment->status);
+                if (in_array($status, ['completed', 'cancelled', 'declined'], true)) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment is not payable (already completed/cancelled/declined).',
+                    ]);
+                }
+
+                if ($status !== '' && !in_array($status, $payableStatuses, true)) {
+                    throw ValidationException::withMessages([
+                        'appointment_id' => 'This appointment status is not payable.',
+                    ]);
+                }
+
+                $patientId = $appointment->patient_id;
+                $serviceId = $appointment->service_id;
+
+                $visit = Visit::create([
+                    'patient_id' => $patientId,
+                    'visit_date' => $request->start_date,
+                    'status'     => 'installment',
+                ]);
+
+                if ($serviceId) {
+                    $visit->procedures()->create([
+                        'service_id'   => $serviceId,
+                        'tooth_number' => null,
+                        'surface'      => null,
+                        'shade'        => null,
+                        'notes'        => 'From appointment (installment)',
+                        'price'        => $appointment->service->base_price ?? 0,
+                    ]);
+                }
+
+                $visitId = $visit->id;
+                $appointment->update(['status' => 'completed']);
             }
 
-            if ($this->visitPaid($visit) > 0) {
-                return back()->withErrors('This visit already has cash payments. Please continue cash payments instead of starting an installment plan.')->withInput();
-            }
+            $balance = $total - $down;
 
-            $patientId = $visit->patient_id;
-            $serviceId = optional($visit->procedures->first())->service_id;
-            $visitId   = $visit->id;
-        }
-
-        if ($request->appointment_id) {
-            $appointment = Appointment::with(['patient', 'service'])->findOrFail($request->appointment_id);
-
-            if (!$appointment->patient_id) {
-                return back()->withErrors('This appointment has no patient record yet. Approve it first.')->withInput();
-            }
-
-            if (in_array(strtolower((string) $appointment->status), ['completed', 'cancelled', 'declined'], true)) {
-                return back()->withErrors('This appointment is not payable (already completed/cancelled/declined).')->withInput();
-            }
-
-            $patientId = $appointment->patient_id;
-            $serviceId = $appointment->service_id;
-
-            $visit = Visit::create([
-                'patient_id' => $patientId,
-                'visit_date' => $request->start_date,
-                'status'     => 'installment',
+            $plan = InstallmentPlan::create([
+                'visit_id'              => $visitId,
+                'patient_id'            => $patientId,
+                'service_id'            => $serviceId,
+                'total_cost'            => $total,
+                'downpayment'           => $down,
+                'balance'               => $balance,
+                'months'                => $months,
+                'start_date'            => $request->start_date,
+                'status'                => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
+                'is_open_contract'      => $isOpen,
+                'open_monthly_payment'  => $openMonthly,
             ]);
 
-            if ($serviceId) {
-                $visit->procedures()->create([
-                    'service_id'   => $serviceId,
-                    'tooth_number' => null,
-                    'surface'      => null,
-                    'shade'        => null,
-                    'notes'        => 'From appointment (installment)',
-                    'price'        => $appointment->service->base_price ?? 0,
-                ]);
+            if ($down > 0) {
+                $hasDp = $plan->payments()->where('month_number', 0)->exists();
+                if (!$hasDp) {
+                    $plan->payments()->create([
+                        'month_number' => 0,
+                        'amount'       => $down,
+                        'method'       => 'Cash',
+                        'payment_date' => $request->start_date,
+                        'visit_id'     => $visitId,
+                        'notes'        => 'Downpayment',
+                    ]);
+                }
             }
 
-            $visitId = $visit->id;
-
-            $appointment->update(['status' => 'completed']);
-        }
-
-        $balance = $total - $down;
-
-        // ✅ KEY FIX: months is always a number (0 for open contract)
-        // ✅ KEY FIX: open_monthly_payment is saved on create
-        $plan = InstallmentPlan::create([
-            'visit_id'              => $visitId,
-            'patient_id'            => $patientId,
-            'service_id'            => $serviceId,
-            'total_cost'            => $total,
-            'downpayment'           => $down,
-            'balance'               => $balance,
-            'months'                => $months,
-            'start_date'            => $request->start_date,
-            'status'                => $balance <= 0 ? 'Fully Paid' : 'Partially Paid',
-            'is_open_contract'      => $isOpen,
-            'open_monthly_payment'  => $openMonthly, // ✅ FIX HERE
-        ]);
-
-        // ✅ Store downpayment as Month 0 (cleaner for your shift logic)
-        if ($down > 0) {
-            $hasDp = $plan->payments()->where('month_number', 0)->exists();
-            if (!$hasDp) {
-                $plan->payments()->create([
-                    'month_number' => 0,
-                    'amount'       => $down,
-                    'method'       => 'Cash',
-                    'payment_date' => $request->start_date,
-                    'visit_id'     => $visitId,
-                    'notes'        => 'Downpayment',
-                ]);
+            if ($visitId) {
+                $v = Visit::find($visitId);
+                if ($v) {
+                    $v->update(['status' => $balance <= 0 ? 'completed' : 'installment']);
+                }
             }
-        }
-
-        if ($visitId) {
-            $v = Visit::find($visitId);
-            if ($v) {
-                $v->update(['status' => $balance <= 0 ? 'completed' : 'installment']);
-            }
-        }
+        });
 
         return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan created!');
@@ -480,17 +563,56 @@ class PaymentController extends Controller
     {
         $request->validate([
             'visit_id'     => 'required|exists:visits,id',
-            'amount'       => 'required|numeric|min:0',
+            'amount'       => 'required|numeric|gt:0',
             'method'       => 'required',
             'payment_date' => 'required|date',
+            'notes'        => 'nullable|string|max:2000',
         ]);
 
-        $payment->update($request->only('visit_id', 'amount', 'method', 'payment_date'));
+        $oldVisitId = (int) $payment->visit_id;
+        $newVisitId = (int) $request->visit_id;
+        $newAmount = (float) $request->amount;
+        $epsilon = 0.0001;
 
-        $visit = Visit::with(['procedures', 'payments'])->find($payment->visit_id);
-        if ($visit) {
-            $this->updateVisitStatusBasedOnPayments($visit);
-        }
+        DB::transaction(function () use ($payment, $oldVisitId, $newVisitId, $newAmount, $request, $epsilon): void {
+            $newVisit = Visit::query()
+                ->with(['procedures.service'])
+                ->lockForUpdate()
+                ->findOrFail($newVisitId);
+
+            $due = $this->visitDue($newVisit);
+            $paidWithoutCurrent = (float) Payment::query()
+                ->where('visit_id', $newVisitId)
+                ->where('id', '!=', $payment->id)
+                ->sum('amount');
+            $remaining = $due - $paidWithoutCurrent;
+
+            if ($due <= 0 || $remaining <= 0) {
+                throw ValidationException::withMessages([
+                    'visit_id' => 'Selected visit has no payable balance.',
+                ]);
+            }
+
+            if ($newAmount > $remaining + $epsilon) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Updated amount cannot be greater than the remaining balance.',
+                ]);
+            }
+
+            $payment->update($request->only('visit_id', 'amount', 'method', 'payment_date', 'notes'));
+
+            $reloadedNewVisit = Visit::with(['procedures.service', 'payments'])->find($newVisitId);
+            if ($reloadedNewVisit) {
+                $this->updateVisitStatusBasedOnPayments($reloadedNewVisit);
+            }
+
+            if ($oldVisitId > 0 && $oldVisitId !== $newVisitId) {
+                $oldVisit = Visit::with(['procedures.service', 'payments'])->find($oldVisitId);
+                if ($oldVisit) {
+                    $this->updateVisitStatusBasedOnPayments($oldVisit);
+                }
+            }
+        });
 
         return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'cash'])
             ->with('success', 'Payment updated!');

@@ -349,7 +349,7 @@
                     <input
                         type="number"
                         step="0.01"
-                        min="0"
+                        min="0.01"
                         id="amountInput"
                         name="amount"
                         class="inputx money"

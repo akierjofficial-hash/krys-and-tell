@@ -22,7 +22,7 @@
         --bg3: rgba(34,197,94,.12);
     }
 
-    html[data-theme="dark"]{
+    html[data-theme="dark"]{7
         --bg1: rgba(96,165,250,.08);
         --bg2: rgba(167,139,250,.07);
         --bg3: rgba(34,197,94,.06);
