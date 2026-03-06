@@ -170,6 +170,25 @@
         color: var(--text);
         word-break: break-word;
     }
+
+    .formx{
+        border: 1px solid var(--kt-border);
+        background: var(--kt-input-bg, rgba(148,163,184,.08));
+        color: var(--text);
+        border-radius: 12px;
+        width: 100%;
+        padding: 10px 12px;
+        font-weight: 650;
+    }
+    .formx:focus{
+        outline: none;
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96,165,250,.14);
+    }
+    textarea.formx{
+        min-height: 140px;
+        resize: vertical;
+    }
 </style>
 
 @php
@@ -197,10 +216,14 @@
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>
 
-            {{-- Quick reply (opens mail client) --}}
             <a class="btnx btnx-primary"
-               href="mailto:{{ $message->email }}?subject={{ rawurlencode('Re: Message to Krys & Tell') }}">
+               href="#reply-form">
                 <i class="fa-solid fa-reply"></i> Reply
+            </a>
+
+            <a class="btnx"
+               href="mailto:{{ $message->email }}?subject={{ rawurlencode('Re: Message to Krys & Tell') }}">
+                <i class="fa-regular fa-envelope"></i> Open Mail App
             </a>
 
             @if(!$message->read_at)
@@ -260,6 +283,66 @@
                     <strong>UA:</strong> <code>{{ $message->user_agent ?? '—' }}</code>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="cardx mt-3" id="reply-form">
+        <div class="cardx-head">
+            <div class="cardx-title">
+                <i class="fa-solid fa-paper-plane"></i> Send Reply
+            </div>
+        </div>
+
+        <div class="cardx-body">
+            <div class="mb-2" style="font-size:12px; color:var(--muted);">
+                This will send an email from <strong>krysandt@gmail.com</strong> to <strong>{{ $message->email }}</strong>.
+            </div>
+
+            @if(!empty($message->replied_at))
+                <div class="info mb-3">
+                    <div class="label">Last Reply</div>
+                    <div class="value">
+                        {{ optional($message->replied_at)->format('M d, Y h:i A') }}
+                    </div>
+                    @if(!empty($message->reply_subject))
+                        <div class="mt-1" style="font-size:13px; color:var(--muted);">
+                            Subject: {{ $message->reply_subject }}
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('staff.messages.reply', $message) }}">
+                @csrf
+
+                <div class="mb-3">
+                    <label class="label d-block">Subject</label>
+                    <input
+                        type="text"
+                        name="subject"
+                        class="formx"
+                        maxlength="190"
+                        value="{{ old('subject', 'Re: Message to Krys & Tell') }}"
+                        required
+                    >
+                    @error('subject')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="label d-block">Reply Message</label>
+                    <textarea
+                        name="reply_message"
+                        class="formx"
+                        maxlength="5000"
+                        required
+                    >{{ old('reply_message', "Hi {$message->name},\n\nThank you for your message.\n\n") }}</textarea>
+                    @error('reply_message')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                </div>
+
+                <button class="btnx btnx-primary" type="submit">
+                    <i class="fa-solid fa-paper-plane"></i> Send Reply
+                </button>
+            </form>
         </div>
     </div>
 </div>

@@ -13,11 +13,15 @@ class ContactMessage extends Model
         'email',
         'message',
         'read_at',
+        'replied_at',
+        'reply_subject',
+        'reply_message',
         'ip_address',
         'user_agent',
     ];
 
     protected $casts = [
         'read_at' => 'datetime',
+        'replied_at' => 'datetime',
     ];
 }

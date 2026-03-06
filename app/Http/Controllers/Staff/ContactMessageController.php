@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactMessageReplyMail;
 use App\Models\ContactMessage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class ContactMessageController extends Controller
@@ -55,6 +58,51 @@ class ContactMessageController extends Controller
 
         return $this->ktRedirectToReturn($request, 'staff.messages.index')
             ->with('success', 'Marked as read.');
+    }
+
+    public function reply(Request $request, ContactMessage $message)
+    {
+        $data = $request->validate([
+            'subject' => ['required', 'string', 'max:190'],
+            'reply_message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        if (is_null($message->read_at)) {
+            $message->forceFill(['read_at' => now()])->save();
+        }
+
+        try {
+            Mail::to($message->email)->send(new ContactMessageReplyMail(
+                contactMessage: $message,
+                subjectLine: $data['subject'],
+                replyBody: $data['reply_message'],
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->ktRedirectToReturn($request, 'staff.messages.show', ['message' => $message->id])
+                ->withErrors([
+                    'reply_message' => 'Unable to send reply right now. Please check mail settings and try again.',
+                ])
+                ->withInput();
+        }
+
+        $updates = [];
+        if (Schema::hasColumn('contact_messages', 'replied_at')) {
+            $updates['replied_at'] = now();
+        }
+        if (Schema::hasColumn('contact_messages', 'reply_subject')) {
+            $updates['reply_subject'] = $data['subject'];
+        }
+        if (Schema::hasColumn('contact_messages', 'reply_message')) {
+            $updates['reply_message'] = $data['reply_message'];
+        }
+        if (!empty($updates)) {
+            $message->forceFill($updates)->save();
+        }
+
+        return $this->ktRedirectToReturn($request, 'staff.messages.show', ['message' => $message->id])
+            ->with('success', 'Reply sent to ' . $message->email . '.');
     }
 
     public function restore(Request $request, int $id)

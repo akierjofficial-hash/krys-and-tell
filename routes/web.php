@@ -246,6 +246,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [StaffContactMessageController::class, 'index'])->name('index');
                 Route::get('/{message}', [StaffContactMessageController::class, 'show'])->name('show');
                 Route::post('/{message}/read', [StaffContactMessageController::class, 'markRead'])->name('read');
+                Route::post('/{message}/reply', [StaffContactMessageController::class, 'reply'])->name('reply');
                 Route::post('/{id}/restore', [StaffContactMessageController::class, 'restore'])->name('restore');
                 Route::delete('/{message}', [StaffContactMessageController::class, 'destroy'])->name('destroy');
             });
