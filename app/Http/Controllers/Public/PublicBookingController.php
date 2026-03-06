@@ -216,6 +216,8 @@ class PublicBookingController extends Controller
     {
         // ✅ Walk-in services do not have slots
         if ($this->isWalkIn($service)) {
+            $doctorId = $request->integer('doctor_id') ?: null;
+            $schedule = $this->resolveDoctorSchedule($doctorId);
             $walkInDate = now()->toDateString();
             if ($request->filled('date')) {
                 try {
@@ -227,12 +229,13 @@ class PublicBookingController extends Controller
 
             return response()->json([
                 'date' => $walkInDate,
-                'doctor_id' => $request->integer('doctor_id') ?: null,
+                'doctor_id' => $doctorId,
                 'slots' => [],
                 'meta' => [
                     'walk_in' => true,
-                    'open' => self::CLINIC_OPEN,
-                    'close' => self::CLINIC_CLOSE,
+                    'open' => $schedule['open'],
+                    'close' => $schedule['close'],
+                    'working_days' => $schedule['working_days'],
                     'timezone' => config('app.timezone'),
                 ],
             ]);
@@ -247,6 +250,7 @@ class PublicBookingController extends Controller
 
         $date = Carbon::parse($request->date)->toDateString();
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
+        $schedule = $this->resolveDoctorSchedule($doctorId);
 
         $slots = $this->computeHourlySlots($date, $doctorId);
 
@@ -258,10 +262,10 @@ class PublicBookingController extends Controller
                 'step_minutes' => self::SLOT_MINUTES,
                 'duration_minutes' => self::SLOT_MINUTES,
                 'lead_minutes_today' => self::LEAD_MINUTES_TODAY,
-                'open' => self::CLINIC_OPEN,
-                'close' => self::CLINIC_CLOSE,
+                'open' => $schedule['open'],
+                'close' => $schedule['close'],
                 'chairs' => self::CHAIRS,
-                'closed_weekday' => 'Sunday',
+                'working_days' => $schedule['working_days'],
                 'timezone' => config('app.timezone'),
             ],
         ]);
@@ -518,12 +522,11 @@ class PublicBookingController extends Controller
     private function computeHourlySlots(string $date, ?int $doctorId, ?int $excludeAppointmentId = null): array
     {
         $tz = config('app.timezone');
+        $schedule = $this->resolveDoctorSchedule($doctorId);
+        if (!$this->doctorWorksOnDate($schedule, $date, $tz)) return [];
 
-        $day = Carbon::parse($date, $tz)->dayOfWeekIso;
-        if ($day === 7) return [];
-
-        $openStart = Carbon::parse("$date " . self::CLINIC_OPEN, $tz);
-        $openEnd   = Carbon::parse("$date " . self::CLINIC_CLOSE, $tz);
+        $openStart = Carbon::parse("$date " . $schedule['open'], $tz);
+        $openEnd   = Carbon::parse("$date " . $schedule['close'], $tz);
 
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
         if (!Schema::hasColumn('appointments', 'appointment_date')) return [];
@@ -821,6 +824,94 @@ class PublicBookingController extends Controller
         }
 
         return $d;
+    }
+
+    private function defaultWorkingDays(): array
+    {
+        return [1, 2, 3, 4, 5, 6]; // Mon-Sat
+    }
+
+    private function normalizeWorkingDays($raw): array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $raw = $decoded;
+            }
+        }
+
+        if (!is_array($raw)) {
+            return $this->defaultWorkingDays();
+        }
+
+        $days = collect($raw)
+            ->map(fn ($d) => (int) $d)
+            ->filter(fn ($d) => $d >= 1 && $d <= 7)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return empty($days) ? $this->defaultWorkingDays() : $days;
+    }
+
+    private function resolveDoctorSchedule(?int $doctorId): array
+    {
+        $open = self::CLINIC_OPEN;
+        $close = self::CLINIC_CLOSE;
+        $workingDays = $this->defaultWorkingDays();
+
+        if ($doctorId && class_exists(Doctor::class) && Schema::hasTable('doctors')) {
+            $doctor = Doctor::query()->whereKey($doctorId)->first();
+
+            if ($doctor) {
+                if (Schema::hasColumn('doctors', 'working_days')) {
+                    $workingDays = $this->normalizeWorkingDays($doctor->working_days ?? null);
+                }
+
+                if (Schema::hasColumn('doctors', 'work_start_time') && !empty($doctor->work_start_time)) {
+                    try {
+                        $open = Carbon::parse($doctor->work_start_time)->format('H:i');
+                    } catch (\Throwable $e) {
+                        $open = self::CLINIC_OPEN;
+                    }
+                }
+
+                if (Schema::hasColumn('doctors', 'work_end_time') && !empty($doctor->work_end_time)) {
+                    try {
+                        $close = Carbon::parse($doctor->work_end_time)->format('H:i');
+                    } catch (\Throwable $e) {
+                        $close = self::CLINIC_CLOSE;
+                    }
+                }
+            }
+        }
+
+        // Guard against invalid/zero-length schedules.
+        try {
+            $start = Carbon::createFromFormat('H:i', $open);
+            $end = Carbon::createFromFormat('H:i', $close);
+            if (!$end->gt($start)) {
+                $open = self::CLINIC_OPEN;
+                $close = self::CLINIC_CLOSE;
+            }
+        } catch (\Throwable $e) {
+            $open = self::CLINIC_OPEN;
+            $close = self::CLINIC_CLOSE;
+        }
+
+        return [
+            'open' => $open,
+            'close' => $close,
+            'working_days' => $workingDays,
+        ];
+    }
+
+    private function doctorWorksOnDate(array $schedule, string $date, string $tz): bool
+    {
+        $dayIso = Carbon::parse($date, $tz)->dayOfWeekIso;
+        $workingDays = $this->normalizeWorkingDays($schedule['working_days'] ?? null);
+        return in_array($dayIso, $workingDays, true);
     }
 
     private function activeDoctors()

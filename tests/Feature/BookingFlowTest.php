@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Appointment;
+use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\User;
@@ -52,6 +53,65 @@ class BookingFlowTest extends TestCase
         $this->assertIsArray($slots);
         $this->assertContains('14:00', $slots, 'Pending bookings should not lock slots.');
         $this->assertNotContains('15:00', $slots, 'Approved/upcoming bookings should still lock slots.');
+    }
+
+    public function test_slots_are_computed_per_selected_dentist_schedule(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'is_active' => true,
+        ]);
+
+        $service = Service::create([
+            'name' => 'Root Canal',
+            'base_price' => 2500,
+            'allow_custom_price' => false,
+            'duration_minutes' => 60,
+        ]);
+
+        $patient = $this->makePatient();
+        $date = now()->addDays(5)->toDateString();
+
+        $doctorA = Doctor::create([
+            'name' => 'Doctor A',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6],
+            'work_start_time' => '09:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        $doctorB = Doctor::create([
+            'name' => 'Doctor B',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6],
+            'work_start_time' => '13:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        // Doctor A already has 13:00 occupied.
+        $this->makeAppointment($patient->id, $service->id, $date, '13:00:00', 'upcoming', $doctorA->id);
+
+        $slotsForA = $this->actingAs($user)
+            ->getJson(route('public.booking.slots', [
+                'service' => $service->id,
+                'date' => $date,
+                'doctor_id' => $doctorA->id,
+            ]))
+            ->assertOk()
+            ->json('slots');
+
+        $slotsForB = $this->actingAs($user)
+            ->getJson(route('public.booking.slots', [
+                'service' => $service->id,
+                'date' => $date,
+                'doctor_id' => $doctorB->id,
+            ]))
+            ->assertOk()
+            ->json('slots');
+
+        $this->assertNotContains('13:00', $slotsForA, 'Selected dentist should not show own occupied hour.');
+        $this->assertContains('13:00', $slotsForB, 'Another dentist can still show the same hour when free.');
+        $this->assertNotContains('09:00', $slotsForB, 'Dentist B starts at 1:00 PM, so morning slots must be hidden.');
     }
 
     public function test_repeat_booking_updates_existing_pending_request_instead_of_creating_new_row(): void
@@ -159,11 +219,19 @@ class BookingFlowTest extends TestCase
         ]);
     }
 
-    private function makeAppointment(int $patientId, int $serviceId, string $date, string $time, string $status): Appointment
+    private function makeAppointment(
+        int $patientId,
+        int $serviceId,
+        string $date,
+        string $time,
+        string $status,
+        ?int $doctorId = null
+    ): Appointment
     {
         $appointment = Appointment::create([
             'patient_id' => $patientId,
             'service_id' => $serviceId,
+            'doctor_id' => $doctorId,
             'appointment_date' => $date,
             'appointment_time' => $time,
             'duration_minutes' => 60,
@@ -174,4 +242,3 @@ class BookingFlowTest extends TestCase
         return $appointment;
     }
 }
-

@@ -184,6 +184,21 @@
         </div>
     </div>
 
+    @php
+        $selectedDays = collect(old('working_days', [1,2,3,4,5,6]))->map(fn($d) => (int)$d)->all();
+        $startTime = old('work_start_time', '09:00');
+        $endTime = old('work_end_time', '17:00');
+        $dayOptions = [
+            1 => 'Mon',
+            2 => 'Tue',
+            3 => 'Wed',
+            4 => 'Thu',
+            5 => 'Fri',
+            6 => 'Sat',
+            7 => 'Sun',
+        ];
+    @endphp
+
     <form method="POST" action="{{ route('admin.doctors.store') }}">
         @csrf
 
@@ -206,6 +221,30 @@
             <div class="col-md-6">
                 <label class="form-label">Phone (optional)</label>
                 <input class="form-control kt-control" name="phone" value="{{ old('phone') }}" placeholder="e.g. 09xxxxxxxxx">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Work Start Time</label>
+                <input class="form-control kt-control" type="time" name="work_start_time" value="{{ $startTime }}">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Work End Time</label>
+                <input class="form-control kt-control" type="time" name="work_end_time" value="{{ $endTime }}">
+            </div>
+
+            <div class="col-12">
+                <label class="form-label d-block">Working Days</label>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach($dayOptions as $dayVal => $dayLabel)
+                        <label class="form-check-label d-flex align-items-center gap-2" style="font-weight:850;">
+                            <input type="checkbox" class="form-check-input" name="working_days[]" value="{{ $dayVal }}"
+                                   @checked(in_array($dayVal, $selectedDays, true))>
+                            <span>{{ $dayLabel }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                <div class="hint mt-1">These days/times control this dentist's booking slots.</div>
             </div>
 
             <div class="col-12">

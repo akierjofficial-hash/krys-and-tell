@@ -437,6 +437,93 @@ class AdminApprovalRequestController extends Controller
         return $d;
     }
 
+    private function defaultWorkingDays(): array
+    {
+        return [1, 2, 3, 4, 5, 6]; // Mon-Sat
+    }
+
+    private function normalizeWorkingDays($raw): array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $raw = $decoded;
+            }
+        }
+
+        if (!is_array($raw)) {
+            return $this->defaultWorkingDays();
+        }
+
+        $days = collect($raw)
+            ->map(fn ($d) => (int) $d)
+            ->filter(fn ($d) => $d >= 1 && $d <= 7)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return empty($days) ? $this->defaultWorkingDays() : $days;
+    }
+
+    private function resolveDoctorSchedule(?int $doctorId): array
+    {
+        $open = self::CLINIC_OPEN;
+        $close = self::CLINIC_CLOSE;
+        $workingDays = $this->defaultWorkingDays();
+
+        if ($doctorId && class_exists(Doctor::class) && Schema::hasTable('doctors')) {
+            $doctor = Doctor::query()->whereKey($doctorId)->first();
+
+            if ($doctor) {
+                if (Schema::hasColumn('doctors', 'working_days')) {
+                    $workingDays = $this->normalizeWorkingDays($doctor->working_days ?? null);
+                }
+
+                if (Schema::hasColumn('doctors', 'work_start_time') && !empty($doctor->work_start_time)) {
+                    try {
+                        $open = Carbon::parse($doctor->work_start_time)->format('H:i');
+                    } catch (\Throwable $e) {
+                        $open = self::CLINIC_OPEN;
+                    }
+                }
+
+                if (Schema::hasColumn('doctors', 'work_end_time') && !empty($doctor->work_end_time)) {
+                    try {
+                        $close = Carbon::parse($doctor->work_end_time)->format('H:i');
+                    } catch (\Throwable $e) {
+                        $close = self::CLINIC_CLOSE;
+                    }
+                }
+            }
+        }
+
+        try {
+            $start = Carbon::createFromFormat('H:i', $open);
+            $end = Carbon::createFromFormat('H:i', $close);
+            if (!$end->gt($start)) {
+                $open = self::CLINIC_OPEN;
+                $close = self::CLINIC_CLOSE;
+            }
+        } catch (\Throwable $e) {
+            $open = self::CLINIC_OPEN;
+            $close = self::CLINIC_CLOSE;
+        }
+
+        return [
+            'open' => $open,
+            'close' => $close,
+            'working_days' => $workingDays,
+        ];
+    }
+
+    private function doctorWorksOnDate(array $schedule, string $date, string $tz): bool
+    {
+        $dayIso = Carbon::parse($date, $tz)->dayOfWeekIso;
+        $workingDays = $this->normalizeWorkingDays($schedule['working_days'] ?? null);
+        return in_array($dayIso, $workingDays, true);
+    }
+
     /**
      * Compute available hourly slots for a date/doctor using the same rules as public booking,
      * but EXCLUDING a given appointment ID (so keeping the same slot doesn't block itself).
@@ -444,13 +531,11 @@ class AdminApprovalRequestController extends Controller
     private function computeHourlySlots(string $date, ?int $doctorId, ?int $excludeAppointmentId = null): array
     {
         $tz = config('app.timezone');
+        $schedule = $this->resolveDoctorSchedule($doctorId);
+        if (!$this->doctorWorksOnDate($schedule, $date, $tz)) return [];
 
-        // Sunday closed
-        $day = Carbon::parse($date, $tz)->dayOfWeekIso;
-        if ($day === 7) return [];
-
-        $openStart = Carbon::parse("$date " . self::CLINIC_OPEN, $tz);
-        $openEnd   = Carbon::parse("$date " . self::CLINIC_CLOSE, $tz);
+        $openStart = Carbon::parse("$date " . $schedule['open'], $tz);
+        $openEnd   = Carbon::parse("$date " . $schedule['close'], $tz);
 
         if (!Schema::hasColumn('appointments', 'appointment_time')) return [];
         if (!Schema::hasColumn('appointments', 'appointment_date')) return [];

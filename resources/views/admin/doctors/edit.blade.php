@@ -229,6 +229,30 @@
         </div>
     </div>
 
+    @php
+        $doctorDays = is_array($doctor->working_days ?? null) ? $doctor->working_days : [1,2,3,4,5,6];
+        $selectedDays = collect(old('working_days', $doctorDays))->map(fn($d) => (int)$d)->all();
+
+        $startDefault = !empty($doctor->work_start_time)
+            ? \Carbon\Carbon::parse($doctor->work_start_time)->format('H:i')
+            : '09:00';
+        $endDefault = !empty($doctor->work_end_time)
+            ? \Carbon\Carbon::parse($doctor->work_end_time)->format('H:i')
+            : '17:00';
+
+        $startTime = old('work_start_time', $startDefault);
+        $endTime = old('work_end_time', $endDefault);
+        $dayOptions = [
+            1 => 'Mon',
+            2 => 'Tue',
+            3 => 'Wed',
+            4 => 'Thu',
+            5 => 'Fri',
+            6 => 'Sat',
+            7 => 'Sun',
+        ];
+    @endphp
+
     <form method="POST" action="{{ route('admin.doctors.update', $doctor) }}">
         @csrf
         @method('PUT')
@@ -252,6 +276,30 @@
             <div class="col-md-6">
                 <label class="form-label">Phone (optional)</label>
                 <input class="form-control kt-control" name="phone" value="{{ old('phone', $doctor->phone) }}" placeholder="09xxxxxxxxx">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Work Start Time</label>
+                <input class="form-control kt-control" type="time" name="work_start_time" value="{{ $startTime }}">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Work End Time</label>
+                <input class="form-control kt-control" type="time" name="work_end_time" value="{{ $endTime }}">
+            </div>
+
+            <div class="col-12">
+                <label class="form-label d-block">Working Days</label>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach($dayOptions as $dayVal => $dayLabel)
+                        <label class="form-check-label d-flex align-items-center gap-2" style="font-weight:850;">
+                            <input type="checkbox" class="form-check-input" name="working_days[]" value="{{ $dayVal }}"
+                                   @checked(in_array($dayVal, $selectedDays, true))>
+                            <span>{{ $dayLabel }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                <div class="hint mt-1">These days/times control this dentist's booking slots.</div>
             </div>
 
             <div class="col-12">
