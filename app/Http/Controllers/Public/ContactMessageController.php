@@ -24,7 +24,9 @@ class ContactMessageController extends Controller
             'user_agent' => substr((string) $request->userAgent(), 0, 2000),
         ]);
 
-        return back()
-            ->with('contact_success', 'Thanks! Your message was sent. We’ll get back to you soon.');
+        return back()->with(
+            'contact_success',
+            'Thanks! Your message was sent. Please check your Gmail for our reply.'
+        );
     }
 }

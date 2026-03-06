@@ -266,6 +266,32 @@
     </div>
 </section>
 
+@if(session('contact_success'))
+    <div class="modal fade" id="contactSentModal" tabindex="-1" aria-labelledby="contactSentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content contact-sent-modal">
+                <div class="modal-body p-4 text-center">
+                    <div class="contact-sent-icon mx-auto mb-3">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+
+                    <h5 id="contactSentModalLabel" class="mb-2 fw-bold">Message Sent</h5>
+                    <p class="text-muted-2 mb-0" style="font-weight:650;">
+                        Please check your Gmail for our reply from
+                        <strong>krysandt@gmail.com</strong>.
+                    </p>
+                </div>
+
+                <div class="px-4 pb-4 pt-0">
+                    <button type="button" class="btn kt-btn kt-btn-primary text-white w-100" data-bs-dismiss="modal">
+                        Okay
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
 <style>
     .contact-badge{
         display:inline-flex; align-items:center; gap:.35rem;
@@ -376,10 +402,42 @@
         margin-bottom: 10px;
     }
 
+    .contact-sent-modal{
+        border: 1px solid rgba(18,23,34,.10);
+        border-radius: 18px;
+        box-shadow: 0 24px 70px rgba(18,23,34,.18);
+    }
+    .contact-sent-icon{
+        width: 56px;
+        height: 56px;
+        border-radius: 20px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, rgba(175,125,90,.20), rgba(216,193,176,.30));
+        border: 1px solid rgba(18,23,34,.10);
+        color: #8a5e42;
+        font-size: 1.2rem;
+    }
+
     @media (max-width: 768px){
         .map-shell{ min-height: 220px; }
         .map-missing{ min-height: 220px; }
+        .contact-sent-modal{
+            border-radius: 16px;
+        }
     }
 </style>
+
+@if(session('contact_success'))
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalEl = document.getElementById('contactSentModal');
+    if (!modalEl || typeof bootstrap === 'undefined') return;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+});
+</script>
+@endpush
+@endif
 @endsection
 
