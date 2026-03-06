@@ -79,103 +79,264 @@
 <section class="section section-soft kt-booking-page {{ $hasSuccess ? 'kt-booking-success' : 'kt-booking-form' }}">
     <style>
         .kt-booking-page{ padding-bottom: 24px; }
-
-        /* ✅ Only the FORM view needs extra bottom padding on mobile (sticky submit) */
-        @media (max-width: 768px){
-            .kt-booking-form{ padding-bottom: 130px !important; }
-            .kt-booking-success{ padding-bottom: 24px !important; }
+        .kt-booking-card{
+            height: 100%;
+            border-radius: 22px;
+            border: 1px solid rgba(15,23,42,.10);
+            background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.86));
+            box-shadow: 0 10px 30px rgba(15,23,42,.08);
+        }
+        html[data-theme="dark"] .kt-booking-card{
+            border-color: rgba(226,232,240,.12);
+            background: linear-gradient(180deg, rgba(15,23,42,.74), rgba(2,6,23,.62));
+            box-shadow: 0 10px 28px rgba(2,6,23,.36);
         }
 
-        .kt-booking-card{ height: 100%; }
-        .kt-field-help{ min-height: 18px; }
+        .kt-book-head{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .kt-book-kicker{
+            margin: 0 0 6px;
+            font-size: 11px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: rgba(15,23,42,.55);
+        }
+        html[data-theme="dark"] .kt-book-kicker{ color: rgba(226,232,240,.62); }
+        .kt-mode-pill{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid var(--kt-border, rgba(15,23,42,.12));
+            background: rgba(255,255,255,.75);
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 850;
+            white-space: nowrap;
+        }
+        html[data-theme="dark"] .kt-mode-pill{ background: rgba(17,24,39,.6); }
+        .kt-mode-pill i{ font-size: 12px; }
 
+        .kt-inline-note{
+            margin-top: 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(15,23,42,.10);
+            background: rgba(255,255,255,.78);
+            padding: 12px 14px;
+        }
+        html[data-theme="dark"] .kt-inline-note{
+            border-color: rgba(226,232,240,.12);
+            background: rgba(2,6,23,.28);
+        }
+        .kt-inline-note-title{
+            font-weight: 900;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .kt-inline-note-desc{
+            font-size: 12px;
+            color: rgba(15,23,42,.62);
+        }
+        html[data-theme="dark"] .kt-inline-note-desc{ color: rgba(226,232,240,.72); }
+
+        .kt-form-shell{ margin-top: 16px; }
+        .kt-label{
+            display: inline-block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: rgba(15,23,42,.62);
+        }
+        html[data-theme="dark"] .kt-label{ color: rgba(226,232,240,.72); }
+        .kt-help{
+            font-size: 12px;
+            color: rgba(15,23,42,.6);
+            font-weight: 650;
+        }
+        html[data-theme="dark"] .kt-help{ color: rgba(226,232,240,.65); }
+        .kt-field-help{ min-height: 18px; }
+        .kt-booking-card .form-control,
+        .kt-booking-card .form-select{
+            border-radius: 14px;
+            border-color: rgba(15,23,42,.16);
+            background: rgba(255,255,255,.96);
+            min-height: 46px;
+            padding: 10px 12px;
+        }
+        html[data-theme="dark"] .kt-booking-card .form-control,
+        html[data-theme="dark"] .kt-booking-card .form-select{
+            border-color: rgba(226,232,240,.16);
+            background: rgba(15,23,42,.66);
+            color: #e5e7eb;
+        }
+
+        .kt-time-panel{
+            margin-top: 8px;
+            border-radius: 16px;
+            border: 1px solid rgba(15,23,42,.10);
+            background: rgba(255,255,255,.74);
+            padding: 12px;
+        }
+        html[data-theme="dark"] .kt-time-panel{
+            border-color: rgba(226,232,240,.12);
+            background: rgba(2,6,23,.24);
+        }
+        .kt-slot-heading{
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            color: rgba(15,23,42,.58);
+        }
+        html[data-theme="dark"] .kt-slot-heading{ color: rgba(226,232,240,.68); }
         .kt-slot-grid{
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 8px;
         }
-        @media (min-width: 576px){
+        @media (min-width: 992px){
             .kt-slot-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
+        .kt-slot-grid.is-dimmed{
+            opacity: .45;
+            pointer-events: none;
+        }
         .kt-slot{
-            border: 1px solid var(--kt-border, rgba(15,23,42,.12));
+            border: 1px solid rgba(15,23,42,.12);
             background: rgba(255,255,255,.88);
-            border-radius: 16px;
+            border-radius: 12px;
             padding: 10px 10px;
-            text-align: left;
-            font-weight: 900;
-            font-size: 13px;
+            text-align: center;
+            font-weight: 850;
+            font-size: 12px;
             line-height: 1.15;
             cursor: pointer;
-            transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+            transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
             width: 100%;
         }
-        html[data-theme="dark"] .kt-slot{ background: rgba(17,24,39,.55); }
+        html[data-theme="dark"] .kt-slot{
+            border-color: rgba(226,232,240,.18);
+            background: rgba(17,24,39,.55);
+        }
         .kt-slot:active{ transform: scale(.99); }
         .kt-slot.is-active{
-            border-color: rgba(194,138,99,.55);
-            background: rgba(194,138,99,.12);
+            border-color: rgba(194,138,99,.68);
+            background: rgba(194,138,99,.14);
         }
+
         .kt-walkin-fallback{
             margin-top: 10px;
             padding: 12px;
             border-radius: 14px;
-            border: 1px dashed rgba(194,138,99,.45);
+            border: 1px dashed rgba(194,138,99,.5);
             background: rgba(194,138,99,.10);
+            transition: border-color 120ms ease, background 120ms ease;
+        }
+        .kt-walkin-fallback.is-selected{
+            border-style: solid;
+            border-color: rgba(194,138,99,.75);
+            background: rgba(194,138,99,.18);
+        }
+        .kt-walkin-row{
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .kt-walkin-icon{
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(194,138,99,.22);
+            color: #8d5d34;
+            flex: 0 0 auto;
         }
         .kt-walkin-fallback .title{
             font-weight: 900;
             font-size: 13px;
+            line-height: 1.2;
             color: var(--kt-text, #0f172a);
         }
         .kt-walkin-fallback .desc{
             font-size: 12px;
-            color: rgba(15, 23, 42, .62);
-            margin-top: 4px;
+            color: rgba(15,23,42,.62);
+            margin-top: 2px;
         }
-        html[data-theme="dark"] .kt-walkin-fallback .desc{ color: rgba(226, 232, 240, .70); }
+        html[data-theme="dark"] .kt-walkin-fallback .desc{ color: rgba(226,232,240,.72); }
         .kt-walkin-btn{
-            margin-top: 8px;
-            border: 1px solid rgba(194,138,99,.45);
-            background: rgba(255,255,255,.75);
+            margin-top: 10px;
+            border: 1px solid rgba(194,138,99,.55);
+            background: rgba(255,255,255,.78);
             color: var(--kt-text, #0f172a);
             border-radius: 12px;
-            padding: 8px 10px;
-            font-weight: 900;
+            padding: 9px 12px;
+            font-weight: 850;
             font-size: 12px;
             cursor: pointer;
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         .kt-walkin-btn.is-active{
-            background: rgba(194,138,99,.22);
-            border-color: rgba(194,138,99,.70);
+            background: rgba(194,138,99,.28);
+            border-color: rgba(194,138,99,.82);
         }
+        .kt-walkin-state{
+            display: none;
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(15,23,42,.66);
+        }
+        .kt-walkin-state.is-visible{ display: block; }
+        html[data-theme="dark"] .kt-walkin-state{ color: rgba(226,232,240,.74); }
 
         .kt-sticky-submit{
             position: fixed;
             left: 0;
             right: 0;
             bottom: 0;
-            padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-            background: linear-gradient(to top, rgba(255,255,255,.92), rgba(255,255,255,.55), rgba(255,255,255,0));
+            padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: linear-gradient(to top, rgba(255,255,255,.94), rgba(255,255,255,.50), rgba(255,255,255,0));
             backdrop-filter: blur(10px);
             z-index: 5000;
         }
+        .kt-sticky-card{
+            border-radius: 16px;
+            border: 1px solid rgba(15,23,42,.1);
+            background: rgba(255,255,255,.88);
+            padding: 8px;
+            box-shadow: 0 10px 26px rgba(15,23,42,.12);
+        }
+        .kt-sticky-note{
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(15,23,42,.55);
+            padding: 0 4px 6px;
+            letter-spacing: .02em;
+        }
         html[data-theme="dark"] .kt-sticky-submit{
-            background: linear-gradient(to top, rgba(17,24,39,.92), rgba(17,24,39,.55), rgba(17,24,39,0));
+            background: linear-gradient(to top, rgba(17,24,39,.95), rgba(17,24,39,.55), rgba(17,24,39,0));
         }
-
-        .kt-help{
-            font-size: 12px;
-            color: rgba(15, 23, 42, .6);
-            font-weight: 650;
+        html[data-theme="dark"] .kt-sticky-card{
+            border-color: rgba(226,232,240,.14);
+            background: rgba(15,23,42,.88);
         }
-        html[data-theme="dark"] .kt-help{ color: rgba(226, 232, 240, .65); }
+        html[data-theme="dark"] .kt-sticky-note{ color: rgba(226,232,240,.68); }
 
         .kt-side-img{ height: 520px; }
-        @media (max-width: 991.98px){
-            .kt-side-img{ height: 320px; }
-        }
         .kt-side-img img{
             width: 100%;
             height: 100%;
@@ -183,22 +344,6 @@
             border-radius: 18px;
         }
 
-        .kt-step-pill{
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid var(--kt-border, rgba(15,23,42,.12));
-            background: rgba(255,255,255,.75);
-            border-radius: 999px;
-            padding: 6px 10px;
-            font-weight: 850;
-            font-size: 12px;
-        }
-        html[data-theme="dark"] .kt-step-pill{ background: rgba(17,24,39,.55); }
-
-        /* ===========================
-           ✅ SUCCESS SUMMARY (MOBILE FIX)
-           =========================== */
         .kt-success-wrap .sec-title{
             font-size: clamp(24px, 5.6vw, 32px);
             line-height: 1.12;
@@ -255,6 +400,17 @@
         }
         @media (min-width: 576px){
             .kt-success-actions{ grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 991.98px){
+            .kt-side-img{ height: 280px; }
+        }
+        @media (max-width: 768px){
+            .kt-booking-form{ padding-bottom: 140px !important; }
+            .kt-booking-success{ padding-bottom: 24px !important; }
+            .kt-booking-card{ border-radius: 18px; }
+            .kt-booking-card.p-4{ padding: 18px !important; }
+            .kt-slot-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
 
@@ -326,46 +482,47 @@
                     </div>
                 @else
                     <div class="card card-soft p-4 kt-booking-card w-100">
-                        <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+                        <div class="kt-book-head">
                             <div>
-                                <h2 class="sec-title mb-1">Book: {{ $service->name }}</h2>
+                                <p class="kt-book-kicker">Appointment Request</p>
+                                <h2 class="sec-title mb-1">{{ $service->name }}</h2>
                                 <div class="sec-sub mb-0">
                                     @if($isWalkIn)
-                                        Choose doctor (if required) and a date. This is a <b>Walk-in</b> service — come anytime during clinic hours.
+                                        Choose dentist (if required) and date. This is a walk-in service, so no time slot is needed.
                                     @else
                                         @if($needsDetails)
-                                            Select doctor, date, time — then fill <b>contact</b>, <b>address</b>, and <b>birthdate</b>.
+                                            Select dentist, date, and time, then fill contact, address, and birthdate.
                                         @else
-                                            Select doctor, date, and time. We’ll use your saved contact, address, and birthdate.
+                                            Select dentist, date, and time. We will use your saved contact, address, and birthdate.
                                         @endif
                                     @endif
                                 </div>
                             </div>
 
                             @if($isWalkIn)
-                                <span class="kt-step-pill">
+                                <span class="kt-mode-pill">
                                     <i class="fa-solid fa-person-walking"></i> Walk-in
                                 </span>
                             @else
-                                <span class="kt-step-pill">
+                                <span class="kt-mode-pill">
                                     <i class="fa-regular fa-clock"></i> Scheduled
                                 </span>
                             @endif
                         </div>
 
                         @if($isWalkIn)
-                            <div class="alert alert-light border mt-3" style="border-radius:16px;">
-                                <div style="font-weight:900;">Walk-in service</div>
-                                <div class="small text-muted">
-                                    Come anytime during clinic hours (Mon–Sat 9:00 AM – 5:00 PM). No time slot needed.
+                            <div class="kt-inline-note">
+                                <div class="kt-inline-note-title">Walk-in service</div>
+                                <div class="kt-inline-note-desc">
+                                    Visit during clinic hours (Mon-Sat, 9:00 AM to 5:00 PM). Staff will assist based on queue flow.
                                 </div>
                             </div>
                         @else
                             @if(!$needsDetails)
-                                <div class="alert alert-light border mt-3" style="border-radius:16px;">
-                                    <div style="font-weight:900;">Using saved details</div>
-                                    <div class="small text-muted">
-                                        Contact, address, and birthdate are already on record — no need to re-enter.
+                                <div class="kt-inline-note">
+                                    <div class="kt-inline-note-title">Using saved details</div>
+                                    <div class="kt-inline-note-desc">
+                                        Your contact, address, and birthdate are already on file.
                                     </div>
                                 </div>
                             @endif
@@ -381,12 +538,12 @@
                             </div>
                         @endif
 
-                        <form class="mt-3" method="POST" action="{{ route('public.booking.store', $service->id) }}">
+                        <form class="mt-3 kt-form-shell" method="POST" action="{{ route('public.booking.store', $service->id) }}">
                             @csrf
 
                             <div class="row g-3">
                                 <div class="col-md-7">
-                                    <label class="form-label fw-bold">Full Name</label>
+                                    <label class="kt-label">Full Name</label>
                                     <input
                                         class="form-control"
                                         id="full_name"
@@ -401,7 +558,7 @@
                                 </div>
 
                                 <div class="col-md-5">
-                                    <label class="form-label fw-bold">Email</label>
+                                    <label class="kt-label">Email</label>
                                     <input class="form-control" value="{{ $email }}" readonly aria-readonly="true">
                                     <div class="kt-field-help"></div>
                                 </div>
@@ -416,9 +573,9 @@
 
                             @if($doctorRequired)
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold">Step 1: Select Doctor</label>
+                                    <label class="kt-label">Select Dentist</label>
                                     <select class="form-select" name="doctor_id" id="doctor_id" required>
-                                        <option value="">-- Choose Doctor --</option>
+                                        <option value="">Choose dentist...</option>
                                         @foreach($doctors as $d)
                                             <option value="{{ $d->id }}" @selected(old('doctor_id') == $d->id)>
                                                 {{ $d->name ?? ('Doctor #' . $d->id) }}
@@ -433,7 +590,7 @@
 
                             <div class="row g-3">
                                 <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4' }}">
-                                    <label class="form-label fw-bold">Step 2: Date</label>
+                                    <label class="kt-label">Preferred Date</label>
                                     <input type="date"
                                            class="form-control"
                                            name="date"
@@ -446,28 +603,37 @@
 
                                 @if(!$isWalkIn)
                                     <div class="col-md-4">
-                                        <label class="form-label fw-bold">Step 3: Time</label>
+                                        <label class="kt-label">Preferred Time</label>
                                         <input type="hidden" name="request_walkin" id="request_walkin" value="{{ old('request_walkin', 0) ? 1 : 0 }}">
-                                        <select class="form-select" name="time" id="time" required>
-                                            <option value="">
-                                                {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
-                                            </option>
-                                        </select>
+                                        <div class="kt-time-panel">
+                                            <select class="form-select" name="time" id="time" required>
+                                                <option value="">
+                                                    {{ $doctorRequired ? 'Select dentist and date first...' : 'Select date first...' }}
+                                                </option>
+                                            </select>
 
-                                        <div class="d-md-none">
-                                            <div class="small text-muted mt-2" style="font-weight:700;">Tap a time slot:</div>
+                                            <div class="kt-slot-heading">Available Slots</div>
                                             <div id="slotGrid" class="kt-slot-grid"></div>
-                                        </div>
 
-                                        <div class="small text-muted mt-1" id="timeHelp"></div>
-                                        <div id="walkInFallback" class="kt-walkin-fallback d-none">
-                                            <div class="title">No slots left for today.</div>
-                                            <div class="desc" id="walkInFallbackText">
-                                                You can send a walk-in request. Staff can approve if clinic flow allows.
+                                            <div class="small text-muted mt-2" id="timeHelp"></div>
+                                            <div id="walkInFallback" class="kt-walkin-fallback d-none" aria-live="polite">
+                                                <div class="kt-walkin-row">
+                                                    <span class="kt-walkin-icon"><i class="fa-solid fa-person-walking"></i></span>
+                                                    <div>
+                                                        <div class="title">Fully booked today</div>
+                                                        <div class="desc" id="walkInFallbackText">
+                                                            You can still send a walk-in request for today. Staff may approve based on clinic flow.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="kt-walkin-btn" id="walkInRequestBtn" aria-pressed="false">
+                                                    <i class="fa-regular fa-circle"></i>
+                                                    <span>Request walk-in for today</span>
+                                                </button>
+                                                <div class="kt-walkin-state" id="walkInSelectedHint">
+                                                    Walk-in request selected. No time slot will be reserved until staff approval.
+                                                </div>
                                             </div>
-                                            <button type="button" class="kt-walkin-btn" id="walkInRequestBtn">
-                                                Request walk-in visit for today
-                                            </button>
                                         </div>
                                         @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                         @error('request_walkin')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
@@ -478,7 +644,7 @@
 
                                 @if($needsDetails)
                                     <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4' }}">
-                                        <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 3' : 'Step 4' }}: Contact Number</label>
+                                        <label class="kt-label">Contact Number</label>
                                         <input class="form-control"
                                                type="tel"
                                                name="contact"
@@ -486,7 +652,7 @@
                                                placeholder="09xx xxx xxxx"
                                                inputmode="tel"
                                                required>
-                                        <div class="kt-help mt-1 kt-field-help">We’ll use this to confirm your booking.</div>
+                                        <div class="kt-help mt-1 kt-field-help">We will use this to confirm your booking.</div>
                                         @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 @endif
@@ -499,7 +665,7 @@
                             @else
                                 <div class="row g-3 mt-1">
                                     <div class="col-md-8">
-                                        <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 4' : 'Step 5' }}: Address</label>
+                                        <label class="kt-label">Address</label>
                                         <input class="form-control"
                                                type="text"
                                                name="address"
@@ -510,7 +676,7 @@
                                     </div>
 
                                     <div class="col-md-4">
-                                        <label class="form-label fw-bold">{{ $isWalkIn ? 'Step 5' : 'Step 6' }}: Birthdate</label>
+                                        <label class="kt-label">Birthdate</label>
                                         <input class="form-control"
                                                type="date"
                                                name="birthdate"
@@ -524,7 +690,7 @@
                             @endif
 
                             <div class="mt-3">
-                                <label class="form-label fw-bold">Message (optional)</label>
+                                <label class="kt-label">Message (optional)</label>
                                 <textarea class="form-control" name="message" rows="3" maxlength="500"
                                           placeholder="Anything you want us to know?">{{ old('message') }}</textarea>
                                 @error('message')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
@@ -536,9 +702,12 @@
 
                             <div class="kt-sticky-submit d-md-none">
                                 <div class="container">
-                                    <button class="btn kt-btn kt-btn-primary text-white w-100" type="submit">
-                                        <i class="fa-solid fa-circle-check me-1"></i> Confirm Booking
-                                    </button>
+                                    <div class="kt-sticky-card">
+                                        <div class="kt-sticky-note">Review details before submitting</div>
+                                        <button class="btn kt-btn kt-btn-primary text-white w-100" type="submit">
+                                            <i class="fa-solid fa-circle-check me-1"></i> Confirm Booking
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </form>
@@ -557,7 +726,6 @@
 
 @push('scripts')
 <script>
-// ✅ Keep first/middle/last hidden fields synced with editable full_name
 (function(){
     const fullNameEl = document.getElementById('full_name');
     const firstEl  = document.querySelector('input[name="first_name"]');
@@ -596,7 +764,6 @@
 </script>
 @endpush
 
-{{-- ✅ Slots script ONLY for scheduled services --}}
 @if(!$isWalkIn)
 @push('scripts')
 <script>
@@ -611,31 +778,56 @@
     const walkInBox = document.getElementById('walkInFallback');
     const walkInBtn = document.getElementById('walkInRequestBtn');
     const walkInText = document.getElementById('walkInFallbackText');
+    const walkInHint = document.getElementById('walkInSelectedHint');
 
     const doctorRequired = @json($doctors->count() > 0);
     const oldTime = @json(old('time'));
     const oldWalkInRequested = @json((bool) old('request_walkin'));
     const todayIso = @json(now()->toDateString());
+
     let seededOldWalkIn = false;
+    let seededOldTime = false;
 
     if (!dateEl || !timeEl) return;
 
     function setWalkInRequested(enabled){
         if (walkInInput) walkInInput.value = enabled ? '1' : '0';
+
         timeEl.required = !enabled;
+        timeEl.disabled = enabled;
 
         if (enabled){
             timeEl.value = '';
             if (gridEl) {
-                gridEl.querySelectorAll('.kt-slot.is-active').forEach(el => el.classList.remove('is-active'));
+                gridEl.querySelectorAll('.kt-slot.is-active').forEach((el) => el.classList.remove('is-active'));
             }
         }
 
+        if (walkInBox) walkInBox.classList.toggle('is-selected', enabled);
+        if (gridEl) gridEl.classList.toggle('is-dimmed', enabled);
+        if (walkInHint) walkInHint.classList.toggle('is-visible', enabled);
+
         if (walkInBtn){
             walkInBtn.classList.toggle('is-active', enabled);
-            walkInBtn.textContent = enabled
-                ? 'Walk-in request selected (click to remove)'
-                : 'Request walk-in visit for today';
+            walkInBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+
+            const icon = walkInBtn.querySelector('i');
+            const label = walkInBtn.querySelector('span');
+            if (icon) {
+                icon.classList.toggle('fa-circle-check', enabled);
+                icon.classList.toggle('fa-regular', !enabled);
+                icon.classList.toggle('fa-solid', enabled);
+                icon.classList.toggle('fa-circle', !enabled);
+            }
+            if (label) {
+                label.textContent = enabled
+                    ? 'Walk-in selected (tap to remove)'
+                    : 'Request walk-in for today';
+            }
+        }
+
+        if (helpEl && enabled) {
+            helpEl.textContent = 'Walk-in request selected. No slot is reserved until staff approval.';
         }
     }
 
@@ -651,6 +843,7 @@
     }
 
     function setLoading(msg){
+        timeEl.disabled = false;
         timeEl.innerHTML = `<option value="">${msg}</option>`;
         if (helpEl) helpEl.textContent = '';
         if (gridEl) gridEl.innerHTML = '';
@@ -669,18 +862,18 @@
     function renderGrid(slots){
         if (!gridEl) return;
 
-        gridEl.innerHTML = slots.map(t => `
-          <button type="button" class="kt-slot" data-time="${t}">
-            ${fmt12h(t)}
-          </button>
+        gridEl.innerHTML = slots.map((t) => `
+            <button type="button" class="kt-slot" data-time="${t}">
+                ${fmt12h(t)}
+            </button>
         `).join('');
 
         const btns = Array.from(gridEl.querySelectorAll('.kt-slot'));
-        const markActive = (val) => btns.forEach(b => b.classList.toggle('is-active', b.dataset.time === val));
+        const markActive = (val) => btns.forEach((b) => b.classList.toggle('is-active', b.dataset.time === val));
 
         markActive(timeEl.value);
 
-        btns.forEach(btn => {
+        btns.forEach((btn) => {
             btn.addEventListener('click', () => {
                 timeEl.value = btn.dataset.time;
                 markActive(btn.dataset.time);
@@ -694,15 +887,15 @@
         const doctorId = doctorEl?.value || '';
 
         if (doctorRequired && doctorEl && !doctorId){
-            setLoading('Select doctor first…');
+            setLoading('Select dentist first...');
             return;
         }
         if(!date){
-            setLoading('Select date first…');
+            setLoading('Select date first...');
             return;
         }
 
-        setLoading('Loading available times…');
+        setLoading('Loading available times...');
 
         const url = new URL(`/book/${serviceId}/slots`, window.location.origin);
         url.searchParams.set('date', date);
@@ -713,13 +906,11 @@
             res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
         } catch (e) {
             setLoading('Unable to load slots');
-            if (helpEl) helpEl.textContent = '';
             return;
         }
 
         if(!res.ok){
             setLoading('Unable to load slots');
-            if (helpEl) helpEl.textContent = '';
             return;
         }
 
@@ -727,13 +918,14 @@
         const slots = data.slots || [];
 
         if(!slots.length){
+            timeEl.disabled = true;
             timeEl.innerHTML = `<option value="">No available slots</option>`;
-            if (helpEl) helpEl.textContent = 'No slots available.';
+            if (helpEl) helpEl.textContent = 'No available schedule slots for this date.';
             if (gridEl) gridEl.innerHTML = '';
 
             const isTodaySelected = (date === todayIso);
             if (isTodaySelected) {
-                showWalkInOption('You can request walk-in for today. Staff can approve when clinic flow allows.');
+                showWalkInOption('All schedule slots are filled. You can submit a walk-in request for today.');
                 if (!seededOldWalkIn && oldWalkInRequested) {
                     setWalkInRequested(true);
                     seededOldWalkIn = true;
@@ -745,13 +937,16 @@
         }
 
         hideWalkInOption();
-
-        timeEl.innerHTML = `<option value="">Select time…</option>` + slots.map(t => {
-            const selected = (oldTime && oldTime === t) ? 'selected' : '';
+        timeEl.disabled = false;
+        timeEl.innerHTML = `<option value="">Select time...</option>` + slots.map((t) => {
+            const selected = (!seededOldTime && oldTime && oldTime === t) ? 'selected' : '';
             return `<option value="${t}" ${selected}>${fmt12h(t)}</option>`;
         }).join('');
 
-        if (oldTime) timeEl.value = oldTime;
+        if (!seededOldTime && oldTime) {
+            timeEl.value = oldTime;
+            seededOldTime = true;
+        }
 
         renderGrid(slots);
 
@@ -776,7 +971,11 @@
     dateEl.addEventListener('change', loadSlots);
     if (doctorEl) doctorEl.addEventListener('change', loadSlots);
 
-    if(dateEl.value && (!doctorRequired || (doctorEl && doctorEl.value))) loadSlots();
+    if (dateEl.value && (!doctorRequired || (doctorEl && doctorEl.value))) {
+        loadSlots();
+    } else {
+        setLoading(doctorRequired ? 'Select dentist and date first...' : 'Select date first...');
+    }
 })();
 </script>
 @endpush

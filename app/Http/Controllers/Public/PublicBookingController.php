@@ -112,13 +112,17 @@ class PublicBookingController extends Controller
         if (Schema::hasColumn('appointments', 'doctor_id')) {
             $doctorValue = $appointment->doctor_id ?: null;
         }
+        $isWalkInRequest = Schema::hasColumn('appointments', 'is_walk_in_request')
+            ? (bool) ($appointment->is_walk_in_request ?? false)
+            : false;
+        $isWalkIn = $this->isWalkIn($service) || $isWalkInRequest;
 
         return view('public.booking.edit', [
             'appointment' => $appointment,
             'service' => $service,
             'doctors' => $this->activeDoctors(),
             'doctorRequired' => $this->doctorRequired(),
-            'isWalkIn' => $this->isWalkIn($service),
+            'isWalkIn' => $isWalkIn,
             'prefillDate' => $dateValue,
             'prefillTime' => $timeValue,
             'prefillDoctorId' => $doctorValue,
@@ -149,7 +153,11 @@ class PublicBookingController extends Controller
         }
 
         $doctorRequired = $this->doctorRequired();
-        $isWalkIn = $this->isWalkIn($service);
+        $isWalkInService = $this->isWalkIn($service);
+        $isWalkInRequest = Schema::hasColumn('appointments', 'is_walk_in_request')
+            ? (bool) ($appointment->is_walk_in_request ?? false)
+            : false;
+        $isWalkIn = $isWalkInService || $isWalkInRequest;
 
         $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],

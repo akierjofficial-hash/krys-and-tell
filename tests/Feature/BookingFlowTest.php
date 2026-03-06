@@ -207,6 +207,112 @@ class BookingFlowTest extends TestCase
             ->assertOk();
     }
 
+    public function test_user_can_update_existing_walk_in_request_without_time(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'is_active' => true,
+        ]);
+
+        $service = Service::create([
+            'name' => 'Consultation',
+            'base_price' => 700,
+            'allow_custom_price' => false,
+            'duration_minutes' => 60,
+        ]);
+
+        $doctor = Doctor::create([
+            'name' => 'Dr. Pending Walkin',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6, 7],
+            'work_start_time' => '09:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        $patient = $this->makePatient();
+        $date = now()->toDateString();
+
+        $appt = Appointment::create([
+            'patient_id' => $patient->id,
+            'service_id' => $service->id,
+            'doctor_id' => $doctor->id,
+            'appointment_date' => $date,
+            'appointment_time' => null,
+            'duration_minutes' => 60,
+            'status' => 'pending',
+            'is_walk_in_request' => true,
+            'public_email' => $user->email,
+            'public_message' => 'Initial walk-in request.',
+        ]);
+
+        if (Schema::hasColumn('appointments', 'user_id')) {
+            $appt->user_id = $user->id;
+            $appt->save();
+        }
+
+        $response = $this->actingAs($user)->put(route('public.booking.update', $appt->id), [
+            'date' => $date,
+            'doctor_id' => $doctor->id,
+            'message' => 'Updated walk-in request note.',
+        ]);
+
+        $response->assertRedirect(route('public.booking.edit', $appt->id));
+        $response->assertSessionHas('success');
+
+        $appt->refresh();
+        $this->assertNull($appt->appointment_time);
+        $this->assertSame('pending', strtolower((string) $appt->status));
+        $this->assertTrue((bool) ($appt->is_walk_in_request ?? false));
+    }
+
+    public function test_staff_widget_handles_walk_in_request_items(): void
+    {
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'is_active' => true,
+        ]);
+
+        $service = Service::create([
+            'name' => 'Checkup',
+            'base_price' => 1000,
+            'allow_custom_price' => false,
+            'duration_minutes' => 60,
+        ]);
+
+        $doctor = Doctor::create([
+            'name' => 'Dr. Widget',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6, 7],
+            'work_start_time' => '09:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        $patient = $this->makePatient();
+
+        Appointment::create([
+            'patient_id' => $patient->id,
+            'service_id' => $service->id,
+            'doctor_id' => $doctor->id,
+            'appointment_date' => now()->toDateString(),
+            'appointment_time' => null,
+            'duration_minutes' => 60,
+            'status' => 'pending',
+            'is_walk_in_request' => true,
+            'public_first_name' => 'Walk',
+            'public_last_name' => 'In',
+            'public_email' => 'walkin@example.com',
+            'public_phone' => '09170000000',
+            'public_address' => 'Sample',
+        ]);
+
+        $response = $this->actingAs($staff)->getJson(route('staff.approvals.widget', ['limit' => 8]));
+
+        $response->assertOk();
+        $response->assertJsonPath('pendingCount', 1);
+        $response->assertJsonPath('items.0.time', 'Walk-in Request');
+        $response->assertJsonPath('items.0.is_walk_in_request', true);
+    }
+
     private function makePatient(): Patient
     {
         return Patient::create([
