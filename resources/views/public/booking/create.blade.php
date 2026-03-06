@@ -79,6 +79,11 @@
 <section class="section section-soft kt-booking-page {{ $hasSuccess ? 'kt-booking-success' : 'kt-booking-form' }}">
     <style>
         .kt-booking-page{ padding-bottom: 24px; }
+        .kt-layout-main{ min-height: 100%; }
+        .kt-layout-aside{
+            position: sticky;
+            top: 106px;
+        }
         .kt-booking-card{
             height: 100%;
             border-radius: 22px;
@@ -198,12 +203,9 @@
         html[data-theme="dark"] .kt-slot-heading{ color: rgba(226,232,240,.68); }
         .kt-slot-grid{
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+            gap: 10px;
             margin-top: 8px;
-        }
-        @media (min-width: 992px){
-            .kt-slot-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
         .kt-slot-grid.is-dimmed{
             opacity: .45;
@@ -213,11 +215,13 @@
             border: 1px solid rgba(15,23,42,.12);
             background: rgba(255,255,255,.88);
             border-radius: 12px;
-            padding: 10px 10px;
+            padding: 10px 8px;
             text-align: center;
             font-weight: 850;
-            font-size: 12px;
-            line-height: 1.15;
+            font-size: 13px;
+            line-height: 1.1;
+            white-space: nowrap;
+            min-height: 44px;
             cursor: pointer;
             transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
             width: 100%;
@@ -336,7 +340,35 @@
         }
         html[data-theme="dark"] .kt-sticky-note{ color: rgba(226,232,240,.68); }
 
-        .kt-side-img{ height: 520px; }
+        .kt-side-stack{
+            display: grid;
+            gap: 14px;
+        }
+        .kt-side-panel{
+            border-radius: 18px;
+            border: 1px solid rgba(15,23,42,.10);
+            background: rgba(255,255,255,.84);
+            box-shadow: 0 14px 34px rgba(15,23,42,.08);
+            padding: 16px;
+        }
+        .kt-side-title{
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-weight: 900;
+            color: rgba(15,23,42,.56);
+            margin-bottom: 8px;
+        }
+        .kt-side-list{
+            margin: 0;
+            padding-left: 18px;
+            color: rgba(15,23,42,.72);
+            font-weight: 650;
+            line-height: 1.55;
+            display: grid;
+            gap: 6px;
+        }
+        .kt-side-img{ height: 300px; }
         .kt-side-img img{
             width: 100%;
             height: 100%;
@@ -402,8 +434,13 @@
             .kt-success-actions{ grid-template-columns: 1fr 1fr; }
         }
 
-        @media (max-width: 991.98px){
-            .kt-side-img{ height: 280px; }
+        @media (max-width: 1199.98px){
+            .kt-layout-aside{
+                position: static;
+            }
+            .kt-side-stack{
+                display: none;
+            }
         }
         @media (max-width: 768px){
             .kt-booking-form{ padding-bottom: 140px !important; }
@@ -422,8 +459,8 @@
             label="Back"
         />
 
-        <div class="row g-4 mt-2 align-items-stretch">
-            <div class="col-lg-6 d-flex">
+        <div class="row g-4 mt-2 align-items-start">
+            <div class="col-12 col-xl-7 d-flex">
                 @if($hasSuccess)
                     @php
                         $canEditPending = strtolower((string)($successAppointment->status ?? '')) === 'pending';
@@ -589,7 +626,7 @@
                             @endif
 
                             <div class="row g-3">
-                                <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4' }}">
+                                <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4 col-lg-4' }}">
                                     <label class="kt-label">Preferred Date</label>
                                     <input type="date"
                                            class="form-control"
@@ -602,7 +639,7 @@
                                 </div>
 
                                 @if(!$isWalkIn)
-                                    <div class="col-md-4">
+                                    <div class="col-md-8 col-lg-8">
                                         <label class="kt-label">Preferred Time</label>
                                         <input type="hidden" name="request_walkin" id="request_walkin" value="{{ old('request_walkin', 0) ? 1 : 0 }}">
                                         <div class="kt-time-panel">
@@ -643,7 +680,7 @@
                                 @endif
 
                                 @if($needsDetails)
-                                    <div class="{{ $isWalkIn ? 'col-md-6' : 'col-md-4' }}">
+                                    <div class="{{ $isWalkIn ? 'col-md-6' : 'col-12 col-md-6' }}">
                                         <label class="kt-label">Contact Number</label>
                                         <input class="form-control"
                                                type="tel"
@@ -715,9 +752,28 @@
                 @endif
             </div>
 
-            <div class="col-lg-6 d-flex">
-                <div class="img-tile kt-side-img w-100">
-                    <img src="{{ asset('assets/img/public/pic7.jpg') }}" alt="Clinic">
+            <div class="col-12 col-xl-5">
+                <div class="kt-layout-aside">
+                    <div class="kt-side-stack">
+                        <div class="img-tile kt-side-img w-100">
+                            <img src="{{ asset('assets/img/public/pic7.jpg') }}" alt="Clinic">
+                        </div>
+
+                        <div class="kt-side-panel">
+                            <div class="kt-side-title">Before You Submit</div>
+                            <ul class="kt-side-list">
+                                <li>Choose your preferred dentist and date first.</li>
+                                <li>Only approved requests reserve a final clinic slot.</li>
+                                <li>If fully booked today, you can request walk-in approval.</li>
+                            </ul>
+                        </div>
+
+                        <div class="kt-side-panel">
+                            <div class="kt-side-title">Clinic Hours</div>
+                            <div style="font-weight:800; color:rgba(15,23,42,.86);">Mon-Sat, 9:00 AM to 5:00 PM</div>
+                            <div class="kt-help mt-2">Staff may adjust schedule based on final clinic flow.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

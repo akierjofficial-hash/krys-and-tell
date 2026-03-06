@@ -25,22 +25,25 @@
     {{-- Font --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
     :root {
         /* Palette inspired by your logo */
-        --brand: #B07C58;
-        --brand2: #D8C1B0;
-        --ink: #0b1220;
-        --text: #171717;
-        --muted: rgba(23, 23, 23, .68);
-        --soft: #FBF7F2;
+        --brand: #af7d5a;
+        --brand2: #d8c1b0;
+        --ink: #121722;
+        --text: #191b20;
+        --muted: rgba(25, 27, 32, .64);
+        --soft: #f8f3ee;
         --card: #ffffff;
-        --border: rgba(17, 17, 17, .10);
-        --shadow: 0 18px 55px rgba(11, 18, 32, .08);
-        --radius: 22px;
+        --border: rgba(18, 23, 34, .10);
+        --shadow: 0 18px 55px rgba(18, 23, 34, .08);
+        --radius: 20px;
         --kt-safe-bottom: env(safe-area-inset-bottom, 0px);
+        --heading-font: "Poppins", sans-serif;
+        --body-font: "Poppins", sans-serif;
+        --container-max: 1180px;
     }
 
     html,
@@ -49,9 +52,15 @@
     }
 
     body {
-        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        font-family: var(--body-font);
         color: var(--text);
-        background: #fff;
+        background: linear-gradient(180deg, #fff 0%, #fffaf6 100%);
+        text-rendering: optimizeLegibility;
+        overflow-x: clip;
+    }
+
+    .container {
+        max-width: var(--container-max);
     }
 
     a {
@@ -90,29 +99,42 @@
         position: sticky;
         top: 0;
         z-index: 1030;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        background: rgba(251, 247, 242, .78);
-        border-bottom: 1px solid rgba(17, 17, 17, .10);
+        padding: 10px 0;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        background: rgba(248, 243, 238, .86);
+        border-bottom: 1px solid rgba(18, 23, 34, .08);
+    }
+
+    .kt-nav-shell {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(18, 23, 34, .09);
+        background: rgba(255, 255, 255, .82);
+        box-shadow: 0 14px 34px rgba(18, 23, 34, .08);
+        min-height: 68px;
+        padding: 10px 14px;
+        overflow: visible;
+        position: relative;
     }
 
     .kt-brand {
-        font-weight: 950;
-        letter-spacing: -0.04em;
+        font-weight: 800;
+        letter-spacing: -0.02em;
         display: flex;
         align-items: center;
-        gap: .7rem;
+        gap: .65rem;
         text-decoration: none;
         min-width: 0;
     }
 
     .kt-logo {
-        width: 44px;
-        height: 44px;
-        border-radius: 16px;
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
         object-fit: cover;
-        border: 1px solid rgba(17, 17, 17, .10);
-        box-shadow: 0 16px 40px rgba(11, 18, 32, .10);
+        border: 1px solid rgba(18, 23, 34, .12);
+        box-shadow: 0 14px 28px rgba(18, 23, 34, .10);
         background: #fff;
         display: block;
         flex: 0 0 auto;
@@ -124,48 +146,115 @@
     }
 
     .kt-brand-text .name {
-        font-weight: 950;
-        color: #3b3b3b;
+        font-family: var(--heading-font);
+        font-weight: 800;
+        color: #2f3440;
+        font-size: 1.02rem;
     }
 
     .kt-brand-text .sub {
-        font-weight: 750;
-        font-size: .82rem;
-        color: rgba(23, 23, 23, .62);
+        font-weight: 700;
+        font-size: .76rem;
+        color: rgba(25, 27, 32, .58);
+    }
+
+    .kt-nav-main {
+        flex: 1 1 auto;
+    }
+
+    .kt-nav-links {
+        width: 100%;
+        justify-content: center;
+        gap: .2rem;
     }
 
     .navbar .nav-link {
-        font-weight: 850;
-        color: rgba(23, 23, 23, .72);
+        font-weight: 750;
+        color: rgba(25, 27, 32, .74);
         border-radius: 999px;
-        padding: .5rem .9rem !important;
+        padding: .48rem .86rem !important;
         transition: background .15s ease, color .15s ease;
         white-space: nowrap;
+        font-size: .95rem;
     }
 
     .navbar .nav-link:hover {
-        background: rgba(176, 124, 88, .10);
-        color: rgba(23, 23, 23, .92);
+        background: rgba(175, 125, 90, .12);
+        color: rgba(25, 27, 32, .96);
     }
 
     .navbar .nav-link.active {
-        background: rgba(176, 124, 88, .14);
-        color: rgba(23, 23, 23, .95);
+        background: rgba(175, 125, 90, .16);
+        color: rgba(25, 27, 32, .98);
     }
 
     /* Improve toggler look */
     .navbar-toggler {
         border: 1px solid rgba(17, 17, 17, .14);
-        border-radius: 14px;
-        padding: .55rem .7rem;
-        background: rgba(255, 255, 255, .65);
+        border-radius: 12px;
+        padding: .5rem .65rem;
+        background: rgba(255, 255, 255, .72);
     }
 
     /* ✅ Desktop: keep navbar on one row (prevents “messy” wrap) */
-    @media (min-width: 992px) {
+    @media (min-width: 992px){
         .kt-nav .container {
-            padding-top: 10px !important;
-            padding-bottom: 10px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .kt-nav-main .navbar-collapse {
+            display: flex !important;
+            justify-content: center;
+        }
+    }
+
+    @media (min-width: 992px) and (max-width: 1199.98px){
+        .kt-brand-text .sub {
+            display: none;
+        }
+        .kt-brand-text .name {
+            font-size: .95rem;
+        }
+        .navbar .nav-link {
+            padding: .42rem .7rem !important;
+            font-size: .9rem;
+        }
+    }
+
+    @media (max-width: 991.98px){
+        .kt-nav-shell {
+            border-radius: 16px;
+            padding: 10px 12px;
+        }
+        .kt-nav-main {
+            flex-basis: 100%;
+            order: 4;
+        }
+        .kt-nav-main .navbar-collapse {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(18,23,34,.08);
+        }
+        .kt-nav-links {
+            align-items: stretch;
+            gap: .3rem;
+        }
+        .navbar .nav-link {
+            border-radius: 12px;
+            padding: .62rem .82rem !important;
+        }
+    }
+
+    @media (max-width: 575.98px){
+        .kt-brand {
+            max-width: calc(100% - 108px);
+        }
+        .kt-brand-text .name {
+            font-size: .92rem;
+        }
+        .kt-brand-text .sub {
+            display: none;
         }
     }
 
@@ -182,8 +271,9 @@
     }
 
     .sec-title {
-        font-weight: 950;
-        letter-spacing: -0.04em;
+        font-family: var(--heading-font);
+        font-weight: 800;
+        letter-spacing: -0.03em;
         margin-bottom: 10px;
     }
 
@@ -274,6 +364,7 @@
         box-shadow: 0 26px 70px rgba(11, 18, 32, .18);
         padding: 8px;
         min-width: 240px;
+        z-index: 1090;
     }
 
     .kt-dropdown .dropdown-item {
@@ -349,6 +440,45 @@
         .kt-mobile-stack>.btn,
         .kt-mobile-stack>.kt-btn {
             width: 100% !important;
+        }
+
+        .kt-nav {
+            padding: 8px 0;
+        }
+
+        .kt-nav-shell {
+            border-radius: 14px;
+            padding: 9px 10px;
+            min-height: 62px;
+        }
+
+        .navbar-toggler {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .kt-nav-main .navbar-collapse {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid rgba(18, 23, 34, .08);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, .94);
+            box-shadow: 0 14px 32px rgba(18, 23, 34, .08);
+        }
+
+        .navbar .nav-link {
+            font-size: .95rem;
+            padding: .68rem .86rem !important;
+        }
+
+        .kt-dropdown {
+            min-width: min(92vw, 280px);
+            border-radius: 16px;
+            margin-top: 10px !important;
         }
     }
 
@@ -746,17 +876,17 @@
     @endphp
 
     <nav class="navbar navbar-expand-lg kt-nav">
-        <div class="container py-2">
-            <div class="d-flex flex-wrap flex-lg-nowrap align-items-center w-100">
+        <div class="container">
+            <div class="kt-nav-shell d-flex flex-wrap align-items-center gap-2 gap-lg-3">
 
                 {{-- Hamburger (mobile left) --}}
-                <button class="navbar-toggler order-0 me-2" type="button" data-bs-toggle="collapse"
+                <button class="navbar-toggler order-1 d-lg-none" type="button" data-bs-toggle="collapse"
                     data-bs-target="#ktNav" aria-controls="ktNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                {{-- Brand (center on mobile, left on desktop) --}}
-                <a class="kt-brand order-1 mx-auto mx-lg-0" href="{{ url('/') }}">
+                {{-- Brand --}}
+                <a class="kt-brand order-2 order-lg-1" href="{{ url('/') }}">
                     <img class="kt-logo" src="{{ asset('images/krysandtelllogo.jpg') }}" alt="Krys & Tell logo">
                     <div class="kt-brand-text">
                         <div class="name">Krys &amp; Tell</div>
@@ -765,7 +895,7 @@
                 </a>
 
                 {{-- Actions (always visible, top-right on mobile) --}}
-                <div class="d-flex align-items-center gap-2 order-2 ms-auto order-lg-3">
+                <div class="d-flex align-items-center gap-2 order-3 ms-auto order-lg-3">
 
                     @auth
                     <div class="dropdown">
@@ -841,25 +971,26 @@
                 </div>
 
                 {{-- Collapsible links --}}
-                <div id="ktNav" class="collapse navbar-collapse order-3 order-lg-2 mt-3 mt-lg-0">
-                    <ul class="navbar-nav ms-lg-auto gap-lg-1 align-items-lg-center">
-                        <li class="nav-item">
-                            <a class="nav-link {{ $isActive('/') ? 'active' : '' }}" href="{{ url('/') }}">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ $isActive('/about') ? 'active' : '' }}"
-                                href="{{ url('/about') }}">About</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ $isActive('/services') ? 'active' : '' }}"
-                                href="{{ url('/services') }}">Services</a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link {{ $isActive('/contact') ? 'active' : '' }}"
-                                href="{{ url('/contact') }}">Contact</a>
-                        </li>
-                    </ul>
+                <div class="kt-nav-main order-4 order-lg-2">
+                    <div id="ktNav" class="collapse navbar-collapse">
+                        <ul class="navbar-nav kt-nav-links align-items-lg-center">
+                            <li class="nav-item">
+                                <a class="nav-link {{ $isActive('/') ? 'active' : '' }}" href="{{ url('/') }}">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ $isActive('/about') ? 'active' : '' }}"
+                                    href="{{ url('/about') }}">About</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ $isActive('/services') ? 'active' : '' }}"
+                                    href="{{ url('/services') }}">Services</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ $isActive('/contact') ? 'active' : '' }}"
+                                    href="{{ url('/contact') }}">Contact</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
 
             </div>

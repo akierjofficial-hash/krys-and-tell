@@ -1,5 +1,5 @@
 @extends('layouts.public')
-@section('title', 'Contact — Krys&Tell')
+@section('title', 'Contact - Krys&Tell')
 
 @section('content')
 @php
@@ -20,14 +20,14 @@
         <div class="row align-items-end g-3">
             <div class="col-lg-7">
                 <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill"
-                     style="background:rgba(29,78,216,.08); border:1px solid rgba(15,23,42,.08); font-weight:800;">
-                    <i class="fa-solid fa-envelope-open-text text-primary"></i>
+                     style="background:rgba(175,125,90,.12); border:1px solid rgba(18,23,34,.10); font-weight:800;">
+                    <i class="fa-solid fa-envelope-open-text" style="color:var(--brand)"></i>
                     <span>Contact</span>
                 </div>
 
-                <h1 class="sec-title mt-3">We’re here to help</h1>
+                <h1 class="sec-title mt-3">We're here to help</h1>
                 <div class="sec-sub">
-                    Message us or visit the clinic. We’ll respond as soon as possible.
+                    Message us or visit the clinic. We'll respond as soon as possible.
                 </div>
             </div>
 
@@ -45,7 +45,7 @@
                     <div class="d-flex align-items-center justify-content-between gap-2">
                         <div class="fw-black" style="font-weight:950;font-size:1.1rem;">Clinic Info</div>
                         <span class="contact-badge">
-                            <i class="fa-solid fa-shield-heart me-1"></i> Open Mon–Sat
+                            <i class="fa-solid fa-shield-heart me-1"></i> Open Mon-Sat
                         </span>
                     </div>
 
@@ -59,7 +59,7 @@
                         </div>
 
                         <div class="contact-item">
-                            <span class="contact-ico" style="background:rgba(6,182,212,.14); color:#0891b2;">
+                            <span class="contact-ico contact-ico-phone">
                                 <i class="fa-solid fa-phone"></i>
                             </span>
                             <div>
@@ -69,7 +69,7 @@
                         </div>
 
                         <div class="contact-item">
-                            <span class="contact-ico" style="background:rgba(16,185,129,.14); color:#059669;">
+                            <span class="contact-ico contact-ico-email">
                                 <i class="fa-solid fa-envelope"></i>
                             </span>
                             <div>
@@ -79,12 +79,12 @@
                         </div>
 
                         <div class="contact-item">
-                            <span class="contact-ico" style="background:rgba(168,85,247,.14); color:#7c3aed;">
+                            <span class="contact-ico contact-ico-hours">
                                 <i class="fa-solid fa-clock"></i>
                             </span>
                             <div>
                                 <div class="contact-label">Hours</div>
-                                <div class="contact-value">Mon–Sat: 9:00 AM – 6:00 PM</div>
+                                <div class="contact-value">Mon-Sat: 9:00 AM - 6:00 PM</div>
                             </div>
                         </div>
                     </div>
@@ -109,7 +109,7 @@
                         </span>
                         <div>
                             <div class="fw-black" style="font-weight:950;font-size:1.1rem;">Send a message</div>
-                            <div class="text-muted-2" style="font-weight:650;">We’ll get back to you as soon as we can.</div>
+                            <div class="text-muted-2" style="font-weight:650;">We'll get back to you as soon as we can.</div>
                         </div>
                     </div>
 
@@ -181,7 +181,7 @@
                                            aria-readonly="true">
                                     <input type="hidden" name="email" value="{{ $autoEmail }}">
                                     <div class="small text-muted-2 mt-1" style="font-weight:650;">
-                                        We’ll reply to this email.
+                                        We'll reply to this email.
                                     </div>
                                 @else
                                     <input class="form-control kt-input"
@@ -220,7 +220,7 @@
                             <div>
                                 <div class="fw-black" style="font-weight:950;">Map</div>
                                 <div class="text-muted-2" style="font-weight:650;">
-                                    Find us easily — the clinic is across Hypermart.
+                                    Find us easily - the clinic is across Hypermart.
                                 </div>
                             </div>
 
@@ -271,9 +271,9 @@
         display:inline-flex; align-items:center; gap:.35rem;
         padding: .45rem .7rem;
         border-radius: 999px;
-        background: rgba(16,185,129,.10);
-        border: 1px solid rgba(15,23,42,.08);
-        color: rgba(15,23,42,.78);
+        background: rgba(175,125,90,.12);
+        border: 1px solid rgba(18,23,34,.10);
+        color: rgba(18,23,34,.80);
         font-weight: 850;
         font-size: .85rem;
         white-space: nowrap;
@@ -286,17 +286,29 @@
         gap: 12px;
         padding: 12px 12px;
         border-radius: 18px;
-        background: rgba(15,23,42,.02);
-        border: 1px solid rgba(15,23,42,.08);
+        background: rgba(175,125,90,.05);
+        border: 1px solid rgba(18,23,34,.08);
     }
     .contact-ico{
         width: 40px; height: 40px;
         border-radius: 16px;
         display:grid; place-items:center;
-        background: rgba(29,78,216,.14);
-        color: #1d4ed8;
-        border: 1px solid rgba(15,23,42,.06);
+        background: rgba(175,125,90,.16);
+        color: #95684a;
+        border: 1px solid rgba(18,23,34,.08);
         flex: 0 0 auto;
+    }
+    .contact-ico-phone{
+        background: rgba(175,125,90,.18);
+        color: #8f6447;
+    }
+    .contact-ico-email{
+        background: rgba(216,193,176,.28);
+        color: #825940;
+    }
+    .contact-ico-hours{
+        background: rgba(18,23,34,.08);
+        color: #3f4654;
     }
     .contact-label{
         font-weight: 900;
@@ -314,31 +326,31 @@
         width: 44px; height: 44px;
         border-radius: 16px;
         display:grid; place-items:center;
-        background: linear-gradient(135deg, rgba(29,78,216,.16), rgba(6,182,212,.12));
-        color: #1d4ed8;
-        border: 1px solid rgba(15,23,42,.08);
-        box-shadow: 0 14px 35px rgba(2,6,23,.06);
+        background: linear-gradient(135deg, rgba(175,125,90,.24), rgba(216,193,176,.28));
+        color: #8a5e42;
+        border: 1px solid rgba(18,23,34,.10);
+        box-shadow: 0 14px 35px rgba(18,23,34,.08);
         flex: 0 0 auto;
     }
 
     .kt-input{
         border-radius: 16px;
-        border: 1px solid rgba(15,23,42,.12);
+        border: 1px solid rgba(18,23,34,.12);
         padding: .85rem .95rem;
         font-weight: 650;
         box-shadow: none;
     }
     .kt-input:focus{
-        border-color: rgba(29,78,216,.35);
-        box-shadow: 0 0 0 .22rem rgba(29,78,216,.10);
+        border-color: rgba(175,125,90,.45);
+        box-shadow: 0 0 0 .22rem rgba(175,125,90,.12);
     }
 
     .map-shell{
         border-radius: 22px;
-        border: 1px solid rgba(15,23,42,.10);
+        border: 1px solid rgba(18,23,34,.10);
         overflow:hidden;
-        background: rgba(15,23,42,.02);
-        box-shadow: 0 18px 55px rgba(2,6,23,.06);
+        background: rgba(175,125,90,.04);
+        box-shadow: 0 18px 55px rgba(18,23,34,.07);
         min-height: 260px;
     }
     .map-img{
@@ -370,3 +382,4 @@
     }
 </style>
 @endsection
+
