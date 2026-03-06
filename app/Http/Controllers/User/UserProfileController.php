@@ -30,6 +30,10 @@ class UserProfileController extends Controller
             });
 
         $upcoming = (clone $base)
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereNotIn('status', ['done', 'completed', 'walked_in']);
+            })
             ->where(function ($q) use ($now) {
                 $q->whereDate('appointment_date', '>', $now->toDateString())
                   ->orWhere(function ($qq) use ($now) {

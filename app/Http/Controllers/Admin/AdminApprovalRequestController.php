@@ -71,13 +71,18 @@ class AdminApprovalRequestController extends Controller
             $timeLabel = '—';
             $dateRaw = null;
             $timeRaw = null;
+            $isWalkInRequest = Schema::hasColumn('appointments', 'is_walk_in_request')
+                ? (bool) ($a->is_walk_in_request ?? false)
+                : false;
 
             try {
                 if (!empty($a->appointment_date)) {
                     $dateRaw = Carbon::parse($a->appointment_date)->toDateString();
                     $dateLabel = Carbon::parse($a->appointment_date)->format('M d, Y');
                 }
-                if (!empty($a->appointment_time)) {
+                if ($isWalkInRequest) {
+                    $timeLabel = 'Walk-in Request';
+                } elseif (!empty($a->appointment_time)) {
                     $timeRaw = Carbon::parse($a->appointment_time)->format('H:i');
                     $timeLabel = Carbon::parse($a->appointment_time)->format('h:i A');
                 }
@@ -106,6 +111,7 @@ class AdminApprovalRequestController extends Controller
                 'doctor_id'  => $doctorId,
                 'date_raw'   => $dateRaw,
                 'time_raw'   => $timeRaw,
+                'is_walk_in_request' => $isWalkInRequest,
                 'staff_note' => $hasStaffNote ? ($a->staff_note ?? null) : null,
 
                 'approve_url' => route('admin.approvals.approve', $a),
@@ -141,7 +147,10 @@ class AdminApprovalRequestController extends Controller
             if (!$service && Schema::hasColumn('appointments', 'service_id') && !empty($appointment->service_id) && class_exists(Service::class)) {
                 $service = Service::find($appointment->service_id);
             }
-            $isWalkIn = ($service instanceof Service) ? $this->isWalkIn($service) : false;
+            $isWalkInRequest = Schema::hasColumn('appointments', 'is_walk_in_request')
+                ? (bool) ($appointment->is_walk_in_request ?? false)
+                : false;
+            $isWalkIn = (($service instanceof Service) ? $this->isWalkIn($service) : false) || $isWalkInRequest;
 
             // detect changes to require a reason
             $incomingDoctorId = $request->has('doctor_id')
@@ -216,7 +225,7 @@ class AdminApprovalRequestController extends Controller
                 }
             }
 
-            DB::transaction(function () use ($appointment, $finalDate, $finalTime, $finalDoctorId, $finalNote, $isWalkIn) {
+            DB::transaction(function () use ($appointment, $finalDate, $finalTime, $finalDoctorId, $finalNote, $isWalkIn, $isWalkInRequest) {
                 $appointment->loadMissing('user');
 
                 // ✅ Ensure patient record exists if patient_id column exists
@@ -258,7 +267,7 @@ class AdminApprovalRequestController extends Controller
 
                 // ✅ Approve
                 if (Schema::hasColumn('appointments', 'status')) {
-                    $appointment->status = 'upcoming';
+                    $appointment->status = $isWalkInRequest ? 'walked_in' : 'upcoming';
                 }
 
                 $appointment->save();
@@ -269,8 +278,8 @@ class AdminApprovalRequestController extends Controller
             // Notify only when status changes to upcoming
             if (
                 Schema::hasColumn('appointments', 'status') &&
-                $previousStatus !== 'upcoming' &&
-                ($appointment->status ?? null) === 'upcoming'
+                $previousStatus !== ($isWalkInRequest ? 'walked_in' : 'upcoming') &&
+                ($appointment->status ?? null) === ($isWalkInRequest ? 'walked_in' : 'upcoming')
             ) {
                 if ($appointment->user) {
                     $appointment->user->notify(new AppointmentApproved($appointment));
@@ -287,13 +296,17 @@ class AdminApprovalRequestController extends Controller
 
                 return response()->json([
                     'ok'           => true,
-                    'message'      => 'Booking approved.',
+                    'message'      => $isWalkInRequest
+                        ? 'Walk-in request approved and marked as walked in.'
+                        : 'Booking approved.',
                     'pendingCount' => $pendingCount,
                 ]);
             }
 
             return $this->ktRedirectToReturn($request, 'admin.approvals.index')
-                ->with('success', 'Booking approved.');
+                ->with('success', $isWalkInRequest
+                    ? 'Walk-in request approved and marked as walked in.'
+                    : 'Booking approved.');
         } catch (\Throwable $e) {
             report($e);
 

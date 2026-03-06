@@ -367,7 +367,7 @@
                                     str_contains($st, 'confirm') => 'background: rgba(34,197,94,.14); color: #16a34a; border-color: rgba(34,197,94,.25);',
                                     str_contains($st, 'pend') => 'background: rgba(245,158,11,.14); color: #d97706; border-color: rgba(245,158,11,.25);',
                                     str_contains($st, 'cancel') => 'background: rgba(239,68,68,.14); color: #dc2626; border-color: rgba(239,68,68,.25);',
-                                    str_contains($st, 'done') || str_contains($st, 'complete') => 'background: rgba(59,130,246,.14); color: #2563eb; border-color: rgba(59,130,246,.25);',
+                                    str_contains($st, 'done') || str_contains($st, 'complete') || str_contains($st, 'walk') => 'background: rgba(59,130,246,.14); color: #2563eb; border-color: rgba(59,130,246,.25);',
                                     default => 'background: rgba(148,163,184,.12); color: var(--text); border-color: rgba(148,163,184,.22);',
                                 };
 

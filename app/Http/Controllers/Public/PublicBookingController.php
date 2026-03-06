@@ -183,7 +183,7 @@ class PublicBookingController extends Controller
             }
 
             if (Schema::hasColumn('appointments', 'duration_minutes')) {
-                $appointment->duration_minutes = $isWalkIn ? null : self::SLOT_MINUTES;
+                $appointment->duration_minutes = self::SLOT_MINUTES;
             }
 
             if (Schema::hasColumn('appointments', 'doctor_id')) {
@@ -276,7 +276,7 @@ class PublicBookingController extends Controller
         $doctorRequired = $this->doctorRequired();
         $user = auth()->user();
 
-        $isWalkIn = $this->isWalkIn($service);
+        $isWalkInService = $this->isWalkIn($service);
 
         $profile = $this->knownBookingDetails($user);
         $needsDetails = $user ? !$profile['complete'] : true;
@@ -284,8 +284,11 @@ class PublicBookingController extends Controller
         $rules = [
             'date' => ['required', 'date', 'after_or_equal:today'],
 
-            // Walk-in: time is not required.
-            'time' => $isWalkIn ? ['nullable'] : ['required', 'date_format:H:i'],
+            // Scheduled services can submit either:
+            // - normal slot booking (time required)
+            // - fallback walk-in request (request_walkin=1, no time)
+            'time' => $isWalkInService ? ['nullable'] : ['nullable', 'date_format:H:i'],
+            'request_walkin' => ['nullable', 'boolean'],
 
             'doctor_id' => $doctorRequired
                 ? ['required', 'integer', 'exists:doctors,id']
@@ -308,12 +311,37 @@ class PublicBookingController extends Controller
 
         $date = Carbon::parse($request->date)->toDateString();
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
+        $requestWalkIn = !$isWalkInService && $request->boolean('request_walkin');
+        $isWalkIn = $isWalkInService || $requestWalkIn;
 
         // Walk-in: store NULL time (no slot system).
         $time = $isWalkIn ? null : $request->time;
 
-        // Only enforce chair-capacity rules for scheduled services.
-        if (!$isWalkIn) {
+        if (!$isWalkInService && !$requestWalkIn && empty($time)) {
+            return back()
+                ->withErrors(['time' => 'Please select an available time slot.'])
+                ->withInput();
+        }
+
+        // Fallback walk-in request is only for current-day fully booked schedules.
+        if ($requestWalkIn) {
+            $today = now()->toDateString();
+            if ($date !== $today) {
+                return back()
+                    ->withErrors(['request_walkin' => 'Walk-in request is only available for today when fully booked.'])
+                    ->withInput();
+            }
+
+            $slots = $this->computeHourlySlots($date, $doctorId);
+            if (!empty($slots)) {
+                return back()
+                    ->withErrors(['request_walkin' => 'Available slots were found. Please choose a time instead of requesting walk-in.'])
+                    ->withInput();
+            }
+        }
+
+        // Only enforce slot availability for regular scheduled submissions.
+        if (!$isWalkInService && !$requestWalkIn) {
             $available = in_array($time, $this->computeHourlySlots($date, $doctorId), true);
             if (!$available) {
                 return back()
@@ -363,6 +391,7 @@ class PublicBookingController extends Controller
             $address,
             $birthdate,
             $isWalkIn,
+            $requestWalkIn,
             $existingPendingId
         ) {
             if ($user) {
@@ -411,7 +440,11 @@ class PublicBookingController extends Controller
             }
 
             if (Schema::hasColumn('appointments', 'duration_minutes')) {
-                $appointment->duration_minutes = $isWalkIn ? null : self::SLOT_MINUTES;
+                $appointment->duration_minutes = self::SLOT_MINUTES;
+            }
+
+            if (Schema::hasColumn('appointments', 'is_walk_in_request')) {
+                $appointment->is_walk_in_request = $requestWalkIn;
             }
 
             if (Schema::hasColumn('appointments', 'doctor_id')) {

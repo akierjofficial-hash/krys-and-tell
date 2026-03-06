@@ -29,12 +29,16 @@
 
     <div class="row g-3" id="approvalsGrid">
         @forelse($requests as $r)
+            @php
+                $isWalkInRequest = (bool)($r->is_walk_in_request ?? false);
+            @endphp
             <div class="col-lg-6 col-xl-4"
                  data-appointment-id="{{ $r->id }}"
                  data-service-id="{{ $r->service_id }}"
                  data-doctor-id="{{ $r->doctor_id ?? '' }}"
                  data-date-raw="{{ $r->appointment_date ? \Carbon\Carbon::parse($r->appointment_date)->toDateString() : '' }}"
                  data-time-raw="{{ $r->appointment_time ? \Carbon\Carbon::parse($r->appointment_time)->format('H:i') : '' }}"
+                 data-is-walkin-request="{{ $isWalkInRequest ? '1' : '0' }}"
                  data-note-raw="{{ $r->staff_note ?? '' }}"
                  data-approve-url="{{ route('staff.approvals.approve', $r) }}">
                 <div class="card shadow-sm h-100">
@@ -46,7 +50,7 @@
                         <div class="small text-muted mt-1">
                             <div>
                                 <i class="fa-regular fa-calendar me-1"></i>
-                                {{ $r->appointment_date }} • {{ $r->appointment_time }}
+                                {{ $r->appointment_date }} • {{ $isWalkInRequest ? 'Walk-in Request' : $r->appointment_time }}
                             </div>
                             <div><i class="fa-solid fa-tooth me-1"></i> {{ optional($r->service)->name ?? '—' }}</div>
                             <div><i class="fa-solid fa-user-doctor me-1"></i> {{ optional($r->doctor)->name ?? $r->dentist_name ?? '—' }}</div>
@@ -112,6 +116,7 @@
             <input type="hidden" id="eaApproveUrl" value="">
             <input type="hidden" id="eaServiceId" value="">
             <input type="hidden" id="eaAppointmentId" value="">
+            <input type="hidden" id="eaIsWalkInRequest" value="0">
 
             <div class="mb-2">
                 <div class="fw-semibold" id="eaPatientLabel">Patient</div>
@@ -189,6 +194,7 @@
     const eaApproveUrl = document.getElementById('eaApproveUrl');
     const eaServiceId = document.getElementById('eaServiceId');
     const eaAppointmentId = document.getElementById('eaAppointmentId');
+    const eaIsWalkInRequest = document.getElementById('eaIsWalkInRequest');
     const eaDoctor = document.getElementById('eaDoctor');
     const eaDate = document.getElementById('eaDate');
     const eaTime = document.getElementById('eaTime');
@@ -240,6 +246,13 @@
     async function loadSlots(){
         setError('');
         clearTime();
+
+        if (eaIsWalkInRequest?.value === '1') {
+            eaTime.innerHTML = `<option value="">Walk-in request (no time slot)</option>`;
+            eaTime.disabled = true;
+            if (eaTimeHelp) eaTimeHelp.textContent = 'No time slot required for this request.';
+            return;
+        }
 
         const serviceId = eaServiceId?.value;
         const date = eaDate?.value;
@@ -306,9 +319,11 @@
 
         const serviceId = item.service_id ?? '';
         const doctorId = item.doctor_id ?? '';
-        const dateRaw = item.date_raw ?? '';
-        const timeRaw = item.time_raw ?? '';
-        const noteRaw = item.staff_note ?? '';
+            const dateRaw = item.date_raw ?? '';
+            const timeRaw = item.time_raw ?? '';
+            const noteRaw = item.staff_note ?? '';
+            const isWalkInRequest = item.is_walk_in_request ? 1 : 0;
+            const timeText = isWalkInRequest ? 'Walk-in Request' : (item.time ?? '—');
 
         return `
         <div class="col-lg-6 col-xl-4"
@@ -317,6 +332,7 @@
             data-doctor-id="${esc(doctorId)}"
             data-date-raw="${esc(dateRaw)}"
             data-time-raw="${esc(timeRaw)}"
+            data-is-walkin-request="${esc(isWalkInRequest)}"
             data-note-raw="${esc(noteRaw)}"
             data-approve-url="${esc(item.approve_url)}">
             <div class="card shadow-sm h-100">
@@ -324,7 +340,7 @@
                     <div class="fw-bold">${esc(item.patient)}</div>
 
                     <div class="small text-muted mt-1">
-                        <div><i class="fa-regular fa-calendar me-1"></i> ${esc(item.date)} • ${esc(item.time)}</div>
+                        <div><i class="fa-regular fa-calendar me-1"></i> ${esc(item.date)} • ${esc(timeText)}</div>
                         <div><i class="fa-solid fa-tooth me-1"></i> ${esc(item.service)}</div>
                         <div><i class="fa-solid fa-user-doctor me-1"></i> ${esc(item.doctor)}</div>
                     </div>
@@ -478,12 +494,14 @@
         const doctorId = card.getAttribute('data-doctor-id') || '';
         const dateRaw = card.getAttribute('data-date-raw') || '';
         const timeRaw = card.getAttribute('data-time-raw') || '';
+        const isWalkInRequest = card.getAttribute('data-is-walkin-request') === '1';
         const noteRaw = card.getAttribute('data-note-raw') || '';
         const approveUrl = card.getAttribute('data-approve-url') || '';
 
         eaApproveUrl.value = approveUrl;
         eaServiceId.value = serviceId;
         eaAppointmentId.value = apptId;
+        if (eaIsWalkInRequest) eaIsWalkInRequest.value = isWalkInRequest ? '1' : '0';
 
         const name = card.querySelector('.fw-bold')?.textContent?.trim() || 'Patient';
         if(eaPatientLabel) eaPatientLabel.textContent = name;
@@ -493,10 +511,16 @@
         if(eaTime) eaTime.value = '';
         if(eaNote) eaNote.value = noteRaw;
 
-        await loadSlots();
-        if(timeRaw && eaTime && !eaTime.disabled){
-            const opt = eaTime.querySelector(`option[value="${CSS.escape(timeRaw)}"]`);
-            if(opt) eaTime.value = timeRaw;
+        if (isWalkInRequest) {
+            eaTime.innerHTML = `<option value="">Walk-in request (no time slot)</option>`;
+            eaTime.disabled = true;
+            if (eaTimeHelp) eaTimeHelp.textContent = 'No time slot required for this request.';
+        } else {
+            await loadSlots();
+            if(timeRaw && eaTime && !eaTime.disabled){
+                const opt = eaTime.querySelector(`option[value="${CSS.escape(timeRaw)}"]`);
+                if(opt) eaTime.value = timeRaw;
+            }
         }
 
         editModal?.show();

@@ -616,7 +616,7 @@
                     $statusClass = match($status) {
                         'pending' => 'st-pending',
                         'confirmed', 'approved', 'upcoming', 'scheduled' => 'st-confirmed',
-                        'done', 'completed' => 'st-done',
+                        'done', 'completed', 'walked_in' => 'st-done',
                         'cancelled', 'canceled', 'declined', 'rejected' => 'st-cancelled',
                         default => 'st-default',
                     };

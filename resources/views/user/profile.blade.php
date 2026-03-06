@@ -35,6 +35,10 @@
             return ['Completed', 'secondary'];
         }
 
+        if (in_array($s, ['walked_in', 'walked-in'], true)) {
+            return ['Walked In', 'secondary'];
+        }
+
         return [ucfirst($s), 'secondary'];
     };
 

@@ -426,6 +426,7 @@
                         <option value="approved"  @selected($st === 'approved')>Approved</option>
                         <option value="confirmed" @selected($st === 'confirmed')>Confirmed</option>
                         <option value="scheduled" @selected($st === 'scheduled')>Scheduled</option>
+                        <option value="walked_in" @selected($st === 'walked_in')>Walked In</option>
                         <option value="completed" @selected($st === 'completed' || $st === 'done')>Completed</option>
                         <option value="canceled"  @selected($st === 'canceled' || $st === 'cancelled')>Canceled</option>
                         <option value="declined"  @selected($st === 'declined' || $st === 'rejected')>Declined</option>

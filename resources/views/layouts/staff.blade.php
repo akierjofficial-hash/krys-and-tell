@@ -1049,6 +1049,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
                                     $date = $a->appointment_date ?? null;
                                     $time = $a->appointment_time ?? null;
+                                    $isWalkInRequest = (bool)($a->is_walk_in_request ?? false);
                                     @endphp
 
                                     <div class="kt-item" data-approval-id="{{ $a->id }}">
@@ -1059,7 +1060,11 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                                                     <div><b>{{ $serviceName }}</b></div>
                                                     <div>
                                                         {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
-                                                        @if($time) • {{ \Carbon\Carbon::parse($time)->format('h:i A') }} @endif
+                                                        @if($isWalkInRequest)
+                                                            • Walk-in Request
+                                                        @elseif($time)
+                                                            • {{ \Carbon\Carbon::parse($time)->format('h:i A') }}
+                                                        @endif
                                                     </div>
                                                     <div class="small text-muted">Doctor: {{ $doctorName }}</div>
                                                 </div>

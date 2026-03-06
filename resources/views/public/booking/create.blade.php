@@ -117,6 +117,39 @@
             border-color: rgba(194,138,99,.55);
             background: rgba(194,138,99,.12);
         }
+        .kt-walkin-fallback{
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px dashed rgba(194,138,99,.45);
+            background: rgba(194,138,99,.10);
+        }
+        .kt-walkin-fallback .title{
+            font-weight: 900;
+            font-size: 13px;
+            color: var(--kt-text, #0f172a);
+        }
+        .kt-walkin-fallback .desc{
+            font-size: 12px;
+            color: rgba(15, 23, 42, .62);
+            margin-top: 4px;
+        }
+        html[data-theme="dark"] .kt-walkin-fallback .desc{ color: rgba(226, 232, 240, .70); }
+        .kt-walkin-btn{
+            margin-top: 8px;
+            border: 1px solid rgba(194,138,99,.45);
+            background: rgba(255,255,255,.75);
+            color: var(--kt-text, #0f172a);
+            border-radius: 12px;
+            padding: 8px 10px;
+            font-weight: 900;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .kt-walkin-btn.is-active{
+            background: rgba(194,138,99,.22);
+            border-color: rgba(194,138,99,.70);
+        }
 
         .kt-sticky-submit{
             position: fixed;
@@ -265,7 +298,13 @@
                                 <div class="kt-summary-item">
                                     <div class="kt-summary-label">Time</div>
                                     <div class="kt-summary-value">
-                                        {{ !empty($successAppointment->appointment_time) ? $successAppointment->appointment_time : 'WALK-IN' }}
+                                        @if(!empty($successAppointment->appointment_time))
+                                            {{ $successAppointment->appointment_time }}
+                                        @elseif(!empty($successAppointment->is_walk_in_request))
+                                            WALK-IN REQUEST
+                                        @else
+                                            WALK-IN
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -408,6 +447,7 @@
                                 @if(!$isWalkIn)
                                     <div class="col-md-4">
                                         <label class="form-label fw-bold">Step 3: Time</label>
+                                        <input type="hidden" name="request_walkin" id="request_walkin" value="{{ old('request_walkin', 0) ? 1 : 0 }}">
                                         <select class="form-select" name="time" id="time" required>
                                             <option value="">
                                                 {{ $doctorRequired ? 'Select doctor + date first…' : 'Select date first…' }}
@@ -420,7 +460,17 @@
                                         </div>
 
                                         <div class="small text-muted mt-1" id="timeHelp"></div>
+                                        <div id="walkInFallback" class="kt-walkin-fallback d-none">
+                                            <div class="title">No slots left for today.</div>
+                                            <div class="desc" id="walkInFallbackText">
+                                                You can send a walk-in request. Staff can approve if clinic flow allows.
+                                            </div>
+                                            <button type="button" class="kt-walkin-btn" id="walkInRequestBtn">
+                                                Request walk-in visit for today
+                                            </button>
+                                        </div>
                                         @error('time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                        @error('request_walkin')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 @else
                                     <input type="hidden" name="time" value="">
@@ -557,16 +607,54 @@
     const helpEl = document.getElementById('timeHelp');
     const doctorEl = document.getElementById('doctor_id');
     const gridEl = document.getElementById('slotGrid');
+    const walkInInput = document.getElementById('request_walkin');
+    const walkInBox = document.getElementById('walkInFallback');
+    const walkInBtn = document.getElementById('walkInRequestBtn');
+    const walkInText = document.getElementById('walkInFallbackText');
 
     const doctorRequired = @json($doctors->count() > 0);
     const oldTime = @json(old('time'));
+    const oldWalkInRequested = @json((bool) old('request_walkin'));
+    const todayIso = @json(now()->toDateString());
+    let seededOldWalkIn = false;
 
     if (!dateEl || !timeEl) return;
+
+    function setWalkInRequested(enabled){
+        if (walkInInput) walkInInput.value = enabled ? '1' : '0';
+        timeEl.required = !enabled;
+
+        if (enabled){
+            timeEl.value = '';
+            if (gridEl) {
+                gridEl.querySelectorAll('.kt-slot.is-active').forEach(el => el.classList.remove('is-active'));
+            }
+        }
+
+        if (walkInBtn){
+            walkInBtn.classList.toggle('is-active', enabled);
+            walkInBtn.textContent = enabled
+                ? 'Walk-in request selected (click to remove)'
+                : 'Request walk-in visit for today';
+        }
+    }
+
+    function hideWalkInOption(){
+        if (walkInBox) walkInBox.classList.add('d-none');
+        setWalkInRequested(false);
+    }
+
+    function showWalkInOption(message){
+        if (!walkInBox) return;
+        walkInBox.classList.remove('d-none');
+        if (walkInText && message) walkInText.textContent = message;
+    }
 
     function setLoading(msg){
         timeEl.innerHTML = `<option value="">${msg}</option>`;
         if (helpEl) helpEl.textContent = '';
         if (gridEl) gridEl.innerHTML = '';
+        hideWalkInOption();
     }
 
     function fmt12h(t){
@@ -596,6 +684,7 @@
             btn.addEventListener('click', () => {
                 timeEl.value = btn.dataset.time;
                 markActive(btn.dataset.time);
+                setWalkInRequested(false);
             });
         });
     }
@@ -641,8 +730,21 @@
             timeEl.innerHTML = `<option value="">No available slots</option>`;
             if (helpEl) helpEl.textContent = 'No slots available.';
             if (gridEl) gridEl.innerHTML = '';
+
+            const isTodaySelected = (date === todayIso);
+            if (isTodaySelected) {
+                showWalkInOption('You can request walk-in for today. Staff can approve when clinic flow allows.');
+                if (!seededOldWalkIn && oldWalkInRequested) {
+                    setWalkInRequested(true);
+                    seededOldWalkIn = true;
+                }
+            } else {
+                hideWalkInOption();
+            }
             return;
         }
+
+        hideWalkInOption();
 
         timeEl.innerHTML = `<option value="">Select time…</option>` + slots.map(t => {
             const selected = (oldTime && oldTime === t) ? 'selected' : '';
@@ -658,6 +760,18 @@
             helpEl.textContent = `${slots.length} slot(s) available${suffix}`;
         }
     }
+
+    if (walkInBtn){
+        walkInBtn.addEventListener('click', () => {
+            if (walkInBox?.classList.contains('d-none')) return;
+            const next = !(walkInInput?.value === '1');
+            setWalkInRequested(next);
+        });
+    }
+
+    timeEl.addEventListener('change', () => {
+        if (timeEl.value) setWalkInRequested(false);
+    });
 
     dateEl.addEventListener('change', loadSlots);
     if (doctorEl) doctorEl.addEventListener('change', loadSlots);

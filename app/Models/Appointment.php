@@ -18,11 +18,16 @@ class Appointment extends Model
         'appointment_time',
         'duration_minutes',
         'status',
+        'is_walk_in_request',
         'notes',
         'dentist_name',
 
         // ✅ staff note / reason
         'staff_note',
+    ];
+
+    protected $casts = [
+        'is_walk_in_request' => 'boolean',
     ];
 
     public function user()

@@ -33,6 +33,7 @@ class AppointmentApproved extends Notification
         $service = optional($a->service)->name ?? 'Dental Appointment';
         $doctor  = optional($a->doctor)->name ?? ($a->dentist_name ?? 'To be assigned');
         $when    = $dt ? $dt->format('M d, Y h:i A') : '—';
+        $isWalkInRequest = (bool) ($a->is_walk_in_request ?? false);
 
         // ✅ Safe greeting name (works for AnonymousNotifiable too)
         $patientName =
@@ -45,11 +46,13 @@ class AppointmentApproved extends Notification
         $note = trim((string)($a->staff_note ?? ''));
 
         $mail = (new MailMessage)
-            ->subject("Booking Approved: {$service}")
+            ->subject($isWalkInRequest ? "Walk-in Request Approved: {$service}" : "Booking Approved: {$service}")
             ->greeting('Hi ' . $patientName . ',')
-            ->line('Good news — your booking has been approved and confirmed.')
+            ->line($isWalkInRequest
+                ? 'Good news — your walk-in request has been approved.'
+                : 'Good news — your booking has been approved and confirmed.')
             ->line("**Service:** {$service}")
-            ->line("**Date & Time:** {$when}")
+            ->line($isWalkInRequest ? "**Date:** {$a->appointment_date}" : "**Date & Time:** {$when}")
             ->line("**Doctor:** {$doctor}");
 
         // ✅ Include staff note/reason in email
@@ -59,7 +62,9 @@ class AppointmentApproved extends Notification
         }
 
         $mail->action('View My Schedule', route('profile.show'))
-            ->line('If you need to reschedule, please contact the clinic.');
+            ->line($isWalkInRequest
+                ? 'Please proceed during clinic hours. If you cannot come, please message the clinic.'
+                : 'If you need to reschedule, please contact the clinic.');
 
         return $mail;
     }

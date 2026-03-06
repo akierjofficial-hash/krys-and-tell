@@ -50,6 +50,7 @@ class AppointmentController extends Controller
             'status' => ['required', Rule::in([
                 'pending', 'approved', 'confirmed',
                 'scheduled', 'completed', 'done',
+                'walked_in',
                 'canceled', 'cancelled', 'declined', 'rejected'
             ])],
 
@@ -114,6 +115,7 @@ class AppointmentController extends Controller
             'status' => ['required', Rule::in([
                 'pending', 'approved', 'confirmed',
                 'scheduled', 'completed', 'done',
+                'walked_in',
                 'canceled', 'cancelled', 'declined', 'rejected'
             ])],
 
