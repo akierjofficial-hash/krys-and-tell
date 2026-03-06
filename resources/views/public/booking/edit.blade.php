@@ -102,6 +102,7 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                <div id="doctorHelp" class="small text-muted mt-1"></div>
                                 @error('doctor_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                         @else
@@ -180,11 +181,20 @@
     const timeEl = document.getElementById('time');
     const helpEl = document.getElementById('timeHelp');
     const doctorEl = document.getElementById('doctor_id');
+    const doctorHelpEl = document.getElementById('doctorHelp');
     const gridEl = document.getElementById('slotGrid');
     const doctorRequired = @json((bool) $doctorRequired);
     const oldTime = @json(old('time', $prefillTime));
+    const doctorLabelMap = new Map();
 
     if (!dateEl || !timeEl) return;
+
+    if (doctorEl) {
+        Array.from(doctorEl.options).forEach((opt) => {
+            if (!opt.value) return;
+            doctorLabelMap.set(String(opt.value), (opt.textContent || '').trim());
+        });
+    }
 
     function fmt12h(t){
         if(!t || typeof t !== 'string' || !t.includes(':')) return t;
@@ -199,6 +209,89 @@
         timeEl.innerHTML = `<option value="">${msg}</option>`;
         if (helpEl) helpEl.textContent = '';
         if (gridEl) gridEl.innerHTML = '';
+    }
+
+    function resetDoctorOptions(){
+        if (!doctorEl) return;
+
+        Array.from(doctorEl.options).forEach((opt) => {
+            if (!opt.value) return;
+            const key = String(opt.value);
+            const baseLabel = doctorLabelMap.get(key) || (opt.textContent || '').replace(/\s+\(Unavailable\)\s*$/i, '').trim();
+            doctorLabelMap.set(key, baseLabel);
+            opt.textContent = baseLabel;
+            opt.disabled = false;
+            opt.hidden = false;
+        });
+
+        if (doctorHelpEl) doctorHelpEl.textContent = '';
+    }
+
+    async function syncDoctorsByDate(date){
+        if (!doctorRequired || !doctorEl) return;
+
+        if (!date) {
+            resetDoctorOptions();
+            return;
+        }
+
+        let res;
+        try {
+            const url = new URL(`/book/${serviceId}/doctors`, window.location.origin);
+            url.searchParams.set('date', date);
+            res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        } catch (e) {
+            resetDoctorOptions();
+            return;
+        }
+
+        if (!res.ok) {
+            resetDoctorOptions();
+            return;
+        }
+
+        const data = await res.json();
+        const doctors = Array.isArray(data?.doctors) ? data.doctors : [];
+        const byId = new Map(doctors.map((d) => [String(d.id), d]));
+
+        let selectedUnavailableReason = '';
+
+        Array.from(doctorEl.options).forEach((opt) => {
+            if (!opt.value) return;
+
+            const key = String(opt.value);
+            const info = byId.get(key);
+            const baseLabel = doctorLabelMap.get(key) || (opt.textContent || '').replace(/\s+\(Unavailable\)\s*$/i, '').trim();
+            doctorLabelMap.set(key, baseLabel);
+
+            if (!info || info.available) {
+                opt.textContent = baseLabel;
+                opt.disabled = false;
+                opt.hidden = false;
+                return;
+            }
+
+            opt.textContent = `${baseLabel} (Unavailable)`;
+            opt.disabled = true;
+            opt.hidden = true;
+
+            if (doctorEl.value === key) {
+                selectedUnavailableReason = info.reason || 'Unavailable on this date.';
+            }
+        });
+
+        if (doctorEl.value) {
+            const selectedInfo = byId.get(String(doctorEl.value));
+            if (selectedInfo && !selectedInfo.available) {
+                doctorEl.value = '';
+            }
+        }
+
+        if (doctorHelpEl) {
+            doctorHelpEl.textContent = selectedUnavailableReason
+                ? `Selected dentist is unavailable: ${selectedUnavailableReason}`
+                : '';
+        }
     }
 
     function renderGrid(slots){
@@ -220,10 +313,11 @@
 
     async function loadSlots(){
         const date = dateEl.value;
+        await syncDoctorsByDate(date);
         const doctorId = doctorEl?.value || '';
 
         if (doctorRequired && doctorEl && !doctorId){
-            setLoading('Select doctor first...');
+            setLoading('Select an available doctor first...');
             return;
         }
         if(!date){
@@ -255,7 +349,13 @@
 
         if(!slots.length){
             timeEl.innerHTML = '<option value="">No available slots</option>';
-            if (helpEl) helpEl.textContent = 'No slots available.';
+            const doctorUnavailable = Boolean(data?.meta?.doctor_unavailable);
+            const doctorUnavailableReason = data?.meta?.doctor_unavailable_reason || 'Unavailable on this date.';
+            if (helpEl) {
+                helpEl.textContent = doctorUnavailable
+                    ? `Selected dentist is unavailable: ${doctorUnavailableReason}`
+                    : 'No slots available.';
+            }
             if (gridEl) gridEl.innerHTML = '';
             return;
         }

@@ -942,6 +942,11 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     <i class="fa fa-calendar-days"></i> Appointments
                 </a>
 
+                <a href="{{ route('staff.dentist-unavailability.index') }}"
+                    class="{{ request()->routeIs('staff.dentist-unavailability.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-user-doctor"></i> Dentist Day-off
+                </a>
+
                 <a href="{{ route('staff.services.index') }}"
                     class="{{ request()->routeIs('staff.services.*') ? 'active' : '' }}">
                     <i class="fa fa-gear"></i> Services

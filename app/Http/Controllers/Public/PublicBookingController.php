@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\DoctorUnavailability;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Mail\NewBookingNotification;
@@ -172,6 +173,13 @@ class PublicBookingController extends Controller
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
         $time = $isWalkIn ? null : $request->time;
 
+        $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $date);
+        if ($doctorUnavailableReason !== null) {
+            return back()
+                ->withErrors(['doctor_id' => 'Selected dentist is unavailable on that date. ' . $doctorUnavailableReason])
+                ->withInput();
+        }
+
         if (!$isWalkIn) {
             $available = in_array($time, $this->computeHourlySlots($date, $doctorId, $appointment->id), true);
             if (!$available) {
@@ -235,12 +243,16 @@ class PublicBookingController extends Controller
                 }
             }
 
+            $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $walkInDate);
+
             return response()->json([
                 'date' => $walkInDate,
                 'doctor_id' => $doctorId,
                 'slots' => [],
                 'meta' => [
                     'walk_in' => true,
+                    'doctor_unavailable' => $doctorUnavailableReason !== null,
+                    'doctor_unavailable_reason' => $doctorUnavailableReason,
                     'open' => $schedule['open'],
                     'close' => $schedule['close'],
                     'working_days' => $schedule['working_days'],
@@ -259,6 +271,7 @@ class PublicBookingController extends Controller
         $date = Carbon::parse($request->date)->toDateString();
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
         $schedule = $this->resolveDoctorSchedule($doctorId);
+        $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $date);
 
         $slots = $this->computeHourlySlots($date, $doctorId);
 
@@ -274,8 +287,59 @@ class PublicBookingController extends Controller
                 'close' => $schedule['close'],
                 'chairs' => self::CHAIRS,
                 'working_days' => $schedule['working_days'],
+                'doctor_unavailable' => $doctorUnavailableReason !== null,
+                'doctor_unavailable_reason' => $doctorUnavailableReason,
                 'timezone' => config('app.timezone'),
             ],
+        ]);
+    }
+
+    public function doctors(Request $request, Service $service)
+    {
+        $request->validate([
+            'date' => ['required', 'date', 'after_or_equal:today'],
+        ]);
+
+        $date = Carbon::parse((string) $request->input('date'))->toDateString();
+        $tz = config('app.timezone');
+        $doctors = $this->activeDoctors();
+
+        $dayOffMap = collect();
+        if (Schema::hasTable('doctor_unavailabilities')) {
+            $dayOffMap = DoctorUnavailability::query()
+                ->whereDate('unavailable_date', $date)
+                ->get(['doctor_id', 'reason'])
+                ->keyBy('doctor_id');
+        }
+
+        $items = $doctors->map(function ($doctor) use ($date, $tz, $dayOffMap) {
+            $doctorId = (int) $doctor->id;
+            $schedule = $this->resolveDoctorSchedule($doctorId);
+            $worksOnDate = $this->doctorWorksOnDate($schedule, $date, $tz);
+
+            $dayOff = $dayOffMap->get($doctorId);
+            $isUnavailable = $dayOff !== null;
+
+            $reason = null;
+            if ($isUnavailable) {
+                $reason = !empty($dayOff->reason)
+                    ? (string) $dayOff->reason
+                    : 'Unavailable on this date.';
+            } elseif (!$worksOnDate) {
+                $reason = 'Not scheduled to work on this day.';
+            }
+
+            return [
+                'id' => $doctorId,
+                'name' => (string) ($doctor->name ?? ('Doctor #' . $doctorId)),
+                'available' => $worksOnDate && !$isUnavailable,
+                'reason' => $reason,
+            ];
+        })->values();
+
+        return response()->json([
+            'date' => $date,
+            'doctors' => $items,
         ]);
     }
 
@@ -321,6 +385,13 @@ class PublicBookingController extends Controller
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
         $requestWalkIn = !$isWalkInService && $request->boolean('request_walkin');
         $isWalkIn = $isWalkInService || $requestWalkIn;
+
+        $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $date);
+        if ($doctorUnavailableReason !== null) {
+            return back()
+                ->withErrors(['doctor_id' => 'Selected dentist is unavailable on that date. ' . $doctorUnavailableReason])
+                ->withInput();
+        }
 
         // Walk-in: store NULL time (no slot system).
         $time = $isWalkIn ? null : $request->time;
@@ -564,6 +635,7 @@ class PublicBookingController extends Controller
     {
         $tz = config('app.timezone');
         $schedule = $this->resolveDoctorSchedule($doctorId);
+        if ($doctorId && $this->doctorIsUnavailableOnDate($doctorId, $date)) return [];
         if (!$this->doctorWorksOnDate($schedule, $date, $tz)) return [];
 
         $openStart = Carbon::parse("$date " . $schedule['open'], $tz);
@@ -953,6 +1025,32 @@ class PublicBookingController extends Controller
         $dayIso = Carbon::parse($date, $tz)->dayOfWeekIso;
         $workingDays = $this->normalizeWorkingDays($schedule['working_days'] ?? null);
         return in_array($dayIso, $workingDays, true);
+    }
+
+    private function doctorIsUnavailableOnDate(?int $doctorId, string $date): bool
+    {
+        return $this->doctorUnavailabilityRecord($doctorId, $date) !== null;
+    }
+
+    private function doctorUnavailableReason(?int $doctorId, string $date): ?string
+    {
+        $record = $this->doctorUnavailabilityRecord($doctorId, $date);
+        if (!$record) return null;
+
+        $reason = trim((string) ($record->reason ?? ''));
+        return $reason !== '' ? $reason : 'Unavailable on this date.';
+    }
+
+    private function doctorUnavailabilityRecord(?int $doctorId, string $date): ?DoctorUnavailability
+    {
+        if (!$doctorId || !Schema::hasTable('doctor_unavailabilities')) {
+            return null;
+        }
+
+        return DoctorUnavailability::query()
+            ->where('doctor_id', $doctorId)
+            ->whereDate('unavailable_date', $date)
+            ->first();
     }
 
     private function activeDoctors()

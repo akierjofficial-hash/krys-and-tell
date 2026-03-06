@@ -579,6 +579,11 @@
                         <i class="fa fa-user-doctor"></i> Doctors
                     </a>
 
+                    <a href="{{ route('admin.dentist-unavailability.index') }}"
+                        class="{{ request()->routeIs('admin.dentist-unavailability.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-calendar-xmark"></i> Dentist Day-off
+                    </a>
+
                     <a href="{{ route('admin.user_accounts.index') }}"
                         class="{{ request()->routeIs('admin.user_accounts.*') ? 'active' : '' }}">
                         <i class="fa fa-user"></i> Users

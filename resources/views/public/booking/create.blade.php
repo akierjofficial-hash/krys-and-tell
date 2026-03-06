@@ -619,6 +619,7 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    <div id="doctorHelp" class="small text-muted mt-1"></div>
                                     @error('doctor_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                 </div>
                             @else
@@ -829,12 +830,14 @@
     const timeEl = document.getElementById('time');
     const helpEl = document.getElementById('timeHelp');
     const doctorEl = document.getElementById('doctor_id');
+    const doctorHelpEl = document.getElementById('doctorHelp');
     const gridEl = document.getElementById('slotGrid');
     const walkInInput = document.getElementById('request_walkin');
     const walkInBox = document.getElementById('walkInFallback');
     const walkInBtn = document.getElementById('walkInRequestBtn');
     const walkInText = document.getElementById('walkInFallbackText');
     const walkInHint = document.getElementById('walkInSelectedHint');
+    const doctorLabelMap = new Map();
 
     const doctorRequired = @json($doctors->count() > 0);
     const oldTime = @json(old('time'));
@@ -845,6 +848,13 @@
     let seededOldTime = false;
 
     if (!dateEl || !timeEl) return;
+
+    if (doctorEl) {
+        Array.from(doctorEl.options).forEach((opt) => {
+            if (!opt.value) return;
+            doctorLabelMap.set(String(opt.value), (opt.textContent || '').trim());
+        });
+    }
 
     function setWalkInRequested(enabled){
         if (walkInInput) walkInInput.value = enabled ? '1' : '0';
@@ -906,6 +916,95 @@
         hideWalkInOption();
     }
 
+    function resetDoctorOptions(){
+        if (!doctorEl) return;
+
+        Array.from(doctorEl.options).forEach((opt) => {
+            if (!opt.value) return;
+            const key = String(opt.value);
+            const baseLabel = doctorLabelMap.get(key) || (opt.textContent || '').replace(/\s+\(Unavailable\)\s*$/i, '').trim();
+            doctorLabelMap.set(key, baseLabel);
+            opt.textContent = baseLabel;
+            opt.disabled = false;
+            opt.hidden = false;
+        });
+
+        if (doctorHelpEl) doctorHelpEl.textContent = '';
+    }
+
+    async function syncDoctorsByDate(date){
+        if (!doctorRequired || !doctorEl) return;
+
+        if (!date) {
+            resetDoctorOptions();
+            return;
+        }
+
+        let res;
+        try {
+            const url = new URL(`/book/${serviceId}/doctors`, window.location.origin);
+            url.searchParams.set('date', date);
+            res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        } catch (e) {
+            resetDoctorOptions();
+            return;
+        }
+
+        if (!res.ok) {
+            resetDoctorOptions();
+            return;
+        }
+
+        const data = await res.json();
+        const doctors = Array.isArray(data?.doctors) ? data.doctors : [];
+        const byId = new Map(doctors.map((d) => [String(d.id), d]));
+
+        let availableCount = 0;
+        let selectedUnavailableReason = '';
+
+        Array.from(doctorEl.options).forEach((opt) => {
+            if (!opt.value) return;
+
+            const key = String(opt.value);
+            const info = byId.get(key);
+            const baseLabel = doctorLabelMap.get(key) || (opt.textContent || '').replace(/\s+\(Unavailable\)\s*$/i, '').trim();
+            doctorLabelMap.set(key, baseLabel);
+
+            if (!info || info.available) {
+                opt.textContent = baseLabel;
+                opt.disabled = false;
+                opt.hidden = false;
+                availableCount++;
+                return;
+            }
+
+            opt.textContent = `${baseLabel} (Unavailable)`;
+            opt.disabled = true;
+            opt.hidden = true;
+
+            if (doctorEl.value === key) {
+                selectedUnavailableReason = info.reason || 'Unavailable on this date.';
+            }
+        });
+
+        if (doctorEl.value) {
+            const selectedInfo = byId.get(String(doctorEl.value));
+            if (selectedInfo && !selectedInfo.available) {
+                doctorEl.value = '';
+            }
+        }
+
+        if (doctorHelpEl) {
+            if (selectedUnavailableReason) {
+                doctorHelpEl.textContent = `Selected dentist is unavailable: ${selectedUnavailableReason}`;
+            } else if (availableCount === 0) {
+                doctorHelpEl.textContent = 'No dentist is available on this date.';
+            } else {
+                doctorHelpEl.textContent = '';
+            }
+        }
+    }
+
     function fmt12h(t){
         if(!t || typeof t !== 'string' || !t.includes(':')) return t;
         const [hh, mm] = t.split(':');
@@ -940,10 +1039,11 @@
 
     async function loadSlots(){
         const date = dateEl.value;
+        await syncDoctorsByDate(date);
         const doctorId = doctorEl?.value || '';
 
         if (doctorRequired && doctorEl && !doctorId){
-            setLoading('Select dentist first...');
+            setLoading('Select an available dentist first...');
             return;
         }
         if(!date){
@@ -976,8 +1076,19 @@
         if(!slots.length){
             timeEl.disabled = true;
             timeEl.innerHTML = `<option value="">No available slots</option>`;
-            if (helpEl) helpEl.textContent = 'No available schedule slots for this date.';
+            const doctorUnavailable = Boolean(data?.meta?.doctor_unavailable);
+            const doctorUnavailableReason = data?.meta?.doctor_unavailable_reason || 'Unavailable on this date.';
+            if (helpEl) {
+                helpEl.textContent = doctorUnavailable
+                    ? `Selected dentist is unavailable: ${doctorUnavailableReason}`
+                    : 'No available schedule slots for this date.';
+            }
             if (gridEl) gridEl.innerHTML = '';
+
+            if (doctorUnavailable) {
+                hideWalkInOption();
+                return;
+            }
 
             const isTodaySelected = (date === todayIso);
             if (isTodaySelected) {

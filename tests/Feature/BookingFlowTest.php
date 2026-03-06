@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\DoctorUnavailability;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\User;
@@ -112,6 +113,115 @@ class BookingFlowTest extends TestCase
         $this->assertNotContains('13:00', $slotsForA, 'Selected dentist should not show own occupied hour.');
         $this->assertContains('13:00', $slotsForB, 'Another dentist can still show the same hour when free.');
         $this->assertNotContains('09:00', $slotsForB, 'Dentist B starts at 1:00 PM, so morning slots must be hidden.');
+    }
+
+    public function test_unavailable_dentist_has_no_slots_and_booking_is_blocked_for_that_date(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'is_active' => true,
+        ]);
+
+        $service = Service::create([
+            'name' => 'Scaling',
+            'base_price' => 800,
+            'allow_custom_price' => false,
+            'duration_minutes' => 60,
+        ]);
+
+        $doctor = Doctor::create([
+            'name' => 'Dr. Meeting',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6, 7],
+            'work_start_time' => '09:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        $date = now()->addDays(4)->toDateString();
+
+        DoctorUnavailability::create([
+            'doctor_id' => $doctor->id,
+            'unavailable_date' => $date,
+            'reason' => 'Clinic meeting',
+        ]);
+
+        $slotResponse = $this->actingAs($user)->getJson(route('public.booking.slots', [
+            'service' => $service->id,
+            'date' => $date,
+            'doctor_id' => $doctor->id,
+        ]));
+
+        $slotResponse->assertOk();
+        $this->assertSame([], $slotResponse->json('slots'));
+        $slotResponse->assertJsonPath('meta.doctor_unavailable', true);
+
+        $submitResponse = $this->from(route('public.booking.create', $service->id))
+            ->actingAs($user)
+            ->post(route('public.booking.store', $service->id), [
+                'date' => $date,
+                'time' => '10:00',
+                'doctor_id' => $doctor->id,
+                'full_name' => 'Booked User',
+                'contact' => '09123456789',
+                'address' => 'Sample Address',
+                'birthdate' => '1995-01-01',
+            ]);
+
+        $submitResponse->assertRedirect(route('public.booking.create', $service->id));
+        $submitResponse->assertSessionHasErrors('doctor_id');
+    }
+
+    public function test_doctors_endpoint_marks_unavailable_dentist_per_selected_date(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'is_active' => true,
+        ]);
+
+        $service = Service::create([
+            'name' => 'Consultation',
+            'base_price' => 600,
+            'allow_custom_price' => false,
+            'duration_minutes' => 60,
+        ]);
+
+        $doctorA = Doctor::create([
+            'name' => 'Dr. Available',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6, 7],
+            'work_start_time' => '09:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        $doctorB = Doctor::create([
+            'name' => 'Dr. Unavailable',
+            'is_active' => true,
+            'working_days' => [1, 2, 3, 4, 5, 6, 7],
+            'work_start_time' => '09:00:00',
+            'work_end_time' => '17:00:00',
+        ]);
+
+        $date = now()->addDays(2)->toDateString();
+
+        DoctorUnavailability::create([
+            'doctor_id' => $doctorB->id,
+            'unavailable_date' => $date,
+            'reason' => 'Seminar',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('public.booking.doctors', [
+            'service' => $service->id,
+            'date' => $date,
+        ]));
+
+        $response->assertOk();
+
+        $doctors = collect($response->json('doctors'));
+        $byId = $doctors->keyBy('id');
+
+        $this->assertTrue((bool) ($byId[$doctorA->id]['available'] ?? false));
+        $this->assertFalse((bool) ($byId[$doctorB->id]['available'] ?? true));
+        $this->assertSame('Seminar', $byId[$doctorB->id]['reason'] ?? null);
     }
 
     public function test_repeat_booking_updates_existing_pending_request_instead_of_creating_new_row(): void

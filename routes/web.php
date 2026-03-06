@@ -16,6 +16,7 @@ use App\Http\Controllers\Staff\VisitController;
 use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\AppointmentController;
 use App\Http\Controllers\Staff\ServiceController;
+use App\Http\Controllers\Staff\DoctorUnavailabilityController;
 use App\Http\Controllers\Staff\InstallmentPlanController;
 use App\Http\Controllers\Staff\InstallmentPaymentController;
 use App\Http\Controllers\Staff\PatientImportExportController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\Admin\AdminAppointmentController;
 use App\Http\Controllers\Admin\AdminPatientController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminDoctorController;
+use App\Http\Controllers\Admin\AdminDoctorUnavailabilityController;
 use App\Http\Controllers\Admin\AdminUserAccountsController;
 use App\Http\Controllers\Admin\AdminApprovalRequestController;
 use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotController;
@@ -101,6 +103,7 @@ Route::middleware('auth')->group(function () {
     // ✅ Booking flow (LOGIN REQUIRED)
     Route::get('/book/{service}', [PublicBookingController::class, 'create'])->name('public.booking.create');
     Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
+    Route::get('/book/{service}/doctors', [PublicBookingController::class, 'doctors'])->name('public.booking.doctors');
     Route::post('/book/{service}', [PublicBookingController::class, 'store'])
         ->middleware('throttle:booking-submit')
         ->name('public.booking.store');
@@ -204,6 +207,14 @@ Route::middleware('auth')->group(function () {
             Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
             Route::post('/doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggleActive');
 
+            // Dentist unavailability calendar (admin editable)
+            Route::prefix('dentist-unavailability')->name('dentist-unavailability.')->group(function () {
+                Route::get('/', [AdminDoctorUnavailabilityController::class, 'index'])->name('index');
+                Route::post('/', [AdminDoctorUnavailabilityController::class, 'store'])->name('store');
+                Route::put('/{doctorUnavailability}', [AdminDoctorUnavailabilityController::class, 'update'])->name('update');
+                Route::delete('/{doctorUnavailability}', [AdminDoctorUnavailabilityController::class, 'destroy'])->name('destroy');
+            });
+
             // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only
             // ✅ NO CREATE/STORE (users create via Google login)
             // ✅ FIX: force {user} param so destroy/edit/update binds correctly
@@ -249,6 +260,14 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{message}/reply', [StaffContactMessageController::class, 'reply'])->name('reply');
                 Route::post('/{id}/restore', [StaffContactMessageController::class, 'restore'])->name('restore');
                 Route::delete('/{message}', [StaffContactMessageController::class, 'destroy'])->name('destroy');
+            });
+
+            // Dentist unavailability calendar (staff-managed day offs / meetings)
+            Route::prefix('dentist-unavailability')->name('dentist-unavailability.')->group(function () {
+                Route::get('/', [DoctorUnavailabilityController::class, 'index'])->name('index');
+                Route::post('/', [DoctorUnavailabilityController::class, 'store'])->name('store');
+                Route::put('/{doctorUnavailability}', [DoctorUnavailabilityController::class, 'update'])->name('update');
+                Route::delete('/{doctorUnavailability}', [DoctorUnavailabilityController::class, 'destroy'])->name('destroy');
             });
 
             // Patients import/export

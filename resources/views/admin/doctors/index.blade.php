@@ -271,9 +271,14 @@
         <div class="sub">Manage associate doctors (active/inactive) reflected in Staff side.</div>
     </div>
 
-    <a href="{{ route('admin.doctors.create') }}" class="kt-btn kt-primary">
-        <i class="fa fa-plus"></i> New Doctor
-    </a>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('admin.dentist-unavailability.index') }}" class="kt-btn">
+            <i class="fa-solid fa-calendar-xmark"></i> Dentist Day-off
+        </a>
+        <a href="{{ route('admin.doctors.create') }}" class="kt-btn kt-primary">
+            <i class="fa fa-plus"></i> New Doctor
+        </a>
+    </div>
 </div>
 
 @if(session('success'))

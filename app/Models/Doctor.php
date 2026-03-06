@@ -27,4 +27,9 @@ class Doctor extends Model
     {
         return $q->where('is_active', true);
     }
+
+    public function unavailabilities()
+    {
+        return $this->hasMany(DoctorUnavailability::class);
+    }
 }

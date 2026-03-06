@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Doctor;
+use App\Models\DoctorUnavailability;
 use App\Models\Service;
 use App\Notifications\AppointmentApproved;
 use App\Notifications\AppointmentDeclined;
@@ -545,6 +546,16 @@ class ApprovalRequestController extends Controller
         return in_array($dayIso, $workingDays, true);
     }
 
+    private function doctorIsUnavailableOnDate(?int $doctorId, string $date): bool
+    {
+        if (!$doctorId || !Schema::hasTable('doctor_unavailabilities')) return false;
+
+        return DoctorUnavailability::query()
+            ->where('doctor_id', $doctorId)
+            ->whereDate('unavailable_date', $date)
+            ->exists();
+    }
+
     /**
      * Compute available hourly slots for a date/doctor using the same rules as public booking,
      * but EXCLUDING a given appointment ID (so keeping the same slot doesn't block itself).
@@ -553,6 +564,7 @@ class ApprovalRequestController extends Controller
     {
         $tz = config('app.timezone');
         $schedule = $this->resolveDoctorSchedule($doctorId);
+        if ($doctorId && $this->doctorIsUnavailableOnDate($doctorId, $date)) return [];
         if (!$this->doctorWorksOnDate($schedule, $date, $tz)) return [];
 
         $openStart = Carbon::parse("$date " . $schedule['open'], $tz);
