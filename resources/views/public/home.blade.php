@@ -135,14 +135,16 @@
         }
 
         .kt-hero-title{
-            font-weight: 950;
-            letter-spacing: -0.04em;
+            font-family: var(--heading-font);
+            font-weight: 700;
+            letter-spacing: -0.02em;
             font-size: clamp(2.05rem, 3.4vw, 3.1rem);
             line-height: 1.08;
             margin:0;
         }
 
         .kt-hero-sub{
+            font-family: var(--body-font);
             margin-top: 12px;
             color: rgba(255,255,255,.88);
             font-size: 1.05rem;
@@ -152,6 +154,7 @@
         }
 
         .kt-pill{
+            font-family: var(--body-font);
             display:inline-flex; align-items:center; gap:.5rem;
             padding:.5rem .75rem;
             border-radius: 999px;
@@ -171,6 +174,7 @@
         }
 
         .kt-chip{
+            font-family: var(--body-font);
             display:flex; align-items:center; justify-content:center; gap:.55rem;
             background: rgba(255,255,255,.12);
             border: 1px solid rgba(255,255,255,.16);
@@ -207,6 +211,10 @@
         }
 
         .kt-stat-title{ color:#fff; font-weight: 900; line-height:1.1; }
+        .kt-stat-title,
+        .kt-stat-sub{
+            font-family: var(--body-font);
+        }
         .kt-stat-sub{ color: rgba(255,255,255,.78); font-weight: 650; font-size:.92rem; }
 
         /* ✅ Note becomes pill for readability on mobile */

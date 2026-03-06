@@ -25,7 +25,7 @@
     {{-- Font --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
     :root {
@@ -41,8 +41,8 @@
         --shadow: 0 18px 55px rgba(18, 23, 34, .08);
         --radius: 20px;
         --kt-safe-bottom: env(safe-area-inset-bottom, 0px);
-        --heading-font: "Poppins", sans-serif;
-        --body-font: "Poppins", sans-serif;
+        --heading-font: "Fraunces", serif;
+        --body-font: "Manrope", "Poppins", sans-serif;
         --container-max: 1180px;
     }
 
@@ -146,7 +146,7 @@
     }
 
     .kt-brand-text .name {
-        font-family: var(--heading-font);
+        font-family: var(--body-font);
         font-weight: 800;
         color: #2f3440;
         font-size: 1.02rem;
@@ -272,7 +272,7 @@
 
     .sec-title {
         font-family: var(--heading-font);
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: -0.03em;
         margin-bottom: 10px;
     }
