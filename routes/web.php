@@ -43,7 +43,6 @@ use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotContro
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
-use App\Http\Controllers\Public\MessengerBookingController; // ✅ ADD THIS
 use App\Http\Controllers\Public\PublicInstallmentController;
 use App\Http\Controllers\PushSubscriptionController;
 
@@ -65,16 +64,13 @@ Route::get('/about', fn () => view('public.about'))->name('public.about');
 
 /** ✅ Contact page GET + POST */
 Route::get('/contact', fn () => view('public.contact'))->name('public.contact');
-Route::post('/contact', [PublicContactMessageController::class, 'store'])->name('public.contact.store');
+Route::post('/contact', [PublicContactMessageController::class, 'store'])
+    ->middleware('throttle:public-forms')
+    ->name('public.contact.store');
 
 /** Public services */
 Route::get('/services', [PublicServiceController::class, 'index'])->name('public.services.index');
 Route::get('/services/{service}', [PublicServiceController::class, 'show'])->name('public.services.show');
-
-/** ✅ Messenger booking (PUBLIC, no login) */
-Route::get('/messenger-book', [MessengerBookingController::class, 'create'])->name('messenger.book.create');
-Route::post('/messenger-book', [MessengerBookingController::class, 'store'])->name('messenger.book.store');
-Route::get('/messenger-book/success', [MessengerBookingController::class, 'success'])->name('messenger.book.success');
 
 /*
 |--------------------------------------------------------------------------
@@ -84,11 +80,15 @@ Route::get('/messenger-book/success', [MessengerBookingController::class, 'succe
 Route::middleware('guest')->group(function () {
     // ✅ Staff/Admin login
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
+    Route::post('/login', [LoginController::class, 'login'])
+        ->middleware('throttle:login')
+        ->name('login.submit');
 
     // ✅ User login (public users)
     Route::get('/userlogin', [UserLoginController::class, 'show'])->name('userlogin');
-    Route::post('/userlogin', [UserLoginController::class, 'login'])->name('userlogin.submit');
+    Route::post('/userlogin', [UserLoginController::class, 'login'])
+        ->middleware('throttle:login')
+        ->name('userlogin.submit');
 });
 
 /*
@@ -101,7 +101,13 @@ Route::middleware('auth')->group(function () {
     // ✅ Booking flow (LOGIN REQUIRED)
     Route::get('/book/{service}', [PublicBookingController::class, 'create'])->name('public.booking.create');
     Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
-    Route::post('/book/{service}', [PublicBookingController::class, 'store'])->name('public.booking.store');
+    Route::post('/book/{service}', [PublicBookingController::class, 'store'])
+        ->middleware('throttle:booking-submit')
+        ->name('public.booking.store');
+    Route::get('/bookings/{appointment}/edit', [PublicBookingController::class, 'edit'])->name('public.booking.edit');
+    Route::put('/bookings/{appointment}', [PublicBookingController::class, 'update'])
+        ->middleware('throttle:booking-submit')
+        ->name('public.booking.update');
 
     // ✅ User Profile
     Route::get('/profile', [UserProfileController::class, 'index'])->name('profile.show');
@@ -141,8 +147,12 @@ Route::middleware('auth')->group(function () {
     })->name('approvals.portal');
 
     // ✅ Web Push subscription endpoints (staff/admin only)
-    Route::middleware('role:admin,staff')->post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
-    Route::middleware('role:admin,staff')->post('/push/unsubscribe', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
+    Route::middleware(['role:admin,staff', 'throttle:push-subscriptions'])
+        ->post('/push/subscribe', [PushSubscriptionController::class, 'store'])
+        ->name('push.subscribe');
+    Route::middleware(['role:admin,staff', 'throttle:push-subscriptions'])
+        ->post('/push/unsubscribe', [PushSubscriptionController::class, 'destroy'])
+        ->name('push.unsubscribe');
 
     /*
     |--------------------------------------------------------------------------
@@ -237,7 +247,6 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{message}', [StaffContactMessageController::class, 'show'])->name('show');
                 Route::post('/{message}/read', [StaffContactMessageController::class, 'markRead'])->name('read');
                 Route::post('/{id}/restore', [StaffContactMessageController::class, 'restore'])->name('restore');
-                Route::post('/{id}/restore', [StaffContactMessageController::class, 'restore'])->name('restore');
                 Route::delete('/{message}', [StaffContactMessageController::class, 'destroy'])->name('destroy');
             });
 
@@ -286,9 +295,6 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store/installment', [PaymentController::class, 'storeInstallment'])->name('store.installment');
 
                 // Undo delete (restore)
-                Route::post('/{id}/restore', [PaymentController::class, 'restore'])->name('restore');
-
-                // ⚠️ keep these LAST
                 Route::post('/{id}/restore', [PaymentController::class, 'restore'])->name('restore');
 
                 Route::get('/{payment}', [PaymentController::class, 'show'])->name('show');

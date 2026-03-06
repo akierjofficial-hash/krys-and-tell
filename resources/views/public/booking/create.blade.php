@@ -236,8 +236,11 @@
         <div class="row g-4 mt-2 align-items-stretch">
             <div class="col-lg-6 d-flex">
                 @if($hasSuccess)
+                    @php
+                        $canEditPending = strtolower((string)($successAppointment->status ?? '')) === 'pending';
+                    @endphp
                     <div class="card card-soft p-4 kt-booking-card w-100 kt-success-wrap">
-                        <h2 class="sec-title mb-2">Booking submitted</h2>
+                        <h2 class="sec-title mb-2">{{ session('booking_updated') ? 'Booking updated' : 'Booking submitted' }}</h2>
                         <div class="sec-sub">
                             Saved as <b>Pending</b>. Staff will confirm it and email you.
                         </div>
@@ -268,6 +271,11 @@
                             </div>
 
                             <div class="kt-success-actions">
+                                @if($canEditPending)
+                                    <a class="btn kt-btn kt-btn-outline" href="{{ route('public.booking.edit', $successAppointment->id) }}">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i> Not sure? Edit your booking
+                                    </a>
+                                @endif
                                 <a class="btn kt-btn kt-btn-primary text-white" href="{{ route('public.services.index') }}">
                                     <i class="fa-solid fa-calendar-plus me-1"></i> Book another service
                                 </a>

@@ -23,6 +23,7 @@ class ApprovalRequestController extends Controller
     private const SLOT_MINUTES = 60;      // 1 hour blocks
     private const CHAIRS       = 2;       // 2 chairs = 2 patients per hour
     private const LEAD_MINUTES_TODAY = 60;
+    private const SLOT_BLOCKING_STATUSES = ['upcoming', 'approved', 'confirmed', 'scheduled'];
 
     public function index()
     {
@@ -490,7 +491,7 @@ class ApprovalRequestController extends Controller
         if (Schema::hasColumn('appointments', 'status')) {
             $bookedQuery->where(function ($q) {
                 $q->whereNull('status')
-                  ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
+                  ->orWhereIn('status', self::SLOT_BLOCKING_STATUSES);
             });
         }
 

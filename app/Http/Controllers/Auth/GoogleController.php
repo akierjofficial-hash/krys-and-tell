@@ -83,6 +83,12 @@ class GoogleController extends Controller
             $user->save();
         }
 
+        if (isset($user->is_active) && !$user->is_active) {
+            return redirect()
+                ->route('userlogin')
+                ->withErrors(['email' => 'Your account is inactive. Please contact support.']);
+        }
+
         Auth::login($user, true);
 
         // ✅ Use portal as a single “role router”

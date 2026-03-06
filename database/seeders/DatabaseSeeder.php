@@ -11,10 +11,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Only seed dev/test dummy users locally (optional)
-        // if (app()->environment('local')) {
-        //     \App\Models\User::factory(10)->create();
-        // }
+        // Never seed default privileged accounts outside local/testing.
+        if (!app()->environment(['local', 'testing'])) {
+            return;
+        }
 
         $this->call([
             AdminUserSeeder::class,

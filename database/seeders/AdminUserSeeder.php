@@ -11,9 +11,21 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        if (!app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $email = trim((string) env('SEED_ADMIN_EMAIL', 'admin@krysandtell.com'));
+        $plainPassword = (string) env('SEED_ADMIN_PASSWORD', '');
+
+        if ($email === '' || $plainPassword === '') {
+            $this->command?->warn('AdminUserSeeder skipped: set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in .env.');
+            return;
+        }
+
         $data = [
             'name' => 'Admin',
-            'password' => Hash::make('Admin12345!'),
+            'password' => Hash::make($plainPassword),
         ];
 
         // If your users table has a role field, set it automatically
@@ -26,7 +38,7 @@ class AdminUserSeeder extends Seeder
         }
 
         User::updateOrCreate(
-            ['email' => 'admin@krysandtell.com'],
+            ['email' => $email],
             $data
         );
     }

@@ -585,7 +585,7 @@
                     </a>
 
                     <a href="{{ route('admin.users.index') }}"
-                        class="{{ request()->routeIs('admin.staff.*') ? 'active' : '' }}">
+                        class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                         <i class="fa fa-user-shield"></i> Staff Accounts
                     </a>
                 </div>

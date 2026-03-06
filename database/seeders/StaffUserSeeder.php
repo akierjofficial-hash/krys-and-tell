@@ -11,10 +11,22 @@ class StaffUserSeeder extends Seeder
 {
     public function run(): void
     {
+        if (!app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $email = trim((string) env('SEED_STAFF_EMAIL', 'staff@krysandtell.com'));
+        $plainPassword = (string) env('SEED_STAFF_PASSWORD', '');
+
+        if ($email === '' || $plainPassword === '') {
+            $this->command?->warn('StaffUserSeeder skipped: set SEED_STAFF_EMAIL and SEED_STAFF_PASSWORD in .env.');
+            return;
+        }
+
         $data = [
             'name' => 'Staff',
-            'email' => 'staff@krysandtell.com',
-            'password' => Hash::make('Staff123'),
+            'email' => $email,
+            'password' => Hash::make($plainPassword),
         ];
 
         // Set role fields if your users table has them (safe + flexible)

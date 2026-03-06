@@ -13,22 +13,30 @@ use Illuminate\Support\Facades\DB;
 
 class AdminUserController extends Controller
 {
+    private const MANAGEABLE_ROLES = ['admin', 'staff'];
+
+    private function ensureManageableUser(User $user): void
+    {
+        $role = strtolower((string) ($user->role ?? ''));
+
+        if (!in_array($role, self::MANAGEABLE_ROLES, true)) {
+            abort(404);
+        }
+    }
+
     public function index(Request $request)
     {
         $q = $request->string('q')->toString();
         $role = $request->string('role')->toString();     // admin|staff|''
         $status = $request->string('status')->toString(); // active|inactive|''
 
-        // ✅ Only show Admin/Staff here (never show patients/users)
-        $allowedRoles = ['admin', 'staff'];
-
         // ✅ If role filter is invalid, ignore it
-        if (!in_array($role, $allowedRoles, true)) {
+        if (!in_array($role, self::MANAGEABLE_ROLES, true)) {
             $role = '';
         }
 
         $users = User::query()
-            ->whereIn('role', $allowedRoles)
+            ->whereIn('role', self::MANAGEABLE_ROLES)
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -61,7 +69,7 @@ class AdminUserController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'max:72'],
-            'role' => ['required', Rule::in(['admin', 'staff'])],
+            'role' => ['required', Rule::in(self::MANAGEABLE_ROLES)],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -79,15 +87,19 @@ class AdminUserController extends Controller
 
     public function edit(User $user)
     {
+        $this->ensureManageableUser($user);
+
         return view('admin.users.edit', compact('user'));
     }
 
     public function update(Request $request, User $user)
     {
+        $this->ensureManageableUser($user);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
-            'role' => ['required', Rule::in(['admin', 'staff'])],
+            'role' => ['required', Rule::in(self::MANAGEABLE_ROLES)],
             'is_active' => ['nullable', 'boolean'],
             'password' => ['nullable', 'string', 'min:8', 'max:72'],
         ]);
@@ -109,6 +121,8 @@ class AdminUserController extends Controller
 
     public function toggleActive(Request $request, User $user)
     {
+        $this->ensureManageableUser($user);
+
         if (auth()->id() === $user->id) {
             return $this->ktRedirectToReturn($request, 'admin.users.index')
                 ->with('error', "You can't deactivate your own account.");
@@ -123,6 +137,8 @@ class AdminUserController extends Controller
 
     public function activity(User $user)
     {
+        $this->ensureManageableUser($user);
+
         $logs = ActivityLog::query()
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
@@ -135,6 +151,7 @@ class AdminUserController extends Controller
     public function restore(Request $request, int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
+        $this->ensureManageableUser($user);
         $user->restore();
 
         return $this->ktRedirectToReturn($request, 'admin.users.index')
@@ -143,6 +160,8 @@ class AdminUserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
+        $this->ensureManageableUser($user);
+
         $me = auth()->user();
 
         if ($me && $me->id === $user->id) {
@@ -150,7 +169,7 @@ class AdminUserController extends Controller
                 ->with('error', "You can't delete your own account.");
         }
 
-        if (($user->role ?? '') === 'admin') {
+        if (strtolower((string) ($user->role ?? '')) === 'admin') {
             $otherAdmins = User::where('role', 'admin')
                 ->where('id', '!=', $user->id)
                 ->count();

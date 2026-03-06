@@ -23,6 +23,8 @@ class PublicBookingController extends Controller
     private const SLOT_MINUTES = 60;      // 1 hour blocks
     private const CHAIRS       = 2;       // 2 chairs = 2 patients per hour
     private const LEAD_MINUTES_TODAY = 60;
+    private const PENDING_STATUS = 'pending';
+    private const SLOT_BLOCKING_STATUSES = ['upcoming', 'approved', 'confirmed', 'scheduled'];
 
     // ✅ Walk-in rule:
     // - duration_minutes is null/empty => walk-in
@@ -43,15 +45,19 @@ class PublicBookingController extends Controller
     public function create(Service $service)
     {
         $doctors = $this->activeDoctors();
+        $user = auth()->user();
 
         $successAppointment = null;
         if (session('booking_success') && session('success_appointment_id')) {
-            $successAppointment = Appointment::with(['service', 'doctor'])
+            $candidate = Appointment::with(['service', 'doctor'])
                 ->whereKey(session('success_appointment_id'))
                 ->first();
+
+            if ($candidate && $this->userOwnsBooking($candidate, $user)) {
+                $successAppointment = $candidate;
+            }
         }
 
-        $user = auth()->user();
         $profile = $this->knownBookingDetails($user);
         $needsDetails = $user ? !$profile['complete'] : true;
 
@@ -65,12 +71,162 @@ class PublicBookingController extends Controller
         ]);
     }
 
+    public function edit(Appointment $appointment)
+    {
+        $user = auth()->user();
+        if (!$this->isPendingBookingEditableByUser($appointment, $user)) {
+            abort(403);
+        }
+
+        $appointment->loadMissing(['service', 'doctor']);
+
+        $service = $appointment->service;
+        if (
+            !$service
+            && Schema::hasColumn('appointments', 'service_id')
+            && !empty($appointment->service_id)
+        ) {
+            $service = Service::find($appointment->service_id);
+        }
+
+        if (!$service) {
+            return redirect()->route('profile.show')
+                ->with('error', 'Unable to edit booking because service data is missing.');
+        }
+
+        $dateValue = null;
+        $timeValue = null;
+
+        try {
+            if (!empty($appointment->appointment_date)) {
+                $dateValue = Carbon::parse($appointment->appointment_date)->toDateString();
+            }
+            if (!empty($appointment->appointment_time)) {
+                $timeValue = Carbon::parse($appointment->appointment_time)->format('H:i');
+            }
+        } catch (\Throwable $e) {
+            // no-op
+        }
+
+        $doctorValue = null;
+        if (Schema::hasColumn('appointments', 'doctor_id')) {
+            $doctorValue = $appointment->doctor_id ?: null;
+        }
+
+        return view('public.booking.edit', [
+            'appointment' => $appointment,
+            'service' => $service,
+            'doctors' => $this->activeDoctors(),
+            'doctorRequired' => $this->doctorRequired(),
+            'isWalkIn' => $this->isWalkIn($service),
+            'prefillDate' => $dateValue,
+            'prefillTime' => $timeValue,
+            'prefillDoctorId' => $doctorValue,
+        ]);
+    }
+
+    public function update(Request $request, Appointment $appointment)
+    {
+        $user = auth()->user();
+        if (!$this->isPendingBookingEditableByUser($appointment, $user)) {
+            abort(403);
+        }
+
+        $appointment->loadMissing(['service', 'doctor']);
+
+        $service = $appointment->service;
+        if (
+            !$service
+            && Schema::hasColumn('appointments', 'service_id')
+            && !empty($appointment->service_id)
+        ) {
+            $service = Service::find($appointment->service_id);
+        }
+
+        if (!$service) {
+            return redirect()->route('profile.show')
+                ->with('error', 'Unable to edit booking because service data is missing.');
+        }
+
+        $doctorRequired = $this->doctorRequired();
+        $isWalkIn = $this->isWalkIn($service);
+
+        $request->validate([
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'time' => $isWalkIn ? ['nullable'] : ['required', 'date_format:H:i'],
+            'doctor_id' => $doctorRequired
+                ? ['required', 'integer', 'exists:doctors,id']
+                : ['nullable', 'integer', 'exists:doctors,id'],
+            'message' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $date = Carbon::parse($request->date)->toDateString();
+        $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
+        $time = $isWalkIn ? null : $request->time;
+
+        if (!$isWalkIn) {
+            $available = in_array($time, $this->computeHourlySlots($date, $doctorId, $appointment->id), true);
+            if (!$available) {
+                return back()
+                    ->withErrors(['time' => 'That time slot is no longer available. Please choose another.'])
+                    ->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($appointment, $date, $time, $doctorId, $isWalkIn, $request) {
+            if (Schema::hasColumn('appointments', 'appointment_date')) {
+                $appointment->appointment_date = $date;
+            }
+
+            if (Schema::hasColumn('appointments', 'appointment_time')) {
+                $appointment->appointment_time = $isWalkIn ? null : $time;
+            }
+
+            if (Schema::hasColumn('appointments', 'duration_minutes')) {
+                $appointment->duration_minutes = $isWalkIn ? null : self::SLOT_MINUTES;
+            }
+
+            if (Schema::hasColumn('appointments', 'doctor_id')) {
+                $appointment->doctor_id = $doctorId;
+            }
+
+            if (Schema::hasColumn('appointments', 'dentist_name')) {
+                $appointment->dentist_name = $doctorId
+                    ? Doctor::whereKey($doctorId)->value('name')
+                    : null;
+            }
+
+            if (Schema::hasColumn('appointments', 'public_message')) {
+                $appointment->public_message = $request->input('message');
+            }
+
+            if (Schema::hasColumn('appointments', 'status')) {
+                $appointment->status = self::PENDING_STATUS;
+            }
+
+            $appointment->save();
+        });
+
+        return redirect()
+            ->route('public.booking.edit', $appointment->id)
+            ->with('success', 'Your booking request has been updated.');
+    }
+
     public function slots(Request $request, Service $service)
     {
         // ✅ Walk-in services do not have slots
         if ($this->isWalkIn($service)) {
+            $walkInDate = now()->toDateString();
+            if ($request->filled('date')) {
+                try {
+                    $walkInDate = Carbon::parse((string) $request->date)->toDateString();
+                } catch (\Throwable $e) {
+                    // Keep today fallback.
+                }
+            }
+
             return response()->json([
-                'date' => Carbon::parse($request->date ?? now())->toDateString(),
+                'date' => $walkInDate,
                 'doctor_id' => $request->integer('doctor_id') ?: null,
                 'slots' => [],
                 'meta' => [
@@ -124,7 +280,7 @@ class PublicBookingController extends Controller
         $rules = [
             'date' => ['required', 'date', 'after_or_equal:today'],
 
-            // ✅ Walk-in: time is NOT required
+            // Walk-in: time is not required.
             'time' => $isWalkIn ? ['nullable'] : ['required', 'date_format:H:i'],
 
             'doctor_id' => $doctorRequired
@@ -149,10 +305,10 @@ class PublicBookingController extends Controller
         $date = Carbon::parse($request->date)->toDateString();
         $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
 
-        // ✅ Walk-in: store NULL time (no slot system)
+        // Walk-in: store NULL time (no slot system).
         $time = $isWalkIn ? null : $request->time;
 
-        // ✅ Only enforce chair-capacity rules for scheduled services
+        // Only enforce chair-capacity rules for scheduled services.
         if (!$isWalkIn) {
             $available = in_array($time, $this->computeHourlySlots($date, $doctorId), true);
             if (!$available) {
@@ -177,11 +333,17 @@ class PublicBookingController extends Controller
         if ($request->filled('birthdate')) {
             $birthdate = Carbon::parse($request->birthdate)->toDateString();
         } elseif (!empty($profile['birthdate'])) {
-            try { $birthdate = Carbon::parse($profile['birthdate'])->toDateString(); } catch (\Throwable $e) {}
+            try {
+                $birthdate = Carbon::parse($profile['birthdate'])->toDateString();
+            } catch (\Throwable $e) {
+                // no-op
+            }
         }
 
-        // ✅ Save first (transaction), then email AFTER commit
-        $appointment = DB::transaction(function () use (
+        $existingPendingId = $this->findLatestPendingBookingIdForUserAndService($user, $service->id);
+
+        // Keep only one pending request per user/service by updating the latest pending row.
+        $tx = DB::transaction(function () use (
             $request,
             $service,
             $date,
@@ -196,7 +358,8 @@ class PublicBookingController extends Controller
             $contact,
             $address,
             $birthdate,
-            $isWalkIn
+            $isWalkIn,
+            $existingPendingId
         ) {
             if ($user) {
                 $dirty = false;
@@ -214,10 +377,23 @@ class PublicBookingController extends Controller
                     $dirty = true;
                 }
 
-                if ($dirty) $user->save();
+                if ($dirty) {
+                    $user->save();
+                }
             }
 
-            $appointment = new Appointment();
+            $appointment = null;
+            if (!empty($existingPendingId)) {
+                $appointment = Appointment::query()
+                    ->lockForUpdate()
+                    ->find($existingPendingId);
+            }
+
+            $updatingExistingPending = $appointment !== null;
+
+            if (!$appointment) {
+                $appointment = new Appointment();
+            }
 
             if (Schema::hasColumn('appointments', 'service_id')) {
                 $appointment->service_id = $service->id;
@@ -226,21 +402,21 @@ class PublicBookingController extends Controller
                 $appointment->appointment_date = $date;
             }
 
-            // ✅ only set time if scheduled
-            if (!$isWalkIn && Schema::hasColumn('appointments', 'appointment_time')) {
-                $appointment->appointment_time = $time; // "H:i" => MySQL time becomes "H:i:s"
+            if (Schema::hasColumn('appointments', 'appointment_time')) {
+                $appointment->appointment_time = $isWalkIn ? null : $time;
             }
 
-            // ✅ Scheduled bookings block 1 hour; Walk-ins: do NOT block chairs
-            if (!$isWalkIn && Schema::hasColumn('appointments', 'duration_minutes')) {
-                $appointment->duration_minutes = self::SLOT_MINUTES;
+            if (Schema::hasColumn('appointments', 'duration_minutes')) {
+                $appointment->duration_minutes = $isWalkIn ? null : self::SLOT_MINUTES;
             }
 
-            if ($doctorId && Schema::hasColumn('appointments', 'doctor_id')) {
+            if (Schema::hasColumn('appointments', 'doctor_id')) {
                 $appointment->doctor_id = $doctorId;
             }
-            if ($doctorId && Schema::hasColumn('appointments', 'dentist_name')) {
-                $appointment->dentist_name = Doctor::whereKey($doctorId)->value('name');
+            if (Schema::hasColumn('appointments', 'dentist_name')) {
+                $appointment->dentist_name = $doctorId
+                    ? Doctor::whereKey($doctorId)->value('name')
+                    : null;
             }
 
             if (Schema::hasColumn('appointments', 'public_name')) {
@@ -274,37 +450,46 @@ class PublicBookingController extends Controller
             }
 
             if (Schema::hasColumn('appointments', 'status')) {
-                $appointment->status = 'pending';
+                $appointment->status = self::PENDING_STATUS;
             }
 
             if ($user && Schema::hasColumn('appointments', 'user_id')) {
                 $appointment->user_id = $user->id;
             }
 
-            // If logged-in, always trust user email
+            // If logged-in, always trust user email.
             if ($user && Schema::hasColumn('appointments', 'public_email')) {
                 $appointment->public_email = $user->email;
             }
 
             $appointment->save();
 
-            return $appointment;
+            return [
+                'appointment' => $appointment,
+                'updated_existing_pending' => $updatingExistingPending,
+            ];
         });
 
-        // ✅ Send clinic notification email (won't block booking if email fails)
-        $this->notifyClinicNewBooking($appointment);
+        /** @var \App\Models\Appointment $appointment */
+        $appointment = $tx['appointment'];
+        $updatedExistingPending = (bool) ($tx['updated_existing_pending'] ?? false);
 
-        // ✅ Send Web Push notification to all staff/admin (if enabled)
-        try {
-            $appointment->loadMissing(['service']);
-            app(\App\Services\WebPushService::class)->sendNewBooking($appointment);
-        } catch (\Throwable $e) {
-            // silent
+        // Notify only for new pending rows, not for in-place user edits.
+        if (!$updatedExistingPending) {
+            $this->notifyClinicNewBooking($appointment);
+
+            try {
+                $appointment->loadMissing(['service']);
+                app(\App\Services\WebPushService::class)->notifyNewBooking($appointment);
+            } catch (\Throwable $e) {
+                // silent
+            }
         }
 
         return redirect()
             ->route('public.booking.create', $service->id)
             ->with('booking_success', true)
+            ->with('booking_updated', $updatedExistingPending)
             ->with('success_appointment_id', $appointment->id);
     }
 
@@ -330,7 +515,7 @@ class PublicBookingController extends Controller
     }
 }
 
-    private function computeHourlySlots(string $date, ?int $doctorId): array
+    private function computeHourlySlots(string $date, ?int $doctorId, ?int $excludeAppointmentId = null): array
     {
         $tz = config('app.timezone');
 
@@ -356,6 +541,10 @@ class PublicBookingController extends Controller
             ->select(['appointment_time'])
             ->whereDate('appointment_date', $date);
 
+        if (!empty($excludeAppointmentId)) {
+            $bookedQuery->where('id', '!=', $excludeAppointmentId);
+        }
+
         if (Schema::hasColumn('appointments', 'doctor_id')) {
             $bookedQuery->addSelect('doctor_id');
         }
@@ -367,7 +556,7 @@ class PublicBookingController extends Controller
         if (Schema::hasColumn('appointments', 'status')) {
             $bookedQuery->where(function ($q) {
                 $q->whereNull('status')
-                    ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
+                    ->orWhereIn('status', self::SLOT_BLOCKING_STATUSES);
             });
         }
 
@@ -520,6 +709,76 @@ class PublicBookingController extends Controller
         return $data;
     }
 
+    private function findLatestPendingBookingIdForUserAndService($user, int $serviceId): ?int
+    {
+        $q = $this->ownedBookingsQuery($user);
+        if (!$q || !Schema::hasColumn('appointments', 'status')) {
+            return null;
+        }
+
+        $q->where('status', self::PENDING_STATUS);
+
+        if (Schema::hasColumn('appointments', 'service_id')) {
+            $q->where('service_id', $serviceId);
+        }
+
+        if (Schema::hasColumn('appointments', 'appointment_date')) {
+            $q->whereDate('appointment_date', '>=', now()->toDateString());
+        }
+
+        return $q->latest('id')->value('id');
+    }
+
+    private function isPendingBookingEditableByUser(Appointment $appointment, $user): bool
+    {
+        if (!$user) return false;
+        if (!$this->userOwnsBooking($appointment, $user)) return false;
+
+        if (Schema::hasColumn('appointments', 'status')) {
+            return strtolower((string) ($appointment->status ?? '')) === self::PENDING_STATUS;
+        }
+
+        return false;
+    }
+
+    private function userOwnsBooking(Appointment $appointment, $user): bool
+    {
+        if (!$user) return false;
+
+        if (Schema::hasColumn('appointments', 'user_id') && !empty($appointment->user_id)) {
+            if ((int) $appointment->user_id === (int) $user->id) {
+                return true;
+            }
+        }
+
+        if (
+            Schema::hasColumn('appointments', 'public_email')
+            && !empty($appointment->public_email)
+            && !empty($user->email)
+        ) {
+            return strcasecmp((string) $appointment->public_email, (string) $user->email) === 0;
+        }
+
+        return false;
+    }
+
+    private function ownedBookingsQuery($user): ?\Illuminate\Database\Eloquent\Builder
+    {
+        if (!$user || !Schema::hasTable('appointments')) return null;
+
+        $q = Appointment::query();
+
+        if (Schema::hasColumn('appointments', 'user_id')) {
+            return $q->where('user_id', $user->id);
+        }
+
+        if (Schema::hasColumn('appointments', 'public_email') && !empty($user->email)) {
+            return $q->where('public_email', $user->email);
+        }
+
+        return null;
+    }
+
     private function splitName(string $name): array
     {
         $name = trim(preg_replace('/\s+/', ' ', $name));
@@ -585,3 +844,4 @@ class PublicBookingController extends Controller
             && $this->activeDoctors()->count() > 0;
     }
 }
+

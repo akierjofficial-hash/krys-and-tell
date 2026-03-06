@@ -24,8 +24,13 @@ class AdminAnalyticsController extends Controller
             $start = $today->copy()->startOfMonth();
             $end = $today->copy();
         } elseif ($range === 'custom') {
-            $startInput = $request->get('start_date');
-            $endInput   = $request->get('end_date');
+            $validated = $request->validate([
+                'start_date' => ['nullable', 'date'],
+                'end_date' => ['nullable', 'date'],
+            ]);
+
+            $startInput = $validated['start_date'] ?? null;
+            $endInput   = $validated['end_date'] ?? null;
 
             $start = $startInput ? Carbon::parse($startInput)->startOfDay() : $today->copy()->subDays(29);
             $end   = $endInput   ? Carbon::parse($endInput)->startOfDay()   : $today->copy();

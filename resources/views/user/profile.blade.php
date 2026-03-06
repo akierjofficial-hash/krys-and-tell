@@ -225,6 +225,14 @@
                                     <div class="kt-appt-sub">
                                         <b>Doctor:</b> {{ $doc }}
                                     </div>
+
+                                    @if(strtolower((string)($a->status ?? '')) === 'pending')
+                                        <div class="mt-2">
+                                            <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
+                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit booking
+                                            </a>
+                                        </div>
+                                    @endif
                                 </div>
                             @empty
                                 <div class="text-center py-3">
@@ -271,6 +279,14 @@
                                     <div class="kt-appt-sub">
                                         <b>Doctor:</b> {{ $doc }}
                                     </div>
+
+                                    @if(strtolower((string)($a->status ?? '')) === 'pending')
+                                        <div class="mt-2">
+                                            <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
+                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit booking
+                                            </a>
+                                        </div>
+                                    @endif
                                 </div>
                             @empty
                                 <div class="text-center py-3">
@@ -442,6 +458,13 @@
                                             <div class="text-muted-2" style="font-weight:650;font-size:12px;">
                                                 Doctor: {{ $doctorName($a) }}
                                             </div>
+                                            @if(strtolower((string)($a->status ?? '')) === 'pending')
+                                                <div class="mt-2">
+                                                    <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
+                                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit booking
+                                                    </a>
+                                                </div>
+                                            @endif
                                         </div>
                                         <span class="badge bg-{{ $type }}" style="border-radius:999px;font-weight:900;">
                                             {{ $label }}
@@ -554,6 +577,7 @@
                                         <th>Time</th>
                                         <th>Doctor</th>
                                         <th>Status</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -572,10 +596,19 @@
                                                     {{ $label }}
                                                 </span>
                                             </td>
+                                            <td>
+                                                @if(strtolower((string)($a->status ?? '')) === 'pending')
+                                                    <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
+                                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted">No records found.</td>
+                                            <td colspan="6" class="text-center text-muted">No records found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

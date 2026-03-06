@@ -9,13 +9,18 @@ use Illuminate\Support\Facades\Hash;
 class CheckSeededUsers extends Command
 {
     protected $signature = 'users:check-seeds';
-    protected $description = 'Check if seeded admin/staff accounts exist and if passwords match';
+    protected $description = 'Check if configured seeded admin/staff accounts exist';
 
     public function handle(): int
     {
+        $adminEmail = trim((string) env('SEED_ADMIN_EMAIL', 'admin@krysandtell.com'));
+        $staffEmail = trim((string) env('SEED_STAFF_EMAIL', 'staff@krysandtell.com'));
+        $adminPass = (string) env('SEED_ADMIN_PASSWORD', '');
+        $staffPass = (string) env('SEED_STAFF_PASSWORD', '');
+
         $targets = [
-            ['email' => 'admin@krysandtell.com', 'pass' => 'Admin123'],
-            ['email' => 'staff@krysandtell.com', 'pass' => 'Staff123'],
+            ['email' => $adminEmail, 'pass' => $adminPass],
+            ['email' => $staffEmail, 'pass' => $staffPass],
         ];
 
         foreach ($targets as $t) {
@@ -31,8 +36,12 @@ class CheckSeededUsers extends Command
 
             $this->info('✅ FOUND');
 
-            $ok = Hash::check($t['pass'], $u->password);
-            $this->line('Password check: ' . ($ok ? '✅ MATCH' : '❌ DOES NOT MATCH'));
+            if ($t['pass'] !== '') {
+                $ok = Hash::check($t['pass'], $u->password);
+                $this->line('Password check: ' . ($ok ? '✅ MATCH' : '❌ DOES NOT MATCH'));
+            } else {
+                $this->line('Password check: skipped (SEED_*_PASSWORD not set)');
+            }
 
             // show role-ish fields if they exist (no secrets)
             $this->line('role: ' . ($u->role ?? 'n/a'));

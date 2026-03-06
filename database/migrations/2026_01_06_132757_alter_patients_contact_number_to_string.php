@@ -14,6 +14,9 @@ return new class extends Migration {
         } elseif ($driver === 'mysql') {
             // XAMPP / MySQL
             DB::statement("ALTER TABLE patients MODIFY contact_number VARCHAR(20) NULL");
+        } elseif ($driver === 'sqlite') {
+            // SQLite is used in tests and doesn't support this raw ALTER syntax.
+            return;
         } else {
             // fallback
             DB::statement("ALTER TABLE patients ALTER COLUMN contact_number TYPE VARCHAR(20)");

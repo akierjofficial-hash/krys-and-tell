@@ -21,7 +21,7 @@ class InstallmentImportExportController extends Controller
     public function importPlans(Request $request)
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
             'return' => ['nullable', 'string'],
         ]);
 
@@ -55,7 +55,7 @@ class InstallmentImportExportController extends Controller
     public function importPayments(Request $request, InstallmentPlan $plan)
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
             'return' => ['nullable', 'string'],
         ]);
 

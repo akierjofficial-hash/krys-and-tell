@@ -54,13 +54,14 @@ class AdminDashboardController extends Controller
                 $join->on('visits.id', '=', 'visit_procedures.visit_id')
                     ->whereBetween('visits.visit_date', [$start, $end]);
             })
-            ->groupBy('services.id', 'services.name', 'services.created_at')
-            ->orderByDesc(DB::raw('COUNT(visit_procedures.id)'))
+            ->groupBy('services.id', 'services.name', 'services.color', 'services.created_at')
+            ->orderByDesc(DB::raw('COUNT(visits.id)'))
             ->orderByDesc('services.created_at')
             ->limit(20)
             ->get([
                 'services.name as name',
-                DB::raw('COUNT(visit_procedures.id) as total'),
+                'services.color as color',
+                DB::raw('COUNT(visits.id) as total'),
             ]);
 
         // Nearest appointments table

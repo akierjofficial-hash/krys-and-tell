@@ -12,7 +12,21 @@ class TrustProxies extends Middleware
      *
      * @var array|string|null
      */
-    protected $proxies = '*';
+    protected $proxies = null;
+
+    public function __construct()
+    {
+        $trusted = trim((string) env('TRUSTED_PROXIES', ''));
+
+        if ($trusted === '*') {
+            $this->proxies = '*';
+            return;
+        }
+
+        if ($trusted !== '') {
+            $this->proxies = array_values(array_filter(array_map('trim', explode(',', $trusted))));
+        }
+    }
 
     /**
      * Use Symfony constants (works across Laravel versions)

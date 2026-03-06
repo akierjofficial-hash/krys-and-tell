@@ -45,6 +45,17 @@ class UserLoginController extends Controller
             ]);
         }
 
+        // Block deactivated user accounts.
+        if (isset($u->is_active) && !$u->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account is inactive. Please contact support.',
+            ]);
+        }
+
         // ✅ IMPORTANT: prevent old intended URLs (like /profile) from overriding
         $request->session()->forget('url.intended');
 
@@ -56,7 +67,7 @@ class UserLoginController extends Controller
         $redirect = $request->input('redirect');
 
         // Only allow internal redirects (security + avoids weird redirects)
-        if (is_string($redirect) && $redirect !== '' && str_starts_with($redirect, '/')) {
+        if (is_string($redirect) && $this->ktIsSafeReturnUrl($redirect)) {
             return redirect()->to($redirect);
         }
 

@@ -48,6 +48,14 @@ class PushSubscriptionController extends Controller
      */
     public function destroy(Request $request)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unauthorized.',
+            ], 401);
+        }
+
         $endpoint = $request->input('endpoint');
         if (!$endpoint) {
             $payload = $request->input('subscription') ?? $request->all();
@@ -61,7 +69,9 @@ class PushSubscriptionController extends Controller
             ], 422);
         }
 
-        PushSubscription::where('endpoint', $endpoint)->delete();
+        PushSubscription::where('endpoint', $endpoint)
+            ->where('user_id', $user->id)
+            ->delete();
 
         return response()->json(['ok' => true]);
     }

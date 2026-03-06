@@ -23,6 +23,7 @@ class AdminApprovalRequestController extends Controller
     private const SLOT_MINUTES = 60;      // 1 hour blocks
     private const CHAIRS       = 2;       // 2 chairs = 2 patients per hour
     private const LEAD_MINUTES_TODAY = 60;
+    private const SLOT_BLOCKING_STATUSES = ['upcoming', 'approved', 'confirmed', 'scheduled'];
 
     public function index()
     {
@@ -57,8 +58,9 @@ class AdminApprovalRequestController extends Controller
         $q->with(['service', 'doctor'])->latest();
 
         $pendingCount = (clone $q)->count();
+        $hasStaffNote = Schema::hasColumn('appointments', 'staff_note');
 
-        $items = (clone $q)->take($limit)->get()->map(function ($a) {
+        $items = (clone $q)->take($limit)->get()->map(function ($a) use ($hasStaffNote) {
             $patientName =
                 trim(($a->public_first_name ?? '') . ' ' . ($a->public_last_name ?? '')) ?: ($a->public_name ?? 'N/A');
 
@@ -104,6 +106,7 @@ class AdminApprovalRequestController extends Controller
                 'doctor_id'  => $doctorId,
                 'date_raw'   => $dateRaw,
                 'time_raw'   => $timeRaw,
+                'staff_note' => $hasStaffNote ? ($a->staff_note ?? null) : null,
 
                 'approve_url' => route('admin.approvals.approve', $a),
                 'decline_url' => route('admin.approvals.decline', $a),
@@ -480,7 +483,7 @@ class AdminApprovalRequestController extends Controller
         if (Schema::hasColumn('appointments', 'status')) {
             $bookedQuery->where(function ($q) {
                 $q->whereNull('status')
-                  ->orWhereNotIn('status', ['cancelled', 'canceled', 'declined', 'rejected']);
+                  ->orWhereIn('status', self::SLOT_BLOCKING_STATUSES);
             });
         }
 
