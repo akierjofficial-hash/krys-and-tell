@@ -199,6 +199,9 @@
     if (!bookingForm) {
         return;
     }
+    if (bookingForm.getAttribute('data-auth-required') === '1') {
+        return;
+    }
 
     var serviceSelect = document.getElementById('kt_service_id');
     var dateInput = document.getElementById('kt_date');

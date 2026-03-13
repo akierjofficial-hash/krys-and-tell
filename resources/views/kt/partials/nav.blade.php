@@ -88,10 +88,6 @@
     <a href="{{ route('public.services.index') }}" class="kt-drawer__link {{ request()->routeIs('public.services.*') ? 'kt-drawer__link--active' : '' }}">Services <span>></span></a>
     <a href="{{ route('public.contact') }}" class="kt-drawer__link {{ request()->routeIs('public.contact') ? 'kt-drawer__link--active' : '' }}">Contact <span>></span></a>
 
-    @guest
-        <a href="{{ route('userlogin') }}" class="kt-drawer__signin">Sign in ></a>
-    @endguest
-
     @auth
         @if(in_array($role, ['admin', 'staff']))
             <a href="{{ route('portal') }}" class="kt-drawer__signin">Portal ></a>

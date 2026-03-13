@@ -1535,6 +1535,27 @@
   box-shadow: var(--kt-shadow-md);
 }
 
+.kt-site .kt-booking__form-card--locked {
+  background: linear-gradient(180deg, rgba(245, 239, 228, 0.65), var(--kt-white));
+}
+
+.kt-site .kt-form-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.kt-site .kt-form-fieldset[disabled] .kt-form-input,
+.kt-site .kt-form-fieldset[disabled] .kt-form-label {
+  cursor: not-allowed;
+}
+
+.kt-site .kt-form-fieldset[disabled] .kt-form-input {
+  background: rgba(245, 239, 228, 0.8);
+  color: rgba(90, 84, 80, 0.8);
+}
+
 .kt-site .kt-form-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 30px;
@@ -1677,6 +1698,13 @@
 .kt-site .kt-form-submit span {
   position: relative;
   z-index: 1;
+}
+
+.kt-site .kt-form-submit--link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .kt-site .kt-form-submit:hover::before {
@@ -1939,9 +1967,42 @@
     height: 64px;
   }
 
-  .kt-site .kt-nav__links,
-  .kt-site .kt-nav__signin,
-  .kt-site .kt-nav__profile {
+  .kt-site .kt-nav__links {
+    display: none;
+  }
+
+  .kt-site .kt-nav__right {
+    gap: 8px;
+  }
+
+  .kt-site .kt-nav__avatar-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .kt-site .kt-nav__avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+
+  .kt-site .kt-nav__signin {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    border-radius: 100px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .kt-site .kt-nav__signin svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .kt-site .kt-nav__brand-sub {
     display: none;
   }
 
@@ -2141,6 +2202,13 @@
   .kt-site .kt-loader__logo {
     width: 56px;
     height: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  .kt-site .kt-nav__signin {
+    padding: 8px 10px;
+    font-size: 9px;
   }
 }
 

@@ -25,6 +25,8 @@
     $formAction = !empty($selectedServiceId)
         ? url('/book/' . $selectedServiceId)
         : route('public.services.index');
+    $bookingLocked = auth()->guest();
+    $signInRedirect = route('userlogin', ['redirect' => url()->current() . '#booking']);
 
     $birthdateValue = old('birthdate');
     if (!$birthdateValue && !empty(optional(auth()->user())->birthdate)) {
@@ -98,17 +100,26 @@
 
             @guest
                 <div class="kt-form-note">
-                    Please sign in before submitting a booking request.
-                    <a href="{{ route('userlogin', ['redirect' => url()->current() . '#booking']) }}">Sign in</a>
+                    Sign in is required before booking an appointment. Please log in first to continue.
+                    <a href="{{ $signInRedirect }}">Sign in</a>
                 </div>
             @endguest
 
-            <div class="kt-booking__form-card">
+            <div class="kt-booking__form-card {{ $bookingLocked ? 'kt-booking__form-card--locked' : '' }}">
                 <h3 class="kt-form-title">Request an Appointment</h3>
-                <p class="kt-form-sub">We will confirm your preferred schedule after review.</p>
+                <p class="kt-form-sub">
+                    @if($bookingLocked)
+                        Please sign in first to unlock the booking fields and request your preferred schedule.
+                    @else
+                        We will confirm your preferred schedule after review.
+                    @endif
+                </p>
 
-                <form action="{{ $formAction }}" method="POST" id="ktBookingForm" data-book-base="{{ url('/book') }}">
+                <form action="{{ $formAction }}" method="POST" id="ktBookingForm"
+                      data-book-base="{{ url('/book') }}"
+                      data-auth-required="{{ $bookingLocked ? '1' : '0' }}">
                     @csrf
+                    <fieldset class="kt-form-fieldset" {{ $bookingLocked ? 'disabled' : '' }}>
 
                     <div class="kt-form-group">
                         <label class="kt-form-label" for="kt_service_id">Service Needed</label>
@@ -208,9 +219,17 @@
                         @error('message')<span class="kt-form-error">{{ $message }}</span>@enderror
                     </div>
 
-                    <button type="submit" class="kt-form-submit">
-                        <span>Request Appointment ></span>
-                    </button>
+                    </fieldset>
+
+                    @if($bookingLocked)
+                        <a href="{{ $signInRedirect }}" class="kt-form-submit kt-form-submit--link">
+                            <span>Sign in to Continue ></span>
+                        </a>
+                    @else
+                        <button type="submit" class="kt-form-submit">
+                            <span>Request Appointment ></span>
+                        </button>
+                    @endif
                 </form>
             </div>
         </div>
