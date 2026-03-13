@@ -11,7 +11,7 @@ class UserLoginController extends Controller
 {
     public function show(Request $request)
     {
-        return view('auth.userlogin');
+        return view('kt.auth.login');
     }
 
     public function login(Request $request)

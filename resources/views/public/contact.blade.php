@@ -1,443 +1,134 @@
-@extends('layouts.public')
-@section('title', 'Contact - Krys&Tell')
+@extends('layouts.kt-public')
+
+@section('title', 'Contact - Krys & Tell Dental Center')
 
 @section('content')
 @php
-    // ✅ exact file: public/images/map.png
     $mapRelative = 'images/map.png';
     $mapExists = file_exists(public_path($mapRelative));
 
-    $u = auth()->user();
-    $autoName  = trim(old('name',  $u->name  ?? ''));
-    $autoEmail = trim(old('email', $u->email ?? ''));
-
+    $user = auth()->user();
+    $autoName = trim(old('name', $user->name ?? ''));
+    $autoEmail = trim(old('email', $user->email ?? ''));
     $isLoggedIn = auth()->check();
 @endphp
 
-<section class="section">
-    <div class="container">
-        {{-- Header --}}
-        <div class="row align-items-end g-3">
-            <div class="col-lg-7">
-                <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill"
-                     style="background:rgba(175,125,90,.12); border:1px solid rgba(18,23,34,.10); font-weight:800;">
-                    <i class="fa-solid fa-envelope-open-text" style="color:var(--brand)"></i>
-                    <span>Contact</span>
-                </div>
-
-                <h1 class="sec-title mt-3">We're here to help</h1>
-                <div class="sec-sub">
-                    Message us or visit the clinic. We'll respond as soon as possible.
-                </div>
-            </div>
-
-            <div class="col-lg-5 text-lg-end">
-                <a class="btn kt-btn kt-btn-outline" href="{{ url('/services') }}">
-                    Book an appointment <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
-            </div>
+<section class="kt-contact-page">
+    <div class="kt-page-shell">
+        <div class="kt-contact-page__head kt-reveal">
+            <div class="kt-label">Contact Us</div>
+            <h1 class="kt-section-title">We Are Here To Help<br><em>Reach Out Anytime</em></h1>
+            <p class="kt-section-body">
+                Send us a message, ask about services, or request guidance before booking.
+                We will get back to you as soon as possible.
+            </p>
         </div>
 
-        <div class="row g-3 mt-4">
-            {{-- Left: Clinic info --}}
-            <div class="col-lg-5">
-                <div class="card-soft p-4 h-100">
-                    <div class="d-flex align-items-center justify-content-between gap-2">
-                        <div class="fw-black" style="font-weight:950;font-size:1.1rem;">Clinic Info</div>
-                        <span class="contact-badge">
-                            <i class="fa-solid fa-shield-heart me-1"></i> Open Mon-Sat
-                        </span>
-                    </div>
+        <div class="kt-contact-page__layout">
+            <aside class="kt-contact-page__info kt-reveal-left">
+                <h2>Clinic Information</h2>
 
-                    <div class="mt-3 contact-list">
-                        <div class="contact-item">
-                            <span class="contact-ico"><i class="fa-solid fa-location-dot"></i></span>
-                            <div>
-                                <div class="contact-label">Address</div>
-                                <div class="contact-value">CT Building, Jose Romero Road, Bagacay (Across Hypermart), Dumaguete City, Philippines, 6200</div>
-                            </div>
-                        </div>
+                <div class="kt-contact-page__info-list">
+                    <article class="kt-contact-page__info-item">
+                        <strong>Address</strong>
+                        <span>CT Building, Jose Romero Road, Bagacay, Dumaguete City, Philippines, 6200</span>
+                    </article>
 
-                        <div class="contact-item">
-                            <span class="contact-ico contact-ico-phone">
-                                <i class="fa-solid fa-phone"></i>
-                            </span>
-                            <div>
-                                <div class="contact-label">Phone</div>
-                                <div class="contact-value">0977 244 3595</div>
-                            </div>
-                        </div>
+                    <article class="kt-contact-page__info-item">
+                        <strong>Phone</strong>
+                        <span>0977 244 3595</span>
+                    </article>
 
-                        <div class="contact-item">
-                            <span class="contact-ico contact-ico-email">
-                                <i class="fa-solid fa-envelope"></i>
-                            </span>
-                            <div>
-                                <div class="contact-label">Email</div>
-                                <div class="contact-value">krysandt@gmail.com</div>
-                            </div>
-                        </div>
+                    <article class="kt-contact-page__info-item">
+                        <strong>Email</strong>
+                        <span>krysandt@gmail.com</span>
+                    </article>
 
-                        <div class="contact-item">
-                            <span class="contact-ico contact-ico-hours">
-                                <i class="fa-solid fa-clock"></i>
-                            </span>
-                            <div>
-                                <div class="contact-label">Hours</div>
-                                <div class="contact-value">Mon-Sat: 9:00 AM - 6:00 PM</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="img-tile mt-4" style="height:260px;">
-                        <img src="{{ asset('assets/img/public/pic2.jpg') }}" alt="Reception">
-                    </div>
-
-                    <div class="mt-3 text-muted-2" style="font-weight:650;">
-                        <i class="fa-solid fa-circle-info me-1"></i>
-                        For booking, go to Services and choose a schedule that fits you.
-                    </div>
+                    <article class="kt-contact-page__info-item">
+                        <strong>Hours</strong>
+                        <span>Mon-Sat: 9:00 AM - 6:00 PM</span>
+                    </article>
                 </div>
-            </div>
 
-            {{-- Right: Message form + Map --}}
-            <div class="col-lg-7">
-                <div class="card-soft p-4">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="contact-form-ico">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </span>
-                        <div>
-                            <div class="fw-black" style="font-weight:950;font-size:1.1rem;">Send a message</div>
-                            <div class="text-muted-2" style="font-weight:650;">We'll get back to you as soon as we can.</div>
+                <div class="kt-contact-page__map">
+                    @if($mapExists)
+                        <img src="{{ asset($mapRelative) }}" alt="" loading="lazy">
+                    @else
+                        <div class="kt-contact-page__map-missing">
+                            <strong>Map image not found.</strong>
+                            <span>Please add `public/images/map.png`.</span>
                         </div>
+                    @endif
+                </div>
+            </aside>
+
+            <div class="kt-contact-page__form-wrap kt-reveal-right">
+                @if(session('contact_success'))
+                    <div class="kt-form-success">{{ session('contact_success') }}</div>
+                @endif
+
+                @if($errors->any())
+                    <div class="kt-form-error-banner">
+                        <strong>Please fix the following:</strong>
+                        <ul>
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
+                @endif
 
-                    {{-- ✅ Success / Errors --}}
-                    @if(session('contact_success'))
-                        <div class="alert alert-success mt-3 mb-0" style="border-radius:16px;">
-                            <i class="fa-solid fa-circle-check me-1"></i>
-                            {{ session('contact_success') }}
-                        </div>
-                    @endif
+                @guest
+                    <div class="kt-form-note">
+                        Tip: Sign in with Google so your name and email autofill.
+                    </div>
+                @endguest
 
-                    @if($errors->any())
-                        <div class="alert alert-danger mt-3 mb-0" style="border-radius:16px;">
-                            <div style="font-weight:900;">Please fix the following:</div>
-                            <ul class="mb-0 mt-2">
-                                @foreach($errors->all() as $e)
-                                    <li>{{ $e }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
+                <div class="kt-contact-page__form-card">
+                    <h2>Send A Message</h2>
+                    <p>We will reply to your provided email address.</p>
 
-                    <form class="mt-4" method="POST" action="{{ route('public.contact.store') }}">
+                    <form method="POST" action="{{ route('public.contact.store') }}" class="kt-contact-page__form">
                         @csrf
 
-                        {{-- If not logged in, optionally show a gentle hint --}}
-                        @guest
-                            <div class="alert alert-info mt-0" style="border-radius:16px;">
-                                <i class="fa-solid fa-circle-info me-1"></i>
-                                Tip: Sign in with Google so your name and email autofill.
-                            </div>
-                        @endguest
-
-                        <div class="row g-3">
-                            {{-- Name --}}
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Name</label>
-
+                        <div class="kt-form-row">
+                            <div class="kt-form-group">
+                                <label class="kt-form-label" for="kt_contact_name">Name</label>
                                 @if($isLoggedIn)
-                                    <input class="form-control kt-input"
-                                           type="text"
-                                           value="{{ $autoName }}"
-                                           readonly
-                                           aria-readonly="true">
-                                    {{-- send value via hidden input so controller receives it --}}
+                                    <input id="kt_contact_name" type="text" class="kt-form-input" value="{{ $autoName }}" readonly aria-readonly="true">
                                     <input type="hidden" name="name" value="{{ $autoName }}">
-                                    <div class="small text-muted-2 mt-1" style="font-weight:650;">
-                                        This comes from your account.
-                                    </div>
                                 @else
-                                    <input class="form-control kt-input"
-                                           type="text"
-                                           name="name"
-                                           value="{{ old('name') }}"
-                                           placeholder="Your name"
-                                           required>
+                                    <input id="kt_contact_name" type="text" name="name" class="kt-form-input @error('name') kt-input--error @enderror" value="{{ old('name') }}" placeholder="Your name" required>
+                                    @error('name')<span class="kt-form-error">{{ $message }}</span>@enderror
                                 @endif
                             </div>
 
-                            {{-- Email --}}
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Email</label>
-
+                            <div class="kt-form-group">
+                                <label class="kt-form-label" for="kt_contact_email">Email</label>
                                 @if($isLoggedIn)
-                                    <input class="form-control kt-input"
-                                           type="email"
-                                           value="{{ $autoEmail }}"
-                                           readonly
-                                           aria-readonly="true">
+                                    <input id="kt_contact_email" type="email" class="kt-form-input" value="{{ $autoEmail }}" readonly aria-readonly="true">
                                     <input type="hidden" name="email" value="{{ $autoEmail }}">
-                                    <div class="small text-muted-2 mt-1" style="font-weight:650;">
-                                        We'll reply to this email.
-                                    </div>
                                 @else
-                                    <input class="form-control kt-input"
-                                           type="email"
-                                           name="email"
-                                           value="{{ old('email') }}"
-                                           placeholder="you@email.com"
-                                           required>
+                                    <input id="kt_contact_email" type="email" name="email" class="kt-form-input @error('email') kt-input--error @enderror" value="{{ old('email') }}" placeholder="you@email.com" required>
+                                    @error('email')<span class="kt-form-error">{{ $message }}</span>@enderror
                                 @endif
                             </div>
+                        </div>
 
-                            {{-- Message --}}
-                            <div class="col-12">
-                                <label class="form-label fw-bold">Message</label>
-                                <textarea class="form-control kt-input"
-                                          name="message"
-                                          rows="5"
-                                          placeholder="How can we help?"
-                                          required>{{ old('message') }}</textarea>
-                            </div>
+                        <div class="kt-form-group">
+                            <label class="kt-form-label" for="kt_contact_message">Message</label>
+                            <textarea id="kt_contact_message" name="message" rows="6" class="kt-form-input @error('message') kt-input--error @enderror" placeholder="How can we help?" required>{{ old('message') }}</textarea>
+                            @error('message')<span class="kt-form-error">{{ $message }}</span>@enderror
+                        </div>
 
-                            <div class="col-12 d-flex flex-wrap gap-2">
-                                <button class="btn kt-btn kt-btn-primary text-white" type="submit">
-                                    <i class="fa-solid fa-paper-plane me-1"></i> Send message
-                                </button>
-                                <a class="btn kt-btn kt-btn-outline" href="{{ url('/services') }}">
-                                    <i class="fa-solid fa-calendar-check me-1"></i> Book instead
-                                </a>
-                            </div>
+                        <div class="kt-contact-page__form-actions">
+                            <button type="submit" class="kt-form-submit"><span>Send Message ></span></button>
+                            <a href="{{ route('public.services.index') }}" class="kt-btn-ghost">Book Instead ></a>
                         </div>
                     </form>
-
-                    {{-- Map --}}
-                    <div class="mt-4">
-                        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                            <div>
-                                <div class="fw-black" style="font-weight:950;">Map</div>
-                                <div class="text-muted-2" style="font-weight:650;">
-                                    Find us easily - the clinic is across Hypermart.
-                                </div>
-                            </div>
-
-                            <a class="btn kt-btn kt-btn-outline"
-                               href="https://www.google.com/maps/search/?api=1&query=CT%20Building%20Jose%20Romero%20Road%20Bagacay%20Dumaguete%20City"
-                               target="_blank" rel="noopener">
-                                <i class="fa-solid fa-location-arrow me-1"></i> Open in Maps
-                            </a>
-                        </div>
-
-                        <div class="map-shell mt-3">
-                            @if($mapExists)
-                                <img
-                                    src="{{ asset($mapRelative) }}"
-                                    alt="Clinic Map"
-                                    class="map-img"
-                                    loading="lazy"
-                                    decoding="async"
-                                >
-                            @else
-                                <div class="map-missing">
-                                    <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                                    <div class="fw-bold">Map image not found</div>
-                                    <div class="text-muted-2" style="font-weight:650;">
-                                        Put the file here exactly:
-                                        <code>public/images/map.png</code>
-                                    </div>
-                                    <div class="text-muted-2" style="font-weight:650;">
-                                        (Check filename/case: <code>map.png</code> not <code>Map.png</code>)
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-
-                        <div class="mt-2 text-muted-2" style="font-weight:650; font-size:.92rem;">
-                            <i class="fa-solid fa-circle-info me-1"></i>
-                            Tip: Just ask some parking boy there.
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
-
-@if(session('contact_success'))
-    <div class="modal fade" id="contactSentModal" tabindex="-1" aria-labelledby="contactSentModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content contact-sent-modal">
-                <div class="modal-body p-4 text-center">
-                    <div class="contact-sent-icon mx-auto mb-3">
-                        <i class="fa-solid fa-circle-check"></i>
-                    </div>
-
-                    <h5 id="contactSentModalLabel" class="mb-2 fw-bold">Message Sent</h5>
-                    <p class="text-muted-2 mb-0" style="font-weight:650;">
-                        Please check your Gmail for our reply from
-                        <strong>krysandt@gmail.com</strong>.
-                    </p>
-                </div>
-
-                <div class="px-4 pb-4 pt-0">
-                    <button type="button" class="btn kt-btn kt-btn-primary text-white w-100" data-bs-dismiss="modal">
-                        Okay
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-@endif
-
-<style>
-    .contact-badge{
-        display:inline-flex; align-items:center; gap:.35rem;
-        padding: .45rem .7rem;
-        border-radius: 999px;
-        background: rgba(175,125,90,.12);
-        border: 1px solid rgba(18,23,34,.10);
-        color: rgba(18,23,34,.80);
-        font-weight: 850;
-        font-size: .85rem;
-        white-space: nowrap;
-    }
-
-    .contact-list{ display:grid; gap: 12px; }
-
-    .contact-item{
-        display:flex;
-        gap: 12px;
-        padding: 12px 12px;
-        border-radius: 18px;
-        background: rgba(175,125,90,.05);
-        border: 1px solid rgba(18,23,34,.08);
-    }
-    .contact-ico{
-        width: 40px; height: 40px;
-        border-radius: 16px;
-        display:grid; place-items:center;
-        background: rgba(175,125,90,.16);
-        color: #95684a;
-        border: 1px solid rgba(18,23,34,.08);
-        flex: 0 0 auto;
-    }
-    .contact-ico-phone{
-        background: rgba(175,125,90,.18);
-        color: #8f6447;
-    }
-    .contact-ico-email{
-        background: rgba(216,193,176,.28);
-        color: #825940;
-    }
-    .contact-ico-hours{
-        background: rgba(18,23,34,.08);
-        color: #3f4654;
-    }
-    .contact-label{
-        font-weight: 900;
-        letter-spacing: -0.01em;
-        line-height: 1.1;
-    }
-    .contact-value{
-        color: rgba(15,23,42,.70);
-        font-weight: 650;
-        margin-top: 2px;
-        line-height: 1.4;
-    }
-
-    .contact-form-ico{
-        width: 44px; height: 44px;
-        border-radius: 16px;
-        display:grid; place-items:center;
-        background: linear-gradient(135deg, rgba(175,125,90,.24), rgba(216,193,176,.28));
-        color: #8a5e42;
-        border: 1px solid rgba(18,23,34,.10);
-        box-shadow: 0 14px 35px rgba(18,23,34,.08);
-        flex: 0 0 auto;
-    }
-
-    .kt-input{
-        border-radius: 16px;
-        border: 1px solid rgba(18,23,34,.12);
-        padding: .85rem .95rem;
-        font-weight: 650;
-        box-shadow: none;
-    }
-    .kt-input:focus{
-        border-color: rgba(175,125,90,.45);
-        box-shadow: 0 0 0 .22rem rgba(175,125,90,.12);
-    }
-
-    .map-shell{
-        border-radius: 22px;
-        border: 1px solid rgba(18,23,34,.10);
-        overflow:hidden;
-        background: rgba(175,125,90,.04);
-        box-shadow: 0 18px 55px rgba(18,23,34,.07);
-        min-height: 260px;
-    }
-    .map-img{
-        width: 100%;
-        height: auto;
-        display: block;
-    }
-
-    .map-missing{
-        min-height: 260px;
-        display:grid;
-        place-items:center;
-        text-align:center;
-        padding: 18px;
-    }
-    .map-missing .icon{
-        width: 44px; height: 44px;
-        border-radius: 16px;
-        display:grid; place-items:center;
-        background: rgba(239,68,68,.12);
-        border: 1px solid rgba(239,68,68,.20);
-        color: #ef4444;
-        margin-bottom: 10px;
-    }
-
-    .contact-sent-modal{
-        border: 1px solid rgba(18,23,34,.10);
-        border-radius: 18px;
-        box-shadow: 0 24px 70px rgba(18,23,34,.18);
-    }
-    .contact-sent-icon{
-        width: 56px;
-        height: 56px;
-        border-radius: 20px;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, rgba(175,125,90,.20), rgba(216,193,176,.30));
-        border: 1px solid rgba(18,23,34,.10);
-        color: #8a5e42;
-        font-size: 1.2rem;
-    }
-
-    @media (max-width: 768px){
-        .map-shell{ min-height: 220px; }
-        .map-missing{ min-height: 220px; }
-        .contact-sent-modal{
-            border-radius: 16px;
-        }
-    }
-</style>
-
-@if(session('contact_success'))
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const modalEl = document.getElementById('contactSentModal');
-    if (!modalEl || typeof bootstrap === 'undefined') return;
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
-});
-</script>
-@endpush
-@endif
 @endsection
-

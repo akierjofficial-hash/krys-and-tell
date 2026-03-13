@@ -1,633 +1,504 @@
-@extends('layouts.public')
-@section('title', 'My Profile — Krys&Tell')
+@extends('layouts.kt-public')
+
+@section('title', 'My Profile | Krys & Tell Dental Center')
 
 @section('content')
 @php
-    /**
-     * ✅ STATUS + COLOR (patient-friendly labels)
-     * - scheduled/approved/confirmed => Upcoming
-     * - canceled/cancelled => Cancelled
-     * - completed/done => Completed
-     */
     $badge = function ($status) {
-        $s = strtolower(trim((string)($status ?? 'pending')));
+        $s = strtolower(trim((string) ($status ?? 'pending')));
 
-        // Pending
-        if ($s === '' || $s === 'pending') return ['Pending', 'warning'];
-
-        // Upcoming (active)
-        if (in_array($s, ['approved','confirmed','scheduled','accepted'], true)) {
-            return ['Upcoming', 'primary'];
+        if ($s === '' || $s === 'pending') {
+            return ['Pending', 'pending'];
         }
 
-        // Cancelled
-        if (in_array($s, ['cancelled','canceled'], true)) {
-            return ['Cancelled', 'danger'];
+        if (in_array($s, ['approved', 'confirmed', 'scheduled', 'accepted'], true)) {
+            return ['Upcoming', 'upcoming'];
         }
 
-        // Declined / Rejected by clinic
-        if (in_array($s, ['declined','rejected'], true)) {
-            return ['Declined', 'danger'];
+        if (in_array($s, ['cancelled', 'canceled'], true)) {
+            return ['Cancelled', 'cancelled'];
         }
 
-        // Completed
-        if (in_array($s, ['done','completed','finished'], true)) {
-            return ['Completed', 'secondary'];
+        if (in_array($s, ['declined', 'rejected'], true)) {
+            return ['Declined', 'declined'];
+        }
+
+        if (in_array($s, ['done', 'completed', 'finished'], true)) {
+            return ['Completed', 'completed'];
         }
 
         if (in_array($s, ['walked_in', 'walked-in'], true)) {
-            return ['Walked In', 'secondary'];
+            return ['Walked In', 'completed'];
         }
 
-        return [ucfirst($s), 'secondary'];
+        return [ucfirst($s), 'upcoming'];
     };
 
-    $fmtDate = function ($d) {
-        try { return $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—'; }
-        catch (\Throwable $e) { return '—'; }
-    };
-
-    // ✅ returns null if empty (so we can show "Walk-in" cleanly)
-    $fmtTime = function ($t) {
+    $fmtDate = function ($date) {
         try {
-            if (!$t) return null;
-            return \Carbon\Carbon::parse($t)->format('h:i A');
+            return $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '-';
         } catch (\Throwable $e) {
-            $t = (string)$t;
-            return $t !== '' ? $t : null;
+            return '-';
         }
     };
 
-    // ✅ doctor name will reflect staff edits IF staff saves doctor_id (best)
-    $doctorName = function ($a) {
-        return $a->doctor->name ?? ($a->dentist_name ?? '—');
+    $fmtTime = function ($time) {
+        try {
+            if (!$time) {
+                return null;
+            }
+            return \Carbon\Carbon::parse($time)->format('h:i A');
+        } catch (\Throwable $e) {
+            $time = (string) $time;
+            return $time !== '' ? $time : null;
+        }
     };
 
-    // ✅ IMPORTANT:
-    // password may be random (from Google signup) so it's NOT a reliable check.
-    // Only require current password if user previously SET one.
-    $hasLocalPassword = (bool)($user->password_set ?? false);
+    $doctorName = function ($appointment) {
+        return $appointment->doctor->name ?? ($appointment->dentist_name ?? '-');
+    };
+
+    $hasLocalPassword = (bool) ($user->password_set ?? false);
+
+    $defaultTab = 'upcoming';
+    $requestedTab = strtolower((string) request()->query('tab', ''));
+
+    if (in_array($requestedTab, ['upcoming', 'history', 'account'], true)) {
+        $defaultTab = $requestedTab;
+    }
+
+    foreach (['name', 'email', 'notify_24h', 'notify_1h', 'current_password', 'password', 'password_confirmation'] as $field) {
+        if ($errors->has($field)) {
+            $defaultTab = 'account';
+            break;
+        }
+    }
+
+    if ($defaultTab === 'upcoming' && request()->has('page')) {
+        $defaultTab = 'history';
+    }
+
+    $historyPageUrl = function ($page) {
+        $query = request()->query();
+        $query['tab'] = 'history';
+        $query['page'] = $page;
+
+        return url()->current() . '?' . http_build_query($query);
+    };
 @endphp
 
-<section class="section section-soft">
-    <div class="container">
+<section class="kt-profile-page">
+    <div class="kt-page-shell">
+        <div class="kt-profile-page__head kt-reveal">
+            <div class="kt-label">Patient Portal</div>
+            <h1 class="kt-section-title">My <em>Profile</em></h1>
+            <p class="kt-section-body">
+                Review upcoming appointments, check booking history, and manage your account settings in one place.
+            </p>
+        </div>
 
-        <style>
-            /* Force inputs to align consistently */
-            .kt-input{ width: 100% !important; display:block; box-sizing:border-box; }
-            .kt-field{ display:block; margin-bottom: 6px; }
+        @if(session('success'))
+            <div class="kt-form-success kt-reveal">{{ session('success') }}</div>
+        @endif
 
-            /* ===== Mobile UX: Tabs + Cards ===== */
-            .kt-profile-head{
-                display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-                margin-bottom: 12px;
-            }
-            .kt-profile-left{ display:flex; align-items:center; gap:12px; min-width:0; }
-            .kt-avatar{
-                width:54px; height:54px; border-radius:18px;
-                display:grid; place-items:center;
-                font-weight:950; font-size:1.1rem;
-                background: rgba(176,124,88,.14);
-                border: 1px solid rgba(17,17,17,.10);
-                flex: 0 0 auto;
-            }
-            .kt-name{ font-weight:950; font-size:1.05rem; line-height:1.1; margin:0; }
-            .kt-email{ color: var(--muted); font-weight:650; font-size:.92rem; margin:2px 0 0 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        @if($errors->any())
+            <div class="kt-form-error-banner kt-reveal">
+                <strong>Please review the highlighted fields below.</strong>
+                <ul>
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
-            .kt-mobile-tabs{
-                gap: 8px;
-                background: rgba(255,255,255,.55);
-                border: 1px solid var(--border);
-                border-radius: 999px;
-                padding: 8px;
-                overflow-x:auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            .kt-mobile-tabs .nav-link{
-                border-radius: 999px;
-                border: 1px solid var(--border);
-                font-weight: 900;
-                font-size: 13px;
-                padding: .55rem .95rem;
-                color: var(--text);
-                background: rgba(255,255,255,.75);
-                white-space: nowrap;
-            }
-            .kt-mobile-tabs .nav-link.active{
-                background: rgba(176,124,88,.18);
-                border-color: rgba(176,124,88,.35);
-                color: var(--text);
-            }
-
-            .kt-appt{
-                border: 1px solid var(--border);
-                border-radius: 18px;
-                background: rgba(255,255,255,.92);
-                box-shadow: 0 14px 34px rgba(15,23,42,.06);
-                padding: 14px;
-            }
-            .kt-appt + .kt-appt{ margin-top: 10px; }
-            .kt-appt-title{
-                font-weight: 950;
-                font-size: 14px;
-                margin: 0;
-            }
-            .kt-appt-meta{ color: var(--muted); font-weight: 650; font-size: 12.5px; margin-top: 3px; }
-            .kt-appt-sub{ font-weight: 650; font-size: 12.5px; margin-top: 6px; }
-            .kt-appt-sub b{ font-weight: 900; }
-
-            .kt-card-tight{ border: 1px solid var(--border); border-radius: 18px; background: rgba(255,255,255,.92); }
-            .kt-card-tight .head{ padding: 14px 14px 10px; border-bottom: 1px solid var(--border); }
-            .kt-card-tight .body{ padding: 14px; }
-            .kt-help-note{
-                font-size: 12.5px;
-                color: var(--muted);
-                font-weight: 650;
-                margin-top: 8px;
-                line-height: 1.45;
-            }
-
-            @media (max-width: 390px){
-                .kt-mobile-tabs .nav-link{ padding: .5rem .8rem; font-size: 12.5px; }
-            }
-        </style>
-
-        {{-- =========================
-            MOBILE (Tabs)
-        ========================= --}}
-        <div class="d-lg-none">
-
-            <div class="card-soft p-4 mb-3">
-                <div class="kt-profile-head">
-                    <div class="kt-profile-left">
-                        <div class="kt-avatar">
+        <div class="kt-profile-page__layout">
+            <aside class="kt-profile-aside kt-reveal-left">
+                <article class="kt-profile-card">
+                    <div class="kt-profile-card__identity">
+                        <div class="kt-profile-card__avatar">
                             {{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}
                         </div>
-                        <div style="min-width:0;">
-                            <p class="kt-name">{{ $user->name }}</p>
-                            <p class="kt-email">{{ $user->email }}</p>
+                        <div>
+                            <h2 class="kt-profile-card__name">{{ $user->name }}</h2>
+                            <p class="kt-profile-card__email">{{ $user->email }}</p>
                         </div>
                     </div>
 
-                    <a class="btn kt-btn kt-btn-primary text-white" href="{{ url('/services') }}">
-                        <i class="fa-solid fa-calendar-check me-1"></i> Book
-                    </a>
-                </div>
-            </div>
+                    <div class="kt-profile-card__items">
+                        <div class="kt-profile-card__item">
+                            <span>Upcoming Appointments</span>
+                            <strong>{{ $upcoming->count() }}</strong>
+                        </div>
+                        <div class="kt-profile-card__item">
+                            <span>Total History</span>
+                            <strong>{{ method_exists($history, 'total') ? $history->total() : $history->count() }}</strong>
+                        </div>
+                        <div class="kt-profile-card__item">
+                            <span>Password Status</span>
+                            <strong>{{ $hasLocalPassword ? 'Set' : 'Not Set' }}</strong>
+                        </div>
+                    </div>
 
-            <ul class="nav nav-pills kt-mobile-tabs mb-3" id="profileTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="tab-upcoming-btn" data-bs-toggle="pill" data-bs-target="#tab-upcoming" type="button" role="tab">
+                    <a href="{{ route('public.services.index') }}" class="kt-btn-primary kt-profile-card__cta">
+                        <span>Book Appointment</span>
+                    </a>
+                </article>
+            </aside>
+
+            <div class="kt-profile-main kt-reveal-right" id="ktProfileTabs" data-default-tab="{{ $defaultTab }}">
+                <div class="kt-profile-tabs" role="tablist" aria-label="Profile sections">
+                    <button
+                        type="button"
+                        class="kt-profile-tabs__button {{ $defaultTab === 'upcoming' ? 'is-active' : '' }}"
+                        data-tab-btn="upcoming"
+                        role="tab"
+                        aria-controls="kt-tab-upcoming"
+                        aria-selected="{{ $defaultTab === 'upcoming' ? 'true' : 'false' }}"
+                    >
                         Upcoming
                     </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tab-history-btn" data-bs-toggle="pill" data-bs-target="#tab-history" type="button" role="tab">
+                    <button
+                        type="button"
+                        class="kt-profile-tabs__button {{ $defaultTab === 'history' ? 'is-active' : '' }}"
+                        data-tab-btn="history"
+                        role="tab"
+                        aria-controls="kt-tab-history"
+                        aria-selected="{{ $defaultTab === 'history' ? 'true' : 'false' }}"
+                    >
                         History
                     </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tab-account-btn" data-bs-toggle="pill" data-bs-target="#tab-account" type="button" role="tab">
+                    <button
+                        type="button"
+                        class="kt-profile-tabs__button {{ $defaultTab === 'account' ? 'is-active' : '' }}"
+                        data-tab-btn="account"
+                        role="tab"
+                        aria-controls="kt-tab-account"
+                        aria-selected="{{ $defaultTab === 'account' ? 'true' : 'false' }}"
+                    >
                         Account
                     </button>
-                </li>
-            </ul>
-
-            <div class="tab-content" id="profileTabsContent">
-                {{-- Upcoming --}}
-                <div class="tab-pane fade show active" id="tab-upcoming" role="tabpanel" aria-labelledby="tab-upcoming-btn">
-                    <div class="kt-card-tight">
-                        <div class="head">
-                            <div class="sec-title" style="font-size:1.05rem;margin:0;">Upcoming Schedule</div>
-                            <div class="sec-sub" style="margin:4px 0 0;">Your appointments will show here.</div>
-                        </div>
-                        <div class="body">
-                            @forelse($upcoming as $a)
-                                @php
-                                    [$label, $type] = $badge($a->status);
-                                    $d = $fmtDate($a->appointment_date);
-                                    $t = $fmtTime($a->appointment_time);
-                                    $svc = $a->service->name ?? 'Service';
-                                    $doc = $doctorName($a);
-                                @endphp
-
-                                <div class="kt-appt">
-                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                        <p class="kt-appt-title">{{ $svc }}</p>
-                                        <span class="badge bg-{{ $type }}" style="border-radius:999px;font-weight:900;">
-                                            {{ $label }}
-                                        </span>
-                                    </div>
-
-                                    <div class="kt-appt-meta">
-                                        <i class="fa-regular fa-calendar me-1"></i> {{ $d }}
-                                        •
-                                        <i class="fa-regular fa-clock me-1"></i>
-                                        {{ $t ?: 'Walk-in' }}
-                                    </div>
-
-                                    <div class="kt-appt-sub">
-                                        <b>Doctor:</b> {{ $doc }}
-                                    </div>
-
-                                    @if(strtolower((string)($a->status ?? '')) === 'pending')
-                                        <div class="mt-2">
-                                            <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
-                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit booking
-                                            </a>
-                                        </div>
-                                    @endif
-                                </div>
-                            @empty
-                                <div class="text-center py-3">
-                                    <div style="font-weight:950;">No upcoming appointments</div>
-                                    <div class="kt-help-note">Book a service and wait for staff update/approval.</div>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
                 </div>
 
-                {{-- History --}}
-                <div class="tab-pane fade" id="tab-history" role="tabpanel" aria-labelledby="tab-history-btn">
-                    <div class="kt-card-tight">
-                        <div class="head">
-                            <div class="sec-title" style="font-size:1.05rem;margin:0;">Booking History</div>
-                            <div class="sec-sub" style="margin:4px 0 0;">All of your booking requests and updates.</div>
-                        </div>
-                        <div class="body">
-                            @forelse($history as $a)
-                                @php
-                                    [$label, $type] = $badge($a->status);
-                                    $d = $fmtDate($a->appointment_date);
-                                    $t = $fmtTime($a->appointment_time);
-                                    $svc = $a->service->name ?? 'Service';
-                                    $doc = $doctorName($a);
-                                @endphp
+                <section
+                    id="kt-tab-upcoming"
+                    class="kt-profile-panel {{ $defaultTab === 'upcoming' ? 'is-active' : '' }}"
+                    data-tab-panel="upcoming"
+                    {{ $defaultTab === 'upcoming' ? '' : 'hidden' }}
+                >
+                    <div class="kt-profile-panel__head">
+                        <h2>Upcoming Schedule</h2>
+                        <p>Your next appointments appear here. Pending requests can still be edited.</p>
+                    </div>
 
-                                <div class="kt-appt">
-                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                        <p class="kt-appt-title">{{ $svc }}</p>
-                                        <span class="badge bg-{{ $type }}" style="border-radius:999px;font-weight:900;">
-                                            {{ $label }}
-                                        </span>
-                                    </div>
+                    <div class="kt-profile-list">
+                        @forelse($upcoming as $a)
+                            @php
+                                [$label, $tone] = $badge($a->status);
+                                $dateValue = $fmtDate($a->appointment_date);
+                                $timeValue = $fmtTime($a->appointment_time);
+                            @endphp
 
-                                    <div class="kt-appt-meta">
-                                        <i class="fa-regular fa-calendar me-1"></i> {{ $d }}
-                                        •
-                                        <i class="fa-regular fa-clock me-1"></i>
-                                        {{ $t ?: 'Walk-in' }}
-                                    </div>
-
-                                    <div class="kt-appt-sub">
-                                        <b>Doctor:</b> {{ $doc }}
-                                    </div>
-
-                                    @if(strtolower((string)($a->status ?? '')) === 'pending')
-                                        <div class="mt-2">
-                                            <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
-                                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit booking
-                                            </a>
-                                        </div>
-                                    @endif
+                            <article class="kt-profile-appointment">
+                                <div class="kt-profile-appointment__head">
+                                    <h3>{{ $a->service->name ?? 'Service' }}</h3>
+                                    <span class="kt-status kt-status--{{ $tone }}">{{ $label }}</span>
                                 </div>
-                            @empty
-                                <div class="text-center py-3">
-                                    <div style="font-weight:950;">No bookings yet</div>
-                                    <div class="kt-help-note">Start by booking a service from the Services page.</div>
-                                </div>
-                            @endforelse
 
-                            @if(method_exists($history, 'links'))
-                                <div class="mt-3">
-                                    {{ $history->links() }}
+                                <div class="kt-profile-appointment__meta">
+                                    <span>{{ $dateValue }}</span>
+                                    <span>{{ $timeValue ?: 'Walk-in' }}</span>
+                                </div>
+
+                                <p class="kt-profile-appointment__doctor">Doctor: {{ $doctorName($a) }}</p>
+
+                                @if(strtolower((string) ($a->status ?? '')) === 'pending')
+                                    <a class="kt-inline-link" href="{{ route('public.booking.edit', $a->id) }}">Edit booking</a>
+                                @endif
+                            </article>
+                        @empty
+                            <div class="kt-profile-empty">
+                                <h3>No upcoming appointments</h3>
+                                <p>Book a service and your upcoming schedule will appear here.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+
+                <section
+                    id="kt-tab-history"
+                    class="kt-profile-panel {{ $defaultTab === 'history' ? 'is-active' : '' }}"
+                    data-tab-panel="history"
+                    {{ $defaultTab === 'history' ? '' : 'hidden' }}
+                >
+                    <div class="kt-profile-panel__head">
+                        <h2>Booking History</h2>
+                        <p>All booking requests and updates are listed below.</p>
+                    </div>
+
+                    <div class="kt-profile-list" id="profile-history">
+                        @forelse($history as $a)
+                            @php
+                                [$label, $tone] = $badge($a->status);
+                                $dateValue = $fmtDate($a->appointment_date);
+                                $timeValue = $fmtTime($a->appointment_time);
+                            @endphp
+
+                            <article class="kt-profile-appointment">
+                                <div class="kt-profile-appointment__head">
+                                    <h3>{{ $a->service->name ?? 'Service' }}</h3>
+                                    <span class="kt-status kt-status--{{ $tone }}">{{ $label }}</span>
+                                </div>
+
+                                <div class="kt-profile-appointment__meta">
+                                    <span>{{ $dateValue }}</span>
+                                    <span>{{ $timeValue ?: 'Walk-in' }}</span>
+                                </div>
+
+                                <p class="kt-profile-appointment__doctor">Doctor: {{ $doctorName($a) }}</p>
+
+                                @if(strtolower((string) ($a->status ?? '')) === 'pending')
+                                    <a class="kt-inline-link" href="{{ route('public.booking.edit', $a->id) }}">Edit booking</a>
+                                @endif
+                            </article>
+                        @empty
+                            <div class="kt-profile-empty">
+                                <h3>No booking history yet</h3>
+                                <p>Once you submit a booking request, it will appear here.</p>
+                            </div>
+                        @endforelse
+                    </div>
+
+                    @if($history->lastPage() > 1)
+                        @php
+                            $startPage = max(1, $history->currentPage() - 2);
+                            $endPage = min($history->lastPage(), $history->currentPage() + 2);
+                        @endphp
+
+                        <nav class="kt-profile-pagination" aria-label="Booking history pages">
+                            @if($history->currentPage() > 1)
+                                <a href="{{ $historyPageUrl($history->currentPage() - 1) }}#profile-history" class="kt-profile-pagination__link">Previous</a>
+                            @else
+                                <span class="kt-profile-pagination__link is-disabled">Previous</span>
+                            @endif
+
+                            @for($page = $startPage; $page <= $endPage; $page++)
+                                <a
+                                    href="{{ $historyPageUrl($page) }}#profile-history"
+                                    class="kt-profile-pagination__link {{ $page === $history->currentPage() ? 'is-active' : '' }}"
+                                >
+                                    {{ $page }}
+                                </a>
+                            @endfor
+
+                            @if($history->currentPage() < $history->lastPage())
+                                <a href="{{ $historyPageUrl($history->currentPage() + 1) }}#profile-history" class="kt-profile-pagination__link">Next</a>
+                            @else
+                                <span class="kt-profile-pagination__link is-disabled">Next</span>
+                            @endif
+                        </nav>
+                    @endif
+                </section>
+
+                <section
+                    id="kt-tab-account"
+                    class="kt-profile-panel {{ $defaultTab === 'account' ? 'is-active' : '' }}"
+                    data-tab-panel="account"
+                    {{ $defaultTab === 'account' ? '' : 'hidden' }}
+                >
+                    <div class="kt-profile-forms">
+                        <article class="kt-profile-form-card">
+                            <h2>Profile Settings</h2>
+                            <p>Update your account details and reminder preferences.</p>
+
+                            <form method="POST" action="{{ route('user.profile.update') }}">
+                                @csrf
+                                @method('PUT')
+
+                                <div class="kt-form-row">
+                                    <div class="kt-form-group">
+                                        <label class="kt-form-label" for="kt_profile_name">Name</label>
+                                        <input
+                                            id="kt_profile_name"
+                                            type="text"
+                                            name="name"
+                                            class="kt-form-input @error('name') kt-input--error @enderror"
+                                            value="{{ old('name', $user->name) }}"
+                                            required
+                                        >
+                                        @error('name')<span class="kt-form-error">{{ $message }}</span>@enderror
+                                    </div>
+
+                                    <div class="kt-form-group">
+                                        <label class="kt-form-label" for="kt_profile_email">Email</label>
+                                        <input
+                                            id="kt_profile_email"
+                                            type="email"
+                                            name="email"
+                                            class="kt-form-input @error('email') kt-input--error @enderror"
+                                            value="{{ old('email', $user->email) }}"
+                                            required
+                                        >
+                                        @error('email')<span class="kt-form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                </div>
+
+                                <div class="kt-form-group">
+                                    <label class="kt-form-label">Reminders</label>
+
+                                    <div class="kt-profile-switches">
+                                        <label class="kt-profile-switch" for="kt_notify_24h">
+                                            <input
+                                                id="kt_notify_24h"
+                                                type="checkbox"
+                                                name="notify_24h"
+                                                value="1"
+                                                {{ old('notify_24h', $user->notify_24h) ? 'checked' : '' }}
+                                            >
+                                            <span class="kt-profile-switch__slider" aria-hidden="true"></span>
+                                            <span class="kt-profile-switch__text">24-hour reminder</span>
+                                        </label>
+
+                                        <label class="kt-profile-switch" for="kt_notify_1h">
+                                            <input
+                                                id="kt_notify_1h"
+                                                type="checkbox"
+                                                name="notify_1h"
+                                                value="1"
+                                                {{ old('notify_1h', $user->notify_1h) ? 'checked' : '' }}
+                                            >
+                                            <span class="kt-profile-switch__slider" aria-hidden="true"></span>
+                                            <span class="kt-profile-switch__text">1-hour reminder</span>
+                                        </label>
+                                    </div>
+
+                                    <p class="kt-form-help">
+                                        Reminder delivery depends on scheduler availability on the server.
+                                    </p>
+                                </div>
+
+                                <button type="submit" class="kt-btn-primary kt-profile-submit"><span>Save Changes</span></button>
+                            </form>
+                        </article>
+
+                        <article class="kt-profile-form-card">
+                            <h2>{{ $hasLocalPassword ? 'Change Password' : 'Set Password' }}</h2>
+                            <p>
+                                {{ $hasLocalPassword ? 'Keep your account secure by updating your password regularly.' : 'Set a password so you can also sign in with email and password.' }}
+                            </p>
+
+                            @if(!$hasLocalPassword)
+                                <div class="kt-form-note">
+                                    You can keep using Google sign in. Setting a password just adds another login option.
                                 </div>
                             @endif
-                        </div>
-                    </div>
-                </div>
 
-                {{-- Account --}}
-                <div class="tab-pane fade" id="tab-account" role="tabpanel" aria-labelledby="tab-account-btn">
+                            <form method="POST" action="{{ route('user.profile.password') }}">
+                                @csrf
+                                @method('PUT')
 
-                    <div class="accordion" id="acctAccordion">
-
-                        {{-- Settings --}}
-                        <div class="accordion-item" style="border:1px solid var(--border);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.92);">
-                            <h2 class="accordion-header" id="acctHead1">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#acctCollapse1" aria-expanded="true">
-                                    Profile Settings
-                                </button>
-                            </h2>
-                            <div id="acctCollapse1" class="accordion-collapse collapse show" aria-labelledby="acctHead1" data-bs-parent="#acctAccordion">
-                                <div class="accordion-body">
-                                    <form method="POST" action="{{ route('user.profile.update') }}" class="mt-1">
-                                        @csrf
-                                        @method('PUT')
-
-                                        <div class="mb-3">
-                                            <label class="kt-field">Name</label>
-                                            <input type="text" class="kt-input" name="name" value="{{ old('name', $user->name) }}" required>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="kt-field">Email</label>
-                                            <input type="email" class="kt-input" name="email" value="{{ old('email', $user->email) }}" required>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="kt-field d-block">Reminders</label>
-
-                                            <div class="form-check form-switch mb-2">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="notify24" name="notify_24h" value="1"
-                                                       {{ old('notify_24h', $user->notify_24h) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="notify24">24-hour reminder</label>
-                                            </div>
-
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="notify1" name="notify_1h" value="1"
-                                                       {{ old('notify_1h', $user->notify_1h) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="notify1">1-hour reminder</label>
-                                            </div>
-
-                                            <div class="kt-help-note">
-                                                Note: These are your reminder preferences. Reminder sending depends on the reminder job/scheduler being enabled on the server.
-                                            </div>
-                                        </div>
-
-                                        <button class="btn kt-btn kt-btn-primary text-white w-100" type="submit">
-                                            <i class="fa-solid fa-floppy-disk me-1"></i> Save changes
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Password --}}
-                        <div class="accordion-item mt-3" style="border:1px solid var(--border);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.92);">
-                            <h2 class="accordion-header" id="acctHead2">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acctCollapse2">
-                                    {{ $hasLocalPassword ? 'Change Password' : 'Set Password' }}
-                                </button>
-                            </h2>
-                            <div id="acctCollapse2" class="accordion-collapse collapse" aria-labelledby="acctHead2" data-bs-parent="#acctAccordion">
-                                <div class="accordion-body">
-                                    @if(!$hasLocalPassword)
-                                        <div class="kt-help-note mb-2">
-                                            You signed in with Google. Set a password to allow logging in with email + password too.
+                                <div class="kt-form-row kt-profile-password-grid {{ $hasLocalPassword ? 'kt-profile-password-grid--three' : '' }}">
+                                    @if($hasLocalPassword)
+                                        <div class="kt-form-group">
+                                            <label class="kt-form-label" for="kt_current_password">Current Password</label>
+                                            <input
+                                                id="kt_current_password"
+                                                type="password"
+                                                name="current_password"
+                                                class="kt-form-input @error('current_password') kt-input--error @enderror"
+                                                required
+                                            >
+                                            @error('current_password')<span class="kt-form-error">{{ $message }}</span>@enderror
                                         </div>
                                     @endif
 
-                                    <form method="POST" action="{{ route('user.profile.password') }}" class="mt-1">
-                                        @csrf
-                                        @method('PUT')
+                                    <div class="kt-form-group">
+                                        <label class="kt-form-label" for="kt_new_password">New Password</label>
+                                        <input
+                                            id="kt_new_password"
+                                            type="password"
+                                            name="password"
+                                            class="kt-form-input @error('password') kt-input--error @enderror"
+                                            required
+                                        >
+                                        @error('password')<span class="kt-form-error">{{ $message }}</span>@enderror
+                                    </div>
 
-                                        <div class="row g-3">
-                                            @if($hasLocalPassword)
-                                                <div class="col-12">
-                                                    <label class="kt-field">Current Password</label>
-                                                    <input type="password" class="kt-input" name="current_password" required>
-                                                </div>
-                                            @endif
-
-                                            <div class="col-12 col-md-6">
-                                                <label class="kt-field">New Password</label>
-                                                <input type="password" class="kt-input" name="password" required>
-                                            </div>
-
-                                            <div class="col-12 col-md-6">
-                                                <label class="kt-field">Confirm New Password</label>
-                                                <input type="password" class="kt-input" name="password_confirmation" required>
-                                            </div>
-                                        </div>
-
-                                        <button class="btn kt-btn kt-btn-primary text-white w-100 mt-3" type="submit">
-                                            <i class="fa-solid fa-key me-1"></i>
-                                            {{ $hasLocalPassword ? 'Update password' : 'Set password' }}
-                                        </button>
-                                    </form>
+                                    <div class="kt-form-group">
+                                        <label class="kt-form-label" for="kt_password_confirmation">Confirm New Password</label>
+                                        <input
+                                            id="kt_password_confirmation"
+                                            type="password"
+                                            name="password_confirmation"
+                                            class="kt-form-input @error('password_confirmation') kt-input--error @enderror"
+                                            required
+                                        >
+                                        @error('password_confirmation')<span class="kt-form-error">{{ $message }}</span>@enderror
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
+                                <button type="submit" class="kt-btn-primary kt-profile-submit">
+                                    <span>{{ $hasLocalPassword ? 'Update Password' : 'Set Password' }}</span>
+                                </button>
+                            </form>
+                        </article>
                     </div>
-
-                </div>
+                </section>
             </div>
         </div>
-
-        {{-- =========================
-            DESKTOP (2-column)
-        ========================= --}}
-        <div class="d-none d-lg-block">
-            <div class="row g-4 align-items-start">
-                <!-- Left: Upcoming -->
-                <div class="col-lg-4">
-                    <div class="card-soft p-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="kt-avatar" style="width:56px;height:56px;font-size:1.2rem;">
-                                {{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}
-                            </div>
-                            <div style="min-width:0;">
-                                <div style="font-weight:950;font-size:1.15rem;line-height:1.1;">{{ $user->name }}</div>
-                                <div class="text-muted-2" style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                                    {{ $user->email }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr style="border-color: rgba(17,17,17,.10);">
-
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div style="font-weight:950;">Upcoming Schedule</div>
-                            <a href="{{ url('/services') }}" class="btn kt-btn kt-btn-outline btn-sm">Book</a>
-                        </div>
-
-                        <div class="mt-3 d-grid gap-2">
-                            @forelse($upcoming as $a)
-                                @php
-                                    [$label, $type] = $badge($a->status);
-                                    $t = $fmtTime($a->appointment_time);
-                                @endphp
-                                <div class="kt-appt">
-                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                        <div style="min-width:0;">
-                                            <div style="font-weight:950;font-size:13px;">
-                                                {{ $a->service->name ?? 'Service' }}
-                                            </div>
-                                            <div class="text-muted-2" style="font-weight:650;font-size:12px;">
-                                                {{ $fmtDate($a->appointment_date) }} • {{ $t ?: 'Walk-in' }}
-                                            </div>
-                                            <div class="text-muted-2" style="font-weight:650;font-size:12px;">
-                                                Doctor: {{ $doctorName($a) }}
-                                            </div>
-                                            @if(strtolower((string)($a->status ?? '')) === 'pending')
-                                                <div class="mt-2">
-                                                    <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
-                                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit booking
-                                                    </a>
-                                                </div>
-                                            @endif
-                                        </div>
-                                        <span class="badge bg-{{ $type }}" style="border-radius:999px;font-weight:900;">
-                                            {{ $label }}
-                                        </span>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="text-muted-2" style="font-weight:650;">No upcoming appointments.</div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: Settings + Password + History -->
-                <div class="col-lg-8">
-                    <!-- Profile Settings -->
-                    <div class="card-soft p-4">
-                        <div class="sec-title" style="font-size:1.25rem;">Profile Settings</div>
-                        <div class="sec-sub">Update your account info and reminder preferences.</div>
-
-                        <form method="POST" action="{{ route('user.profile.update') }}" class="mt-3">
-                            @csrf
-                            @method('PUT')
-
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="kt-field">Name</label>
-                                    <input type="text" class="kt-input" name="name" value="{{ old('name', $user->name) }}" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="kt-field">Email</label>
-                                    <input type="email" class="kt-input" name="email" value="{{ old('email', $user->email) }}" required>
-                                </div>
-                            </div>
-
-                            <div class="mt-3">
-                                <label class="kt-field d-block">Reminders</label>
-                                <div class="d-flex flex-wrap gap-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="dNotify24" name="notify_24h" value="1"
-                                               {{ old('notify_24h', $user->notify_24h) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="dNotify24">24-hour reminder</label>
-                                    </div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="dNotify1" name="notify_1h" value="1"
-                                               {{ old('notify_1h', $user->notify_1h) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="dNotify1">1-hour reminder</label>
-                                    </div>
-                                </div>
-                                <div class="kt-help-note">
-                                    Note: These are your reminder preferences. Reminder sending depends on the reminder job/scheduler being enabled on the server.
-                                </div>
-                            </div>
-
-                            <button class="btn kt-btn kt-btn-primary text-white mt-3" type="submit">
-                                <i class="fa-solid fa-floppy-disk me-1"></i> Save changes
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Change/Set Password -->
-                    <div class="card-soft p-4 mt-3">
-                        <div class="sec-title" style="font-size:1.25rem;">
-                            {{ $hasLocalPassword ? 'Change Password' : 'Set Password' }}
-                        </div>
-                        <div class="sec-sub">
-                            {{ $hasLocalPassword ? 'Keep your account secure.' : 'Set a password to allow email + password login.' }}
-                        </div>
-
-                        <form method="POST" action="{{ route('user.profile.password') }}" class="mt-3">
-                            @csrf
-                            @method('PUT')
-
-                            <div class="row g-3">
-                                @if($hasLocalPassword)
-                                    <div class="col-md-4">
-                                        <label class="kt-field">Current Password</label>
-                                        <input type="password" class="kt-input" name="current_password" required>
-                                    </div>
-                                @endif
-
-                                <div class="{{ $hasLocalPassword ? 'col-md-4' : 'col-md-6' }}">
-                                    <label class="kt-field">New Password</label>
-                                    <input type="password" class="kt-input" name="password" required>
-                                </div>
-                                <div class="{{ $hasLocalPassword ? 'col-md-4' : 'col-md-6' }}">
-                                    <label class="kt-field">Confirm New Password</label>
-                                    <input type="password" class="kt-input" name="password_confirmation" required>
-                                </div>
-                            </div>
-
-                            <button class="btn kt-btn kt-btn-primary text-white mt-3" type="submit">
-                                <i class="fa-solid fa-key me-1"></i>
-                                {{ $hasLocalPassword ? 'Update password' : 'Set password' }}
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- History (table on desktop) -->
-                    <div class="card-soft p-4 mt-3">
-                        <div class="sec-title" style="font-size:1.25rem;">Booking History</div>
-                        <div class="sec-sub">All of your booking requests.</div>
-
-                        <div class="table-responsive mt-3">
-                            <table class="table align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Service</th>
-                                        <th>Date</th>
-                                        <th>Time</th>
-                                        <th>Doctor</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($history as $a)
-                                        @php
-                                            [$label, $type] = $badge($a->status);
-                                            $t = $fmtTime($a->appointment_time);
-                                        @endphp
-                                        <tr>
-                                            <td>{{ $a->service->name ?? 'Service' }}</td>
-                                            <td>{{ $fmtDate($a->appointment_date) }}</td>
-                                            <td>{{ $t ?: 'Walk-in' }}</td>
-                                            <td>{{ $doctorName($a) }}</td>
-                                            <td>
-                                                <span class="badge bg-{{ $type }}" style="border-radius:999px;font-weight:900;">
-                                                    {{ $label }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if(strtolower((string)($a->status ?? '')) === 'pending')
-                                                    <a class="btn kt-btn kt-btn-outline btn-sm" href="{{ route('public.booking.edit', $a->id) }}">
-                                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit
-                                                    </a>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted">No records found.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-
-                        @if(method_exists($history, 'links'))
-                            {{ $history->links() }}
-                        @endif
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    'use strict';
+
+    var root = document.getElementById('ktProfileTabs');
+    if (!root) {
+        return;
+    }
+
+    var buttons = root.querySelectorAll('[data-tab-btn]');
+    var panels = root.querySelectorAll('[data-tab-panel]');
+
+    function setActiveTab(tabName) {
+        buttons.forEach(function (button) {
+            var active = button.getAttribute('data-tab-btn') === tabName;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+
+        panels.forEach(function (panel) {
+            var active = panel.getAttribute('data-tab-panel') === tabName;
+            panel.classList.toggle('is-active', active);
+            if (active) {
+                panel.removeAttribute('hidden');
+            } else {
+                panel.setAttribute('hidden', 'hidden');
+            }
+        });
+
+        if (window.history && window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('tab', tabName);
+            if (tabName !== 'history') {
+                url.searchParams.delete('page');
+            }
+            window.history.replaceState({}, '', url.toString());
+        }
+    }
+
+    var defaultTab = root.getAttribute('data-default-tab') || 'upcoming';
+    setActiveTab(defaultTab);
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var tab = button.getAttribute('data-tab-btn');
+            setActiveTab(tab);
+        });
+    });
+})();
+</script>
+@endpush

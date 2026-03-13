@@ -1,120 +1,61 @@
-@extends('layouts.public')
-@section('title', ($service->name ?? 'Service') . ' — Krys&Tell')
+@extends('layouts.kt-public')
+
+@section('title', ($service->name ?? 'Service') . ' - Krys & Tell Dental Center')
 
 @section('content')
-<section class="section kt-service-show">
-    <style>
-        /* Only for this page: give space for sticky CTA on mobile */
-        @media (max-width: 768px){
-            .kt-service-show{ padding-bottom: 120px !important; }
-        }
-    </style>
+<section class="kt-service-page">
+    <div class="kt-page-shell">
+        @php
+            $bookUrl = url('/book/' . $service->id);
+            $loginThenBackToBook = route('userlogin', ['redirect' => $bookUrl]);
+        @endphp
 
-    <div class="container">
-        <div class="row g-4 align-items-start">
-            <div class="col-lg-7">
-                <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill"
-                     style="background:rgba(176,124,88,.10); border:1px solid rgba(17,17,17,.10); font-weight:850;">
-                    <i class="fa-solid fa-tooth" style="color:var(--brand)"></i>
-                    <span>Service details</span>
+        <div class="kt-service-page__layout">
+            <div class="kt-service-page__main kt-reveal-left">
+                <div class="kt-label">Service Details</div>
+                <h1 class="kt-section-title">{{ $service->name }}<br><em>Personalized Care Plan</em></h1>
+                <p class="kt-section-body">
+                    {{ $service->description ?? 'Professional treatment tailored to your comfort and long-term dental health.' }}
+                </p>
+
+                <div class="kt-service-page__stats">
+                    <article class="kt-service-page__stat">
+                        <h3>Estimated Duration</h3>
+                        <p>{{ $service->duration_minutes ? $service->duration_minutes . ' minutes' : 'Depends on the case' }}</p>
+                    </article>
+
+                    <article class="kt-service-page__stat">
+                        <h3>Starting Price</h3>
+                        <p>
+                            @if(isset($service->base_price))
+                                PHP {{ number_format((float) $service->base_price, 2) }}
+                            @else
+                                Available upon consultation
+                            @endif
+                        </p>
+                        @if(!empty($service->allow_custom_price))
+                            <small>Final cost may vary based on treatment complexity.</small>
+                        @endif
+                    </article>
                 </div>
 
-                <h1 class="sec-title mt-3">{{ $service->name }}</h1>
-
-                <div class="sec-sub">
-                    {{ $service->description ?? 'Professional dental care tailored for your comfort.' }}
-                </div>
-
-                <div class="row g-3 mt-4">
-                    <div class="col-md-6">
-                        <div class="card-soft p-4 h-100">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="icon-badge"><i class="fa-solid fa-clock"></i></span>
-                                <div style="font-weight:950;">Estimated duration</div>
-                            </div>
-                            <div class="text-muted-2 mt-2" style="font-weight:650;">
-                                {{ $service->duration_minutes ? $service->duration_minutes . ' minutes' : 'Depends on the case' }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card-soft p-4 h-100">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="icon-badge" style="background:linear-gradient(135deg, rgba(216,193,176,.95), rgba(176,124,88,.95));">
-                                    <i class="fa-solid fa-tag"></i>
-                                </span>
-                                <div style="font-weight:950;">Price</div>
-                            </div>
-                            <div class="text-muted-2 mt-2" style="font-weight:650;">
-                                @if(isset($service->base_price))
-                                    ₱{{ number_format((float)$service->base_price, 2) }}
-                                    @if(!empty($service->allow_custom_price))
-                                        <div class="small text-muted mt-1">Final price may vary depending on the case.</div>
-                                    @endif
-                                @else
-                                    Please inquire for pricing.
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Desktop actions --}}
-                <div class="d-none d-md-flex flex-wrap gap-2 mt-4 kt-mobile-stack">
-                    <a class="btn kt-btn kt-btn-primary text-white" href="{{ url('/book/' . $service->id) }}">
-                        <i class="fa-solid fa-calendar-check me-1"></i> Book this service
-                    </a>
-                    <x-back-button
-                        fallback="{{ url('/services') }}"
-                        class="btn kt-btn kt-btn-outline"
-                        icon_class="fa-solid fa-arrow-left me-1"
-                        label="Back to services"
-                    />
+                <div class="kt-service-page__actions">
+                    <a href="{{ auth()->check() ? $bookUrl : $loginThenBackToBook }}" class="kt-btn-primary"><span>Book This Service</span></a>
+                    <a href="{{ route('public.services.index') }}" class="kt-btn-ghost">Back to Services ></a>
                 </div>
             </div>
 
-            <div class="col-lg-5">
-                <div class="card-soft p-4">
-                    <div class="d-flex align-items-center gap-3">
-                        <img src="{{ asset('images/krysandtelllogo.jpg') }}" alt="Logo"
-                             style="width:52px;height:52px;border-radius:18px;object-fit:cover;border:1px solid rgba(17,17,17,.10);background:#fff;">
-                        <div>
-                            <div style="font-weight:950;">Krys &amp; Tell Dental Center</div>
-                            <div class="text-muted-2" style="font-weight:650;">Comfort-first, clear plans, modern results.</div>
-                        </div>
-                    </div>
-
-                    <hr style="border-color: rgba(17,17,17,.10);">
-
-                    <div class="text-muted-2" style="font-weight:650; line-height:1.7;">
-                        Prefer to ask first? Visit our contact page and we’ll guide you on the best service to book.
-                    </div>
-
-                    <div class="d-flex gap-2 mt-3 kt-mobile-stack">
-                        <a href="{{ url('/contact') }}" class="btn kt-btn kt-btn-outline w-100">Contact</a>
-                        <a href="{{ url('/services') }}" class="btn kt-btn kt-btn-primary text-white w-100">Browse</a>
-                    </div>
+            <aside class="kt-service-page__aside kt-reveal-right">
+                <div class="kt-service-page__photo">
+                    <img src="{{ asset('images/pic2.jpg') }}" alt="" loading="lazy">
                 </div>
 
-                <div class="img-tile mt-3" style="height:260px;">
-                    <img src="{{ asset('assets/img/public/pic3.jpg') }}" alt="Clinic room">
+                <div class="kt-service-page__note">
+                    <h3>Need Help Deciding?</h3>
+                    <p>Our team can guide you to the right option based on your goals and clinical needs.</p>
+                    <a href="{{ route('public.contact') }}" class="kt-text-link">Contact the Clinic ></a>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Mobile sticky CTA --}}
-    <div class="kt-sticky-cta d-md-none">
-        <div class="container">
-            <div class="d-grid gap-2">
-                <a class="btn kt-btn kt-btn-primary text-white" href="{{ url('/book/' . $service->id) }}">
-                    <i class="fa-solid fa-calendar-check me-1"></i> Book this service
-                </a>
-                <a class="btn kt-btn kt-btn-outline" href="{{ url('/services') }}">
-                    <i class="fa-solid fa-arrow-left me-1"></i> Back to services
-                </a>
-            </div>
+            </aside>
         </div>
     </div>
 </section>

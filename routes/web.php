@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\GoogleController;
 
-// ✅ User controllers
+// Ã¢Å“â€¦ User controllers
 use App\Http\Controllers\User\UserProfileController;
 use App\Http\Controllers\Auth\UserLoginController;
 
@@ -25,7 +25,7 @@ use App\Http\Controllers\Staff\VisitImportExportController;
 use App\Http\Controllers\Staff\InstallmentImportExportController;
 use App\Http\Controllers\Staff\LiveSnapshotController as StaffLiveSnapshotController;
 
-// ✅ Contact inbox controllers
+// Ã¢Å“â€¦ Contact inbox controllers
 use App\Http\Controllers\Public\ContactMessageController as PublicContactMessageController;
 use App\Http\Controllers\Staff\ContactMessageController as StaffContactMessageController;
 
@@ -46,6 +46,7 @@ use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotContro
 use App\Http\Controllers\Public\PublicServiceController;
 use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\PublicInstallmentController;
+use App\Http\Controllers\Public\PublicHomeController;
 use App\Http\Controllers\PushSubscriptionController;
 
 /*
@@ -61,10 +62,12 @@ Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name
 | PUBLIC WEBSITE (NO LOGIN REQUIRED)
 |--------------------------------------------------------------------------
 */
-Route::get('/', fn () => view('public.home'))->name('public.home');
+Route::get('/', [PublicHomeController::class, 'index'])->name('public.home');
 Route::get('/about', fn () => view('public.about'))->name('public.about');
+Route::get('/privacy-policy', fn () => view('public.privacy'))->name('public.privacy');
+Route::get('/terms-of-service', fn () => view('public.terms'))->name('public.terms');
 
-/** ✅ Contact page GET + POST */
+/** Ã¢Å“â€¦ Contact page GET + POST */
 Route::get('/contact', fn () => view('public.contact'))->name('public.contact');
 Route::post('/contact', [PublicContactMessageController::class, 'store'])
     ->middleware('throttle:public-forms')
@@ -73,6 +76,7 @@ Route::post('/contact', [PublicContactMessageController::class, 'store'])
 /** Public services */
 Route::get('/services', [PublicServiceController::class, 'index'])->name('public.services.index');
 Route::get('/services/{service}', [PublicServiceController::class, 'show'])->name('public.services.show');
+Route::get('/reviews', [PublicHomeController::class, 'reviews'])->name('public.reviews.index');
 
 /*
 |--------------------------------------------------------------------------
@@ -80,13 +84,13 @@ Route::get('/services/{service}', [PublicServiceController::class, 'show'])->nam
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
-    // ✅ Staff/Admin login
+    // Ã¢Å“â€¦ Staff/Admin login
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])
         ->middleware('throttle:login')
         ->name('login.submit');
 
-    // ✅ User login (public users)
+    // Ã¢Å“â€¦ User login (public users)
     Route::get('/userlogin', [UserLoginController::class, 'show'])->name('userlogin');
     Route::post('/userlogin', [UserLoginController::class, 'login'])
         ->middleware('throttle:login')
@@ -99,8 +103,12 @@ Route::middleware('guest')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
+    // Public reviews (homepage testimonials)
+    Route::post('/reviews', [PublicHomeController::class, 'storeReview'])
+        ->middleware('throttle:public-forms')
+        ->name('public.reviews.store');
 
-    // ✅ Booking flow (LOGIN REQUIRED)
+    // Ã¢Å“â€¦ Booking flow (LOGIN REQUIRED)
     Route::get('/book/{service}', [PublicBookingController::class, 'create'])->name('public.booking.create');
     Route::get('/book/{service}/slots', [PublicBookingController::class, 'slots'])->name('public.booking.slots');
     Route::get('/book/{service}/doctors', [PublicBookingController::class, 'doctors'])->name('public.booking.doctors');
@@ -112,22 +120,22 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:booking-submit')
         ->name('public.booking.update');
 
-    // ✅ User Profile
+    // Ã¢Å“â€¦ User Profile
     Route::get('/profile', [UserProfileController::class, 'index'])->name('profile.show');
     Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
     Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('user.profile.password');
 
-    // ✅ Public user: Installment plans (read-only)
+    // Ã¢Å“â€¦ Public user: Installment plans (read-only)
     Route::get('/my/installments', [PublicInstallmentController::class, 'index'])->name('public.installments.index');
     Route::get('/my/installments/{plan}', [PublicInstallmentController::class, 'show'])->name('public.installments.show');
 
-    // ✅ Staff/Admin logout
+    // Ã¢Å“â€¦ Staff/Admin logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-    // ✅ User logout
+    // Ã¢Å“â€¦ User logout
     Route::post('/userlogout', [UserLoginController::class, 'logout'])->name('userlogout');
 
-    // ✅ Portal redirect based on role
+    // Ã¢Å“â€¦ Portal redirect based on role
     Route::get('/portal', function () {
         $role = auth()->user()->role ?? 'user';
 
@@ -138,7 +146,7 @@ Route::middleware('auth')->group(function () {
         };
     })->name('portal');
 
-    // ✅ Approvals redirect for staff/admin (used by push notifications)
+    // Ã¢Å“â€¦ Approvals redirect for staff/admin (used by push notifications)
     Route::middleware('role:admin,staff')->get('/approvals', function () {
         $role = auth()->user()->role ?? 'user';
 
@@ -149,7 +157,7 @@ Route::middleware('auth')->group(function () {
         };
     })->name('approvals.portal');
 
-    // ✅ Web Push subscription endpoints (staff/admin only)
+    // Ã¢Å“â€¦ Web Push subscription endpoints (staff/admin only)
     Route::middleware(['role:admin,staff', 'throttle:push-subscriptions'])
         ->post('/push/subscribe', [PushSubscriptionController::class, 'store'])
         ->name('push.subscribe');
@@ -169,7 +177,7 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-            // ✅ AJAX realtime snapshots (polling)
+            // Ã¢Å“â€¦ AJAX realtime snapshots (polling)
             Route::get('/live/snapshot', [AdminLiveSnapshotController::class, 'snapshot'])->name('live.snapshot');
 
             // Schedule (READ-ONLY)
@@ -190,7 +198,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
             Route::get('/appointments', [AdminAppointmentController::class, 'index'])->name('appointments.index');
 
-            // ✅ Approval Requests (same as Staff)
+            // Ã¢Å“â€¦ Approval Requests (same as Staff)
             Route::get('/approvals', [AdminApprovalRequestController::class, 'index'])->name('approvals.index');
             Route::get('/approvals/widget', [AdminApprovalRequestController::class, 'widget'])->name('approvals.widget');
             Route::post('/approvals/{appointment}/approve', [AdminApprovalRequestController::class, 'approve'])->name('approvals.approve');
@@ -215,9 +223,9 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/{doctorUnavailability}', [AdminDoctorUnavailabilityController::class, 'destroy'])->name('destroy');
             });
 
-            // ✅ User/Patient Accounts (WEB ACCOUNTS) — Admin only
-            // ✅ NO CREATE/STORE (users create via Google login)
-            // ✅ FIX: force {user} param so destroy/edit/update binds correctly
+            // Ã¢Å“â€¦ User/Patient Accounts (WEB ACCOUNTS) Ã¢â‚¬â€ Admin only
+            // Ã¢Å“â€¦ NO CREATE/STORE (users create via Google login)
+            // Ã¢Å“â€¦ FIX: force {user} param so destroy/edit/update binds correctly
             Route::post('/user-accounts/{id}/restore', [AdminUserAccountsController::class, 'restore'])->name('user_accounts.restore');
 
             Route::resource('user-accounts', AdminUserAccountsController::class)
@@ -238,11 +246,11 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-            // ✅ AJAX realtime snapshots (polling)
+            // Ã¢Å“â€¦ AJAX realtime snapshots (polling)
             Route::get('/live/snapshot', [StaffLiveSnapshotController::class, 'snapshot'])->name('live.snapshot');
             Route::get('/dashboard/calendar/events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar.events');
 
-            // ✅ Approval Requests
+            // Ã¢Å“â€¦ Approval Requests
             Route::prefix('approvals')->name('approvals.')->group(function () {
                 Route::get('/', [ApprovalRequestController::class, 'index'])->name('index');
                 Route::get('/widget', [ApprovalRequestController::class, 'widget'])->name('widget');
@@ -250,7 +258,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{appointment}/decline', [ApprovalRequestController::class, 'decline'])->name('decline');
             });
 
-            // ✅ Contact Messages Inbox (Staff)
+            // Ã¢Å“â€¦ Contact Messages Inbox (Staff)
             Route::prefix('messages')->name('messages.')->group(function () {
                 Route::get('/widget', [StaffContactMessageController::class, 'widget'])->name('widget');
 
@@ -274,10 +282,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/patients/export', [PatientImportExportController::class, 'export'])->name('patients.export');
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
 
-            // ✅ PRINT Patient Information Record (PDF)
+            // Ã¢Å“â€¦ PRINT Patient Information Record (PDF)
             Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])->name('patients.printInfo');
 
-            // ✅ VISITS IMPORT/TEMPLATE
+            // Ã¢Å“â€¦ VISITS IMPORT/TEMPLATE
             Route::get('/visits/template', [VisitImportExportController::class, 'template'])->name('visits.template');
             Route::post('/visits/import', [VisitImportExportController::class, 'import'])->name('visits.import');
 
@@ -296,7 +304,7 @@ Route::middleware('auth')->group(function () {
             // Patient Visit History
             Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])->name('patients.visits');
 
-            // ✅ Service Folder
+            // Ã¢Å“â€¦ Service Folder
             Route::get('services/{service}/patients', [ServiceController::class, 'patients'])->name('services.patients');
 
             // Payments
@@ -304,7 +312,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [PaymentController::class, 'index'])->name('index');
                 Route::get('/choose', [PaymentController::class, 'choosePlan'])->name('choose');
 
-                // ✅ ADD THIS (must be ABOVE /{payment} routes)
+                // Ã¢Å“â€¦ ADD THIS (must be ABOVE /{payment} routes)
                 Route::get('/cash/patient/{patient}', [PaymentController::class, 'cashPatient'])
                     ->name('cash.patient');
 
@@ -331,7 +339,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/create', [InstallmentPlanController::class, 'create'])->name('create');
                 Route::post('/', [InstallmentPlanController::class, 'store'])->name('store');
 
-                // ✅ INSTALLMENTS IMPORT/TEMPLATE
+                // Ã¢Å“â€¦ INSTALLMENTS IMPORT/TEMPLATE
                 Route::get('/template', [InstallmentImportExportController::class, 'plansTemplate'])->name('template');
                 Route::post('/import', [InstallmentImportExportController::class, 'importPlans'])->name('import');
 
@@ -356,3 +364,5 @@ Route::middleware('auth')->group(function () {
             });
         });
 });
+
+
