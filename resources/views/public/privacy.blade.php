@@ -17,7 +17,8 @@
             <h1 class="kt-section-title">Privacy <em>Policy</em></h1>
             <p class="kt-section-body">
                 Last updated: {{ now()->format('F j, Y') }}. This page explains how Krys &amp; Tell Dental Center
-                collects, uses, and protects your information when you use our website and services.
+                collects, uses, and protects your information when you use our website and services, including
+                our use of essential cookies.
             </p>
         </div>
 
@@ -39,6 +40,16 @@
                     <li>To manage appointments and service requests</li>
                     <li>To communicate updates, confirmations, and reminders</li>
                     <li>To improve clinic operations and website experience</li>
+                </ul>
+            </article>
+
+            <article class="kt-legal-card kt-reveal">
+                <h2>Cookies</h2>
+                <p>Our website uses essential cookies only. These cookies are required for security, login sessions, and core website functionality.</p>
+                <ul>
+                    <li>Essential cookies cannot be disabled without affecting basic website use</li>
+                    <li>We do not currently use analytics or marketing cookies in this public site</li>
+                    <li>Your cookie notice acceptance is stored in your browser for up to one year</li>
                 </ul>
             </article>
 

@@ -195,6 +195,82 @@
         statObserver.observe(statsSection);
     }
 
+    var cookieRoot = document.getElementById('ktCookie');
+    if (cookieRoot) {
+        var cookieStorageKey = 'kt_cookie_consent_v2';
+        var cookieAcceptBtn = document.getElementById('ktCookieAccept');
+
+        function readCookieConsent() {
+            try {
+                var raw = window.localStorage.getItem(cookieStorageKey);
+                if (!raw) {
+                    return null;
+                }
+                var parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function setConsentCookie(mode) {
+            document.cookie = 'kt_cookie_consent=' + encodeURIComponent(mode) + '; path=/; max-age=31536000; SameSite=Lax';
+        }
+
+        function writeCookieConsent(payload, mode) {
+            try {
+                window.localStorage.setItem(cookieStorageKey, JSON.stringify(payload));
+            } catch (error) {
+                // Ignore storage errors (private mode / quota limits).
+            }
+
+            setConsentCookie(mode);
+
+            try {
+                window.dispatchEvent(new CustomEvent('kt:cookie-consent', { detail: payload }));
+            } catch (error) {
+                // Ignore event errors in unsupported environments.
+            }
+        }
+
+        function showCookieBanner() {
+            cookieRoot.hidden = false;
+            requestAnimationFrame(function () {
+                cookieRoot.classList.add('kt-cookie--show');
+            });
+        }
+
+        function hideCookieBanner() {
+            cookieRoot.classList.remove('kt-cookie--show');
+            setTimeout(function () {
+                cookieRoot.hidden = true;
+            }, 260);
+        }
+
+        function saveCookieConsent() {
+            var payload = {
+                essential: true,
+                consent_choice: 'accept',
+                updated_at: new Date().toISOString()
+            };
+            writeCookieConsent(payload, 'accept');
+        }
+
+        var existingConsent = readCookieConsent();
+        if (existingConsent) {
+            hideCookieBanner();
+        } else {
+            showCookieBanner();
+        }
+
+        if (cookieAcceptBtn) {
+            cookieAcceptBtn.addEventListener('click', function () {
+                saveCookieConsent();
+                hideCookieBanner();
+            });
+        }
+    }
+
     var bookingForm = document.getElementById('ktBookingForm');
     if (!bookingForm) {
         return;

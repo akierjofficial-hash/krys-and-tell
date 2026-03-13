@@ -29,43 +29,67 @@
        Works if JS toggles: .is-on OR your existing .kt-push-enabled
        ========================================================== */
 
-    #ktPushBtn { position: relative; overflow: visible; }
+    #ktPushBtn {
+        position: relative;
+        overflow: visible;
+    }
 
     /* Keep existing compatibility */
-    .kt-push-enabled { box-shadow: 0 0 0 4px rgba(34,197,94,.18) !important; }
+    .kt-push-enabled {
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, .18) !important;
+    }
 
     /* Premium ON styling */
     #ktPushBtn.is-on,
-    #ktPushBtn.kt-push-enabled{
-        background: rgba(34,197,94,.12) !important;
-        border-color: rgba(34,197,94,.25) !important;
-        box-shadow: 0 0 0 0 rgba(34,197,94,.45) !important;
+    #ktPushBtn.kt-push-enabled {
+        background: rgba(34, 197, 94, .12) !important;
+        border-color: rgba(34, 197, 94, .25) !important;
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, .45) !important;
         animation: ktPulse 1.6s infinite;
     }
 
     #ktPushBtn.is-on::after,
-    #ktPushBtn.kt-push-enabled::after{
-        content:'';
-        position:absolute;
-        top:6px; right:6px;
-        width:9px; height:9px;
-        border-radius:999px;
-        background:#22c55e;
-        box-shadow:0 0 0 6px rgba(34,197,94,.20);
-        pointer-events:none;
+    #ktPushBtn.kt-push-enabled::after {
+        content: '';
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, .20);
+        pointer-events: none;
     }
 
-    @keyframes ktPulse{
-        0%   { transform: scale(1);   box-shadow:0 0 0 0 rgba(34,197,94,.45); }
-        60%  { transform: scale(1.05);box-shadow:0 0 0 14px rgba(34,197,94,0); }
-        100% { transform: scale(1);   box-shadow:0 0 0 0 rgba(34,197,94,0); }
+    @keyframes ktPulse {
+        0% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, .45);
+        }
+
+        60% {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 14px rgba(34, 197, 94, 0);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        }
     }
 
-    @media (prefers-reduced-motion: reduce){
+    @media (prefers-reduced-motion: reduce) {
+
         #ktPushBtn.is-on,
-        #ktPushBtn.kt-push-enabled{ animation:none !important; }
+        #ktPushBtn.kt-push-enabled {
+            animation: none !important;
+        }
+
         #ktPushBtn.is-on::after,
-        #ktPushBtn.kt-push-enabled::after{ box-shadow:none !important; }
+        #ktPushBtn.kt-push-enabled::after {
+            box-shadow: none !important;
+        }
     }
 
     :root {
@@ -144,20 +168,20 @@
     }
 
     .brand {
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
         padding: 10px 10px 14px;
         border-bottom: 1px solid var(--border);
         margin-bottom: 10px;
     }
 
     .brand-left {
-        display:flex;
-        align-items:center;
-        gap:10px;
-        min-width:0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
     }
 
     .logo {
@@ -208,29 +232,43 @@
         flex: 0 0 auto;
     }
 
-    html[data-theme="dark"] .theme-toggle { background: rgba(2, 6, 23, .35) !important; }
-    .theme-toggle:hover { transform: translateY(-1px); }
+    html[data-theme="dark"] .theme-toggle {
+        background: rgba(2, 6, 23, .35) !important;
+    }
+
+    .theme-toggle:hover {
+        transform: translateY(-1px);
+    }
 
     .navx {
         margin-top: 12px;
-        display:flex;
-        flex-direction:column;
-        gap:6px;
-        padding:0 6px;
-        flex:1;
-        overflow-y:auto;
-        min-height:0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 0 6px;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
     }
 
-    .navx::-webkit-scrollbar { width: 8px; }
-    .navx::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .18); border-radius: 999px; }
-    .navx::-webkit-scrollbar-track { background: transparent; }
+    .navx::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .navx::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, .18);
+        border-radius: 999px;
+    }
+
+    .navx::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
     .navx a {
         text-decoration: none;
-        display:flex;
-        align-items:center;
-        gap:10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         padding: 11px 12px;
         border-radius: 14px;
         color: var(--text);
@@ -240,8 +278,15 @@
         overflow: hidden;
     }
 
-    .navx a i { width: 18px; color: var(--muted); }
-    .navx a:hover { background: rgba(37, 99, 235, .08); transform: translateY(-1px); }
+    .navx a i {
+        width: 18px;
+        color: var(--muted);
+    }
+
+    .navx a:hover {
+        background: rgba(37, 99, 235, .08);
+        transform: translateY(-1px);
+    }
 
     .navx a.active {
         background: linear-gradient(135deg, rgba(37, 99, 235, .95), rgba(124, 58, 237, .85));
@@ -249,25 +294,31 @@
         box-shadow: 0 14px 26px rgba(37, 99, 235, .18);
     }
 
-    .navx a.active i { color: #fff; }
+    .navx a.active i {
+        color: #fff;
+    }
 
     .side-footer {
-        margin-top:auto;
+        margin-top: auto;
         padding: 12px 6px 0;
         border-top: 1px solid var(--border);
     }
 
     .logout-btn {
-        width:100%;
-        border-radius:14px;
-        font-weight:950;
-        padding:10px 12px;
+        width: 100%;
+        border-radius: 14px;
+        font-weight: 950;
+        padding: 10px 12px;
     }
 
     /* ===== Main ===== */
-    .main { flex:1; padding: 18px 20px 26px; min-width:0; }
+    .main {
+        flex: 1;
+        padding: 18px 20px 26px;
+        min-width: 0;
+    }
 
-    .cardx{
+    .cardx {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
@@ -291,8 +342,15 @@
     }
 
     /* Tables dark-safe */
-    .table { color: var(--text) !important; }
-    .table> :not(caption)>*>* { background-color: transparent !important; color: inherit !important; border-color: var(--border) !important; }
+    .table {
+        color: var(--text) !important;
+    }
+
+    .table> :not(caption)>*>* {
+        background-color: transparent !important;
+        color: inherit !important;
+        border-color: var(--border) !important;
+    }
 
     .table thead th {
         background: var(--table-head) !important;
@@ -301,7 +359,9 @@
         border-color: var(--border) !important;
     }
 
-    html[data-theme="dark"] .table tbody tr:hover { background: var(--table-row-hover) !important; }
+    html[data-theme="dark"] .table tbody tr:hover {
+        background: var(--table-row-hover) !important;
+    }
 
     /* FullCalendar dark-safe */
     html[data-theme="dark"] .fc,
@@ -313,9 +373,13 @@
     }
 
     html[data-theme="dark"] .fc-theme-standard td,
-    html[data-theme="dark"] .fc-theme-standard th { border-color: rgba(148, 163, 184, .18) !important; }
+    html[data-theme="dark"] .fc-theme-standard th {
+        border-color: rgba(148, 163, 184, .18) !important;
+    }
 
-    html[data-theme="dark"] .fc .fc-toolbar-title { color: var(--text) !important; }
+    html[data-theme="dark"] .fc .fc-toolbar-title {
+        color: var(--text) !important;
+    }
 
     html[data-theme="dark"] .fc .fc-button {
         background: rgba(17, 24, 39, .92) !important;
@@ -325,7 +389,9 @@
         font-weight: 950 !important;
     }
 
-    html[data-theme="dark"] .fc .fc-day-today { background: rgba(96, 165, 250, .10) !important; }
+    html[data-theme="dark"] .fc .fc-day-today {
+        background: rgba(96, 165, 250, .10) !important;
+    }
 
     /* ===== Mobile Responsive Sidebar Drawer ===== */
     .side-overlay {
@@ -338,7 +404,10 @@
         transition: opacity .18s ease;
     }
 
-    .side-overlay.show { opacity: 1; pointer-events: auto; }
+    .side-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
 
     .menu-toggle {
         display: none;
@@ -353,7 +422,9 @@
     }
 
     @media (max-width: 900px) {
-        .menu-toggle { display: grid; }
+        .menu-toggle {
+            display: grid;
+        }
 
         .side {
             position: fixed;
@@ -365,14 +436,19 @@
             transition: transform .18s ease;
         }
 
-        .side.open { transform: translateX(0); }
-        .main { padding: 14px 14px 18px; }
+        .side.open {
+            transform: translateX(0);
+        }
+
+        .main {
+            padding: 14px 14px 18px;
+        }
     }
 
     /* ----------------------------------------------------------
        ✅ Approval bell (Admin) — same UX as Staff
        ---------------------------------------------------------- */
-    .kt-top-icon{
+    .kt-top-icon {
         width: 42px;
         height: 42px;
         display: inline-flex;
@@ -385,23 +461,27 @@
         transition: .15s ease;
     }
 
-    .kt-top-icon:hover{ background: rgba(255,255,255,.06); }
+    .kt-top-icon:hover {
+        background: rgba(255, 255, 255, .06);
+    }
 
-    .kt-dot{
-        position:absolute;
+    .kt-dot {
+        position: absolute;
         top: 9px;
         right: 9px;
         width: 10px;
         height: 10px;
         border-radius: 999px;
-        background:#ef4444;
-        box-shadow: 0 0 0 2px rgba(255,255,255,.95);
+        background: #ef4444;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, .95);
     }
 
-    html[data-theme="dark"] .kt-dot{ box-shadow: 0 0 0 2px rgba(2,6,23,.85); }
+    html[data-theme="dark"] .kt-dot {
+        box-shadow: 0 0 0 2px rgba(2, 6, 23, .85);
+    }
 
-    .kt-popover{
-        position:absolute;
+    .kt-popover {
+        position: absolute;
         top: 54px;
         right: 0;
         width: 380px;
@@ -411,46 +491,54 @@
         border: 1px solid var(--border);
         box-shadow: var(--card-shadow);
         z-index: 2500;
-        overflow:hidden;
+        overflow: hidden;
 
-        opacity:0;
+        opacity: 0;
         transform: translateY(-8px) scale(.98);
-        pointer-events:none;
-        visibility:hidden;
-        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s linear 180ms;
+        pointer-events: none;
+        visibility: hidden;
+        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1), visibility 0s linear 180ms;
     }
 
-    .kt-popover.show{
-        opacity:1;
+    .kt-popover.show {
+        opacity: 1;
         transform: translateY(0) scale(1);
-        pointer-events:auto;
-        visibility:visible;
-        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s;
+        pointer-events: auto;
+        visibility: visible;
+        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1), visibility 0s;
     }
 
-    .kt-popover .kt-pop-h{
+    .kt-popover .kt-pop-h {
         padding: 12px 14px;
         border-bottom: 1px solid var(--border);
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
     }
 
-    .kt-popover .kt-pop-title{ font-weight: 900; font-size: 14px; margin:0; }
+    .kt-popover .kt-pop-title {
+        font-weight: 900;
+        font-size: 14px;
+        margin: 0;
+    }
 
-    .kt-popover .kt-badge{
+    .kt-popover .kt-badge {
         font-size: 12px;
         padding: 4px 10px;
         border-radius: 999px;
-        background: rgba(13,110,253,.12);
-        border: 1px solid rgba(13,110,253,.22);
+        background: rgba(13, 110, 253, .12);
+        border: 1px solid rgba(13, 110, 253, .22);
         color: var(--text);
     }
 
-    .kt-popover .kt-pop-body{ padding: 10px; max-height: 360px; overflow:auto; }
+    .kt-popover .kt-pop-body {
+        padding: 10px;
+        max-height: 360px;
+        overflow: auto;
+    }
 
-    .kt-popover .kt-item{
+    .kt-popover .kt-item {
         border: 1px solid var(--border);
         background: var(--surface);
         border-radius: 14px;
@@ -458,27 +546,67 @@
         margin-bottom: 10px;
     }
 
-    .kt-popover .kt-item:last-child{ margin-bottom:0; }
+    .kt-popover .kt-item:last-child {
+        margin-bottom: 0;
+    }
 
-    .kt-popover .kt-item .top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-    .kt-popover .kt-item .name{ font-weight: 900; font-size: 13px; margin:0; line-height:1.2; }
-    .kt-popover .kt-item .meta{ font-size: 12px; opacity: .95; margin-top: 4px; }
+    .kt-popover .kt-item .top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
 
-    .kt-popover .kt-actions{ display:flex; gap:8px; margin-top: 10px; }
-    .kt-popover .kt-actions form{ margin:0; }
+    .kt-popover .kt-item .name {
+        font-weight: 900;
+        font-size: 13px;
+        margin: 0;
+        line-height: 1.2;
+    }
 
-    .kt-popover .btn-mini{ padding: 6px 10px; border-radius: 10px; font-weight: 800; font-size: 12px; }
-    .kt-popover .btn-approve{ background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.25); color: #16a34a !important; }
-    .kt-popover .btn-decline{ background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.25); color: #ef4444 !important; }
+    .kt-popover .kt-item .meta {
+        font-size: 12px;
+        opacity: .95;
+        margin-top: 4px;
+    }
 
-    .kt-nav-badge{
-        margin-left:auto;
+    .kt-popover .kt-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .kt-popover .kt-actions form {
+        margin: 0;
+    }
+
+    .kt-popover .btn-mini {
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 800;
+        font-size: 12px;
+    }
+
+    .kt-popover .btn-approve {
+        background: rgba(34, 197, 94, .15);
+        border: 1px solid rgba(34, 197, 94, .25);
+        color: #16a34a !important;
+    }
+
+    .kt-popover .btn-decline {
+        background: rgba(239, 68, 68, .15);
+        border: 1px solid rgba(239, 68, 68, .25);
+        color: #ef4444 !important;
+    }
+
+    .kt-nav-badge {
+        margin-left: auto;
         min-width: 20px;
         height: 18px;
         padding: 0 6px;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         font-size: 11px;
         font-weight: 950;
         border-radius: 999px;
@@ -492,31 +620,30 @@
     @stack('styles')
 </head>
 
-<body data-kt-live-scope="@yield('kt_live_scope')"
-      data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}"
-      data-kt-live-interval="@yield('kt_live_interval', 10000)">
+<body data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}"
+    data-kt-live-interval="@yield('kt_live_interval', 10000)">
 
     @php
-        // ✅ Approval requests for bell + sidebar badge
-        $pendingApprovals = 0;
-        $pendingItems = collect();
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
-                && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+    // ✅ Approval requests for bell + sidebar badge
+    $pendingApprovals = 0;
+    $pendingItems = collect();
+    try {
+    if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
+    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
 
-                $pendingItems = \App\Models\Appointment::query()
-                    ->with(['service','doctor','patient'])
-                    ->where('status', 'pending')
-                    ->orderByDesc('created_at')
-                    ->take(8)
-                    ->get();
+    $pendingItems = \App\Models\Appointment::query()
+    ->with(['service','doctor','patient'])
+    ->where('status', 'pending')
+    ->orderByDesc('created_at')
+    ->take(8)
+    ->get();
 
-                $pendingApprovals = $pendingItems->count();
-            }
-        } catch (\Throwable $e) {
-            $pendingApprovals = 0;
-            $pendingItems = collect();
-        }
+    $pendingApprovals = $pendingItems->count();
+    }
+    } catch (\Throwable $e) {
+    $pendingApprovals = 0;
+    $pendingItems = collect();
+    }
     @endphp
 
     <div class="app-bg">
@@ -566,7 +693,7 @@
                         class="{{ request()->is('admin/approvals*') ? 'active' : '' }}">
                         <i class="fa fa-bell"></i> Approval Requests
                         <span id="adminApprovalNavBadge"
-                              class="kt-nav-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
+                            class="kt-nav-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
                     </a>
 
                     <a href="{{ route('admin.patients.index') }}"
@@ -614,7 +741,8 @@
 
                     <div class="ms-auto d-flex align-items-center gap-2 position-relative">
                         {{-- ✅ Push notifications (PWA) — ALWAYS BULLHORN --}}
-                        <button type="button" id="ktPushBtn" class="kt-top-icon border-0" title="Enable push notifications">
+                        <button type="button" id="ktPushBtn" class="kt-top-icon border-0"
+                            title="Enable push notifications">
                             <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
                         </button>
 
@@ -622,7 +750,8 @@
                         <button type="button" id="adminApprovalBell" class="kt-top-icon position-relative border-0"
                             title="Approval Requests" aria-haspopup="true" aria-expanded="false">
                             <i class="fa-solid fa-bell"></i>
-                            <span id="adminApprovalDot" class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
+                            <span id="adminApprovalDot"
+                                class="kt-dot {{ $pendingApprovals > 0 ? '' : 'd-none' }}"></span>
                         </button>
 
                         {{-- Dropdown card --}}
@@ -630,7 +759,9 @@
                             <div class="kt-pop-h">
                                 <p class="kt-pop-title mb-0">Approval Requests</p>
                                 <div class="d-flex align-items-center gap-2">
-                                    <a href="{{ route('admin.approvals.index') }}" class="btn btn-sm btn-outline-secondary" style="border-radius:999px;font-weight:800;">View all</a>
+                                    <a href="{{ route('admin.approvals.index') }}"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        style="border-radius:999px;font-weight:800;">View all</a>
                                     <span class="kt-badge">
                                         <span id="adminApprovalBadge">{{ $pendingApprovals }}</span> pending
                                     </span>
@@ -642,68 +773,69 @@
 
                             <div class="kt-pop-body" id="adminApprovalList">
                                 @if($pendingItems->isEmpty())
-                                    <div class="text-center py-3" id="adminApprovalEmpty">
-                                        <div class="fw-bold">No pending requests</div>
-                                        <div class="small text-muted">You're all caught up.</div>
-                                    </div>
+                                <div class="text-center py-3" id="adminApprovalEmpty">
+                                    <div class="fw-bold">No pending requests</div>
+                                    <div class="small text-muted">You're all caught up.</div>
+                                </div>
                                 @else
-                                    @foreach($pendingItems as $a)
-                                        @php
-                                            $displayName =
-                                                $a->public_name
-                                                ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').' '.($a->public_last_name ?? ''))
-                                                ?: ($a->patient->name ?? 'Patient');
+                                @foreach($pendingItems as $a)
+                                @php
+                                $displayName =
+                                $a->public_name
+                                ?? trim(($a->public_first_name ?? '').' '.($a->public_middle_name ?? '').'
+                                '.($a->public_last_name ?? ''))
+                                ?: ($a->patient->name ?? 'Patient');
 
-                                            $serviceName = $a->service->name ?? 'Service';
-                                            $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
+                                $serviceName = $a->service->name ?? 'Service';
+                                $doctorName = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor');
 
-                                            $date = $a->appointment_date ?? null;
-                                            $time = $a->appointment_time ?? null;
-                                            $isWalkInRequest = (bool)($a->is_walk_in_request ?? false);
-                                        @endphp
+                                $date = $a->appointment_date ?? null;
+                                $time = $a->appointment_time ?? null;
+                                $isWalkInRequest = (bool)($a->is_walk_in_request ?? false);
+                                @endphp
 
-                                        <div class="kt-item" data-approval-id="{{ $a->id }}">
-                                            <div class="top">
+                                <div class="kt-item" data-approval-id="{{ $a->id }}">
+                                    <div class="top">
+                                        <div>
+                                            <p class="name">{{ $displayName }}</p>
+                                            <div class="meta">
+                                                <div><b>{{ $serviceName }}</b></div>
                                                 <div>
-                                                    <p class="name">{{ $displayName }}</p>
-                                                    <div class="meta">
-                                                        <div><b>{{ $serviceName }}</b></div>
-                                                        <div>
-                                                            {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
-                                                            @if($isWalkInRequest)
-                                                                • Walk-in Request
-                                                            @elseif($time)
-                                                                • {{ \Carbon\Carbon::parse($time)->format('h:i A') }}
-                                                            @endif
-                                                        </div>
-                                                        <div class="small text-muted">Doctor: {{ $doctorName }}</div>
-                                                    </div>
+                                                    {{ $date ? \Carbon\Carbon::parse($date)->format('M d, Y') : '—' }}
+                                                    @if($isWalkInRequest)
+                                                    • Walk-in Request
+                                                    @elseif($time)
+                                                    • {{ \Carbon\Carbon::parse($time)->format('h:i A') }}
+                                                    @endif
                                                 </div>
-
-                                                <div class="small text-muted text-end">
-                                                    {{ optional($a->created_at)->diffForHumans() }}
-                                                </div>
-                                            </div>
-
-                                            <div class="kt-actions">
-                                                <form class="approval-form" data-action="approve" method="POST"
-                                                    action="{{ route('admin.approvals.approve', $a->id) }}">
-                                                    @csrf
-                                                    <button class="btn btn-mini btn-approve" type="submit">
-                                                        <i class="fa-solid fa-check me-1"></i> Approve
-                                                    </button>
-                                                </form>
-
-                                                <form class="approval-form" data-action="decline" method="POST"
-                                                    action="{{ route('admin.approvals.decline', $a->id) }}">
-                                                    @csrf
-                                                    <button class="btn btn-mini btn-decline" type="submit">
-                                                        <i class="fa-solid fa-xmark me-1"></i> Decline
-                                                    </button>
-                                                </form>
+                                                <div class="small text-muted">Doctor: {{ $doctorName }}</div>
                                             </div>
                                         </div>
-                                    @endforeach
+
+                                        <div class="small text-muted text-end">
+                                            {{ optional($a->created_at)->diffForHumans() }}
+                                        </div>
+                                    </div>
+
+                                    <div class="kt-actions">
+                                        <form class="approval-form" data-action="approve" method="POST"
+                                            action="{{ route('admin.approvals.approve', $a->id) }}">
+                                            @csrf
+                                            <button class="btn btn-mini btn-approve" type="submit">
+                                                <i class="fa-solid fa-check me-1"></i> Approve
+                                            </button>
+                                        </form>
+
+                                        <form class="approval-form" data-action="decline" method="POST"
+                                            action="{{ route('admin.approvals.decline', $a->id) }}">
+                                            @csrf
+                                            <button class="btn btn-mini btn-decline" type="submit">
+                                                <i class="fa-solid fa-xmark me-1"></i> Decline
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                @endforeach
                                 @endif
                             </div>
                         </div>
@@ -858,7 +990,8 @@
                     return;
                 }
 
-                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' : 'Booking declined.'));
+                showFlash('success', data.message || (action === 'approve' ? 'Booking approved.' :
+                    'Booking declined.'));
                 if (item) item.remove();
 
                 if (typeof data.pendingCount !== 'undefined') setCount(data.pendingCount);
@@ -904,7 +1037,9 @@
         bell?.addEventListener('click', togglePopover);
         pop?.addEventListener('click', (e) => e.stopPropagation());
         document.addEventListener('click', closePopover);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePopover();
+        });
 
         // ----- live polling -----
         let lastPending = Number(badgeEl?.textContent || 0);
@@ -921,9 +1056,9 @@
                 const id = Number(i.id || 0);
                 const patient = escapeHtml(i.patient || 'N/A');
                 const service = escapeHtml(i.service || 'N/A');
-                const doctor  = escapeHtml(i.doctor  || '—');
-                const date    = escapeHtml(i.date    || '—');
-                const time    = escapeHtml(i.time    || '—');
+                const doctor = escapeHtml(i.doctor || '—');
+                const date = escapeHtml(i.date || '—');
+                const time = escapeHtml(i.time || '—');
                 const approveUrl = escapeHtml(i.approve_url || '');
                 const declineUrl = escapeHtml(i.decline_url || '');
 
@@ -969,7 +1104,10 @@
             polling = true;
             try {
                 const res = await fetch(widgetUrl + '?limit=8', {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     cache: 'no-store'
                 });
 
@@ -1003,72 +1141,79 @@
 
     {{-- ✅ PWA Service Worker --}}
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
-            });
-        }
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js', {
+                scope: '/'
+            }).catch(() => {});
+        });
+    }
     </script>
 
     <script>
-        // ✅ ADMIN: Push bind + force bullhorn icon ALWAYS (on/off)
-        (() => {
-            const btn = document.getElementById('ktPushBtn');
-            if (!btn) return;
+    // ✅ ADMIN: Push bind + force bullhorn icon ALWAYS (on/off)
+    (() => {
+        const btn = document.getElementById('ktPushBtn');
+        if (!btn) return;
 
-            // bind once (requires user click)
-            if (window.KTPush) {
-                window.KTPush.bind('#ktPushBtn');
-            }
+        // bind once (requires user click)
+        if (window.KTPush) {
+            window.KTPush.bind('#ktPushBtn');
+        }
 
-            let fixing = false;
+        let fixing = false;
 
-            const ensureBullhorn = () => {
-                if (fixing) return;
-                fixing = true;
+        const ensureBullhorn = () => {
+            if (fixing) return;
+            fixing = true;
 
-                try {
-                    // remove any injected icon wrappers
-                    btn.querySelectorAll('svg, span.fa-layers').forEach(n => n.remove());
+            try {
+                // remove any injected icon wrappers
+                btn.querySelectorAll('svg, span.fa-layers').forEach(n => n.remove());
 
-                    // ensure exactly one <i>
-                    let icon = btn.querySelector('i');
-                    if (!icon) {
-                        icon = document.createElement('i');
-                        btn.prepend(icon);
-                    }
-                    btn.querySelectorAll('i').forEach((n, idx) => { if (idx > 0) n.remove(); });
-
-                    // force bullhorn classes (do NOT touch button classes)
-                    icon.className = 'fa-solid fa-bullhorn';
-                    icon.setAttribute('aria-hidden', 'true');
-                } finally {
-                    fixing = false;
+                // ensure exactly one <i>
+                let icon = btn.querySelector('i');
+                if (!icon) {
+                    icon = document.createElement('i');
+                    btn.prepend(icon);
                 }
-            };
+                btn.querySelectorAll('i').forEach((n, idx) => {
+                    if (idx > 0) n.remove();
+                });
 
-            ensureBullhorn();
+                // force bullhorn classes (do NOT touch button classes)
+                icon.className = 'fa-solid fa-bullhorn';
+                icon.setAttribute('aria-hidden', 'true');
+            } finally {
+                fixing = false;
+            }
+        };
 
-            const obs = new MutationObserver(() => {
-                if (fixing) return;
-                requestAnimationFrame(ensureBullhorn);
-            });
+        ensureBullhorn();
 
-            // watch DOM + class changes (includes <i> class swaps)
-            obs.observe(btn, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class']
-            });
+        const obs = new MutationObserver(() => {
+            if (fixing) return;
+            requestAnimationFrame(ensureBullhorn);
+        });
 
-            // extra safety after click (some toggles are async)
-            btn.addEventListener('click', () => {
-                setTimeout(ensureBullhorn, 0);
-                setTimeout(ensureBullhorn, 250);
-                setTimeout(ensureBullhorn, 800);
-            }, { passive: true });
-        })();
+        // watch DOM + class changes (includes <i> class swaps)
+        obs.observe(btn, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        // extra safety after click (some toggles are async)
+        btn.addEventListener('click', () => {
+            setTimeout(ensureBullhorn, 0);
+            setTimeout(ensureBullhorn, 250);
+            setTimeout(ensureBullhorn, 800);
+        }, {
+            passive: true
+        });
+    })();
     </script>
 </body>
+
 </html>

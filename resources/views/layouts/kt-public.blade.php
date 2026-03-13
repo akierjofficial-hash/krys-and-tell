@@ -32,6 +32,22 @@
         @yield('content')
     </main>
 
+    <section class="kt-cookie" id="ktCookie" hidden aria-live="polite" aria-label="Cookie consent">
+        <div class="kt-cookie__card">
+            <p class="kt-cookie__title">Cookies Notice</p>
+            <p class="kt-cookie__text">
+                To provide the best experience, we use technologies like cookies to store and access
+                basic device information. Essential cookies keep this website secure and functional.
+            </p>
+
+            <div class="kt-cookie__actions">
+                <button type="button" class="kt-cookie__btn kt-cookie__btn--primary" id="ktCookieAccept">Accept</button>
+            </div>
+
+            <a href="{{ route('public.privacy') }}" class="kt-cookie__policy">Privacy Policy</a>
+        </div>
+    </section>
+
     @include('kt.partials.footer')
 
     <script src="{{ asset('js/kt-public.js') }}?v={{ @filemtime(public_path('js/kt-public.js')) }}"></script>
