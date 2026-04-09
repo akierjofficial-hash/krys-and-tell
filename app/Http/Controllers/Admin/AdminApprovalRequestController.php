@@ -38,7 +38,7 @@ class AdminApprovalRequestController extends Controller
 
         $requests = $q->paginate(12);
 
-        // ✅ Needed for Edit & Approve modal
+        // âœ… Needed for Edit & Approve modal
         $doctors = $this->activeDoctors();
         $doctorRequired = $this->doctorRequired();
 
@@ -65,11 +65,11 @@ class AdminApprovalRequestController extends Controller
             $patientName =
                 trim(($a->public_first_name ?? '') . ' ' . ($a->public_last_name ?? '')) ?: ($a->public_name ?? 'N/A');
 
-            $serviceName = $a->service->name ?? 'N/A';
-            $doctorName  = $a->doctor->name ?? ($a->dentist_name ?? '—');
+            $serviceName = $a->service->name ?? 'Service not set';
+            $doctorName  = $a->doctor->name ?? ($a->dentist_name ?? 'Doctor to be assigned');
 
-            $dateLabel = '—';
-            $timeLabel = '—';
+            $dateLabel = 'Not set yet';
+            $timeLabel = 'Not set yet';
             $dateRaw = null;
             $timeRaw = null;
             $isWalkInRequest = Schema::hasColumn('appointments', 'is_walk_in_request')
@@ -82,7 +82,7 @@ class AdminApprovalRequestController extends Controller
                     $dateLabel = Carbon::parse($a->appointment_date)->format('M d, Y');
                 }
                 if ($isWalkInRequest) {
-                    $timeLabel = 'Walk-in Request';
+                    $timeLabel = 'Walk-in request';
                 } elseif (!empty($a->appointment_time)) {
                     $timeRaw = Carbon::parse($a->appointment_time)->format('H:i');
                     $timeLabel = Carbon::parse($a->appointment_time)->format('h:i A');
@@ -94,26 +94,28 @@ class AdminApprovalRequestController extends Controller
                 $doctorId = $a->doctor_id ?? null;
             }
 
+            $noteRaw = $hasStaffNote ? (string) ($a->staff_note ?? '') : '';
+
             return [
                 'id'      => $a->id,
                 'patient' => $patientName,
                 'service' => $serviceName,
                 'doctor'  => $doctorName,
 
-                'email'   => $a->public_email ?? '—',
-                'phone'   => $a->public_phone ?? '—',
-                'address' => $a->public_address ?? '—',
+                'email'   => $a->public_email ?? 'Not provided',
+                'phone'   => $a->public_phone ?? 'Not provided',
+                'address' => $a->public_address ?? 'Not provided',
 
                 'date'    => $dateLabel,
                 'time'    => $timeLabel,
 
-                // ✅ raw values needed for modal prefill
+                // âœ… raw values needed for modal prefill
                 'service_id' => $a->service_id ?? null,
                 'doctor_id'  => $doctorId,
                 'date_raw'   => $dateRaw,
                 'time_raw'   => $timeRaw,
                 'is_walk_in_request' => $isWalkInRequest,
-                'staff_note' => $hasStaffNote ? ($a->staff_note ?? null) : null,
+                'staff_note' => $noteRaw,
 
                 'approve_url' => route('admin.approvals.approve', $a),
                 'decline_url' => route('admin.approvals.decline', $a),
@@ -128,7 +130,7 @@ class AdminApprovalRequestController extends Controller
     }
 
     /**
-     * ✅ Approve booking
+     * âœ… Approve booking
      * Supports staff/admin edits before approving:
      * - doctor_id
      * - appointment_date (Y-m-d)
@@ -153,58 +155,54 @@ class AdminApprovalRequestController extends Controller
                 : false;
             $isWalkIn = (($service instanceof Service) ? $this->isWalkIn($service) : false) || $isWalkInRequest;
 
-            // detect changes to require a reason
-            $incomingDoctorId = $request->has('doctor_id')
-                ? ($request->filled('doctor_id') ? (int) $request->doctor_id : null)
-                : (Schema::hasColumn('appointments', 'doctor_id') ? ($appointment->doctor_id ?? null) : null);
+            // Original values for safe change detection.
+            $origDate = null;
+            $origTime = null;
+            $origDoctorId = null;
 
-            $incomingDate = $request->filled('appointment_date')
+            try {
+                if (!empty($appointment->appointment_date)) {
+                    $origDate = Carbon::parse($appointment->appointment_date)->toDateString();
+                }
+                if (!empty($appointment->appointment_time)) {
+                    $origTime = Carbon::parse($appointment->appointment_time)->format('H:i');
+                }
+            } catch (\Throwable $e) {
+                // Keep nulls and continue; validation below will handle user input.
+            }
+
+            if (Schema::hasColumn('appointments', 'doctor_id')) {
+                $origDoctorId = $appointment->doctor_id ? (int) $appointment->doctor_id : null;
+            }
+
+            $request->validate([
+                'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+                'appointment_date' => ['nullable', 'date', 'after_or_equal:today'],
+                'appointment_time' => $isWalkIn ? ['nullable'] : ['nullable', 'date_format:H:i'],
+                'staff_note' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $finalDate = $request->filled('appointment_date')
                 ? Carbon::parse($request->appointment_date)->toDateString()
                 : ($appointment->appointment_date ?? null);
 
-            $incomingTime = null;
-            if (!$isWalkIn && Schema::hasColumn('appointments', 'appointment_time')) {
-                if ($request->filled('appointment_time')) {
-                    $incomingTime = Carbon::createFromFormat('H:i', $request->appointment_time)->format('H:i');
-                } elseif (!empty($appointment->appointment_time)) {
-                    $incomingTime = Carbon::parse($appointment->appointment_time)->format('H:i');
+            $finalDoctorId = null;
+            if (Schema::hasColumn('appointments', 'doctor_id')) {
+                if ($request->has('doctor_id')) {
+                    $finalDoctorId = $request->filled('doctor_id') ? (int) $request->doctor_id : null;
+                } else {
+                    $finalDoctorId = $appointment->doctor_id ?? null;
                 }
             }
 
-            $didChangeDoctor = Schema::hasColumn('appointments', 'doctor_id')
-                ? ((string)($appointment->doctor_id ?? '') !== (string)($incomingDoctorId ?? ''))
-                : false;
-
-            $didChangeDate = Schema::hasColumn('appointments', 'appointment_date')
-                ? ((string)($appointment->appointment_date ?? '') !== (string)($incomingDate ?? ''))
-                : false;
-
-            $didChangeTime = (!$isWalkIn && Schema::hasColumn('appointments', 'appointment_time'))
-                ? ((string)Carbon::parse($appointment->appointment_time ?? '')->format('H:i') !== (string)($incomingTime ?? ''))
-                : false;
-
-            $requireNote = ($didChangeDoctor || $didChangeDate || $didChangeTime);
-
-            $request->validate([
-                'doctor_id' => $doctorRequired
-                    ? ['nullable', 'integer', 'exists:doctors,id']
-                    : ['nullable', 'integer', 'exists:doctors,id'],
-
-                'appointment_date' => ['nullable', 'date', 'after_or_equal:today'],
-
-                // walk-in: time not required; scheduled: accept H:i
-                'appointment_time' => $isWalkIn ? ['nullable'] : ['nullable', 'date_format:H:i'],
-
-                // ✅ reason/note if changed
-                'staff_note' => $requireNote
-                    ? ['required', 'string', 'max:500']
-                    : ['nullable', 'string', 'max:500'],
-            ]);
-
-            $finalDate = $incomingDate;
-            $finalDoctorId = $incomingDoctorId;
-            $finalTime = $incomingTime;
-            $finalNote = $request->filled('staff_note') ? trim((string)$request->staff_note) : null;
+            $finalTime = null;
+            if (!$isWalkIn && Schema::hasColumn('appointments', 'appointment_time')) {
+                if ($request->filled('appointment_time')) {
+                    $finalTime = Carbon::createFromFormat('H:i', $request->appointment_time)->format('H:i');
+                } elseif (!empty($appointment->appointment_time)) {
+                    $finalTime = Carbon::parse($appointment->appointment_time)->format('H:i');
+                }
+            }
 
             if (empty($finalDate)) {
                 throw new \RuntimeException('Please set an appointment date before approving.');
@@ -218,7 +216,17 @@ class AdminApprovalRequestController extends Controller
                 throw new \RuntimeException('Please select a time before approving.');
             }
 
-            // ✅ Validate slot availability for scheduled services (exclude this appointment itself)
+            $changedDate = ($origDate && $finalDate && $finalDate !== $origDate);
+            $changedTime = ($origTime && $finalTime && $finalTime !== $origTime);
+            $changedDoctor = ($origDoctorId && $finalDoctorId && (int) $finalDoctorId !== (int) $origDoctorId);
+            $scheduleChanged = ($changedDate || $changedTime || $changedDoctor);
+
+            $note = trim((string) $request->input('staff_note', ''));
+            if ($scheduleChanged && Schema::hasColumn('appointments', 'staff_note') && $note === '') {
+                throw new \RuntimeException('Please add a note/reason to the patient when changing doctor/date/time.');
+            }
+
+            // âœ… Validate slot availability for scheduled services (exclude this appointment itself)
             if (!$isWalkIn && !empty($finalTime)) {
                 $slots = $this->computeHourlySlots($finalDate, $finalDoctorId, $appointment->id);
                 if (!in_array($finalTime, $slots, true)) {
@@ -226,10 +234,10 @@ class AdminApprovalRequestController extends Controller
                 }
             }
 
-            DB::transaction(function () use ($appointment, $finalDate, $finalTime, $finalDoctorId, $finalNote, $isWalkIn, $isWalkInRequest) {
+            DB::transaction(function () use ($appointment, $finalDate, $finalTime, $finalDoctorId, $isWalkIn, $isWalkInRequest, $request, $note) {
                 $appointment->loadMissing('user');
 
-                // ✅ Ensure patient record exists if patient_id column exists
+                // âœ… Ensure patient record exists if patient_id column exists
                 if (Schema::hasColumn('appointments', 'patient_id') && empty($appointment->patient_id)) {
                     $patientId = $this->findOrCreatePatientFromAppointment($appointment);
                     if (!$patientId) {
@@ -238,7 +246,7 @@ class AdminApprovalRequestController extends Controller
                     $appointment->patient_id = $patientId;
                 }
 
-                // ✅ Apply edits BEFORE approving
+                // âœ… Apply edits BEFORE approving
                 if (Schema::hasColumn('appointments', 'appointment_date')) {
                     $appointment->appointment_date = $finalDate;
                 }
@@ -257,8 +265,8 @@ class AdminApprovalRequestController extends Controller
                     $appointment->appointment_time = $isWalkIn ? null : $finalTime;
                 }
 
-                if (Schema::hasColumn('appointments', 'staff_note')) {
-                    $appointment->staff_note = $finalNote;
+                if ($request->has('staff_note') && Schema::hasColumn('appointments', 'staff_note')) {
+                    $appointment->staff_note = ($note !== '') ? $note : null;
                 }
 
                 // If scheduled and duration_minutes missing, enforce the 1-hour block
@@ -266,7 +274,7 @@ class AdminApprovalRequestController extends Controller
                     $appointment->duration_minutes = self::SLOT_MINUTES;
                 }
 
-                // ✅ Approve
+                // âœ… Approve
                 if (Schema::hasColumn('appointments', 'status')) {
                     $appointment->status = $isWalkInRequest ? 'walked_in' : 'upcoming';
                 }
@@ -794,3 +802,4 @@ class AdminApprovalRequestController extends Controller
         return ['first' => $first, 'middle' => $middle, 'last' => $last];
     }
 }
+
