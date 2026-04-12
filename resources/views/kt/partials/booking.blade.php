@@ -153,6 +153,7 @@
                             <select name="doctor_id" id="kt_doctor_id" class="kt-form-input @error('doctor_id') kt-input--error @enderror">
                                 <option value="">Select dentist</option>
                             </select>
+                            <div class="kt-form-help" id="kt_doctor_help"></div>
                             @error('doctor_id')<span class="kt-form-error">{{ $message }}</span>@enderror
                         </div>
                     </div>

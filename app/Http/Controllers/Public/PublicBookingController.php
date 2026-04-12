@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 
 class PublicBookingController extends Controller
 {
-    // ✅ Clinic rules (scheduled bookings)
+    // Ã¢Å“â€¦ Clinic rules (scheduled bookings)
     private const CLINIC_OPEN  = '09:00';
     private const CLINIC_CLOSE = '17:00'; // last start slot is 16:00
     private const SLOT_MINUTES = 60;      // 1 hour blocks
@@ -27,9 +27,9 @@ class PublicBookingController extends Controller
     private const PENDING_STATUS = 'pending';
     private const SLOT_BLOCKING_STATUSES = ['upcoming', 'approved', 'confirmed', 'scheduled'];
 
-    // ✅ Walk-in rule:
+    // Ã¢Å“â€¦ Walk-in rule:
     // - duration_minutes is null/empty => walk-in
-    // - duration_minutes 1–5 => walk-in
+    // - duration_minutes 1Ã¢â‚¬â€œ5 => walk-in
     private function isWalkIn(Service $service): bool
     {
         $durRaw = $service->duration_minutes ?? null;
@@ -45,7 +45,9 @@ class PublicBookingController extends Controller
 
     public function create(Service $service)
     {
-        $doctors = $this->activeDoctors();
+        $doctors = $this->availableDoctorsForService($service);
+        $doctorRequired = $this->doctorRequired($service);
+        $autoAssignedDoctorId = $this->autoAssignedDoctorId($service, $doctors);
         $user = auth()->user();
 
         $successAppointment = null;
@@ -65,6 +67,9 @@ class PublicBookingController extends Controller
         return view('public.booking.create', [
             'service' => $service,
             'doctors' => $doctors,
+            'doctorRequired' => $doctorRequired,
+            'doctorRestrictionEnabled' => $this->serviceUsesAssignedDoctors($service),
+            'autoAssignedDoctorId' => $autoAssignedDoctorId,
             'successAppointment' => $successAppointment,
             'needsDetails' => $needsDetails,
             'profile' => $profile,
@@ -118,11 +123,17 @@ class PublicBookingController extends Controller
             : false;
         $isWalkIn = $this->isWalkIn($service) || $isWalkInRequest;
 
+        $doctors = $this->availableDoctorsForService($service);
+        $doctorRequired = $this->doctorRequired($service);
+        $autoAssignedDoctorId = $this->autoAssignedDoctorId($service, $doctors);
+
         return view('public.booking.edit', [
             'appointment' => $appointment,
             'service' => $service,
-            'doctors' => $this->activeDoctors(),
-            'doctorRequired' => $this->doctorRequired(),
+            'doctors' => $doctors,
+            'doctorRequired' => $doctorRequired,
+            'doctorRestrictionEnabled' => $this->serviceUsesAssignedDoctors($service),
+            'autoAssignedDoctorId' => $autoAssignedDoctorId,
             'isWalkIn' => $isWalkIn,
             'prefillDate' => $dateValue,
             'prefillTime' => $timeValue,
@@ -153,7 +164,8 @@ class PublicBookingController extends Controller
                 ->with('error', 'Unable to edit booking because service data is missing.');
         }
 
-        $doctorRequired = $this->doctorRequired();
+        $doctorRequired = $this->doctorRequired($service);
+        $autoAssignedDoctorId = $this->autoAssignedDoctorId($service);
         $isWalkInService = $this->isWalkIn($service);
         $isWalkInRequest = Schema::hasColumn('appointments', 'is_walk_in_request')
             ? (bool) ($appointment->is_walk_in_request ?? false)
@@ -163,15 +175,27 @@ class PublicBookingController extends Controller
         $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time' => $isWalkIn ? ['nullable'] : ['required', 'date_format:H:i'],
-            'doctor_id' => $doctorRequired
-                ? ['required', 'integer', 'exists:doctors,id']
-                : ['nullable', 'integer', 'exists:doctors,id'],
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
             'message' => ['nullable', 'string', 'max:500'],
         ]);
 
         $date = Carbon::parse($request->date)->toDateString();
-        $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
+        $doctorId = $request->filled('doctor_id')
+            ? $request->integer('doctor_id')
+            : $autoAssignedDoctorId;
         $time = $isWalkIn ? null : $request->time;
+
+        if ($doctorRequired && !$doctorId) {
+            return back()
+                ->withErrors(['doctor_id' => $this->missingDoctorMessage($service)])
+                ->withInput();
+        }
+
+        if ($doctorId && !$this->doctorAllowedForService($service, $doctorId)) {
+            return back()
+                ->withErrors(['doctor_id' => 'Selected dentist is not assigned to this treatment. Please choose one of the allowed dentists.'])
+                ->withInput();
+        }
 
         $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $date);
         if ($doctorUnavailableReason !== null) {
@@ -230,19 +254,48 @@ class PublicBookingController extends Controller
 
     public function slots(Request $request, Service $service)
     {
-        // ✅ Walk-in services do not have slots
-        if ($this->isWalkIn($service)) {
-            $doctorId = $request->integer('doctor_id') ?: null;
-            $schedule = $this->resolveDoctorSchedule($doctorId);
-            $walkInDate = now()->toDateString();
-            if ($request->filled('date')) {
-                try {
-                    $walkInDate = Carbon::parse((string) $request->date)->toDateString();
-                } catch (\Throwable $e) {
-                    // Keep today fallback.
-                }
-            }
+        $serviceDoctors = $this->availableDoctorsForService($service);
+        $doctorRequired = $this->doctorRequired($service);
+        $autoAssignedDoctorId = $this->autoAssignedDoctorId($service, $serviceDoctors);
+        $autoAssignedDoctor = $autoAssignedDoctorId
+            ? $serviceDoctors->firstWhere('id', $autoAssignedDoctorId)
+            : null;
+        $assignmentRestricted = $this->serviceUsesAssignedDoctors($service);
+        $bookingBlocked = $assignmentRestricted && $serviceDoctors->isEmpty();
+        $bookingBlockedReason = $bookingBlocked ? $this->missingDoctorMessage($service) : null;
 
+        $request->validate([
+            'date' => ['nullable', 'date', 'after_or_equal:today'],
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+        ]);
+
+        $doctorId = $request->filled('doctor_id')
+            ? $request->integer('doctor_id')
+            : $autoAssignedDoctorId;
+
+        if ($doctorId && !$this->doctorAllowedForService($service, $doctorId)) {
+            return response()->json([
+                'date' => $request->filled('date') ? Carbon::parse((string) $request->date)->toDateString() : now()->toDateString(),
+                'doctor_id' => $doctorId,
+                'slots' => [],
+                'meta' => [
+                    'doctor_required' => $doctorRequired,
+                    'doctor_selection_required' => false,
+                    'assignment_restricted' => $assignmentRestricted,
+                    'auto_assigned_doctor_id' => $autoAssignedDoctorId,
+                    'auto_assigned_doctor_name' => $autoAssignedDoctor?->name,
+                    'booking_blocked' => true,
+                    'booking_blocked_reason' => 'Selected dentist is not assigned to this treatment.',
+                    'timezone' => config('app.timezone'),
+                ],
+            ], 422);
+        }
+
+        if ($this->isWalkIn($service)) {
+            $schedule = $this->resolveDoctorSchedule($doctorId);
+            $walkInDate = $request->filled('date')
+                ? Carbon::parse((string) $request->date)->toDateString()
+                : now()->toDateString();
             $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $walkInDate);
 
             return response()->json([
@@ -256,29 +309,50 @@ class PublicBookingController extends Controller
                     'open' => $schedule['open'],
                     'close' => $schedule['close'],
                     'working_days' => $schedule['working_days'],
+                    'doctor_required' => $doctorRequired,
+                    'doctor_selection_required' => $doctorRequired && !$doctorId,
+                    'assignment_restricted' => $assignmentRestricted,
+                    'auto_assigned_doctor_id' => $autoAssignedDoctorId,
+                    'auto_assigned_doctor_name' => $autoAssignedDoctor?->name,
+                    'booking_blocked' => $bookingBlocked,
+                    'booking_blocked_reason' => $bookingBlockedReason,
                     'timezone' => config('app.timezone'),
                 ],
             ]);
         }
 
-        $doctorRequired = $this->doctorRequired();
-
         $request->validate([
-            'date'      => ['required', 'date', 'after_or_equal:today'],
-            'doctor_id' => $doctorRequired ? ['required', 'integer', 'exists:doctors,id'] : ['nullable', 'integer'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
         $date = Carbon::parse($request->date)->toDateString();
-        $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
+
+        if ($doctorRequired && !$doctorId) {
+            return response()->json([
+                'date' => $date,
+                'doctor_id' => null,
+                'slots' => [],
+                'meta' => [
+                    'doctor_required' => true,
+                    'doctor_selection_required' => true,
+                    'assignment_restricted' => $assignmentRestricted,
+                    'auto_assigned_doctor_id' => $autoAssignedDoctorId,
+                    'auto_assigned_doctor_name' => $autoAssignedDoctor?->name,
+                    'booking_blocked' => $bookingBlocked,
+                    'booking_blocked_reason' => $bookingBlockedReason ?? 'Please choose an assigned dentist first.',
+                    'timezone' => config('app.timezone'),
+                ],
+            ]);
+        }
+
         $schedule = $this->resolveDoctorSchedule($doctorId);
         $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $date);
-
         $slots = $this->computeHourlySlots($date, $doctorId);
 
         return response()->json([
-            'date'      => $date,
+            'date' => $date,
             'doctor_id' => $doctorId,
-            'slots'     => $slots,
+            'slots' => $slots,
             'meta' => [
                 'step_minutes' => self::SLOT_MINUTES,
                 'duration_minutes' => self::SLOT_MINUTES,
@@ -289,6 +363,13 @@ class PublicBookingController extends Controller
                 'working_days' => $schedule['working_days'],
                 'doctor_unavailable' => $doctorUnavailableReason !== null,
                 'doctor_unavailable_reason' => $doctorUnavailableReason,
+                'doctor_required' => $doctorRequired,
+                'doctor_selection_required' => false,
+                'assignment_restricted' => $assignmentRestricted,
+                'auto_assigned_doctor_id' => $autoAssignedDoctorId,
+                'auto_assigned_doctor_name' => $autoAssignedDoctor?->name,
+                'booking_blocked' => $bookingBlocked,
+                'booking_blocked_reason' => $bookingBlockedReason,
                 'timezone' => config('app.timezone'),
             ],
         ]);
@@ -302,7 +383,15 @@ class PublicBookingController extends Controller
 
         $date = Carbon::parse((string) $request->input('date'))->toDateString();
         $tz = config('app.timezone');
-        $doctors = $this->activeDoctors();
+        $doctors = $this->availableDoctorsForService($service);
+        $doctorRequired = $this->doctorRequired($service);
+        $assignmentRestricted = $this->serviceUsesAssignedDoctors($service);
+        $autoAssignedDoctorId = $this->autoAssignedDoctorId($service, $doctors);
+        $autoAssignedDoctor = $autoAssignedDoctorId
+            ? $doctors->firstWhere('id', $autoAssignedDoctorId)
+            : null;
+        $bookingBlocked = $assignmentRestricted && $doctors->isEmpty();
+        $bookingBlockedReason = $bookingBlocked ? $this->missingDoctorMessage($service) : null;
 
         $dayOffMap = collect();
         if (Schema::hasTable('doctor_unavailabilities')) {
@@ -340,12 +429,21 @@ class PublicBookingController extends Controller
         return response()->json([
             'date' => $date,
             'doctors' => $items,
+            'meta' => [
+                'doctor_required' => $doctorRequired,
+                'assignment_restricted' => $assignmentRestricted,
+                'auto_assigned_doctor_id' => $autoAssignedDoctorId,
+                'auto_assigned_doctor_name' => $autoAssignedDoctor?->name,
+                'booking_blocked' => $bookingBlocked,
+                'booking_blocked_reason' => $bookingBlockedReason,
+            ],
         ]);
     }
 
     public function store(Request $request, Service $service)
     {
-        $doctorRequired = $this->doctorRequired();
+        $doctorRequired = $this->doctorRequired($service);
+        $autoAssignedDoctorId = $this->autoAssignedDoctorId($service);
         $user = auth()->user();
 
         $isWalkInService = $this->isWalkIn($service);
@@ -362,9 +460,7 @@ class PublicBookingController extends Controller
             'time' => $isWalkInService ? ['nullable'] : ['nullable', 'date_format:H:i'],
             'request_walkin' => ['nullable', 'boolean'],
 
-            'doctor_id' => $doctorRequired
-                ? ['required', 'integer', 'exists:doctors,id']
-                : ['nullable', 'integer', 'exists:doctors,id'],
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
 
             'full_name' => ['required', 'string', 'max:190'],
 
@@ -382,9 +478,23 @@ class PublicBookingController extends Controller
         $request->validate($rules);
 
         $date = Carbon::parse($request->date)->toDateString();
-        $doctorId = $doctorRequired ? $request->integer('doctor_id') : ($request->integer('doctor_id') ?: null);
+        $doctorId = $request->filled('doctor_id')
+            ? $request->integer('doctor_id')
+            : $autoAssignedDoctorId;
         $requestWalkIn = !$isWalkInService && $request->boolean('request_walkin');
         $isWalkIn = $isWalkInService || $requestWalkIn;
+
+        if ($doctorRequired && !$doctorId) {
+            return back()
+                ->withErrors(['doctor_id' => $this->missingDoctorMessage($service)])
+                ->withInput();
+        }
+
+        if ($doctorId && !$this->doctorAllowedForService($service, $doctorId)) {
+            return back()
+                ->withErrors(['doctor_id' => 'Selected dentist is not assigned to this treatment. Please choose one of the allowed dentists.'])
+                ->withInput();
+        }
 
         $doctorUnavailableReason = $this->doctorUnavailableReason($doctorId, $date);
         if ($doctorUnavailableReason !== null) {
@@ -610,7 +720,7 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * ✅ Notify clinic email that a new booking was submitted.
+     * Ã¢Å“â€¦ Notify clinic email that a new booking was submitted.
      * Uses MAIL_FROM_ADDRESS as default receiver, fallback to krysandt@gmail.com.
      */
     private function notifyClinicNewBooking(Appointment $appointment): void
@@ -1053,25 +1163,101 @@ class PublicBookingController extends Controller
             ->first();
     }
 
-    private function activeDoctors()
+    private function activeDoctorQuery()
     {
-        if (!class_exists(Doctor::class) || !Schema::hasTable('doctors')) return collect();
+        $query = Doctor::query();
 
-        $q = Doctor::query();
+        if (Schema::hasColumn('doctors', 'is_active')) {
+            $query->where('is_active', 1);
+        }
 
-        if (Schema::hasColumn('doctors', 'is_active')) $q->where('is_active', 1);
+        if (Schema::hasColumn('doctors', 'name')) {
+            $query->orderBy('name');
+        } else {
+            $query->orderBy('id');
+        }
 
-        if (Schema::hasColumn('doctors', 'name')) $q->orderBy('name');
-        else $q->orderBy('id');
-
-        return $q->get();
+        return $query;
     }
 
-    private function doctorRequired(): bool
+    private function activeDoctors()
+    {
+        if (!class_exists(Doctor::class) || !Schema::hasTable('doctors')) {
+            return collect();
+        }
+
+        return $this->activeDoctorQuery()->get();
+    }
+
+    private function serviceUsesAssignedDoctors(Service $service): bool
+    {
+        return Schema::hasColumn('services', 'restrict_to_assigned_doctors')
+            && (bool) ($service->restrict_to_assigned_doctors ?? false)
+            && method_exists($service, 'assignedDoctors')
+            && Schema::hasTable('doctor_service');
+    }
+
+    private function availableDoctorsForService(Service $service)
+    {
+        if (!$this->serviceUsesAssignedDoctors($service)) {
+            return $this->activeDoctors();
+        }
+
+        $serviceId = (int) $service->getKey();
+        if ($serviceId <= 0) {
+            return collect();
+        }
+
+        return $this->activeDoctorQuery()
+            ->whereHas('assignedServices', function ($query) use ($serviceId) {
+                $query->where('services.id', $serviceId);
+            })
+            ->get();
+    }
+
+    private function autoAssignedDoctorId(Service $service, $doctors = null): ?int
+    {
+        if (!$this->serviceUsesAssignedDoctors($service)) {
+            return null;
+        }
+
+        $doctors = $doctors instanceof \Illuminate\Support\Collection
+            ? $doctors
+            : $this->availableDoctorsForService($service);
+
+        return $doctors->count() === 1
+            ? (int) $doctors->first()->id
+            : null;
+    }
+
+    private function doctorAllowedForService(Service $service, ?int $doctorId): bool
+    {
+        if (!$doctorId) {
+            return false;
+        }
+
+        return $this->availableDoctorsForService($service)
+            ->contains(fn ($doctor) => (int) $doctor->id === (int) $doctorId);
+    }
+
+    private function doctorRequired(Service $service): bool
     {
         return Schema::hasTable('doctors')
             && Schema::hasColumn('appointments', 'doctor_id')
-            && $this->activeDoctors()->count() > 0;
+            && (
+                $this->serviceUsesAssignedDoctors($service)
+                || $this->activeDoctors()->count() > 0
+            );
+    }
+
+    private function missingDoctorMessage(Service $service): string
+    {
+        if ($this->serviceUsesAssignedDoctors($service)) {
+            return 'No active dentist is currently assigned to this treatment. Please contact the clinic or choose another treatment.';
+        }
+
+        return 'Please choose an available dentist first.';
     }
 }
+
 

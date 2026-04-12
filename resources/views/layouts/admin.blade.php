@@ -707,6 +707,11 @@
                         <i class="fa fa-user-doctor"></i> Doctors
                     </a>
 
+                    <a href="{{ route('admin.service_doctor_assignments.index') }}"
+                        class="{{ request()->routeIs('admin.service_doctor_assignments.*') ? 'active' : '' }}">
+                        <i class="fa fa-stethoscope"></i> Treatment Doctors
+                    </a>
+
                     <a href="{{ route('admin.dentist-unavailability.index') }}"
                         class="{{ request()->routeIs('admin.dentist-unavailability.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-calendar-xmark"></i> Dentist Day-off

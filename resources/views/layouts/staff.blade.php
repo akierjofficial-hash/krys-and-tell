@@ -952,6 +952,11 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     <i class="fa fa-gear"></i> Services
                 </a>
 
+                <a href="{{ route('staff.service_doctor_assignments.index') }}"
+                    class="{{ request()->routeIs('staff.service_doctor_assignments.*') ? 'active' : '' }}">
+                    <i class="fa fa-stethoscope"></i> Treatment Doctors
+                </a>
+
                 <a href="{{ route('staff.messages.index') }}"
                     class="{{ request()->routeIs('staff.messages.*') ? 'active' : '' }}">
                     <i class="fa fa-inbox"></i> Messages

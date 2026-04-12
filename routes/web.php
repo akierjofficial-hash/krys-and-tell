@@ -41,6 +41,7 @@ use App\Http\Controllers\Admin\AdminDoctorUnavailabilityController;
 use App\Http\Controllers\Admin\AdminUserAccountsController;
 use App\Http\Controllers\Admin\AdminApprovalRequestController;
 use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotController;
+use App\Http\Controllers\Shared\ServiceDoctorAssignmentController;
 
 // Public controllers
 use App\Http\Controllers\Public\PublicServiceController;
@@ -215,6 +216,11 @@ Route::middleware('auth')->group(function () {
             Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
             Route::post('/doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggleActive');
 
+            Route::get('/service-doctor-assignments', [ServiceDoctorAssignmentController::class, 'index'])
+                ->name('service_doctor_assignments.index');
+            Route::put('/service-doctor-assignments/{service}', [ServiceDoctorAssignmentController::class, 'update'])
+                ->name('service_doctor_assignments.update');
+
             // Dentist unavailability calendar (admin editable)
             Route::prefix('dentist-unavailability')->name('dentist-unavailability.')->group(function () {
                 Route::get('/', [AdminDoctorUnavailabilityController::class, 'index'])->name('index');
@@ -300,6 +306,11 @@ Route::middleware('auth')->group(function () {
             Route::resource('visits', VisitController::class);
             Route::resource('appointments', AppointmentController::class);
             Route::resource('services', ServiceController::class);
+
+            Route::get('/service-doctor-assignments', [ServiceDoctorAssignmentController::class, 'index'])
+                ->name('service_doctor_assignments.index');
+            Route::put('/service-doctor-assignments/{service}', [ServiceDoctorAssignmentController::class, 'update'])
+                ->name('service_doctor_assignments.update');
 
             // Patient Visit History
             Route::get('/patients/{patient}/visits', [VisitController::class, 'patientVisits'])->name('patients.visits');

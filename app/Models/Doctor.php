@@ -32,4 +32,10 @@ class Doctor extends Model
     {
         return $this->hasMany(DoctorUnavailability::class);
     }
+
+    public function assignedServices()
+    {
+        return $this->belongsToMany(Service::class, 'doctor_service')
+            ->withTimestamps();
+    }
 }

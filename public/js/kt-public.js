@@ -282,6 +282,7 @@
     var serviceSelect = document.getElementById('kt_service_id');
     var dateInput = document.getElementById('kt_date');
     var doctorSelect = document.getElementById('kt_doctor_id');
+    var doctorHelp = document.getElementById('kt_doctor_help');
     var timeSelect = document.getElementById('kt_time');
     var timeHelp = document.getElementById('kt_time_help');
     var walkInInput = document.getElementById('kt_request_walkin');
@@ -291,6 +292,7 @@
     var oldDoctorId = (dateInput && dateInput.dataset.oldDoctorId) ? dateInput.dataset.oldDoctorId : '';
     var appliedOldTime = false;
     var appliedOldDoctor = false;
+    var lastDoctorPayload = null;
 
     function selectedServiceOption() {
         if (!serviceSelect) {
@@ -326,12 +328,19 @@
         }
     }
 
+    function setDoctorMessage(message) {
+        if (doctorHelp) {
+            doctorHelp.textContent = message || '';
+        }
+    }
+
     function resetDoctors(message) {
         if (!doctorSelect) {
             return;
         }
         doctorSelect.innerHTML = '<option value="">' + (message || 'Select dentist') + '</option>';
         doctorSelect.required = false;
+        setDoctorMessage('');
     }
 
     function resetTime(message) {
@@ -365,19 +374,30 @@
         timeSelect.required = true;
     }
 
-    function populateDoctors(doctors) {
+    function populateDoctors(payload) {
         resetDoctors('Select dentist');
 
         if (!doctorSelect) {
             return;
         }
 
-        if (!Array.isArray(doctors) || doctors.length === 0) {
-            doctorSelect.required = false;
+        var doctors = Array.isArray(payload && payload.doctors) ? payload.doctors : [];
+        var meta = payload && payload.meta ? payload.meta : {};
+        var autoDoctorId = meta.auto_assigned_doctor_id ? String(meta.auto_assigned_doctor_id) : '';
+        var autoDoctorName = meta.auto_assigned_doctor_name || '';
+        var bookingBlocked = !!meta.booking_blocked;
+        var bookingBlockedReason = meta.booking_blocked_reason || '';
+        var restricted = !!meta.assignment_restricted;
+        var availableCount = 0;
+        var autoDoctorAvailable = false;
+        var autoDoctorReason = '';
+
+        if (bookingBlocked) {
+            doctorSelect.innerHTML = '<option value="">' + (bookingBlockedReason || 'No dentist available for this treatment') + '</option>';
+            doctorSelect.required = !!meta.doctor_required;
+            setDoctorMessage(bookingBlockedReason);
             return;
         }
-
-        var availableCount = 0;
 
         doctors.forEach(function (doctor) {
             if (!doctor || !doctor.id) {
@@ -385,20 +405,36 @@
             }
 
             var option = document.createElement('option');
-            option.value = String(doctor.id);
-            option.textContent = doctor.name || ('Doctor #' + doctor.id);
+            var doctorId = String(doctor.id);
+            var isAuto = autoDoctorId && doctorId === autoDoctorId;
+            var unavailable = doctor.available === false;
 
-            if (doctor.available === false) {
+            option.value = doctorId;
+            option.textContent = (doctor.name || ('Doctor #' + doctor.id)) + (unavailable ? ' (Unavailable)' : '');
+
+            if (unavailable && !isAuto) {
                 option.disabled = true;
-                option.textContent += ' (Unavailable)';
             } else {
                 availableCount += 1;
+            }
+
+            if (isAuto) {
+                autoDoctorAvailable = !unavailable;
+                autoDoctorReason = doctor.reason || '';
             }
 
             doctorSelect.appendChild(option);
         });
 
-        if (!appliedOldDoctor && oldDoctorId) {
+        if (autoDoctorId) {
+            doctorSelect.value = autoDoctorId;
+            setDoctorMessage(autoDoctorName
+                ? autoDoctorName + (autoDoctorAvailable
+                    ? ' is automatically assigned to this treatment.'
+                    : ' is assigned to this treatment but unavailable on the selected date. ' + autoDoctorReason)
+                : '');
+            appliedOldDoctor = true;
+        } else if (!appliedOldDoctor && oldDoctorId) {
             var candidate = Array.from(doctorSelect.options).find(function (option) {
                 return option.value === String(oldDoctorId) && !option.disabled;
             });
@@ -408,7 +444,15 @@
             appliedOldDoctor = true;
         }
 
-        doctorSelect.required = availableCount > 0;
+        doctorSelect.required = !!meta.doctor_required;
+
+        if (!autoDoctorId) {
+            if (restricted && doctors.length > 0) {
+                setDoctorMessage('Only dentists assigned to this treatment are available.');
+            } else if (availableCount === 0 && doctorSelect.required) {
+                setDoctorMessage('No dentist is available on this date.');
+            }
+        }
     }
 
     function populateSlots(slots) {
@@ -475,7 +519,8 @@
 
         return fetchJson(bookingBase + '/' + serviceId + '/doctors?date=' + encodeURIComponent(dateValue))
             .then(function (payload) {
-                populateDoctors(payload && payload.doctors ? payload.doctors : []);
+                lastDoctorPayload = payload || null;
+                populateDoctors(payload);
             })
             .catch(function () {
                 resetDoctors('Unable to load dentists');
@@ -520,7 +565,9 @@
                     return;
                 }
 
-                if (payload && payload.meta && payload.meta.doctor_unavailable && payload.meta.doctor_unavailable_reason) {
+                if (payload && payload.meta && payload.meta.booking_blocked && payload.meta.booking_blocked_reason) {
+                    setTimeMessage(payload.meta.booking_blocked_reason);
+                } else if (payload && payload.meta && payload.meta.doctor_unavailable && payload.meta.doctor_unavailable_reason) {
                     setTimeMessage('Selected dentist is unavailable: ' + payload.meta.doctor_unavailable_reason);
                 }
 

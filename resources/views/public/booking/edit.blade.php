@@ -4,6 +4,8 @@
 @section('content')
 @php
     $doctorName = optional($appointment->doctor)->name ?? ($appointment->dentist_name ?? null);
+    $doctorRestrictionEnabled = $doctorRestrictionEnabled ?? false;
+    $autoAssignedDoctorId = $autoAssignedDoctorId ?? null;
 @endphp
 
 <section class="kt-booking-page-v2">
@@ -55,7 +57,12 @@
                     @if($doctorRequired)
                         <div class="kt-form-group">
                             <label class="kt-form-label" for="doctor_id">Doctor</label>
-                            <select class="kt-form-input @error('doctor_id') kt-input--error @enderror" name="doctor_id" id="doctor_id" required>
+                            <select class="kt-form-input @error('doctor_id') kt-input--error @enderror"
+                                name="doctor_id"
+                                id="doctor_id"
+                                data-auto-doctor-id="{{ $autoAssignedDoctorId }}"
+                                data-doctor-restricted="{{ $doctorRestrictionEnabled ? '1' : '0' }}"
+                                required>
                                 <option value="">Choose doctor</option>
                                 @foreach($doctors as $d)
                                     <option value="{{ $d->id }}" @selected((string)old('doctor_id', $prefillDoctorId) === (string)$d->id)>
@@ -63,7 +70,11 @@
                                     </option>
                                 @endforeach
                             </select>
-                            <span id="doctorHelp" class="kt-form-help"></span>
+                            <span id="doctorHelp" class="kt-form-help">
+                                @if($doctorRestrictionEnabled && $doctors->isEmpty())
+                                    No active dentist is currently assigned to this treatment.
+                                @endif
+                            </span>
                             @error('doctor_id')<span class="kt-form-error">{{ $message }}</span>@enderror
                         </div>
                     @else
@@ -155,6 +166,22 @@
                         <li>Confirmed appointments require staff assistance to change.</li>
                     </ul>
                 </article>
+
+                @if($doctorRestrictionEnabled)
+                    <article class="kt-booking-v2__aside-card">
+                        <h3>Treatment Assignment</h3>
+                        <p>
+                            This treatment is tied to clinic-assigned dentists.
+                            @if($autoAssignedDoctorId && $doctors->firstWhere('id', $autoAssignedDoctorId))
+                                {{ $doctors->firstWhere('id', $autoAssignedDoctorId)->name }} is automatically assigned when available.
+                            @elseif($doctors->count() > 1)
+                                Only the dentists assigned to this treatment can be selected.
+                            @else
+                                Staff needs to assign a dentist before this request can be updated online.
+                            @endif
+                        </p>
+                    </article>
+                @endif
             </aside>
         </div>
     </div>
@@ -176,16 +203,11 @@
     var doctorRequired = @json((bool) $doctorRequired);
     var oldTime = @json(old('time', $prefillTime));
     var seededOldTime = false;
-    var doctorLabelMap = new Map();
+    var seededOldDoctor = false;
+    var initialAutoDoctorId = doctorEl ? String(doctorEl.getAttribute('data-auto-doctor-id') || '') : '';
+    var treatmentRestricted = doctorEl ? doctorEl.getAttribute('data-doctor-restricted') === '1' : false;
 
     if (!dateEl || !timeEl) return;
-
-    if (doctorEl) {
-        Array.from(doctorEl.options).forEach(function(opt){
-            if (!opt.value) return;
-            doctorLabelMap.set(String(opt.value), (opt.textContent || '').trim());
-        });
-    }
 
     function fmt12h(t){
         if (!t || typeof t !== 'string' || t.indexOf(':') === -1) return t;
@@ -205,16 +227,92 @@
 
     function resetDoctorOptions(){
         if (!doctorEl) return;
-        Array.from(doctorEl.options).forEach(function(opt){
-            if (!opt.value) return;
-            var key = String(opt.value);
-            var baseLabel = doctorLabelMap.get(key) || (opt.textContent || '').replace(/\s+\(Unavailable\)\s*$/i, '').trim();
-            doctorLabelMap.set(key, baseLabel);
-            opt.textContent = baseLabel;
-            opt.disabled = false;
-            opt.hidden = false;
-        });
+        doctorEl.innerHTML = '<option value="">Choose doctor</option>';
         if (doctorHelpEl) doctorHelpEl.textContent = '';
+    }
+
+    function optionLabel(info, unavailable){
+        var label = info && info.name ? info.name : 'Doctor';
+        return unavailable ? label + ' (Unavailable)' : label;
+    }
+
+    function populateDoctors(payload){
+        if (!doctorEl) return;
+
+        resetDoctorOptions();
+
+        var doctors = Array.isArray(payload && payload.doctors) ? payload.doctors : [];
+        var meta = payload && payload.meta ? payload.meta : {};
+        var autoDoctorId = meta.auto_assigned_doctor_id ? String(meta.auto_assigned_doctor_id) : initialAutoDoctorId;
+        var autoDoctorName = meta.auto_assigned_doctor_name || '';
+        var bookingBlocked = !!meta.booking_blocked;
+        var bookingBlockedReason = meta.booking_blocked_reason || '';
+        var availableCount = 0;
+        var autoDoctorAvailable = false;
+        var autoDoctorReason = '';
+
+        doctors.forEach(function(info){
+            if (!info || !info.id) return;
+
+            var doctorId = String(info.id);
+            var isAuto = autoDoctorId && doctorId === autoDoctorId;
+            var unavailable = info.available === false;
+            var option = document.createElement('option');
+            option.value = doctorId;
+            option.textContent = optionLabel(info, unavailable);
+
+            if (unavailable && !isAuto) {
+                option.disabled = true;
+            } else {
+                availableCount += 1;
+            }
+
+            if (isAuto) {
+                autoDoctorAvailable = !unavailable;
+                autoDoctorReason = info.reason || '';
+            }
+
+            doctorEl.appendChild(option);
+        });
+
+        doctorRequired = !!meta.doctor_required;
+        doctorEl.required = doctorRequired;
+
+        if (bookingBlocked) {
+            doctorEl.innerHTML = '<option value="">' + (bookingBlockedReason || 'No dentist available for this treatment') + '</option>';
+            if (doctorHelpEl) {
+                doctorHelpEl.textContent = bookingBlockedReason;
+            }
+            return;
+        }
+
+        if (autoDoctorId) {
+            doctorEl.value = autoDoctorId;
+            if (doctorHelpEl) {
+                doctorHelpEl.textContent = autoDoctorName
+                    ? autoDoctorName + (autoDoctorAvailable
+                        ? ' is automatically assigned to this treatment.'
+                        : ' is assigned to this treatment but unavailable on the selected date. ' + autoDoctorReason)
+                    : '';
+            }
+            seededOldDoctor = true;
+            return;
+        }
+
+        if (!seededOldDoctor && doctorEl.querySelector('option[value="' + @json((string) old('doctor_id', $prefillDoctorId)) + '"]:not([disabled])')) {
+            doctorEl.value = @json((string) old('doctor_id', $prefillDoctorId));
+        }
+        seededOldDoctor = true;
+
+        if (doctorHelpEl) {
+            if (treatmentRestricted && doctors.length > 0) {
+                doctorHelpEl.textContent = 'Only dentists assigned to this treatment are available.';
+            } else if (availableCount === 0 && doctorRequired) {
+                doctorHelpEl.textContent = 'No dentist is available on this date.';
+            } else {
+                doctorHelpEl.textContent = '';
+            }
+        }
     }
 
     async function syncDoctorsByDate(date){
@@ -239,46 +337,7 @@
             return;
         }
 
-        var data = await res.json();
-        var doctors = Array.isArray(data && data.doctors) ? data.doctors : [];
-        var byId = new Map(doctors.map(function(d){ return [String(d.id), d]; }));
-        var selectedUnavailableReason = '';
-
-        Array.from(doctorEl.options).forEach(function(opt){
-            if (!opt.value) return;
-            var key = String(opt.value);
-            var info = byId.get(key);
-            var baseLabel = doctorLabelMap.get(key) || (opt.textContent || '').replace(/\s+\(Unavailable\)\s*$/i, '').trim();
-            doctorLabelMap.set(key, baseLabel);
-
-            if (!info || info.available) {
-                opt.textContent = baseLabel;
-                opt.disabled = false;
-                opt.hidden = false;
-                return;
-            }
-
-            opt.textContent = baseLabel + ' (Unavailable)';
-            opt.disabled = true;
-            opt.hidden = true;
-
-            if (doctorEl.value === key) {
-                selectedUnavailableReason = info.reason || 'Unavailable on this date.';
-            }
-        });
-
-        if (doctorEl.value) {
-            var selectedInfo = byId.get(String(doctorEl.value));
-            if (selectedInfo && !selectedInfo.available) {
-                doctorEl.value = '';
-            }
-        }
-
-        if (doctorHelpEl) {
-            doctorHelpEl.textContent = selectedUnavailableReason
-                ? 'Selected dentist is unavailable: ' + selectedUnavailableReason
-                : '';
-        }
+        populateDoctors(await res.json());
     }
 
     function renderGrid(slots){
@@ -343,9 +402,12 @@
             timeEl.disabled = true;
             timeEl.innerHTML = '<option value="">No available slots</option>';
             var doctorUnavailable = Boolean(data && data.meta && data.meta.doctor_unavailable);
+            var bookingBlocked = Boolean(data && data.meta && data.meta.booking_blocked);
             var doctorUnavailableReason = (data && data.meta && data.meta.doctor_unavailable_reason) || 'Unavailable on this date.';
             if (helpEl) {
-                helpEl.textContent = doctorUnavailable
+                helpEl.textContent = bookingBlocked
+                    ? ((data.meta && data.meta.booking_blocked_reason) || 'No dentist available for this treatment.')
+                    : doctorUnavailable
                     ? 'Selected dentist is unavailable: ' + doctorUnavailableReason
                     : 'No slots available.';
             }
@@ -377,6 +439,9 @@
         loadSlots();
     } else {
         setLoading(doctorRequired ? 'Select dentist and date first...' : 'Select date first...');
+        if (doctorEl && initialAutoDoctorId && doctorEl.value === initialAutoDoctorId) {
+            loadSlots();
+        }
     }
 })();
 </script>
