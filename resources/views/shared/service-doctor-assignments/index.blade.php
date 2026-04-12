@@ -361,7 +361,21 @@
             <div class="alert alert-success mb-0">{{ session('success') }}</div>
         @endif
 
-        @if($services->isEmpty())
+        @if(session('error'))
+            <div class="alert alert-danger mb-0">{{ session('error') }}</div>
+        @endif
+
+        @if(!$schemaReady)
+            <section class="kt-sda-empty">
+                <h2 class="h5 fw-bold mb-2">Database Update Required</h2>
+                <p class="mb-2">
+                    This page needs the latest database migration before treatment-doctor assignments can be used.
+                </p>
+                <p class="mb-0">
+                    Run <code>php artisan migrate</code> on the deployed environment, then refresh this page.
+                </p>
+            </section>
+        @elseif($services->isEmpty())
             <section class="kt-sda-empty">
                 <h2 class="h5 fw-bold mb-2">No treatments found</h2>
                 <p class="mb-0">Try a different search or add treatments first before assigning doctors.</p>

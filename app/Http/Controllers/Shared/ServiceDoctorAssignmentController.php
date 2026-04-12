@@ -15,12 +15,17 @@ class ServiceDoctorAssignmentController extends Controller
     {
         $portal = $this->portalConfig($request);
         $search = trim((string) $request->query('q', ''));
+        $schemaReady = Schema::hasTable('doctor_service')
+            && Schema::hasColumn('services', 'restrict_to_assigned_doctors');
 
-        $services = Service::query()
+        $servicesQuery = Service::query()
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('name', 'like', '%' . $search . '%');
             })
-            ->with(['assignedDoctors' => function ($query) {
+            ->orderBy('name');
+
+        if ($schemaReady) {
+            $servicesQuery->with(['assignedDoctors' => function ($query) {
                 if (Schema::hasColumn('doctors', 'is_active')) {
                     $query->orderByRaw('CASE WHEN is_active = 1 THEN 0 ELSE 1 END');
                 }
@@ -30,20 +35,30 @@ class ServiceDoctorAssignmentController extends Controller
                 } else {
                     $query->orderBy('id');
                 }
-            }])
-            ->orderBy('name')
-            ->get();
+            }]);
+        }
 
-        $doctors = Doctor::query()
-            ->when(Schema::hasColumn('doctors', 'is_active'), function ($query) {
-                $query->orderByRaw('CASE WHEN is_active = 1 THEN 0 ELSE 1 END');
-            })
-            ->when(Schema::hasColumn('doctors', 'name'), function ($query) {
-                $query->orderBy('name');
-            }, function ($query) {
-                $query->orderBy('id');
-            })
-            ->get();
+        $services = $servicesQuery->get();
+
+        if (!$schemaReady) {
+            $services->each(function ($service) {
+                $service->restrict_to_assigned_doctors = false;
+                $service->setRelation('assignedDoctors', collect());
+            });
+        }
+
+        $doctors = Schema::hasTable('doctors')
+            ? Doctor::query()
+                ->when(Schema::hasColumn('doctors', 'is_active'), function ($query) {
+                    $query->orderByRaw('CASE WHEN is_active = 1 THEN 0 ELSE 1 END');
+                })
+                ->when(Schema::hasColumn('doctors', 'name'), function ($query) {
+                    $query->orderBy('name');
+                }, function ($query) {
+                    $query->orderBy('id');
+                })
+                ->get()
+            : collect();
 
         return view('shared.service-doctor-assignments.index', [
             'layout' => $portal['layout'],
@@ -53,12 +68,21 @@ class ServiceDoctorAssignmentController extends Controller
             'doctors' => $doctors,
             'search' => $search,
             'assignmentServiceId' => session('assignment_service_id'),
+            'schemaReady' => $schemaReady,
         ]);
     }
 
     public function update(Request $request, Service $service)
     {
         $portal = $this->portalConfig($request);
+        $schemaReady = Schema::hasTable('doctor_service')
+            && Schema::hasColumn('services', 'restrict_to_assigned_doctors');
+
+        if (!$schemaReady) {
+            return redirect()
+                ->route($portal['routePrefix'] . '.service_doctor_assignments.index')
+                ->with('error', 'Treatment-doctor assignments are not ready yet. Run the latest migration first.');
+        }
 
         $validator = Validator::make($request->all(), [
             'restrict_to_assigned_doctors' => ['nullable', 'boolean'],
