@@ -27,7 +27,7 @@ class ServiceDoctorAssignmentController extends Controller
         if ($schemaReady) {
             $servicesQuery->with(['assignedDoctors' => function ($query) {
                 if (Schema::hasColumn('doctors', 'is_active')) {
-                    $query->orderByRaw('CASE WHEN is_active = 1 THEN 0 ELSE 1 END');
+                    $query->orderByDesc('is_active');
                 }
 
                 if (Schema::hasColumn('doctors', 'name')) {
@@ -50,7 +50,7 @@ class ServiceDoctorAssignmentController extends Controller
         $doctors = Schema::hasTable('doctors')
             ? Doctor::query()
                 ->when(Schema::hasColumn('doctors', 'is_active'), function ($query) {
-                    $query->orderByRaw('CASE WHEN is_active = 1 THEN 0 ELSE 1 END');
+                    $query->orderByDesc('is_active');
                 })
                 ->when(Schema::hasColumn('doctors', 'name'), function ($query) {
                     $query->orderBy('name');
