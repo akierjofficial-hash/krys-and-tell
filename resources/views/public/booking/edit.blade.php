@@ -236,13 +236,14 @@
         return unavailable ? label + ' (Unavailable)' : label;
     }
 
-    function populateDoctors(payload){
+    function populateDoctors(payload, preferredDoctorId){
         if (!doctorEl) return;
 
         resetDoctorOptions();
 
         var doctors = Array.isArray(payload && payload.doctors) ? payload.doctors : [];
         var meta = payload && payload.meta ? payload.meta : {};
+        var preferredId = preferredDoctorId ? String(preferredDoctorId) : '';
         var autoDoctorId = meta.auto_assigned_doctor_id ? String(meta.auto_assigned_doctor_id) : initialAutoDoctorId;
         var autoDoctorName = meta.auto_assigned_doctor_name || '';
         var bookingBlocked = !!meta.booking_blocked;
@@ -299,10 +300,13 @@
             return;
         }
 
-        if (!seededOldDoctor && doctorEl.querySelector('option[value="' + @json((string) old('doctor_id', $prefillDoctorId)) + '"]:not([disabled])')) {
+        if (preferredId && doctorEl.querySelector('option[value="' + preferredId + '"]:not([disabled])')) {
+            doctorEl.value = preferredId;
+            seededOldDoctor = true;
+        } else if (!seededOldDoctor && doctorEl.querySelector('option[value="' + @json((string) old('doctor_id', $prefillDoctorId)) + '"]:not([disabled])')) {
             doctorEl.value = @json((string) old('doctor_id', $prefillDoctorId));
+            seededOldDoctor = true;
         }
-        seededOldDoctor = true;
 
         if (doctorHelpEl) {
             if (treatmentRestricted && doctors.length > 0) {
@@ -315,7 +319,7 @@
         }
     }
 
-    async function syncDoctorsByDate(date){
+    async function syncDoctorsByDate(date, preferredDoctorId){
         if (!doctorRequired || !doctorEl) return;
         if (!date) {
             resetDoctorOptions();
@@ -337,7 +341,7 @@
             return;
         }
 
-        populateDoctors(await res.json());
+        populateDoctors(await res.json(), preferredDoctorId);
     }
 
     function renderGrid(slots){
@@ -364,7 +368,8 @@
 
     async function loadSlots(){
         var date = dateEl.value;
-        await syncDoctorsByDate(date);
+        var preferredDoctorId = doctorEl ? doctorEl.value : '';
+        await syncDoctorsByDate(date, preferredDoctorId);
         var doctorId = doctorEl ? doctorEl.value : '';
         var previousValue = timeEl.value;
 
