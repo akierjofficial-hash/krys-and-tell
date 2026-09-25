@@ -1551,7 +1551,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 ) {
                     border: 1px solid var(--pm-line) !important;
                     border-radius: 16px !important;
-                    overflow: hidden !important;
+                    overflow: auto !important;
+                    -webkit-overflow-scrolling: touch;
                     background: var(--kt-surface) !important;
                     box-shadow: var(--pm-shadow) !important;
                 }
