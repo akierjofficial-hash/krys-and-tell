@@ -8,7 +8,7 @@
 .patients-page{color:var(--kt-text)}
 .patients-head{margin-bottom:16px}
 .patients-title{font-size:30px;font-weight:850;letter-spacing:-.5px;margin:0}.patients-subtitle{color:var(--kt-muted);margin:4px 0 0}
-.patients-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:15px}.patient-search{position:relative;width:min(330px,100%)}.action-cluster,.primary-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.patients-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:15px}.patient-search{position:relative;width:min(330px,100%)}.patient-filter-actions,.patient-primary-actions{display:flex;align-items:center;gap:9px}
 .patient-search>i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--kt-muted)}
 .patient-search input,.patient-sort{min-height:42px;border:1px solid var(--kt-input-border);border-radius:10px;background:var(--kt-input-bg);color:var(--kt-text)}
 .patient-search input{width:100%;padding:9px 38px}.patient-search .clear-search{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--kt-muted);padding:6px}
@@ -18,8 +18,9 @@
 .patient-panel{background:var(--kt-surface);border:1px solid var(--kt-border);border-radius:14px;box-shadow:var(--kt-shadow);overflow:visible}.patient-table-wrap{overflow:visible}.patient-table{width:100%;border-collapse:separate;border-spacing:0}.patient-table th{position:sticky;top:68px;z-index:5;background:var(--kt-surface-2);color:var(--kt-muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:12px 15px;border-bottom:1px solid var(--kt-border);white-space:nowrap}.patient-table td{padding:13px 15px;border-bottom:1px solid var(--kt-border);vertical-align:middle}.patient-table tbody tr:last-child td{border-bottom:0}.patient-table tbody tr.patient-row:hover td{background:rgba(8,124,240,.035)}
 .patient-person{display:flex;align-items:center;gap:11px;min-width:210px}.patient-avatar{width:38px;height:38px;border-radius:50%;background:#e5f1ff;color:#087cf0;display:grid;place-items:center;font-weight:850;flex:0 0 auto}.patient-name{font-weight:800;color:var(--kt-text);text-decoration:none}.patient-name:hover{color:#087cf0}.patient-meta,.cell-sub{font-size:12px;color:var(--kt-muted);margin-top:2px}.initial-divider td{padding:7px 15px!important;background:var(--kt-surface-2)!important;color:#087cf0;font-size:12px;font-weight:850;letter-spacing:.04em}.gender-pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:var(--kt-surface-2);font-size:12px;font-weight:700}.row-actions{display:flex;justify-content:flex-end;gap:7px}.row-menu{position:relative}.row-menu .dropdown-menu{z-index:1080;min-width:205px}.dropdown-item i{width:20px}.dropdown-item.delete{color:#dc3545}.patient-empty{text-align:center;padding:55px 20px;color:var(--kt-muted)}.patient-empty i{font-size:28px;margin-bottom:10px;color:#8cbdf1}
 .patients-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:13px 15px;border-top:1px solid var(--kt-border)}.page-summary{color:var(--kt-muted);font-size:13px}.page-controls{display:flex;align-items:center;gap:13px;flex-wrap:wrap}.per-page{display:flex;align-items:center;gap:7px;color:var(--kt-muted);font-size:13px}.per-page select{border:1px solid var(--kt-border);border-radius:8px;background:var(--kt-surface-2);color:var(--kt-text);padding:6px 8px}.compact-pages{display:flex;align-items:center;gap:4px}.compact-pages a,.compact-pages span{min-width:33px;height:33px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--kt-border);border-radius:8px;text-decoration:none;color:var(--kt-text);font-size:13px}.compact-pages .active{background:#087cf0;border-color:#087cf0;color:#fff}.compact-pages .disabled{opacity:.4}
-@media(max-width:1100px){.patients-toolbar{width:100%}.patient-search{flex:1;min-width:230px}.action-cluster{width:100%}.col-gender,.col-birth{display:none}}
-@media(max-width:720px){.patients-title{font-size:26px}.patients-toolbar{display:grid;grid-template-columns:1fr 1fr}.patient-search{grid-column:1/-1;width:100%}.patient-sort{width:100%;min-width:0}.action-cluster{grid-column:1/-1;width:100%}.primary-actions{flex:1}.primary-actions .pbtn{flex:1}.patients-toolbar .pbtn{padding-inline:10px}.patient-table,.patient-table tbody,.patient-table tr,.patient-table td{display:block}.patient-table thead{display:none}.patient-table tr.patient-row{padding:13px 14px;border-bottom:1px solid var(--kt-border)}.patient-table tr.patient-row td{border:0;padding:5px 0;display:flex;justify-content:space-between;gap:14px}.patient-table tr.patient-row td:first-child{display:block;padding-bottom:10px}.patient-table tr.patient-row td[data-label]::before{content:attr(data-label);color:var(--kt-muted);font-size:12px;font-weight:700}.patient-table .col-gender,.patient-table .col-birth{display:flex}.initial-divider td{display:block!important;margin:0;padding:7px 14px!important}.row-actions{width:100%;justify-content:flex-end;padding-top:5px}.patients-footer{align-items:flex-start}.page-controls{width:100%;justify-content:space-between}.compact-pages .page-number{display:none}}
+@media(max-width:1100px){.patients-toolbar{width:100%}.patient-search{flex:1;min-width:230px}.col-gender,.col-birth{display:none}}
+@media(max-width:720px){.patients-head{margin-bottom:10px}.patients-title{font-size:26px}.patients-toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:9px}.patient-search{width:100%;min-width:0}.patient-filter-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.patient-sort{width:100%;min-width:0}.patient-primary-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 42px;gap:8px}.patient-primary-actions .pbtn{min-width:0;padding-inline:8px}.patient-primary-actions .pbtn:not(.icon){white-space:normal;line-height:1.2;text-align:center}.patient-primary-actions .pbtn.icon{width:42px}.alphabet{flex-wrap:wrap;overflow:visible;margin-inline:-2px;padding-top:8px}.alphabet .alpha-link.disabled{display:none}.patient-panel{border:0;background:transparent;box-shadow:none}.patient-table-wrap{overflow:visible}.patient-table,.patient-table tbody,.patient-table tr,.patient-table td{display:block}.patient-table thead{display:none}.patient-table tbody{display:grid;gap:10px}.patient-table tr.patient-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px;padding:15px;border:1px solid var(--kt-border);border-radius:13px;background:var(--kt-surface);box-shadow:var(--kt-shadow)}.patient-table tr.patient-row td{min-width:0;border:0;padding:0;display:block;overflow-wrap:anywhere}.patient-table tr.patient-row td:first-child,.patient-table tr.patient-row td:last-child{grid-column:1/-1}.patient-table tr.patient-row td:first-child{padding-bottom:1px}.patient-table tr.patient-row td[data-label]::before{content:attr(data-label);display:block;margin-bottom:4px;color:var(--kt-muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.patient-table .col-gender,.patient-table .col-birth{display:block}.patient-person{min-width:0}.patient-person>div:last-child{min-width:0}.patient-name{display:block;overflow:hidden;text-overflow:ellipsis}.cell-sub{line-height:1.35}.initial-divider td{display:block!important;margin:3px 0 -3px;padding:7px 3px!important;background:transparent!important}.row-actions{width:100%;justify-content:flex-end;padding-top:3px}.row-actions>.pbtn:first-child{flex:1}.patients-footer{margin-top:10px;padding:13px 3px;align-items:flex-start}.page-controls{width:100%;justify-content:space-between}.compact-pages .page-number{display:none}}
+@media(max-width:390px){.patient-primary-actions{grid-template-columns:1fr 42px}.patient-primary-actions .pbtn.strong{grid-column:1/-1}.patient-table tr.patient-row{grid-template-columns:1fr}.patient-table tr.patient-row td:first-child,.patient-table tr.patient-row td:last-child{grid-column:auto}}
 </style>
 @endpush
 
@@ -30,6 +31,7 @@
     $pageInitialCounts = $patients->getCollection()->countBy(fn ($patient) => strtoupper(substr(trim((string)$patient->last_name), 0, 1)) ?: '#');
     $availableSet = array_fill_keys($availableInitials, true);
     $queryWithoutPage = request()->except('page');
+    $hasListFilters = $q !== '' || $initial !== '' || $sort !== 'last_asc' || $perPage !== 25;
 @endphp
 <div class="patients-page">
     <header class="patients-head">
@@ -40,24 +42,25 @@
                 <input type="search" name="q" value="{{ $q }}" placeholder="Search patients" aria-label="Search patients">
                 @if($q !== '')<a class="clear-search" href="{{ route('staff.patients.index', request()->except(['q','page'])) }}" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></a>@endif
             </div>
+            <input type="hidden" name="initial" value="{{ $initial }}"><input type="hidden" name="per_page" value="{{ $perPage }}">
+            <div class="patient-filter-actions">
             <select class="patient-sort" name="sort" aria-label="Sort patients" onchange="if(event.isTrusted)this.form.submit()">
                 <option value="last_asc" @selected($sort==='last_asc')>Last name A–Z</option><option value="last_desc" @selected($sort==='last_desc')>Last name Z–A</option>
                 <option value="newest" @selected($sort==='newest')>Newest added</option><option value="oldest" @selected($sort==='oldest')>Oldest added</option><option value="recent_visit" @selected($sort==='recent_visit')>Most recent visit</option>
             </select>
-            <input type="hidden" name="initial" value="{{ $initial }}"><input type="hidden" name="per_page" value="{{ $perPage }}">
-            <div class="action-cluster"><a class="pbtn" href="{{ route('staff.patients.index') }}"><i class="fa-solid fa-rotate-left"></i> Reset</a>
-            <span class="primary-actions">
+                @if($hasListFilters)<a class="pbtn" href="{{ route('staff.patients.index') }}"><i class="fa-solid fa-rotate-left"></i> Reset</a>@endif
+            </div>
+            <div class="patient-primary-actions">
                 <a class="pbtn strong" href="{{ route('staff.records.index', ['return'=>$listUrl]) }}"><i class="fa-solid fa-clock-rotate-left"></i> Past Records Entry</a>
                 <a class="pbtn primary" href="{{ route('staff.patients.create', ['return'=>$listUrl]) }}"><i class="fa-solid fa-plus"></i> Add Patient</a>
-            </div>
-            <div class="dropdown">
+                <div class="dropdown">
                 <button class="pbtn icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More patient actions"><i class="fa-solid fa-ellipsis"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><button class="dropdown-item" type="button" id="patientImportButton"><i class="fa-solid fa-cloud-arrow-up"></i> Import patients</button></li>
                     <li><a class="dropdown-item" href="{{ route('staff.patients.export') }}"><i class="fa-solid fa-file-export"></i> Export patients</a></li>
                 </ul>
+                </div>
             </div>
-            </span>
         </form>
         <form id="patientImportForm" action="{{ route('staff.patients.import') }}" method="POST" enctype="multipart/form-data" hidden>@csrf<input type="hidden" name="return" value="{{ $listUrl }}"><input id="patientImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" required></form>
     </header>

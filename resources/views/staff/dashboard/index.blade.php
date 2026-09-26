@@ -14,11 +14,11 @@
 .sd-action:hover{color:var(--kt-primary);border-color:rgba(13,110,253,.35);transform:translateY(-1px)}
 .sd-action i{color:var(--kt-primary)}
 .sd-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
-.sd-kpi{display:block;min-height:122px;padding:17px;border:1px solid var(--kt-border);border-radius:16px;background:var(--kt-surface);color:var(--kt-text);text-decoration:none;box-shadow:0 8px 24px rgba(15,23,42,.06);transition:.16s ease}
+.sd-kpi{display:block;min-width:0;min-height:122px;padding:17px;border:1px solid var(--kt-border);border-radius:16px;background:var(--kt-surface);color:var(--kt-text);text-decoration:none;box-shadow:0 8px 24px rgba(15,23,42,.06);transition:.16s ease}
 .sd-kpi:hover{color:var(--kt-text);border-color:rgba(13,110,253,.35);transform:translateY(-2px)}
-.sd-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.sd-kpi-label{font-size:12px;font-weight:750;color:var(--kt-muted)}
-.sd-kpi-icon{width:35px;height:35px;border-radius:11px;display:grid;place-items:center;color:#0d6efd;background:#e8f1ff}
-.sd-kpi strong{display:block;margin-top:12px;font-size:25px;line-height:1;font-weight:800;letter-spacing:-.03em}
+.sd-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.sd-kpi-label{min-width:0;font-size:12px;font-weight:750;color:var(--kt-muted)}
+.sd-kpi-icon{width:35px;height:35px;flex:0 0 35px;border-radius:11px;display:grid;place-items:center;color:#0d6efd;background:#e8f1ff}
+.sd-kpi strong{display:block;max-width:100%;margin-top:12px;font-size:25px;line-height:1;font-weight:800;letter-spacing:-.03em;overflow:hidden;text-overflow:ellipsis}
 .sd-kpi small{display:block;margin-top:8px;font-size:11px;color:var(--kt-muted)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sd-workspace{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(310px,.8fr);gap:16px;align-items:start}
 .sd-panel{border:1px solid var(--kt-border);border-radius:17px;background:var(--kt-surface);box-shadow:0 8px 24px rgba(15,23,42,.06);overflow:hidden}
@@ -52,8 +52,9 @@ html[data-theme=dark] .sd-kpi-icon,html[data-theme=dark] .sd-avatar{background:r
 html[data-theme=dark] .sd-table th,html[data-theme=dark] .sd-att-item{background:rgba(2,6,23,.35)}
 html[data-theme=dark] .sd-badge{background:rgba(59,130,246,.18);color:#bfdbfe}
 html[data-theme=dark] .sd-badge.pending{background:rgba(245,158,11,.18);color:#fde68a}
-@media(max-width:1180px){.sd-kpis{grid-template-columns:repeat(3,1fr)}.sd-workspace{grid-template-columns:1fr}.sd-attention{display:grid;grid-template-columns:repeat(3,1fr)}.sd-attention .sd-panel-head{grid-column:1/-1}.sd-att-group{border-top:1px solid var(--kt-border);border-left:1px solid var(--kt-border)}.sd-att-group:nth-child(2){border-left:0}}
-@media(max-width:720px){.sd-head{align-items:flex-start}.sd-clock{display:none}.sd-kpis{grid-template-columns:repeat(2,1fr)}.sd-kpi:last-child{grid-column:1/-1}.sd-attention{display:block}.sd-att-group{border-left:0}.sd-panel-head{align-items:flex-start}.sd-calendar-wrap{padding:10px}}
+@media(max-width:1180px){.sd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.sd-workspace{grid-template-columns:minmax(0,1fr)}.sd-attention{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.sd-attention .sd-panel-head{grid-column:1/-1}.sd-att-group{min-width:0;border-top:1px solid var(--kt-border);border-left:1px solid var(--kt-border)}.sd-att-group:nth-child(2){border-left:0}}
+@media(max-width:720px){.sd-page,.sd-page>*{min-width:0;max-width:100%}.sd-head{align-items:flex-start}.sd-clock{display:none}.sd-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:visible;padding:2px 0 14px}.sd-action{min-width:0;padding:10px 8px;justify-content:center;text-align:center}.sd-action:last-child:nth-child(odd){grid-column:1/-1}.sd-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sd-kpi{min-height:116px;padding:14px}.sd-kpi:last-child{grid-column:1/-1}.sd-kpi strong{font-size:22px}.sd-kpi small{font-size:10px}.sd-attention{display:block}.sd-att-group{border-left:0}.sd-panel-head{align-items:flex-start}.sd-calendar-wrap{padding:10px}}
+@media(max-width:420px){.sd-actions{grid-template-columns:1fr}.sd-kpis{grid-template-columns:1fr}.sd-kpi:last-child{grid-column:auto}}
 </style>
 @endpush
 
