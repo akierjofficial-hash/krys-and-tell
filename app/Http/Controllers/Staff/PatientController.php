@@ -9,6 +9,7 @@ use App\Models\PatientInformationRecord;
 use App\Models\PatientInformedConsent;
 use App\Models\InstallmentPlan;
 use App\Models\InstallmentPayment;
+use App\Services\FinancialService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,13 +20,91 @@ class PatientController extends Controller
 {
     public function index(Request $request)
     {
-        $patients = Patient::query()
-            ->orderByRaw("LOWER(TRIM(last_name)) ASC")
-            ->orderByRaw("LOWER(TRIM(first_name)) ASC")
-            ->orderBy('id', 'ASC') // stable tie-breaker
-            ->get();
+        $qInput = $request->query('q', '');
+        $sortInput = $request->query('sort', 'last_asc');
+        $initialInput = $request->query('initial', '');
+        $perPageInput = $request->query('per_page', 25);
+        $q = is_string($qInput) ? trim(mb_substr($qInput, 0, 200)) : '';
+        $sort = is_string($sortInput) ? $sortInput : 'last_asc';
+        $initial = is_string($initialInput) ? strtoupper(trim($initialInput)) : '';
+        $perPage = is_numeric($perPageInput) ? (int) $perPageInput : 25;
 
-        return view('staff.patients.index', compact('patients'));
+        $allowedSorts = ['last_asc', 'last_desc', 'newest', 'oldest', 'recent_visit'];
+        if (!in_array($sort, $allowedSorts, true)) $sort = 'last_asc';
+        if (!in_array($perPage, [25, 50, 100], true)) $perPage = 25;
+        if (!preg_match('/^[A-Z]$/', $initial)) $initial = '';
+
+        $applySearch = function ($query) use ($q): void {
+            if ($q === '') return;
+
+            $terms = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $birthdate = null;
+            foreach (['Y-m-d', 'm/d/Y', 'm-d-Y'] as $format) {
+                try {
+                    $date = Carbon::createFromFormat($format, $q);
+                    if ($date && $date->format($format) === $q) {
+                        $birthdate = $date->toDateString();
+                        break;
+                    }
+                } catch (\Throwable) {
+                    // Search text is not a date in this format.
+                }
+            }
+
+            $query->where(function ($search) use ($terms, $birthdate) {
+                $search->where(function ($names) use ($terms) {
+                    foreach ($terms as $term) {
+                        $like = '%' . $term . '%';
+                        $names->where(function ($part) use ($like) {
+                            $part->where('first_name', 'like', $like)
+                                ->orWhere('middle_name', 'like', $like)
+                                ->orWhere('last_name', 'like', $like)
+                                ->orWhere('contact_number', 'like', $like)
+                                ->orWhere('email', 'like', $like);
+                        });
+                    }
+                });
+                if ($birthdate) $search->orWhereDate('birthdate', $birthdate);
+            });
+        };
+
+        $letterQuery = Patient::query();
+        $applySearch($letterQuery);
+        $availableInitials = $letterQuery
+            ->selectRaw('UPPER(SUBSTR(TRIM(last_name), 1, 1)) AS initial_letter')
+            ->whereNotNull('last_name')
+            ->whereRaw("TRIM(last_name) <> ''")
+            ->distinct()
+            ->pluck('initial_letter')
+            ->filter(fn ($letter) => is_string($letter) && preg_match('/^[A-Z]$/', $letter))
+            ->values()
+            ->all();
+
+        $query = Patient::query()->withMax('visits', 'visit_date');
+        $applySearch($query);
+        if ($initial !== '') {
+            $query->whereRaw('UPPER(SUBSTR(TRIM(last_name), 1, 1)) = ?', [$initial]);
+        }
+
+        match ($sort) {
+            'last_desc' => $query->orderByRaw('LOWER(TRIM(last_name)) DESC')->orderByRaw('LOWER(TRIM(first_name)) DESC')->orderByDesc('id'),
+            'newest' => $query->orderByDesc('created_at')->orderByDesc('id'),
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'recent_visit' => $query->orderByDesc('visits_max_visit_date')->orderByRaw('LOWER(TRIM(last_name)) ASC')->orderBy('id'),
+            default => $query->orderByRaw('LOWER(TRIM(last_name)) ASC')->orderByRaw('LOWER(TRIM(first_name)) ASC')->orderBy('id'),
+        };
+
+        $patients = $query->paginate($perPage)->withQueryString();
+        if ($patients->total() > 0 && $patients->currentPage() > $patients->lastPage()) {
+            return redirect()->route('staff.patients.index', array_merge(
+                $request->except('page'),
+                ['page' => $patients->lastPage()]
+            ));
+        }
+
+        return view('staff.patients.index', compact(
+            'patients', 'q', 'sort', 'initial', 'perPage', 'availableInitials'
+        ));
     }
 
     public function create()
@@ -310,7 +389,7 @@ class PatientController extends Controller
         return $pdf->stream("patient-{$patient->id}-patient-information.pdf");
     }
 
-    public function show(Patient $patient)
+    public function show(Patient $patient, FinancialService $finance)
     {
         $patient->loadMissing(['informationRecord', 'informedConsent']);
 
@@ -326,7 +405,7 @@ class PatientController extends Controller
             ->paginate(10, ['*'], 'appointments_page');
 
         $payments = $patient->payments()
-            ->with(['visit.procedures.service'])
+            ->with(['visit.procedures.service', 'procedure.service'])
             ->orderByDesc('payment_date')
             ->paginate(10, ['*'], 'payments_page');
 
@@ -334,7 +413,7 @@ class PatientController extends Controller
         $cashPaymentsCount = (int) $patient->payments()->count();
 
         $installmentPlans = InstallmentPlan::where('patient_id', $patient->id)
-            ->with(['service', 'visit'])
+            ->with(['service', 'visit', 'payments'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -345,9 +424,7 @@ class PatientController extends Controller
             ->orderByDesc('payment_date')
             ->paginate(10, ['*'], 'installment_payments_page');
 
-        $installmentTotalPaid = (float) InstallmentPayment::whereHas('plan', function ($q) use ($patient) {
-            $q->where('patient_id', $patient->id);
-        })->sum('amount');
+        $installmentTotalPaid = (float) $installmentPlans->sum(fn ($plan) => $finance->planPaid($plan));
 
         $installmentPaymentsCount = (int) InstallmentPayment::whereHas('plan', function ($q) use ($patient) {
             $q->where('patient_id', $patient->id);

@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use App\Services\AdminAuditService;
 
 class AdminUserAccountsController extends Controller
 {
@@ -30,7 +33,7 @@ class AdminUserAccountsController extends Controller
         $q = trim((string)$request->query('q', ''));
         $status = (string)$request->query('status', '');
 
-        $query = $this->usersQuery();
+        $query = $this->usersQuery()->withCount('appointments');
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
@@ -44,6 +47,13 @@ class AdminUserAccountsController extends Controller
         if ($hasActive && $status === 'inactive') $query->where('is_active', 0);
 
         $users = $query->orderByDesc('id')->paginate(15)->withQueryString();
+
+        $emails = $users->getCollection()->pluck('email')->filter()->map(fn ($email) => mb_strtolower($email))->all();
+        $patientsByEmail = Patient::whereIn(DB::raw('LOWER(email)'), $emails)->get()->groupBy(fn ($patient) => mb_strtolower($patient->email));
+        $users->getCollection()->each(function ($account) use ($patientsByEmail) {
+            $matches = $patientsByEmail->get(mb_strtolower($account->email), collect());
+            $account->setRelation('linkedPatient', $matches->count() === 1 ? $matches->first() : null);
+        });
 
         return view('admin.user_accounts.index', compact('users', 'q', 'status', 'hasActive'));
     }
@@ -67,7 +77,14 @@ class AdminUserAccountsController extends Controller
             'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => [$hasActive ? 'sometimes' : 'nullable', 'boolean'],
+            'establish_local_password' => ['nullable', 'boolean'],
         ]);
+
+        if (!empty($data['password']) && $user->google_id && !$request->boolean('establish_local_password')) {
+            throw ValidationException::withMessages(['password' => 'Confirm that you want to establish a local password for this Google-connected account.']);
+        }
+
+        $before = $user->only(['name', 'email', 'is_active', 'password_set']);
 
         $user->forceFill([
             'name' => $data['name'],
@@ -77,6 +94,7 @@ class AdminUserAccountsController extends Controller
 
         if (!empty($data['password'])) {
             $user->password = Hash::make($data['password']);
+            $user->password_set = true;
         }
 
         if ($hasActive) {
@@ -84,6 +102,8 @@ class AdminUserAccountsController extends Controller
         }
 
         $user->save();
+        app(AdminAuditService::class)->record($request->user(), 'website_account.updated', $user, 'Website account updated.', $before,
+            $user->only(['name', 'email', 'is_active', 'password_set']), null, !empty($data['password']));
 
         return $this->ktRedirectToReturn($request, 'admin.user_accounts.index')
             ->with('success', 'User account updated.');
@@ -95,6 +115,7 @@ class AdminUserAccountsController extends Controller
         $this->ensureIsUser($user);
 
         $user->restore();
+        app(AdminAuditService::class)->record($request->user(), 'website_account.restored', $user, 'Website account restored.');
 
         return $this->ktRedirectToReturn($request, 'admin.user_accounts.index')
             ->with('success', 'User account restored successfully.');
@@ -126,7 +147,9 @@ class AdminUserAccountsController extends Controller
                     }
                 }
 
+                $before = $user->only(['name', 'email', 'is_active']);
                 $user->delete();
+                app(AdminAuditService::class)->record(request()->user(), 'website_account.deleted', $user, 'Website account moved to Deleted Accounts.', $before, [], null, true);
             });
 
             $returnUrl = $this->ktReturnUrl($request, 'admin.user_accounts.index');

@@ -3,1114 +3,128 @@
 @section('kt_live_scope', 'patients')
 @section('kt_live_interval', 12000)
 
-@section('content')
-
+@push('styles')
 <style>
-    /* ==========================================================
-       Patients Index (Dark mode compatible)
-       + Skeleton shimmer loading for table
-       ========================================================== */
-
-    :root{
-        --card-shadow: var(--kt-shadow);
-        --card-border: 1px solid var(--kt-border);
-        --soft: rgba(148, 163, 184, .14);
-
-        --text: var(--kt-text);
-        --muted: var(--kt-muted);
-        --muted2: rgba(148, 163, 184, .75);
-
-        --brand1: #0d6efd;
-        --brand2: #1e90ff;
-        --radius: 16px;
-
-        --thead-h: 44px; /* JS will update this */
-
-        /* Skeleton colors */
-        --skel-base: rgba(148,163,184,.18);
-        --skel-shine: rgba(255,255,255,.75);
-    }
-
-    html[data-theme="dark"]{
-        --soft: rgba(148, 163, 184, .16);
-        --muted2: rgba(248, 250, 252, .62);
-
-        --skel-base: rgba(148,163,184,.14);
-        --skel-shine: rgba(255,255,255,.10);
-    }
-
-    .page-head{
-        display:flex;
-        align-items:flex-end;
-        justify-content:space-between;
-        gap: 14px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-    }
-
-    .page-title{
-        font-size: 28px;
-        font-weight: 900;
-        letter-spacing: -0.4px;
-        margin: 0;
-        color: var(--text);
-    }
-
-    .subtitle{
-        margin: 6px 0 0 0;
-        font-size: 13px;
-        color: var(--muted);
-    }
-
-    .top-actions{
-        display:flex;
-        align-items:center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    /* Search */
-    .search-box{
-        position: relative;
-        width: 340px;
-        max-width: 100%;
-    }
-    .search-box i{
-        position: absolute;
-        top: 50%;
-        left: 12px;
-        transform: translateY(-50%);
-        color: var(--muted);
-        font-size: 14px;
-        pointer-events: none;
-        opacity: .85;
-    }
-    .search-box input{
-        width: 100%;
-        padding: 11px 12px 11px 38px;
-        border-radius: 12px;
-        border: 1px solid var(--kt-input-border);
-        background: var(--kt-input-bg);
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
-        outline: none;
-        transition: .15s ease;
-        font-size: 14px;
-        color: var(--text);
-    }
-    .search-box input::placeholder{ color: rgba(148, 163, 184, .85); }
-    html[data-theme="dark"] .search-box input::placeholder{ color: rgba(248, 250, 252, .55); }
-    .search-box input:focus{
-        border-color: rgba(96,165,250,.55);
-        box-shadow: 0 0 0 4px rgba(96,165,250,.18);
-    }
-
-    /* Sort */
-    .sort-box{
-        display:flex;
-        align-items:center;
-        gap: 8px;
-        padding: 0;
-    }
-    .sort-box .sort-label{
-        font-size: 12px;
-        font-weight: 900;
-        color: var(--muted);
-        letter-spacing: .02em;
-        white-space: nowrap;
-    }
-    .sort-select{
-        min-width: 210px;
-        max-width: 100%;
-        border-radius: 12px;
-        border: 1px solid var(--kt-input-border);
-        background: var(--kt-input-bg);
-        padding: 11px 12px;
-        font-size: 14px;
-        color: var(--text);
-        outline: none;
-        transition: .15s ease;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
-    }
-    .sort-select:focus{
-        border-color: rgba(96,165,250,.55);
-        box-shadow: 0 0 0 4px rgba(96,165,250,.18);
-    }
-    html[data-theme="dark"] .sort-select,
-    html[data-theme="dark"] .sort-select option{
-        background-color: rgba(17,24,39,.98) !important;
-        color: var(--kt-text) !important;
-    }
-
-    /* Buttons */
-    .btnx{
-        display:inline-flex;
-        align-items:center;
-        gap: 8px;
-        padding: 11px 14px;
-        border-radius: 12px;
-        font-weight: 800;
-        font-size: 14px;
-        text-decoration: none;
-        border: 1px solid transparent;
-        transition: .15s ease;
-        white-space: nowrap;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .add-btn{
-        background: linear-gradient(135deg, var(--brand1), var(--brand2));
-        color: #fff !important;
-        box-shadow: 0 12px 18px rgba(13, 110, 253, .18);
-    }
-    .add-btn:hover{
-        transform: translateY(-1px);
-        box-shadow: 0 14px 24px rgba(13, 110, 253, .24);
-    }
-
-    .btn-green{
-        background: rgba(34, 197, 94, .12);
-        border-color: rgba(34, 197, 94, .25);
-        color: #15803d !important;
-    }
-    .btn-green:hover{ background: rgba(34, 197, 94, .18); }
-
-    .btn-purple{
-        background: rgba(124, 58, 237, .12);
-        border-color: rgba(124, 58, 237, .25);
-        color: #5b21b6 !important;
-    }
-    .btn-purple:hover{ background: rgba(124, 58, 237, .18); }
-
-    .btn-ghost{
-        background: rgba(148,163,184,.12);
-        border-color: rgba(148,163,184,.22);
-        color: var(--text) !important;
-    }
-    html[data-theme="dark"] .btn-ghost{
-        background: rgba(2,6,23,.45);
-        border-color: rgba(148,163,184,.22);
-        color: var(--kt-text) !important;
-    }
-    .btn-ghost:hover{ background: rgba(148,163,184,.16); }
-    html[data-theme="dark"] .btn-ghost:hover{ background: rgba(17,24,39,.85); }
-
-    /* Card */
-    .card-shell{
-        background: var(--kt-surface);
-        border: var(--card-border);
-        border-radius: var(--radius);
-        box-shadow: var(--card-shadow);
-        overflow: hidden;
-        color: var(--text);
-        position: relative;
-    }
-
-    .card-head{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap: 12px;
-        padding: 16px 18px;
-        border-bottom: 1px solid var(--soft);
-        flex-wrap: wrap;
-        background: linear-gradient(180deg, rgba(148,163,184,.08), transparent);
-    }
-    html[data-theme="dark"] .card-head{
-        background: linear-gradient(180deg, rgba(2,6,23,.45), rgba(17,24,39,0));
-    }
-
-    .card-head .hint{
-        font-size: 12px;
-        color: var(--muted);
-    }
-
-    .count-pill{
-        display:inline-flex;
-        align-items:center;
-        gap: 8px;
-        padding: 7px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 900;
-        border: 1px solid var(--kt-border);
-        background: var(--kt-surface-2);
-        color: var(--text);
-        white-space: nowrap;
-    }
-
-    /* Table */
-    .table-wrap{ padding: 8px 10px 10px 10px; }
-    table{
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-    thead th{
-        font-size: 12px;
-        letter-spacing: .3px;
-        text-transform: uppercase;
-        color: var(--muted);
-        padding: 14px 14px;
-        border-bottom: 1px solid var(--soft);
-        background: rgba(248, 250, 252, .85);
-        position: sticky;
-        top: 0;
-        z-index: 5;
-        white-space: nowrap;
-    }
-    html[data-theme="dark"] thead th{
-        background: rgba(2, 6, 23, .55);
-        border-bottom-color: rgba(148,163,184,.16);
-        color: var(--kt-muted);
-    }
-
-    tbody td{
-        padding: 14px 14px;
-        font-size: 14px;
-        color: var(--text);
-        border-bottom: 1px solid var(--soft);
-        background: transparent;
-        vertical-align: middle;
-    }
-    tbody tr{ transition: .12s ease; }
-    tbody tr:hover{ background: rgba(13,110,253,.06); }
-    html[data-theme="dark"] tbody tr:hover{ background: rgba(96,165,250,.08); }
-
-    .muted{ color: var(--muted); }
-
-    .name-cell{
-        display:flex;
-        flex-direction:column;
-        line-height: 1.1;
-        gap: 4px;
-    }
-    .name-cell .main{
-        font-weight: 900;
-        letter-spacing: -.1px;
-    }
-    .name-cell .sub{
-        font-size: 12px;
-        color: var(--muted2);
-        font-weight: 700;
-    }
-
-    /* Actions */
-    .action-pills{
-        display:flex;
-        align-items:center;
-        gap: 8px;
-        justify-content:flex-end;
-        flex-wrap: wrap;
-    }
-    .pill{
-        display:inline-flex;
-        align-items:center;
-        gap: 6px;
-        padding: 7px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 800;
-        border: 1px solid transparent;
-        text-decoration: none;
-        transition: .12s ease;
-        white-space: nowrap;
-        background: transparent;
-    }
-    .pill i{ font-size: 12px; }
-
-    .pill-edit{
-        background: rgba(34, 197, 94, .12);
-        color: #15803d !important;
-        border-color: rgba(34, 197, 94, .22);
-    }
-    .pill-edit:hover{ background: rgba(34, 197, 94, .18); }
-
-    .pill-view{
-        background: rgba(59, 130, 246, .12);
-        color: #1d4ed8 !important;
-        border-color: rgba(59, 130, 246, .22);
-    }
-    .pill-view:hover{ background: rgba(59, 130, 246, .18); }
-
-    .pill-del{
-        background: rgba(239, 68, 68, .12);
-        color: #b91c1c !important;
-        border-color: rgba(239, 68, 68, .22);
-        cursor: pointer;
-    }
-    .pill-del:hover{ background: rgba(239, 68, 68, .18); }
-
-    .toolbar-row{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-        width: 100%;
-    }
-
-    /* ==========================================================
-       Option A: Letter separator rows (sticky under thead)
-       ========================================================== */
-    tr.alpha-row td{
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--soft);
-        background: var(--kt-surface-2);
-        position: sticky;
-        top: var(--thead-h);
-        z-index: 4;
-        backdrop-filter: blur(8px);
-    }
-    html[data-theme="dark"] tr.alpha-row td{
-        background: rgba(2,6,23,.55);
-    }
-
-    .alpha-pill{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap: 10px;
-        width: 100%;
-    }
-    .alpha-left{
-        display:flex;
-        align-items:center;
-        gap: 10px;
-        min-width: 0;
-    }
-    .alpha-letter{
-        width: 34px;
-        height: 34px;
-        border-radius: 12px;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        font-weight: 950;
-        letter-spacing: .02em;
-        background: rgba(96,165,250,.16);
-        color: #60a5fa;
-        border: 1px solid rgba(96,165,250,.22);
-        flex: 0 0 auto;
-    }
-    .alpha-meta{
-        font-size: 12px;
-        color: var(--muted);
-        font-weight: 900;
-        white-space: nowrap;
-    }
-
-    /* ==========================================================
-       Option C: A–Z Jump Index (desktop fixed, mobile horizontal)
-       ========================================================== */
-    .alpha-index{
-        position: fixed;
-        right: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        display:flex;
-        flex-direction:column;
-        gap: 4px;
-        padding: 10px 8px;
-        border-radius: 14px;
-        background: var(--kt-surface);
-        border: 1px solid var(--kt-border);
-        box-shadow: var(--kt-shadow);
-        z-index: 60;
-        max-height: 70vh;
-        overflow: auto;
-        scrollbar-width: thin;
-        user-select: none;
-    }
-    .alpha-btn{
-        width: 28px;
-        height: 22px;
-        border-radius: 8px;
-        border: 1px solid transparent;
-        background: transparent;
-        color: var(--muted);
-        font-weight: 950;
-        font-size: 11px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        cursor: pointer;
-        transition: .12s ease;
-        flex: 0 0 auto;
-    }
-    .alpha-btn:hover{
-        background: rgba(96,165,250,.12);
-        color: var(--text);
-    }
-    .alpha-btn.active{
-        background: rgba(96,165,250,.16);
-        color: #60a5fa;
-        border-color: rgba(96,165,250,.25);
-    }
-    .alpha-btn.disabled{
-        opacity: .35;
-        pointer-events: none;
-    }
-
-    @media (max-width: 1024px){
-        .alpha-index{
-            position: sticky;
-            top: 0;
-            right: auto;
-            left: auto;
-            transform: none;
-            flex-direction: row;
-            max-height: none;
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding: 10px;
-            margin: 10px;
-            border-radius: 14px;
-        }
-        .alpha-btn{
-            width: 30px;
-            height: 26px;
-            font-size: 12px;
-        }
-    }
-
-    @media (max-width: 768px){
-        .search-box{ width: 100%; }
-        .sort-select{ width: 100%; min-width: 0; }
-        .top-actions{ width: 100%; }
-        .action-pills{ justify-content:flex-start; }
-        .toolbar-row{ flex-direction: column; align-items: stretch; }
-        .alpha-index{ margin: 10px 10px 0 10px; }
-    }
-
-    /* ==========================================================
-       ✅ Skeleton Loading (shimmer)
-       ========================================================== */
-    .kt-skel{
-        position: absolute;
-        inset: 0;
-        background: var(--kt-surface);
-        z-index: 70; /* above card content; alpha-index is fixed so we hide it via JS */
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 160ms ease;
-    }
-    .card-shell.is-loading .kt-skel{
-        opacity: 1;
-        pointer-events: auto; /* block clicks during “loading” */
-        cursor: progress;
-    }
-
-    .kt-skel__inner{
-        padding: 14px 10px 12px 10px;
-    }
-
-    .kt-skel__bar{
-        height: 12px;
-        border-radius: 999px;
-        background: linear-gradient(
-            90deg,
-            var(--skel-base) 0%,
-            var(--skel-shine) 45%,
-            var(--skel-base) 65%
-        );
-        background-size: 200% 100%;
-        animation: ktShimmer 1.15s linear infinite;
-    }
-    .kt-skel__bar.sm{ height: 10px; }
-    .kt-skel__bar.lg{ height: 14px; }
-
-    @keyframes ktShimmer{
-        to { background-position: -200% 0; }
-    }
-
-    /* nice “row” spacing */
-    .kt-skel__row{
-        display:grid;
-        grid-template-columns: 1.8fr .8fr .9fr 1fr .9fr;
-        gap: 12px;
-        padding: 14px 14px;
-        border-bottom: 1px solid var(--soft);
-        align-items: center;
-    }
-    .kt-skel__row:first-child{
-        border-top: 1px solid var(--soft);
-        border-radius: 12px 12px 0 0;
-    }
-
-    /* header mimic */
-    .kt-skel__head{
-        display:grid;
-        grid-template-columns: 1.8fr .8fr .9fr 1fr .9fr;
-        gap: 12px;
-        padding: 10px 14px 14px 14px;
-    }
-
-    /* reduce motion */
-    @media (prefers-reduced-motion: reduce){
-        .kt-skel__bar{ animation: none !important; }
-    }
+.patients-page{color:var(--kt-text)}
+.patients-head{margin-bottom:16px}
+.patients-title{font-size:30px;font-weight:850;letter-spacing:-.5px;margin:0}.patients-subtitle{color:var(--kt-muted);margin:4px 0 0}
+.patients-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:15px}.patient-search{position:relative;width:min(330px,100%)}.action-cluster,.primary-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.patient-search>i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--kt-muted)}
+.patient-search input,.patient-sort{min-height:42px;border:1px solid var(--kt-input-border);border-radius:10px;background:var(--kt-input-bg);color:var(--kt-text)}
+.patient-search input{width:100%;padding:9px 38px}.patient-search .clear-search{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--kt-muted);padding:6px}
+.patient-sort{padding:9px 11px;min-width:174px}.pbtn{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 13px;border:1px solid var(--kt-border);border-radius:10px;background:var(--kt-surface);color:var(--kt-text);font-weight:750;text-decoration:none;white-space:nowrap}
+.pbtn:hover{background:var(--kt-surface-2);color:var(--kt-text)}.pbtn.primary{background:#087cf0;border-color:#087cf0;color:#fff}.pbtn.strong{border-color:#087cf0;color:#087cf0}.pbtn.icon{width:40px;padding:0}.pbtn.danger{color:#dc3545}
+.alphabet{display:flex;align-items:center;gap:4px;overflow-x:auto;padding:10px 2px 12px;scrollbar-width:thin;margin-bottom:5px}.alpha-link{flex:0 0 auto;width:34px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:12px;font-weight:800;color:var(--kt-muted);border:1px solid transparent}.alpha-link.all{width:44px}.alpha-link:hover{background:var(--kt-surface-2);color:#087cf0}.alpha-link.active{background:#087cf0;color:#fff}.alpha-link.disabled{opacity:.3;pointer-events:none}
+.patient-panel{background:var(--kt-surface);border:1px solid var(--kt-border);border-radius:14px;box-shadow:var(--kt-shadow);overflow:visible}.patient-table-wrap{overflow:visible}.patient-table{width:100%;border-collapse:separate;border-spacing:0}.patient-table th{position:sticky;top:68px;z-index:5;background:var(--kt-surface-2);color:var(--kt-muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:12px 15px;border-bottom:1px solid var(--kt-border);white-space:nowrap}.patient-table td{padding:13px 15px;border-bottom:1px solid var(--kt-border);vertical-align:middle}.patient-table tbody tr:last-child td{border-bottom:0}.patient-table tbody tr.patient-row:hover td{background:rgba(8,124,240,.035)}
+.patient-person{display:flex;align-items:center;gap:11px;min-width:210px}.patient-avatar{width:38px;height:38px;border-radius:50%;background:#e5f1ff;color:#087cf0;display:grid;place-items:center;font-weight:850;flex:0 0 auto}.patient-name{font-weight:800;color:var(--kt-text);text-decoration:none}.patient-name:hover{color:#087cf0}.patient-meta,.cell-sub{font-size:12px;color:var(--kt-muted);margin-top:2px}.initial-divider td{padding:7px 15px!important;background:var(--kt-surface-2)!important;color:#087cf0;font-size:12px;font-weight:850;letter-spacing:.04em}.gender-pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:var(--kt-surface-2);font-size:12px;font-weight:700}.row-actions{display:flex;justify-content:flex-end;gap:7px}.row-menu{position:relative}.row-menu .dropdown-menu{z-index:1080;min-width:205px}.dropdown-item i{width:20px}.dropdown-item.delete{color:#dc3545}.patient-empty{text-align:center;padding:55px 20px;color:var(--kt-muted)}.patient-empty i{font-size:28px;margin-bottom:10px;color:#8cbdf1}
+.patients-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:13px 15px;border-top:1px solid var(--kt-border)}.page-summary{color:var(--kt-muted);font-size:13px}.page-controls{display:flex;align-items:center;gap:13px;flex-wrap:wrap}.per-page{display:flex;align-items:center;gap:7px;color:var(--kt-muted);font-size:13px}.per-page select{border:1px solid var(--kt-border);border-radius:8px;background:var(--kt-surface-2);color:var(--kt-text);padding:6px 8px}.compact-pages{display:flex;align-items:center;gap:4px}.compact-pages a,.compact-pages span{min-width:33px;height:33px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--kt-border);border-radius:8px;text-decoration:none;color:var(--kt-text);font-size:13px}.compact-pages .active{background:#087cf0;border-color:#087cf0;color:#fff}.compact-pages .disabled{opacity:.4}
+@media(max-width:1100px){.patients-toolbar{width:100%}.patient-search{flex:1;min-width:230px}.action-cluster{width:100%}.col-gender,.col-birth{display:none}}
+@media(max-width:720px){.patients-title{font-size:26px}.patients-toolbar{display:grid;grid-template-columns:1fr 1fr}.patient-search{grid-column:1/-1;width:100%}.patient-sort{width:100%;min-width:0}.action-cluster{grid-column:1/-1;width:100%}.primary-actions{flex:1}.primary-actions .pbtn{flex:1}.patients-toolbar .pbtn{padding-inline:10px}.patient-table,.patient-table tbody,.patient-table tr,.patient-table td{display:block}.patient-table thead{display:none}.patient-table tr.patient-row{padding:13px 14px;border-bottom:1px solid var(--kt-border)}.patient-table tr.patient-row td{border:0;padding:5px 0;display:flex;justify-content:space-between;gap:14px}.patient-table tr.patient-row td:first-child{display:block;padding-bottom:10px}.patient-table tr.patient-row td[data-label]::before{content:attr(data-label);color:var(--kt-muted);font-size:12px;font-weight:700}.patient-table .col-gender,.patient-table .col-birth{display:flex}.initial-divider td{display:block!important;margin:0;padding:7px 14px!important}.row-actions{width:100%;justify-content:flex-end;padding-top:5px}.patients-footer{align-items:flex-start}.page-controls{width:100%;justify-content:space-between}.compact-pages .page-number{display:none}}
 </style>
+@endpush
 
-{{-- Header --}}
-<div class="page-head">
-    <div>
-        <h2 class="page-title">Patients</h2>
-        <p class="subtitle">Manage patient records</p>
-    </div>
-
-    <div class="top-actions">
-        <div class="search-box">
-            <i class="fa fa-search"></i>
-            <input type="text" id="patientSearch" placeholder="Search by name, gender, birthdate, or contact…">
-        </div>
-
-        <div class="sort-box">
-            <span class="sort-label">Sort</span>
-            <select id="patientSort" class="sort-select">
-                <option value="created_desc">Date added (newest)</option>
-                <option value="created_asc">Date added (oldest)</option>
-
-                {{-- ✅ default sort --}}
-                <option value="lname_asc" selected>Last name (A–Z)</option>
-
-                <option value="lname_desc">Last name (Z–A)</option>
-                <option value="fname_asc">First name (A–Z)</option>
-                <option value="fname_desc">First name (Z–A)</option>
-                <option value="bday_asc">Birthdate (oldest first)</option>
-                <option value="bday_desc">Birthdate (youngest first)</option>
+@section('content')
+@php
+    $listUrl = url()->full();
+    $isAlphabetical = in_array($sort, ['last_asc', 'last_desc'], true);
+    $pageInitialCounts = $patients->getCollection()->countBy(fn ($patient) => strtoupper(substr(trim((string)$patient->last_name), 0, 1)) ?: '#');
+    $availableSet = array_fill_keys($availableInitials, true);
+    $queryWithoutPage = request()->except('page');
+@endphp
+<div class="patients-page">
+    <header class="patients-head">
+        <div><h1 class="patients-title">Patients</h1><p class="patients-subtitle">Manage patient records</p></div>
+        <form class="patients-toolbar" method="GET" action="{{ route('staff.patients.index') }}">
+            <div class="patient-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="search" name="q" value="{{ $q }}" placeholder="Search patients" aria-label="Search patients">
+                @if($q !== '')<a class="clear-search" href="{{ route('staff.patients.index', request()->except(['q','page'])) }}" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></a>@endif
+            </div>
+            <select class="patient-sort" name="sort" aria-label="Sort patients" onchange="if(event.isTrusted)this.form.submit()">
+                <option value="last_asc" @selected($sort==='last_asc')>Last name A–Z</option><option value="last_desc" @selected($sort==='last_desc')>Last name Z–A</option>
+                <option value="newest" @selected($sort==='newest')>Newest added</option><option value="oldest" @selected($sort==='oldest')>Oldest added</option><option value="recent_visit" @selected($sort==='recent_visit')>Most recent visit</option>
             </select>
-        </div>
-
-        <button type="button" id="clearFilters" class="btnx btn-ghost">
-            <i class="fa fa-rotate-left"></i> Reset
-        </button>
-
-        {{-- Export --}}
-        <a href="{{ route('staff.patients.export') }}" class="btnx btn-green">
-            <i class="fa fa-file-excel"></i> Export
-        </a>
-
-        {{-- Import --}}
-        <form id="importForm" data-kt-return action="{{ route('staff.patients.import') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
-            @csrf
-            <input id="patientFile" type="file" name="file" accept=".xlsx,.xls,.csv" style="display:none" required>
-            <button type="button" id="importBtn" class="btnx btn-purple">
-                <i class="fa fa-cloud-arrow-up"></i> Import
-            </button>
+            <input type="hidden" name="initial" value="{{ $initial }}"><input type="hidden" name="per_page" value="{{ $perPage }}">
+            <div class="action-cluster"><a class="pbtn" href="{{ route('staff.patients.index') }}"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+            <span class="primary-actions">
+                <a class="pbtn strong" href="{{ route('staff.records.index', ['return'=>$listUrl]) }}"><i class="fa-solid fa-clock-rotate-left"></i> Past Records Entry</a>
+                <a class="pbtn primary" href="{{ route('staff.patients.create', ['return'=>$listUrl]) }}"><i class="fa-solid fa-plus"></i> Add Patient</a>
+            </div>
+            <div class="dropdown">
+                <button class="pbtn icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More patient actions"><i class="fa-solid fa-ellipsis"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button class="dropdown-item" type="button" id="patientImportButton"><i class="fa-solid fa-cloud-arrow-up"></i> Import patients</button></li>
+                    <li><a class="dropdown-item" href="{{ route('staff.patients.export') }}"><i class="fa-solid fa-file-export"></i> Export patients</a></li>
+                </ul>
+            </div>
+            </span>
         </form>
+        <form id="patientImportForm" action="{{ route('staff.patients.import') }}" method="POST" enctype="multipart/form-data" hidden>@csrf<input type="hidden" name="return" value="{{ $listUrl }}"><input id="patientImportFile" type="file" name="file" accept=".xlsx,.xls,.csv" required></form>
+    </header>
 
-        <a href="{{ route('staff.patients.create') }}" class="btnx add-btn" data-kt-return>
-            <i class="fa fa-plus"></i> Add Patient
-        </a>
-    </div>
-</div>
+    <nav class="alphabet" aria-label="Filter by last-name initial">
+        <a class="alpha-link all {{ $initial===''?'active':'' }}" href="{{ route('staff.patients.index', array_merge(request()->except(['initial','page']), ['initial'=>''])) }}">All</a>
+        @foreach(range('A','Z') as $letter)
+            @if(isset($availableSet[$letter]))<a class="alpha-link {{ $initial===$letter?'active':'' }}" href="{{ route('staff.patients.index', array_merge(request()->except(['initial','page']), ['initial'=>$letter])) }}">{{ $letter }}</a>
+            @else<span class="alpha-link disabled" aria-disabled="true">{{ $letter }}</span>@endif
+        @endforeach
+    </nav>
 
-{{-- Table Card --}}
-<div class="card-shell" id="patientsCard">
-    <div class="card-head">
-        <div class="toolbar-row">
-            <div class="hint">
-                <span class="count-pill">
-                    <i class="fa fa-users"></i>
-                    Showing <strong id="visibleCount">{{ $patients->count() }}</strong> / <strong id="totalCount">{{ $patients->count() }}</strong>
-                </span>
-            </div>
-            <div class="hint">Tip: search + sort works together</div>
-        </div>
-    </div>
-
-    {{-- ✅ Option C: A–Z jump index (JS fills this) --}}
-    <div class="alpha-index" id="alphaIndex" style="display:none;" aria-label="Jump to letter"></div>
-
-    {{-- ✅ Skeleton overlay (JS fills rows) --}}
-    <div class="kt-skel" id="patientsSkeleton" aria-hidden="true">
-        <div class="kt-skel__inner">
-            <div class="kt-skel__head">
-                <div class="kt-skel__bar sm" style="width:55%"></div>
-                <div class="kt-skel__bar sm" style="width:60%"></div>
-                <div class="kt-skel__bar sm" style="width:70%"></div>
-                <div class="kt-skel__bar sm" style="width:65%"></div>
-                <div class="kt-skel__bar sm" style="width:45%"></div>
-            </div>
-            <div id="patientsSkelRows"></div>
-        </div>
-    </div>
-
-    <div class="table-wrap table-responsive">
-        <table id="patientsTable">
-            <thead>
-                <tr>
-                    <th>Patient</th>
-                    <th>Gender</th>
-                    <th>Birthdate</th>
-                    <th>Contact</th>
-                    <th class="text-end">Actions</th>
+    <section class="patient-panel">
+        @if($patients->isEmpty())
+            <div class="patient-empty"><i class="fa-regular fa-folder-open"></i><h3>{{ $q!=='' || $initial!=='' ? 'No patients match your filters.' : 'No patients yet.' }}</h3><p>{{ $q!=='' || $initial!=='' ? 'Try another search or clear the selected initial.' : 'Add the first patient to begin.' }}</p>@if($q!=='' || $initial!=='')<a class="pbtn" href="{{ route('staff.patients.index') }}">Reset Filters</a>@else<a class="pbtn primary" href="{{ route('staff.patients.create',['return'=>$listUrl]) }}">Add Patient</a>@endif</div>
+        @else
+        <div class="patient-table-wrap"><table class="patient-table"><thead><tr><th>Patient</th><th class="col-gender">Gender</th><th class="col-birth">Birthdate / Age</th><th>Contact</th><th>Last Visit</th><th class="text-end">Action</th></tr></thead><tbody>
+            @php
+                $currentInitial = null;
+            @endphp
+            @foreach($patients as $patient)
+                @php
+                    $rowInitial = strtoupper(substr(trim((string)$patient->last_name), 0, 1)) ?: '#';
+                    $birthdate = $patient->birthdate ? \Carbon\Carbon::parse($patient->birthdate) : null;
+                    $firstInitial = strtoupper(substr(trim((string)$patient->first_name),0,1));
+                    $lastInitial = strtoupper(substr(trim((string)$patient->last_name),0,1));
+                @endphp
+                @if($isAlphabetical && $currentInitial !== $rowInitial)
+                    @php($currentInitial = $rowInitial)
+                    <tr class="initial-divider"><td colspan="6">{{ $rowInitial }} · {{ $pageInitialCounts[$rowInitial] }} {{ $pageInitialCounts[$rowInitial]===1?'patient':'patients' }} on this page</td></tr>
+                @endif
+                <tr class="patient-row">
+                    <td><div class="patient-person"><div class="patient-avatar">{{ $firstInitial }}{{ $lastInitial }}</div><div><a class="patient-name" href="{{ route('staff.patients.show', ['patient'=>$patient->id,'return'=>$listUrl]) }}">{{ $patient->last_name }}, {{ $patient->first_name }}{{ $patient->middle_name ? ' '.$patient->middle_name : '' }}</a><div class="patient-meta">Added {{ optional($patient->created_at)->format('M d, Y') ?? '—' }}</div></div></div></td>
+                    <td class="col-gender" data-label="Gender"><span class="gender-pill">{{ $patient->gender ?: 'Not specified' }}</span></td>
+                    <td class="col-birth" data-label="Birthdate"><div>{{ $birthdate?->format('M d, Y') ?? '—' }}@if($birthdate)<div class="cell-sub">{{ $birthdate->age }} years old</div>@endif</div></td>
+                    <td data-label="Contact"><div>{{ $patient->contact_number ?: 'No contact number' }}@if($patient->email)<div class="cell-sub">{{ $patient->email }}</div>@endif</div></td>
+                    <td data-label="Last Visit"><div>{{ $patient->visits_max_visit_date ? \Carbon\Carbon::parse($patient->visits_max_visit_date)->format('M d, Y') : 'No visits yet' }}</div></td>
+                    <td><div class="row-actions"><a class="pbtn" href="{{ route('staff.patients.show',['patient'=>$patient->id,'return'=>$listUrl]) }}"><i class="fa-regular fa-eye"></i> View</a><div class="dropdown row-menu"><button class="pbtn icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for {{ $patient->first_name }} {{ $patient->last_name }}"><i class="fa-solid fa-ellipsis-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('staff.patients.show',['patient'=>$patient->id,'return'=>$listUrl]) }}"><i class="fa-regular fa-eye"></i> View patient</a></li>
+                        <li><a class="dropdown-item" href="{{ route('staff.patients.edit',['patient'=>$patient->id,'return'=>$listUrl]) }}"><i class="fa-regular fa-pen-to-square"></i> Edit details</a></li>
+                        <li><a class="dropdown-item" href="{{ route('staff.records.index',['patient_id'=>$patient->id,'return'=>$listUrl]) }}"><i class="fa-solid fa-clock-rotate-left"></i> Enter past records</a></li>
+                        <li><a class="dropdown-item" href="{{ route('staff.payments.index',['open_record'=>1,'patient_id'=>$patient->id,'return'=>$listUrl]) }}"><i class="fa-solid fa-receipt"></i> Record payment</a></li>
+                        <li><hr class="dropdown-divider"></li><li><form id="delete-patient-{{ $patient->id }}" action="{{ route('staff.patients.destroy',$patient) }}" method="POST">@csrf @method('DELETE')<input type="hidden" name="return" value="{{ $listUrl }}"><button class="dropdown-item delete" type="button" data-confirm="Move this patient out of the active list?" data-confirm-title="Delete patient" data-confirm-yes="Delete" data-confirm-form="#delete-patient-{{ $patient->id }}"><i class="fa-regular fa-trash-can"></i> Delete patient</button></form></li>
+                    </ul></div></div></td>
                 </tr>
-            </thead>
-
-            <tbody id="patientTableBody">
-                @forelse ($patients as $patient)
-                    <tr class="patient-row"
-                        data-lname="{{ strtolower($patient->last_name ?? '') }}"
-                        data-fname="{{ strtolower($patient->first_name ?? '') }}"
-                        data-created="{{ optional($patient->created_at)->timestamp ?? 0 }}"
-                        data-bday="{{ $patient->birthdate ? \Carbon\Carbon::parse($patient->birthdate)->timestamp : 0 }}"
-                    >
-                        <td>
-                            <div class="name-cell">
-                                <div class="main">
-                                    {{ $patient->last_name }}, {{ $patient->first_name }}
-                                    @if(!empty($patient->middle_name))
-                                        <span class="muted"> {{ $patient->middle_name }}</span>
-                                    @endif
-                                </div>
-                                <div class="sub">
-                                    Added:
-                                    {{ optional($patient->created_at)->format('m/d/Y') ?? '—' }}
-                                </div>
-                            </div>
-                        </td>
-
-                        <td>{{ $patient->gender }}</td>
-                        <td>{{ $patient->birthdate ? \Carbon\Carbon::parse($patient->birthdate)->format('m/d/Y') : '—' }}</td>
-                        <td class="muted">{{ $patient->contact_number ?? '—' }}</td>
-
-                        <td class="text-end">
-                            <div class="action-pills">
-                                <a href="{{ route('staff.patients.edit', $patient->id) }}" class="pill pill-edit" data-kt-return>
-                                    <i class="fa fa-pen"></i> Edit
-                                </a>
-
-                                <a href="{{ route('staff.patients.show', $patient->id) }}" class="pill pill-view" data-kt-return>
-                                    <i class="fa fa-eye"></i> View
-                                </a>
-
-                                {{-- ✅ Animated confirm delete (NO nested forms) --}}
-                                <form id="del-{{ $patient->id }}" data-kt-return action="{{ route('staff.patients.destroy', $patient->id) }}" method="POST" style="display:inline;">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="button"
-                                            class="pill pill-del"
-                                            data-confirm="Delete this patient? This can’t be undone."
-                                            data-confirm-title="Confirm delete"
-                                            data-confirm-yes="Delete"
-                                            data-confirm-form="#del-{{ $patient->id }}">
-                                        <i class="fa fa-trash"></i> Delete
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr id="emptyStateRow">
-                        <td colspan="5" class="text-center text-muted py-4">
-                            No patients found.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+            @endforeach
+        </tbody></table></div>
+        <footer class="patients-footer"><div class="page-summary">Showing {{ number_format($patients->firstItem()) }}–{{ number_format($patients->lastItem()) }} of {{ number_format($patients->total()) }} patients</div><div class="page-controls">
+            <form class="per-page" method="GET"><span>Rows per page</span>@foreach(request()->except(['per_page','page']) as $key=>$value)@if(is_scalar($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<select name="per_page" onchange="if(event.isTrusted)this.form.submit()">@foreach([25,50,100] as $size)<option value="{{ $size }}" @selected($perPage===$size)>{{ $size }}</option>@endforeach</select></form>
+            @if($patients->hasPages())<nav class="compact-pages" aria-label="Patient pages"><a class="{{ $patients->onFirstPage()?'disabled':'' }}" href="{{ $patients->previousPageUrl() ?: '#' }}" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></a>@foreach($patients->getUrlRange(max(1,$patients->currentPage()-2),min($patients->lastPage(),$patients->currentPage()+2)) as $page=>$url)<a class="page-number {{ $page===$patients->currentPage()?'active':'' }}" href="{{ $url }}">{{ $page }}</a>@endforeach<a class="{{ !$patients->hasMorePages()?'disabled':'' }}" href="{{ $patients->nextPageUrl() ?: '#' }}" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></a></nav>@endif
+        </div></footer>
+        @endif
+    </section>
 </div>
-
-<script>
-(() => {
-    const searchInput = document.getElementById('patientSearch');
-    const sortSelect  = document.getElementById('patientSort');
-    const tbody       = document.getElementById('patientTableBody');
-    const table       = document.getElementById('patientsTable');
-    const alphaIndex  = document.getElementById('alphaIndex');
-
-    const card        = document.getElementById('patientsCard');
-    const skelWrap    = document.getElementById('patientsSkeleton');
-    const skelRowsEl  = document.getElementById('patientsSkelRows');
-
-    const rowsAll     = Array.from(document.querySelectorAll('.patient-row'));
-    const visibleCountEl = document.getElementById('visibleCount');
-    const totalCountEl   = document.getElementById('totalCount');
-    const resetBtn    = document.getElementById('clearFilters');
-
-    const emptyStateRow = document.getElementById('emptyStateRow');
-
-    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
-    if (window.KTListState) {
-        window.KTListState.bindInput('#patientSearch', 'q');
-        window.KTListState.bindSelect('#patientSort', 'sort');
-    }
-
-    // Build skeleton rows once
-    function buildSkeletonRows(n = 8){
-        if (!skelRowsEl) return;
-        skelRowsEl.innerHTML = '';
-        for (let i=0;i<n;i++){
-            const row = document.createElement('div');
-            row.className = 'kt-skel__row';
-            row.innerHTML = `
-                <div class="kt-skel__bar" style="width:${60 + (i%3)*12}%"></div>
-                <div class="kt-skel__bar" style="width:${40 + (i%4)*10}%"></div>
-                <div class="kt-skel__bar" style="width:${45 + (i%5)*8}%"></div>
-                <div class="kt-skel__bar" style="width:${52 + (i%4)*9}%"></div>
-                <div class="kt-skel__bar" style="width:${38 + (i%3)*12}%"></div>
-            `;
-            skelRowsEl.appendChild(row);
-        }
-    }
-    buildSkeletonRows(9);
-
-    // Skeleton controls
-    let skelTimer = null;
-    let skelShownAt = 0;
-
-    function showSkeletonImmediate(minMs = 240){
-        if (!card || !skelWrap) return;
-        clearTimeout(skelTimer);
-
-        // Hide fixed alpha index while loading (desktop)
-        if (alphaIndex) alphaIndex.style.display = 'none';
-
-        card.classList.add('is-loading');
-        skelShownAt = Date.now();
-
-        skelTimer = setTimeout(() => {
-            // allow hide after minMs; actual hide happens in hideSkeleton()
-        }, minMs);
-    }
-
-    function showSkeletonSoft(){
-        // small delay so it doesn’t flicker while typing fast
-        if (!card || !skelWrap) return;
-        clearTimeout(skelTimer);
-        skelTimer = setTimeout(() => showSkeletonImmediate(220), 90);
-    }
-
-    function hideSkeleton(){
-        if (!card || !skelWrap) return;
-        clearTimeout(skelTimer);
-
-        const elapsed = Date.now() - skelShownAt;
-        const minMs = 220;
-        const wait = Math.max(0, minMs - elapsed);
-
-        setTimeout(() => {
-            card.classList.remove('is-loading');
-            // alphaIndex visibility will be restored by buildAlphaRowsAndIndex()
-        }, wait);
-    }
-
-    // Update --thead-h based on actual thead height (for sticky alpha rows)
-    function updateTheadHeight(){
-        const thead = table?.querySelector('thead');
-        if (!thead) return;
-        const h = Math.round(thead.getBoundingClientRect().height || 44);
-        document.documentElement.style.setProperty('--thead-h', h + 'px');
-    }
-
-    function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
-
-    function stripDiacritics(s){
-        try{
-            return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        } catch(e){
-            return (s || '');
-        }
-    }
-
-    function isAlphaGroupingMode(){
-        const v = sortSelect.value;
-        return v === 'lname_asc' || v === 'lname_desc';
-    }
-
-    function firstLetterFromRow(row){
-        const raw = stripDiacritics((row.dataset.lname || '').trim());
-        const ch = raw ? raw[0] : '';
-        if (ch && /[A-Za-z]/.test(ch)) return ch.toUpperCase();
-        return '#';
-    }
-
-    function clearAlphaRows(){
-        tbody.querySelectorAll('tr.alpha-row').forEach(r => r.remove());
-    }
-
-    function getVisibleRowsInDomOrder(){
-        return rowsAll.filter(r => r.style.display !== 'none');
-    }
-
-    function buildAlphaRowsAndIndex(){
-        clearAlphaRows();
-
-        // Only show A–Z features when sorting by last name
-        if (!isAlphaGroupingMode()){
-            alphaIndex.style.display = 'none';
-            return;
-        }
-
-        const visibleRows = getVisibleRowsInDomOrder();
-        if (!visibleRows.length){
-            alphaIndex.style.display = 'none';
-            return;
-        }
-
-        // Insert alpha separator rows before the first visible row of each letter
-        const counts = new Map(); // letter -> count
-        visibleRows.forEach(r => {
-            const L = firstLetterFromRow(r);
-            counts.set(L, (counts.get(L) || 0) + 1);
-        });
-
-        let lastLetter = null;
-        visibleRows.forEach(row => {
-            const letter = firstLetterFromRow(row);
-            if (letter !== lastLetter){
-                const tr = document.createElement('tr');
-                tr.className = 'alpha-row';
-                tr.dataset.letter = letter;
-                tr.innerHTML = `
-                    <td colspan="5">
-                        <div class="alpha-pill">
-                            <div class="alpha-left">
-                                <span class="alpha-letter">${letter}</span>
-                                <span class="alpha-meta">${counts.get(letter) || 0} patient(s)</span>
-                            </div>
-                        </div>
-                    </td>
-                `;
-                tbody.insertBefore(tr, row);
-                lastLetter = letter;
-            }
-        });
-
-        // Build the A–Z index
-        alphaIndex.innerHTML = '';
-        const letters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
-
-        letters.forEach(L => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'alpha-btn';
-            btn.textContent = L;
-
-            const available = counts.has(L) || (L === '#' && counts.has('#'));
-            if (!available) btn.classList.add('disabled');
-
-            btn.title = available ? `Jump to ${L}` : `No ${L} patients`;
-
-            btn.addEventListener('click', () => {
-                if (btn.classList.contains('disabled')) return;
-
-                if (L === '#'){
-                    const topEl = document.getElementById('patientsCard');
-                    if (topEl){
-                        const y = window.scrollY + topEl.getBoundingClientRect().top - 12;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    return;
-                }
-
-                const anchor = tbody.querySelector(`tr.alpha-row[data-letter="${L}"]`);
-                if (!anchor) return;
-
-                const offset = (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--thead-h')) || 44) + 12;
-                const y = window.scrollY + anchor.getBoundingClientRect().top - offset;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            });
-
-            alphaIndex.appendChild(btn);
-        });
-
-        alphaIndex.style.display = '';
-        updateActiveLetterHighlight(); // initial
-    }
-
-    function applySearch() {
-        const keyword = normalize(searchInput.value);
-        let visible = 0;
-
-        rowsAll.forEach(row => {
-            const text = normalize(row.textContent);
-            const show = text.includes(keyword);
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        visibleCountEl.textContent = visible;
-
-        if (emptyStateRow){
-            emptyStateRow.style.display = (visible === 0) ? '' : 'none';
-        }
-    }
-
-    function applySort() {
-        const mode = sortSelect.value;
-        const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
-
-        const sorted = [...rowsAll].sort((a, b) => {
-            const da = a.dataset;
-            const db = b.dataset;
-
-            const lnameA = stripDiacritics(da.lname || '');
-            const lnameB = stripDiacritics(db.lname || '');
-            const fnameA = stripDiacritics(da.fname || '');
-            const fnameB = stripDiacritics(db.fname || '');
-
-            const createdA = Number(da.created || 0);
-            const createdB = Number(db.created || 0);
-
-            const bdayA = Number(da.bday || 0);
-            const bdayB = Number(db.bday || 0);
-
-            switch(mode){
-                case 'lname_asc':
-                    return collator.compare(lnameA, lnameB)
-                        || collator.compare(fnameA, fnameB)
-                        || (createdB - createdA);
-
-                case 'lname_desc':
-                    return collator.compare(lnameB, lnameA)
-                        || collator.compare(fnameB, fnameA)
-                        || (createdB - createdA);
-
-                case 'fname_asc':
-                    return collator.compare(fnameA, fnameB)
-                        || collator.compare(lnameA, lnameB)
-                        || (createdB - createdA);
-
-                case 'fname_desc':
-                    return collator.compare(fnameB, fnameA)
-                        || collator.compare(lnameB, lnameA)
-                        || (createdB - createdA);
-
-                case 'created_asc':
-                    return createdA - createdB;
-
-                case 'created_desc':
-                    return createdB - createdA;
-
-                case 'bday_asc':
-                    return bdayA - bdayB || collator.compare(lnameA, lnameB);
-
-                case 'bday_desc':
-                    return bdayB - bdayA || collator.compare(lnameA, lnameB);
-
-                default:
-                    return collator.compare(lnameA, lnameB) || collator.compare(fnameA, fnameB);
-            }
-        });
-
-        sorted.forEach(r => tbody.appendChild(r));
-        if (emptyStateRow) tbody.appendChild(emptyStateRow);
-    }
-
-    function applyAll(){
-        updateTheadHeight();
-        applySort();
-        applySearch();
-        buildAlphaRowsAndIndex();
-    }
-
-    // Highlight active letter as you scroll (lightweight)
-    let raf = null;
-    function updateActiveLetterHighlight(){
-        if (!isAlphaGroupingMode()) return;
-
-        const headers = Array.from(tbody.querySelectorAll('tr.alpha-row'));
-        if (!headers.length) return;
-
-        const offset = (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--thead-h')) || 44) + 16;
-        let active = null;
-
-        for (const h of headers){
-            const top = h.getBoundingClientRect().top;
-            if (top - offset <= 0) active = h.dataset.letter;
-            else break;
-        }
-
-        const btns = Array.from(alphaIndex.querySelectorAll('.alpha-btn'));
-        btns.forEach(b => b.classList.remove('active'));
-        if (active){
-            const b = btns.find(x => x.textContent === active);
-            if (b) b.classList.add('active');
-        }
-    }
-
-    function onScroll(){
-        if (!isAlphaGroupingMode()) return;
-        if (raf) return;
-        raf = requestAnimationFrame(() => {
-            raf = null;
-            updateActiveLetterHighlight();
-        });
-    }
-
-    // Counts
-    totalCountEl.textContent = rowsAll.length;
-    visibleCountEl.textContent = rowsAll.length;
-
-    // ---- Events ----
-
-    // Search (soft skeleton)
-    let searchDeb = null;
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchDeb);
-        showSkeletonSoft();
-        searchDeb = setTimeout(() => {
-            applySearch();
-            buildAlphaRowsAndIndex();
-            hideSkeleton();
-        }, 140);
-    });
-
-    // Sort (immediate skeleton)
-    sortSelect.addEventListener('change', () => {
-        showSkeletonImmediate(260);
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-        });
-    });
-
-    // Reset (immediate skeleton)
-    resetBtn.addEventListener('click', () => {
-        showSkeletonImmediate(260);
-        searchInput.value = '';
-        sortSelect.value = 'lname_asc';
-        if (window.KTListState) {
-            window.KTListState.setParam('q', '');
-            window.KTListState.setParam('sort', '');
-        }
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-            searchInput.focus();
-        });
-    });
-
-    // Import
-    const importBtn = document.getElementById('importBtn');
-    const patientFile = document.getElementById('patientFile');
-    const importForm = document.getElementById('importForm');
-
-    importBtn?.addEventListener('click', () => patientFile.click());
-    patientFile?.addEventListener('change', () => {
-        if (patientFile.files && patientFile.files.length > 0) importForm.submit();
-    });
-
-    // Scroll/resize
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', () => {
-        updateTheadHeight();
-        buildAlphaRowsAndIndex();
-        updateActiveLetterHighlight();
-    });
-
-    // Initial (nice “website feel”)
-    showSkeletonImmediate(220);
-    requestAnimationFrame(() => {
-        if (!sortSelect.value) sortSelect.value = 'lname_asc';
-        applyAll();
-        hideSkeleton();
-    });
-})();
-</script>
-
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+    const button=document.getElementById('patientImportButton'),file=document.getElementById('patientImportFile'),form=document.getElementById('patientImportForm');
+    const scrollKey='kt-patients-scroll:'+window.location.href;
+    try{const saved=JSON.parse(sessionStorage.getItem(scrollKey)||'null');if(saved&&Date.now()-saved.time<600000)requestAnimationFrame(()=>window.scrollTo(0,Number(saved.y)||0))}catch(e){}
+    const remember=()=>{try{sessionStorage.setItem(scrollKey,JSON.stringify({y:window.scrollY,time:Date.now()}))}catch(e){}};
+    document.querySelectorAll('a[href*="return="],button[data-confirm]').forEach(el=>el.addEventListener('click',remember));
+    button?.addEventListener('click',()=>{remember();file?.click()});
+    file?.addEventListener('change',()=>{if(file.files?.length)form.submit()});
+    document.querySelectorAll('.row-menu').forEach(menu=>{const toggle=menu.querySelector('[data-bs-toggle="dropdown"]');menu.addEventListener('hidden.bs.dropdown',()=>toggle?.focus())});
+});
+</script>
+@endpush

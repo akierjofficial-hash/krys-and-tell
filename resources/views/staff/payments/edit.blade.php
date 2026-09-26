@@ -238,6 +238,14 @@
                     <div class="helper">Select the visit this payment belongs to.</div>
                 </div>
 
+                @if($payment->procedure)
+                    <div class="col-12 col-md-6">
+                        <label class="form-labelx">Payment For</label>
+                        <input class="inputx" value="{{ $payment->procedure->service?->name ?? 'Treatment' }} — ₱{{ number_format((float)$payment->procedure->price, 2) }}" readonly>
+                        <div class="helper">This allocation is preserved while the payment stays on this visit.</div>
+                    </div>
+                @endif
+
                 <!-- Amount -->
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Amount <span class="text-danger">*</span></label>

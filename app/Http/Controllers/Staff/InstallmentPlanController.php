@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\InstallmentPlanCreationService;
 use App\Models\InstallmentPlan;
 use App\Models\InstallmentPayment;
 use App\Models\Visit;
@@ -214,85 +215,30 @@ class InstallmentPlanController extends Controller
         return view('staff.payments.installment.create', compact('visits', 'appointments'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, InstallmentPlanCreationService $creator)
     {
         $isOpen = $request->boolean('is_open_contract');
-
-        $request->validate([
-            'visit_id'        => 'nullable|exists:visits,id|required_without:appointment_id',
-            'appointment_id'  => 'nullable|exists:appointments,id|required_without:visit_id',
-            'total_cost'      => 'required|numeric|min:0',
-            'downpayment'     => 'required|numeric|min:0|lte:total_cost',
-            'is_open_contract'=> 'nullable|boolean',
-            'months'          => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
+        $data = $request->validate([
+            'visit_id' => 'nullable|exists:visits,id|required_without:appointment_id',
+            'appointment_id' => 'nullable|exists:appointments,id|required_without:visit_id',
+            'total_cost' => 'required|numeric|min:0',
+            'downpayment' => 'required|numeric|min:0|lte:total_cost',
+            'is_open_contract' => 'nullable|boolean',
+            'months' => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
             'open_monthly_payment' => $isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
-            'start_date'      => 'required|date',
+            'start_date' => 'required|date',
+            'downpayment_method' => 'required|in:Cash,GCash,Card,Bank Transfer',
+            'downpayment_date' => 'required|date',
+            'submission_token' => 'required|uuid',
         ]);
-
-        $visit = null;
-
-        if ($request->filled('visit_id')) {
-            $visit = Visit::with(['patient', 'procedures.service'])->findOrFail($request->visit_id);
-        } else {
-            $app = Appointment::with(['patient', 'service'])->findOrFail($request->appointment_id);
-
-            $visit = Visit::create([
-                'patient_id'   => $app->patient_id,
-                'doctor_id'    => $app->doctor_id ?? null,
-                'dentist_name' => $app->dentist_name ?? null,
-                'visit_date'   => $request->start_date,
-                'status'       => 'completed',
-                'notes'        => 'Installment plan created from appointment',
-                'price'        => null,
-            ]);
-
-            if (!empty($app->service_id)) {
-                $visit->procedures()->create([
-                    'service_id'   => $app->service_id,
-                    'tooth_number' => null,
-                    'surface'      => null,
-                    'shade'        => null,
-                    'notes'        => null,
-                    'price'        => 0,
-                ]);
-            }
-
-            $visit->load(['patient', 'procedures.service']);
+        if ($request->filled('visit_id') && $request->filled('appointment_id')) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['visit_id' => 'Select only one source.']);
         }
-
-        $plan = InstallmentPlan::create([
-            'visit_id'          => $visit->id,
-            'patient_id'        => $visit->patient_id,
-            'service_id'        => optional($visit->procedures->first()?->service)->id,
-            'total_cost'        => (float)$request->total_cost,
-            'downpayment'       => (float)$request->downpayment,
-            'is_open_contract'  => $isOpen,
-            'months'            => $isOpen ? 0 : (int)$request->months,
-            // ✅ SAVE OPEN CONTRACT MONTHLY PAYMENT
-            'open_monthly_payment' => $isOpen ? (float)$request->open_monthly_payment : null,
-            'start_date'        => $request->start_date,
-            'status'            => InstallmentPlan::STATUS_PARTIALLY_PAID,
-            'balance'           => 0,
-        ]);
-
-        if ((float)$request->downpayment > 0) {
-            InstallmentPayment::create([
-                'installment_plan_id' => $plan->id,
-                'visit_id'            => $plan->visit_id,
-                'month_number'        => 0,
-                'amount'              => (float)$request->downpayment,
-                'method'              => 'Cash',
-                'payment_date'        => $request->start_date,
-                'notes'               => 'Downpayment',
-            ]);
-        }
-
-        $this->recomputePlan($plan);
-
-        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
-            ->with('success', 'Installment plan created successfully!');
+        $data['is_open_contract'] = $isOpen;
+        $creator->create($data);
+        return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'plans'])
+            ->with('success', 'Installment plan created.');
     }
-
     public function show(InstallmentPlan $plan)
     {
         $plan->load([
@@ -302,9 +248,6 @@ class InstallmentPlanController extends Controller
             'visit.procedures.service',
             'payments',
         ]);
-
-        $this->ensureDownpaymentPayment($plan);
-        $this->recomputePlan($plan);
 
         return view('staff.payments.installment.show', compact('plan'));
     }
@@ -321,9 +264,6 @@ class InstallmentPlanController extends Controller
             'visit.procedures.service',
             'payments',
         ]);
-
-        $this->ensureDownpaymentPayment($plan);
-        $this->recomputePlan($plan);
 
         return view('staff.payments.installment.edit', compact('plan', 'visits', 'appointments'));
     }

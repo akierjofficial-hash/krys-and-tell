@@ -782,6 +782,7 @@ function renderProcedures() {
                     <button type="button" class="btn-dangerx" onclick="removeProcedure(${i})">✕</button>
                 </td>
 
+                <input type="hidden" name="procedures[${i}][id]" value="${escapeAttr(p.id ?? '')}">
                 <input type="hidden" name="procedures[${i}][service_id]" value="${escapeAttr(p.service_id)}">
                 <input type="hidden" name="procedures[${i}][tooth_number]" value="${escapeAttr(p.tooth_number ?? '')}">
                 <input type="hidden" name="procedures[${i}][surface]" value="${escapeAttr(p.surface ?? '')}">

@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Staff & Admin Accounts')
 
 @section('kt_live_scope', 'users')
 @section('kt_live_interval', 20000)
@@ -272,6 +273,7 @@
 @endpush
 
 @section('content')
+@if($activeAdminCount === 1)<div class="alert alert-warning alertx"><i class="fa fa-shield-halved me-2"></i>Only one active administrator remains. Add or activate another administrator to keep account recovery available.</div>@endif
 @php
     $hasActivityRoute = \Illuminate\Support\Facades\Route::has('admin.users.activity');
 
@@ -288,8 +290,8 @@
 
     <div class="head">
         <div>
-            <h2>Staff Accounts</h2>
-            <div class="sub">Admin and staff only</div>
+            <h2>Staff &amp; Admin Accounts</h2>
+            <div class="sub">Manage clinic access, roles, and account recovery</div>
         </div>
 
         <a href="{{ route('admin.users.create') }}" class="btn btnx btn-cta" data-kt-return>
@@ -348,7 +350,7 @@
                         <th>Role</th>
                         <th>Status</th>
                         <th style="min-width: 240px;">Last Login</th>
-                        <th class="text-end" style="min-width: 420px;">Actions</th>
+                        <th class="text-end" style="min-width: 180px;">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -409,36 +411,17 @@
                             </td>
 
                             <td class="text-end">
-                                @if($hasActivityRoute)
-                                    <a href="{{ route('admin.users.activity', $u->id) }}" class="btn btn-sm abtn me-1" data-kt-return>
-                                        <i class="fa-solid fa-clock-rotate-left me-1"></i> Activity
-                                    </a>
-                                @endif
-
                                 <a href="{{ route('admin.users.edit', $u->id) }}" class="btn btn-sm abtn me-1" data-kt-return>
                                     <i class="fa fa-pen me-1"></i> Edit
                                 </a>
-
-                                <form class="d-inline" method="POST" action="{{ route('admin.users.toggleActive', $u->id) }}" data-kt-return>
-                                    @csrf
-                                    <button class="btn btn-sm abtn me-1" type="submit">
-                                        <i class="fa {{ $isActive ? 'fa-ban' : 'fa-check' }} me-1"></i>
-                                        {{ $isActive ? 'Deactivate' : 'Activate' }}
-                                    </button>
-                                </form>
-
-                                @if(!$isMe)
-                                    <form class="d-inline" data-kt-return
-                                          method="POST"
-                                          action="{{ route('admin.users.destroy', $u->id) }}"
-                                          onsubmit="return confirm('Delete this account permanently? This cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-sm abtn abtn-danger" type="submit">
-                                            <i class="fa fa-trash me-1"></i> Delete
-                                        </button>
-                                    </form>
-                                @endif
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm abtn" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" aria-label="More actions for {{ $u->name }}"><i class="fa-solid fa-ellipsis"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                                        @if($hasActivityRoute)<li><a href="{{ route('admin.users.activity',$u) }}" class="dropdown-item"><i class="fa-solid fa-clock-rotate-left me-2"></i>View activity</a></li>@endif
+                                        <li>@if($isActive && $u->role === 'admin')<button class="dropdown-item js-sensitive-action" type="button" data-url="{{ route('admin.users.toggleActive',$u) }}" data-method="POST" data-name="{{ $u->name }}" data-action-label="Deactivate administrator"><i class="fa fa-ban me-2"></i>Deactivate</button>@else<form method="POST" action="{{ route('admin.users.toggleActive',$u) }}">@csrf<button class="dropdown-item" type="submit"><i class="fa {{ $isActive?'fa-ban':'fa-check' }} me-2"></i>{{ $isActive?'Deactivate':'Activate' }}</button></form>@endif</li>
+                                        @if(!$isMe)<li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-sensitive-action" type="button" data-url="{{ route('admin.users.destroy',$u) }}" data-method="DELETE" data-name="{{ $u->name }}" data-action-label="Delete account"><i class="fa fa-trash me-2"></i>Move to Deleted Accounts</button></li>@endif
+                                    </ul>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -462,4 +445,10 @@
     </div>
 
 </div>
+
+<div class="modal fade" id="sensitiveActionModal" tabindex="-1" aria-labelledby="sensitiveActionTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="sensitiveActionForm" method="POST">@csrf<input type="hidden" name="_method" id="sensitiveMethod" value="POST"><div class="modal-header"><h2 class="modal-title fs-5" id="sensitiveActionTitle">Authorize sensitive action</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="sensitiveActionDescription" class="text-muted"></p><div class="mb-3"><label class="form-label fw-bold">Your current password</label><input class="form-control" type="password" name="current_password" required autocomplete="current-password"></div><div><label class="form-label fw-bold">Administrative reason</label><textarea class="form-control" name="admin_reason" rows="3" required></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" type="submit" id="sensitiveSubmit">Continue</button></div></form></div></div></div>
 @endsection
+
+@push('scripts')
+<script>document.querySelectorAll('.js-sensitive-action').forEach(button=>button.addEventListener('click',()=>{const form=document.getElementById('sensitiveActionForm');form.action=button.dataset.url;document.getElementById('sensitiveMethod').value=button.dataset.method;document.getElementById('sensitiveActionTitle').textContent=button.dataset.actionLabel;const deleting=button.dataset.method==='DELETE';document.getElementById('sensitiveActionDescription').textContent=deleting?'The account for '+button.dataset.name+' will move to Deleted Accounts and can be restored. Linked appointments are preserved but unlinked from this login.':'Deactivate '+button.dataset.name+'? Their active session will end on the next protected request.';document.getElementById('sensitiveSubmit').textContent=deleting?'Move to Deleted Accounts':button.dataset.actionLabel;bootstrap.Modal.getOrCreateInstance(document.getElementById('sensitiveActionModal')).show();}));</script>
+@endpush

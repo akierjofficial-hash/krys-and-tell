@@ -1,5 +1,7 @@
 @extends($layout ?? 'layouts.staff')
 
+@section('title', 'Dentist Availability')
+
 @section('content')
 @php
     $routePrefix = $routePrefix ?? 'staff.dentist-unavailability';
@@ -514,13 +516,13 @@
                                             <i class="fa-solid fa-pen"></i> Edit
                                         </button>
 
-                                        <form method="POST" action="{{ route($routePrefix . '.destroy', ['doctorUnavailability' => $item->id]) }}">
+                                        <form method="POST" action="{{ route($routePrefix . '.destroy', ['doctorUnavailability' => $item->id]) }}" data-dayoff-delete-form>
                                             @csrf
                                             @method('DELETE')
                                             <input type="hidden" name="return" value="{{ $returnUrl }}">
                                             <button type="submit"
                                                     class="du-mini danger"
-                                                    onclick="return confirm('Remove this unavailable date?');">
+                                                    data-dayoff-delete>
                                                 <i class="fa-solid fa-trash"></i> Remove
                                             </button>
                                         </form>
@@ -549,6 +551,16 @@
     </div>
 </div>
 
+<div class="modal fade" id="duDeleteModal" tabindex="-1" aria-labelledby="duDeleteModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title fs-5" id="duDeleteModalTitle">Remove unavailable date?</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body">This date will become available for booking again. Existing appointments are not changed.</div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-danger" id="duConfirmDelete"><i class="fa-solid fa-trash"></i>Remove date</button></div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 (function () {
@@ -570,6 +582,9 @@
     const oldDoctorId = @json(old('doctor_id'));
     const oldDate = @json(old('unavailable_date'));
     const oldReason = @json(old('reason'));
+    const deleteModalEl = document.getElementById('duDeleteModal');
+    const deleteModal = deleteModalEl && window.bootstrap ? new bootstrap.Modal(deleteModalEl) : null;
+    let pendingDeleteForm = null;
 
     function setCreateMode() {
         form.action = storeAction;
@@ -605,6 +620,20 @@
             });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+    });
+
+    document.querySelectorAll('[data-dayoff-delete]').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+            event.preventDefault();
+            pendingDeleteForm = btn.closest('[data-dayoff-delete-form]');
+            deleteModal?.show();
+        });
+    });
+
+    document.getElementById('duConfirmDelete')?.addEventListener('click', () => {
+        if (!pendingDeleteForm) return;
+        deleteModal?.hide();
+        pendingDeleteForm.requestSubmit();
     });
 
     cancelEl?.addEventListener('click', () => {

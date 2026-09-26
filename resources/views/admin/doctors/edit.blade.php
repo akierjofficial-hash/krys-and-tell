@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Edit Doctor')
 
 @push('styles')
 <style>

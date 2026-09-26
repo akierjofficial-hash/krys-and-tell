@@ -388,7 +388,7 @@
         />
 
         @if(!$isPaid && !$isCompleted)
-            <a href="{{ route('staff.installments.pay', [$plan->id, 'return' => url()->full()]) }}" class="i-btn i-btn-primary">
+            <a href="{{ route('staff.payments.index', ['open_record' => 1, 'patient_id' => $plan->patient_id, 'target_type' => 'plan', 'target_id' => $plan->id, 'return' => url()->full()]) }}" class="i-btn i-btn-primary">
                 <i class="fa fa-circle-dollar-to-slot"></i> Pay
             </a>
         @endif
@@ -694,7 +694,7 @@
                                             @else
                                                 @if(!$isCompleted)
                                                     <a class="i-mini i-mini-primary"
-                                                       href="{{ route('staff.installments.pay', [$plan->id, 'month' => $i, 'return' => url()->full()]) }}">
+                                                       href="{{ route('staff.payments.index', ['open_record' => 1, 'patient_id' => $plan->patient_id, 'target_type' => 'plan', 'target_id' => $plan->id, 'return' => url()->full()]) }}">
                                                         <i class="fa fa-circle-dollar-to-slot"></i> Pay
                                                     </a>
                                                 @endif

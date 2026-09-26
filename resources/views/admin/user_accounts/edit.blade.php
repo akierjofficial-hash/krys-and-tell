@@ -1,16 +1,11 @@
 @extends('layouts.admin')
+@section('title', 'Edit Website Account')
 
 @section('content')
+<x-admin.page-header title="Edit website account" description="Update the sign-in details and access state for this patient-facing account." parent="Website Accounts" :parent-url="route('admin.user_accounts.index')">
+    <x-slot:actions><a href="{{ route('admin.user_accounts.index') }}" class="btn btn-outline-secondary"><i class="fa fa-arrow-left"></i>Back to accounts</a></x-slot:actions>
+</x-admin.page-header>
 <div class="cardx p-3 p-md-4" style="max-width:760px;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h4 class="m-0" style="font-weight:950;">Edit User</h4>
-            <div style="color:var(--muted);font-weight:700;font-size:13px;">role=user account</div>
-        </div>
-        <a href="{{ route('admin.user_accounts.index') }}" class="btn btn-outline-secondary" style="border-radius:14px;font-weight:900;">
-            Back
-        </a>
-    </div>
 
     @if($errors->any())
         <div class="alert alert-danger" style="border-radius:14px;font-weight:800;">
@@ -42,6 +37,13 @@
                 <input class="form-control" type="password" name="password_confirmation">
             </div>
         </div>
+
+        @if($user->google_id)
+        <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="establish_local_password" name="establish_local_password" value="1">
+            <label class="form-check-label" for="establish_local_password" style="font-weight:900;">Deliberately establish a local password for this Google-connected account</label>
+        </div>
+        @endif
 
         @if($hasActive)
         <div class="form-check mt-3">

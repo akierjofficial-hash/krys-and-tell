@@ -36,8 +36,8 @@
 
             $visitTotal = (float) $rows->sum('amount');
 
-            $procLabels = collect();
-            if ($visit && $visit->relationLoaded('procedures')) {
+            $procLabels = $rows->map(fn($payment) => $payment->procedure?->service?->name)->filter()->unique()->values();
+            if ($procLabels->isEmpty() && $visit && $visit->relationLoaded('procedures')) {
                 $procLabels = $visit->procedures->map(function($p){
                     $name = $p->service?->name ?? '—';
                     $tooth = $p->tooth_number ? ('#'.$p->tooth_number) : null;

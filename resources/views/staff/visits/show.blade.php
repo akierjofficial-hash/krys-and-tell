@@ -364,6 +364,10 @@
             label="Back"
         />
 
+        <a href="{{ route('staff.payments.index', ['open_record' => 1, 'patient_id' => $visit->patient_id, 'target_type' => 'visit', 'target_id' => $visit->id, 'return' => url()->full()]) }}" class="btn-ghostx">
+            <i class="fa fa-receipt"></i> Record Payment
+        </a>
+
         <a href="{{ route('staff.visits.edit', [$visit->id, 'return' => url()->full()]) }}" class="btn-primaryx">
             <i class="fa fa-pen"></i> Edit Visit
         </a>

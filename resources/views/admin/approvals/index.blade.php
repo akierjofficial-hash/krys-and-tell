@@ -267,13 +267,8 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div>
-            <h3 class="mb-0">Approval Requests</h3>
-            <small class="text-muted">Public bookings waiting for approval</small>
-        </div>
-
-        <div class="d-flex align-items-center gap-2">
+    <x-admin.page-header title="Booking requests" description="Review and resolve public booking requests before they enter the clinic schedule.">
+        <x-slot:actions><div class="d-flex align-items-center gap-2">
             <span class="badge bg-warning text-dark" style="border-radius:999px;font-weight:900;">
                 Pending: <span id="pendingCountBadge">{{ $requests->total() }}</span>
             </span>
@@ -282,8 +277,8 @@
                 <i class="fa-solid fa-circle text-success me-1" style="font-size:10px;"></i>
                 Live
             </span>
-        </div>
-    </div>
+        </div></x-slot:actions>
+    </x-admin.page-header>
 
 
     <div id="liveNotice"></div>
@@ -296,6 +291,9 @@
         @forelse($requests as $r)
             @php
                 $isWalkInRequest = (bool)($r->is_walk_in_request ?? false);
+                $patientName = $r->public_name
+                    ?? trim(($r->public_first_name ?? '').' '.($r->public_middle_name ? $r->public_middle_name.' ' : '').($r->public_last_name ?? ''))
+                    ?: 'Patient';
             @endphp
             <div class="col-lg-6 col-xl-4"
                  data-appointment-id="{{ $r->id }}"
@@ -376,12 +374,9 @@
                                 </button>
                             </form>
 
-                            <form method="POST" action="{{ route('admin.approvals.decline', $r) }}" data-ajax="1">
-                                @csrf
-                                <button class="btn btn-outline-danger btn-sm" type="submit">
+                                <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button" data-decline-url="{{ route('admin.approvals.decline', $r) }}" data-patient-name="{{ $patientName }}">
                                     <i class="fa-solid fa-xmark me-1"></i> Decline
                                 </button>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -496,6 +491,8 @@
   </div>
 </div>
 
+<div class="modal fade" id="declineModal" tabindex="-1" aria-labelledby="declineModalTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="declineForm"><div class="modal-header"><h5 class="modal-title" id="declineModalTitle">Decline booking request</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p class="text-muted" id="declinePatientText"></p><label class="form-label fw-bold" for="declineReason">Reason for the patient</label><textarea class="form-control" id="declineReason" name="staff_note" rows="4" required placeholder="Explain why this booking cannot be accepted."></textarea><div class="alert alert-danger d-none mt-3" id="declineError"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger">Decline request</button></div></form></div></div></div>
+
 <script>
 (function(){
     const widgetUrl = @json(route('admin.approvals.widget'));
@@ -531,6 +528,12 @@
     const eaNote = document.getElementById('eaNote');
     const eaNoteRequired = document.getElementById('eaNoteRequired');
     const eaSubmitBtn = document.getElementById('eaSubmitBtn');
+    const declineModalEl = document.getElementById('declineModal');
+    const declineModal = declineModalEl ? new bootstrap.Modal(declineModalEl) : null;
+    const declineForm = document.getElementById('declineForm');
+    const declineReason = document.getElementById('declineReason');
+    const declineError = document.getElementById('declineError');
+    let declineUrl = '';
 
     const seen = new Set(
         Array.from(grid.querySelectorAll('[data-appointment-id]'))
@@ -874,12 +877,9 @@
                             </button>
                         </form>
 
-                        <form method="POST" action="${esc(item.decline_url)}" data-ajax="1">
-                            <input type="hidden" name="_token" value="${esc(csrf)}">
-                            <button class="btn btn-outline-danger btn-sm" type="submit">
+                            <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button" data-decline-url="${esc(item.decline_url)}" data-patient-name="${esc(patient)}">
                                 <i class="fa-solid fa-xmark me-1"></i> Decline
                             </button>
-                        </form>
                     </div>
                 </div>
             </div>
@@ -1144,6 +1144,30 @@
         }finally{
             setSubmitLoading(false);
         }
+    });
+
+    grid.addEventListener('click', (event) => {
+        const button = event.target.closest('.btn-decline-review');
+        if (!button) return;
+        declineUrl = button.dataset.declineUrl || '';
+        document.getElementById('declinePatientText').textContent = 'This reason will be sent to ' + (button.dataset.patientName || 'the patient') + '.';
+        declineReason.value = '';
+        declineError.classList.add('d-none');
+        declineModal?.show();
+    });
+
+    declineForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const reason = declineReason.value.trim();
+        if (!reason) { declineError.textContent = 'Enter a decline reason.'; declineError.classList.remove('d-none'); declineReason.focus(); return; }
+        const response = await fetch(declineUrl, {method:'POST', headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':csrf,'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({_token:csrf,staff_note:reason})});
+        const data = await response.json().catch(()=>({}));
+        if (!response.ok || data.ok === false) { declineError.textContent = data.message || 'Decline failed.'; declineError.classList.remove('d-none'); return; }
+        const button = grid.querySelector(`[data-decline-url="${CSS.escape(declineUrl)}"]`);
+        button?.closest('[data-appointment-id]')?.remove();
+        declineModal?.hide(); ensureEmptyState();
+        pendingBadge.textContent = data.pendingCount ?? Math.max(0, Number(pendingBadge.textContent)-1);
+        showNotice(`<div class="alert alert-success" style="border-radius:14px;">${esc(data.message || 'Booking declined.')}</div>`);
     });
 
     poll();

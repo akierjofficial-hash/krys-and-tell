@@ -15,6 +15,8 @@ class ActivityLog extends Model
         'user_id',
         'event',
         'description',
+        'target_type',
+        'target_id',
         'route_name',
         'url',
         'method',
@@ -22,16 +24,25 @@ class ActivityLog extends Model
         'ip',
         'user_agent',
         'properties',
+        'before_values',
+        'after_values',
+        'reason',
+        'is_sensitive',
+        'succeeded',
         'created_at',
     ];
 
     protected $casts = [
         'properties' => 'array',
+        'before_values' => 'array',
+        'after_values' => 'array',
+        'is_sensitive' => 'boolean',
+        'succeeded' => 'boolean',
         'created_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 }

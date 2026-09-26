@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Edit Staff or Admin Account')
 
 @push('styles')
 <style>
@@ -374,6 +375,9 @@
             </ul>
         </div>
     @endif
+    @if($isSelf || $soleActiveAdmin)
+        <div class="alert alert-warning alertx"><i class="fa fa-shield-halved me-2"></i>{{ $isSelf ? 'Your own administrator role and active status are protected.' : 'This is the last active administrator. It cannot be demoted or deactivated until another active administrator exists.' }}</div>
+    @endif
 
     <div class="row g-3">
         {{-- LEFT: FORM --}}
@@ -429,7 +433,8 @@
                             <div class="row g-3">
                                 <div class="col-md-3">
                                     <div class="label">Role</div>
-                                    <select id="roleSelect" class="form-select" name="role" required>
+                                    @if($isSelf || $soleActiveAdmin)<input type="hidden" name="role" value="admin">@endif
+                                    <select id="roleSelect" class="form-select" name="role" required @disabled($isSelf || $soleActiveAdmin)>
                                         <option value="staff" @selected(old('role', $user->role) === 'staff')>Staff</option>
                                         <option value="admin" @selected(old('role', $user->role) === 'admin')>Admin</option>
                                     </select>
@@ -438,12 +443,14 @@
 
                                 <div class="col-md-3 d-flex align-items-end">
                                     <div class="form-check w-100">
+                                        @if($isSelf || $soleActiveAdmin)<input type="hidden" name="is_active" value="1">@endif
                                         <input
                                             class="form-check-input"
                                             type="checkbox"
                                             name="is_active"
                                             value="1"
                                             id="active"
+                                            @disabled($isSelf || $soleActiveAdmin)
                                             @checked(old('is_active', $user->is_active) ? true : false)
                                         >
                                         <label class="form-check-label" for="active">Active</label>
@@ -474,6 +481,14 @@
 
                                     <div class="hint">Minimum 8 characters (only applies if you enter a new password).</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="sec mb-3">
+                            <div class="sec-title"><span><i class="fa fa-key me-2"></i>Authorization for sensitive changes</span><span class="mini">Required when applicable</span></div>
+                            <div class="row g-3">
+                                <div class="col-md-5"><div class="label">Your current password</div><input class="form-control" type="password" name="current_password" autocomplete="current-password"><div class="hint">Required for role, password, and administrator status changes.</div></div>
+                                <div class="col-md-7"><div class="label">Administrative reason</div><textarea class="form-control" name="admin_reason" rows="2" placeholder="Why is this sensitive change needed?">{{ old('admin_reason') }}</textarea><div class="hint">Stored in the clinic activity log.</div></div>
                             </div>
                         </div>
 

@@ -40,6 +40,8 @@ use App\Http\Controllers\Admin\AdminDoctorController;
 use App\Http\Controllers\Admin\AdminDoctorUnavailabilityController;
 use App\Http\Controllers\Admin\AdminUserAccountsController;
 use App\Http\Controllers\Admin\AdminApprovalRequestController;
+use App\Http\Controllers\Admin\AdminActivityController;
+use App\Http\Controllers\Admin\AdminDeletedAccountController;
 use App\Http\Controllers\Admin\LiveSnapshotController as AdminLiveSnapshotController;
 use App\Http\Controllers\Shared\ServiceDoctorAssignmentController;
 
@@ -177,6 +179,8 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
 
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+            Route::get('/activity', [AdminActivityController::class, 'index'])->name('activity.index');
+            Route::get('/deleted-accounts', [AdminDeletedAccountController::class, 'index'])->name('deleted_accounts.index');
 
             // Ã¢Å“â€¦ AJAX realtime snapshots (polling)
             Route::get('/live/snapshot', [AdminLiveSnapshotController::class, 'snapshot'])->name('live.snapshot');
@@ -284,6 +288,14 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/{doctorUnavailability}', [DoctorUnavailabilityController::class, 'destroy'])->name('destroy');
             });
 
+            Route::prefix('record-entry')->name('records.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Staff\RecordEntryController::class, 'index'])->name('index');
+                Route::put('/{id}/draft', [\App\Http\Controllers\Staff\RecordEntryController::class, 'draft'])->name('draft');
+                Route::post('/{id}/review', [\App\Http\Controllers\Staff\RecordEntryController::class, 'review'])->name('review');
+                Route::post('/{id}/save', [\App\Http\Controllers\Staff\RecordEntryController::class, 'store'])->name('store');
+                Route::delete('/{id}/draft', [\App\Http\Controllers\Staff\RecordEntryController::class, 'discard'])->name('discard');
+            });
+
             // Patients import/export
             Route::get('/patients/export', [PatientImportExportController::class, 'export'])->name('patients.export');
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
@@ -322,6 +334,8 @@ Route::middleware('auth')->group(function () {
             Route::prefix('payments')->name('payments.')->group(function () {
                 Route::get('/', [PaymentController::class, 'index'])->name('index');
                 Route::get('/choose', [PaymentController::class, 'choosePlan'])->name('choose');
+                Route::get('/payable-items', [PaymentController::class, 'payableItems'])->name('payable-items');
+                Route::post('/record', [PaymentController::class, 'record'])->name('record');
 
                 // Ã¢Å“â€¦ ADD THIS (must be ABOVE /{payment} routes)
                 Route::get('/cash/patient/{patient}', [PaymentController::class, 'cashPatient'])

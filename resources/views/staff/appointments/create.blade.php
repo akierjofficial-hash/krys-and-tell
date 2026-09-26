@@ -193,7 +193,7 @@
                     <select name="patient_id" class="selectx" required>
                         <option value="">-- Select Patient --</option>
                         @foreach($patients as $patient)
-                            <option value="{{ $patient->id }}" {{ old('patient_id') == $patient->id ? 'selected' : '' }}>
+                            <option value="{{ $patient->id }}" {{ old('patient_id', request('patient_id')) == $patient->id ? 'selected' : '' }}>
                                 {{ $patient->first_name }} {{ $patient->last_name }}
                             </option>
                         @endforeach

@@ -194,7 +194,7 @@
 
 <div class="page-head form-max">
     <div>
-        <h2 class="page-title">Add Cash Payment</h2>
+        <h2 class="page-title">Record Payment</h2>
         <p class="subtitle">Select a visit or appointment, confirm the cost, then submit the payment.</p>
     </div>
 
@@ -226,6 +226,10 @@
         <form action="{{ route('staff.payments.store.cash') }}" method="POST" id="cashPayForm">
             @csrf
             <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
+            @if(request()->filled('patient_id'))
+                <input type="hidden" name="preserve_charge" value="1">
+                <p class="helper">Payment for patient #{{ request('patient_id') }}. Partial receipts leave the remaining treatment balance outstanding.</p>
+            @endif
 
             <div class="row g-3">
 
@@ -284,7 +288,7 @@
                                 data-treatments="{{ $treatmentsPreview }}"
                                 data-amount="{{ $balance }}"
                                 data-date="{{ $visitDateForInput }}"
-                                {{ old('visit_id') == $visit->id ? 'selected' : '' }}
+                                {{ old('visit_id', request('visit_id')) == $visit->id ? 'selected' : '' }}
                             >
                                 Visit - {{ $pName }} ({{ $dateLabel }}) — Balance ₱{{ number_format($balance, 2) }}
                             </option>
@@ -386,6 +390,11 @@
                 </div>
 
                 {{-- Treatments --}}
+                <div class="col-12">
+                    <label class="form-labelx" for="paymentNotes">Receipt notes (optional)</label>
+                    <textarea id="paymentNotes" name="notes" class="textareax" maxlength="2000">{{ old('notes') }}</textarea>
+                </div>
+
                 <div class="col-12">
                     <label class="form-labelx">Treatments (auto-filled)</label>
 

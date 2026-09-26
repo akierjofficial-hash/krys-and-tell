@@ -12,10 +12,12 @@ class Payment extends Model
 
     protected $fillable = [
         'visit_id',
+        'visit_procedure_id',
         'amount',
         'method',
         'payment_date',
         'notes',
+        'submission_token',
     ];
 
     protected $casts = [
@@ -26,5 +28,10 @@ class Payment extends Model
     public function visit()
     {
         return $this->belongsTo(Visit::class)->withTrashed();
+    }
+
+    public function procedure()
+    {
+        return $this->belongsTo(VisitProcedure::class, 'visit_procedure_id');
     }
 }

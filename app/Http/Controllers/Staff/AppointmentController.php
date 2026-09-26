@@ -14,18 +14,27 @@ use Illuminate\Support\Facades\Schema;
 
 class AppointmentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ]);
+
         $appointments = Appointment::with(['patient', 'service', 'doctor'])
+            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('appointment_date', '>=', $request->date_from))
+            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('appointment_date', '<=', $request->date_to))
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         return view('staff.appointments.index', compact('appointments'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $patients = Patient::orderBy('first_name')->get();
+        $request->validate(['patient_id' => ['nullable', Rule::exists('patients', 'id')->whereNull('deleted_at')]]);
+        $patients = Patient::when($request->filled('patient_id'), fn ($q) => $q->whereKey($request->patient_id))->orderBy('first_name')->get();
         $services = Service::orderBy('name')->get();
 
         $doctors = Doctor::where('is_active', 1)

@@ -39,6 +39,10 @@
     return false;
   }
 
+  function hasOpenDialog() {
+    return !!document.querySelector('.modal.show, [role="dialog"][aria-hidden="false"], dialog[open]');
+  }
+
   function preserveState() {
     const data = { t: now(), fields: {} };
 
@@ -158,6 +162,7 @@
 
       // avoid annoying reload while user is typing / selecting
       if (isInteractiveFocus()) return;
+      if (hasOpenDialog()) return;
 
       polling = true;
       try {

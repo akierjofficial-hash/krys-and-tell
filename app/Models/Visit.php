@@ -43,4 +43,14 @@ class Visit extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function installmentPlan()
+    {
+        return $this->hasOne(InstallmentPlan::class);
+    }
+
+    public function installmentPayments()
+    {
+        return $this->hasMany(InstallmentPayment::class);
+    }
 }

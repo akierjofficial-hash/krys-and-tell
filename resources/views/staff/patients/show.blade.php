@@ -382,6 +382,12 @@
             label="Back"
         />
 
+        <a href="{{ route('staff.records.index', ['patient_id' => $patient->id, 'mode' => 'visit']) }}" class="btn-primaryx">Add Visit</a>
+        <a href="{{ route('staff.records.index', ['patient_id' => $patient->id]) }}" class="btn-ghostx">Enter Past Records</a>
+        <a href="{{ route('staff.payments.index', ['open_record' => 1, 'patient_id' => $patient->id, 'return' => route('staff.patients.show', ['patient' => $patient->id, 'tab' => 'tab-payments'])]) }}" class="btn-ghostx">Record Payment</a>
+        <a href="{{ route('staff.payments.create.installment', ['patient_id' => $patient->id, 'return' => route('staff.patients.show', ['patient' => $patient->id, 'tab' => 'tab-payments'])]) }}" class="btn-ghostx">Create Installment Plan</a>
+        <a href="{{ route('staff.appointments.create', ['patient_id' => $patient->id, 'return' => route('staff.patients.show', ['patient' => $patient->id, 'tab' => 'tab-appts'])]) }}" class="btn-ghostx">Book Appointment</a>
+
         <a href="{{ route('staff.patients.printInfo', $patient->id) }}" target="_blank" class="btn-ghostx">
             <i class="fa fa-print"></i> Print Patient Info (PDF)
         </a>
@@ -810,13 +816,14 @@
                                                 @php
                                                     $visit = $payment->visit;
 
-                                                    $serviceNames = $visit
-                                                        ? $visit->procedures
+                                                    $serviceNames = $payment->procedure
+                                                        ? collect([$payment->procedure->service?->name])->filter()
+                                                        : ($visit ? $visit->procedures
                                                             ->map(fn($p) => optional($p->service)->name)
                                                             ->filter()
                                                             ->unique()
                                                             ->values()
-                                                        : collect();
+                                                        : collect());
                                                 @endphp
 
                                                 <tr>

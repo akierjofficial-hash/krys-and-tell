@@ -354,16 +354,16 @@
                     <label class="form-labelx">Payment Date <span class="text-danger">*</span></label>
                     <input type="date" name="payment_date" class="inputx"
                            value="{{ old('payment_date', $payDate) }}" required>
-                    <div class="helper">If linked to a Visit, it can also update the Visit date (based on your controller logic).</div>
+                    <div class="helper">The date on this receipt. Treatment details remain on the linked visit.</div>
                 </div>
 
                 {{-- ✅ NEW: Assigned Dentist --}}
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Assigned Dentist</label>
 
-                    <select name="doctor_id" class="selectx" {{ $hasDocs ? '' : 'disabled' }}>
+                    <select class="selectx" disabled aria-label="Dentist on linked treatment visit">
                         <option value="" {{ $docVal ? '' : 'selected' }}>
-                            {{ $hasVisit ? 'Select dentist (updates Visit)' : 'No linked visit' }}
+                            {{ $hasVisit ? 'Dentist on linked visit' : 'No linked visit' }}
                         </option>
 
                         @foreach(($doctors ?? []) as $d)
@@ -373,12 +373,10 @@
                         @endforeach
                     </select>
 
-                    @if(!$hasDocs)
-                        <div class="helper">No active dentists found. Add dentists in Admin → Doctors (set Active).</div>
-                    @elseif(!$hasVisit)
-                        <div class="helper">This payment has no linked visit, so dentist update will not apply.</div>
+                    @if($hasVisit)
+                        <a class="helper" href="{{ route('staff.visits.show', $payment->visit_id) }}">View linked treatment visit</a>
                     @else
-                        <div class="helper">Changing dentist will update the linked Visit’s assigned dentist.</div>
+                        <div class="helper">Collection-only receipt.</div>
                     @endif
                 </div>
 

@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Patient Details')
 
 @push('styles')
 <style>
@@ -403,6 +404,16 @@
 
         {{-- RIGHT: Files + History + Treatment --}}
         <div class="col-lg-8">
+            <div class="glass card-pad mb-3">
+                <div class="glass-inner">
+                    <div class="section-title"><span>Financial Overview</span><span class="section-pill">Read-only</span></div>
+                    <div class="info-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+                        <div class="info-item"><div class="i-label">Ordinary balance</div><div class="i-val">₱{{ number_format($ordinaryOutstanding,2) }}</div></div>
+                        <div class="info-item"><div class="i-label">Installment balance</div><div class="i-val">₱{{ number_format($installmentOutstanding,2) }}</div></div>
+                        <div class="info-item"><div class="i-label">Total outstanding</div><div class="i-val">₱{{ number_format($outstandingBalance,2) }}</div></div>
+                    </div>
+                </div>
+            </div>
             {{-- Files --}}
             <div class="glass card-pad">
                 <div class="glass-inner">
@@ -472,7 +483,7 @@
                                                 <tr>
                                                     <td class="muted">{{ $dt ? $dt->format('d.m.Y') : '—' }}</td>
                                                     <td class="cell-strong">{{ $proc }}</td>
-                                                    <td class="muted"><i class="fa-regular fa-file-lines"></i></td>
+                                                    <td><a href="{{ route('admin.appointments.index', ['q'=>$patient->last_name]) }}" aria-label="Open appointment list"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></td>
                                                 </tr>
                                             @empty
                                                 <tr><td colspan="3" class="muted">No upcoming appointments.</td></tr>
@@ -503,7 +514,7 @@
                                                 <tr>
                                                     <td class="muted">{{ $dt ? $dt->format('d.m.Y') : '—' }}</td>
                                                     <td class="cell-strong">{{ $proc }}</td>
-                                                    <td class="muted"><i class="fa-regular fa-file-lines"></i></td>
+                                                    <td><a href="{{ route('admin.appointments.index', ['q'=>$patient->last_name]) }}" aria-label="Open appointment list"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></td>
                                                 </tr>
                                             @empty
                                                 <tr><td colspan="3" class="muted">No past appointments.</td></tr>

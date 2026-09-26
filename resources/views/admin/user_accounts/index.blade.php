@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Website Accounts')
 
 @section('kt_live_scope', 'user_accounts')
 @section('kt_live_interval', 20000)
@@ -307,8 +308,8 @@
 
     <div class="head">
         <div>
-            <h2>User Accounts</h2>
-            <div class="sub">Patients / website accounts (role = user)</div>
+            <h2>Website Accounts</h2>
+            <div class="sub">Public accounts used for online booking</div>
         </div>
         {{-- ✅ No create button (users are created via Google / registration flow) --}}
     </div>
@@ -361,6 +362,9 @@
                             @if($hasActive)
                                 <th style="min-width: 140px;">Status</th>
                             @endif
+                            <th>Sign-in</th>
+                            <th>Bookings</th>
+                            <th>Clinical patient</th>
                             <th style="min-width: 220px;">Last Login</th>
                             <th class="text-end" style="min-width: 260px;">Actions</th>
                         </tr>
@@ -403,6 +407,10 @@
                                     </td>
                                 @endif
 
+                                <td><span class="badge-soft">{{ $u->google_id ? 'Google connected' : 'Local password' }}</span></td>
+                                <td><span class="badge-soft">{{ $u->appointments_count }}</span></td>
+                                <td>@if($u->linkedPatient)<a href="{{ route('admin.patients.show',$u->linkedPatient) }}">Patient #{{ $u->linkedPatient->id }}</a>@else<span class="email">Not linked</span>@endif</td>
+
                                 <td>
                                     @if($u->last_login_at)
                                         <div style="font-weight:950;">
@@ -419,21 +427,14 @@
                                         <i class="fa fa-pen me-1"></i> Edit
                                     </a>
 
-                                    <form class="d-inline"
-                                          method="POST"
-                                          action="{{ route('admin.user_accounts.destroy', $u) }}"
-                                          onsubmit="return confirm('Delete this user account? This cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-sm abtn abtn-danger" type="submit">
+                                        <button class="btn btn-sm abtn abtn-danger js-delete-account" type="button" data-url="{{ route('admin.user_accounts.destroy',$u) }}" data-name="{{ $u->name }}">
                                             <i class="fa fa-trash me-1"></i> Delete
                                         </button>
-                                    </form>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $hasActive ? 4 : 3 }}" class="text-center" style="color:var(--muted);font-weight:950;padding:18px;">
+                                <td colspan="{{ $hasActive ? 7 : 6 }}" class="text-center" style="color:var(--muted);font-weight:950;padding:18px;">
                                     No user accounts found.
                                 </td>
                             </tr>
@@ -452,4 +453,8 @@
     </div>
 
 </div>
+<div class="modal fade" id="deleteWebsiteAccountModal" tabindex="-1" aria-labelledby="deleteWebsiteAccountTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="deleteWebsiteAccountForm" method="POST">@csrf @method('DELETE')<div class="modal-header"><h2 class="modal-title fs-5" id="deleteWebsiteAccountTitle">Move account to Deleted Accounts?</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="deleteWebsiteAccountText"></p><p class="text-muted mb-0">The account can be restored later. Existing appointments are preserved and unlinked from the website login.</p></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger">Move to Deleted Accounts</button></div></form></div></div></div>
 @endsection
+@push('scripts')
+<script>document.querySelectorAll('.js-delete-account').forEach(button=>button.addEventListener('click',()=>{document.getElementById('deleteWebsiteAccountForm').action=button.dataset.url;document.getElementById('deleteWebsiteAccountText').textContent='Deactivate first when temporary access control is enough. Continue with soft deletion for '+button.dataset.name+'?';bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteWebsiteAccountModal')).show();}));</script>
+@endpush

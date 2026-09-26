@@ -10,6 +10,7 @@ use App\Models\DoctorUnavailability;
 use App\Models\Service;
 use App\Notifications\AppointmentApproved;
 use App\Notifications\AppointmentDeclined;
+use App\Services\BookingApprovalService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -137,9 +138,23 @@ class AdminApprovalRequestController extends Controller
      * - appointment_time (H:i)
      * - staff_note (reason/notes)
      */
-    public function approve(Request $request, Appointment $appointment)
+    public function approve(Request $request, Appointment $appointment, BookingApprovalService $approvals)
     {
         try {
+            $data = $request->validate([
+                'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+                'appointment_date' => ['nullable', 'date', 'after_or_equal:today'],
+                'appointment_time' => ['nullable', 'date_format:H:i'],
+                'staff_note' => ['nullable', 'string', 'max:2000'],
+            ]);
+            $approved = $approvals->approve($appointment, $data, $request->user());
+            $message = $approved->status === 'walked_in' ? 'Walk-in request approved and marked as walked in.' : 'Booking approved.';
+            if ($request->expectsJson()) return response()->json([
+                'ok' => true, 'message' => $message,
+                'pendingCount' => Appointment::where('status', 'pending')->count(),
+            ]);
+            return $this->ktRedirectToReturn($request, 'admin.approvals.index')->with('success', $message);
+
             $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
 
             $appointment->loadMissing(['user', 'service', 'doctor']);
@@ -331,9 +346,17 @@ class AdminApprovalRequestController extends Controller
         }
     }
 
-    public function decline(Request $request, Appointment $appointment)
+    public function decline(Request $request, Appointment $appointment, BookingApprovalService $approvals)
     {
         try {
+            $data = $request->validate(['staff_note' => ['required', 'string', 'max:500']]);
+            $approvals->decline($appointment, $data['staff_note'], $request->user());
+            if ($request->expectsJson()) return response()->json([
+                'ok' => true, 'message' => 'Booking declined.',
+                'pendingCount' => Appointment::where('status', 'pending')->count(),
+            ]);
+            return $this->ktRedirectToReturn($request, 'admin.approvals.index')->with('success', 'Booking declined.');
+
             $previousStatus = Schema::hasColumn('appointments', 'status') ? ($appointment->status ?? null) : null;
 
             // optional reason for decline

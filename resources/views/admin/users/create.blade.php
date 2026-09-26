@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Create Staff or Admin Account')
 
 @push('styles')
 <style>

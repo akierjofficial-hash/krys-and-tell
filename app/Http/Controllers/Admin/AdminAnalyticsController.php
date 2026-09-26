@@ -70,12 +70,14 @@ class AdminAnalyticsController extends Controller
 
             $cash = DB::table('payments')
                 ->selectRaw('payment_date as d, SUM(amount) as total')
+                ->whereNull('deleted_at')
                 ->whereBetween('payment_date', [$s, $e])
                 ->groupBy('payment_date')
                 ->pluck('total', 'd');
 
             $inst = DB::table('installment_payments')
                 ->selectRaw('payment_date as d, SUM(amount) as total')
+                ->whereNull('deleted_at')
                 ->whereBetween('payment_date', [$s, $e])
                 ->groupBy('payment_date')
                 ->pluck('total', 'd');
@@ -91,6 +93,7 @@ class AdminAnalyticsController extends Controller
         $appointmentsMap = function (Carbon $s, Carbon $e) {
             return DB::table('appointments')
                 ->selectRaw('DATE(appointment_date) as d, COUNT(*) as total')
+                ->whereNull('deleted_at')
                 ->whereBetween(DB::raw('DATE(appointment_date)'), [$s->toDateString(), $e->toDateString()])
                 ->groupBy('d')
                 ->pluck('total', 'd'); // [Y-m-d => count]
@@ -99,6 +102,7 @@ class AdminAnalyticsController extends Controller
         $patientsMap = function (Carbon $s, Carbon $e) {
             return DB::table('patients')
                 ->selectRaw('DATE(created_at) as d, COUNT(*) as total')
+                ->whereNull('deleted_at')
                 ->whereBetween(DB::raw('DATE(created_at)'), [$s->toDateString(), $e->toDateString()])
                 ->groupBy('d')
                 ->pluck('total', 'd'); // [Y-m-d => count]
@@ -141,6 +145,8 @@ class AdminAnalyticsController extends Controller
             ->join('visits', 'visits.id', '=', 'visit_procedures.visit_id')
             ->join('services', 'services.id', '=', 'visit_procedures.service_id')
             ->whereBetween('visits.visit_date', [$start->toDateString(), $end->toDateString()])
+            ->whereNull('visits.deleted_at')
+            ->whereNull('services.deleted_at')
             ->groupBy('services.id', 'services.name', 'services.color')
             ->orderByDesc(DB::raw('COUNT(*)'))
             ->limit(6)

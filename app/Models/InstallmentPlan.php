@@ -26,6 +26,7 @@ class InstallmentPlan extends Model
         'start_date',
         'status',
         'is_open_contract',
+        'submission_token',
         'open_monthly_payment', // ✅ add this
     ];
 

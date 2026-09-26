@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Basic security hardening headers for all web responses.
         $middleware->appendToGroup('web', \App\Http\Middleware\SecurityHeaders::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureAccountIsActive::class);
 
         // ✅ Activity logging (for admin/staff pages)
         $middleware->appendToGroup('web', \App\Http\Middleware\LogUserActivity::class);

@@ -29,6 +29,9 @@
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    @stack('styles')
+    {{-- Early load prevents a flash of legacy styling; the final link below fixes cascade order. --}}
+    <link rel="stylesheet" href="{{ asset('css/staff-app.css') }}?v=2">
     {{-- ✅ IMPORTANT: removed "defer" so Bootstrap is available for inline scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/kt-liststate.js') }}?v=2"></script>
@@ -878,7 +881,7 @@
 $routeName = request()->route() ? request()->route()->getName() : '';
 @endphp
 
-<body data-page="{{ $routeName }}" data-kt-live-scope="@yield('kt_live_scope')"
+<body class="kt-staff" data-page="{{ $routeName }}" data-kt-live-scope="@yield('kt_live_scope')"
     data-kt-live-snapshot-url="{{ route('staff.live.snapshot') }}"
     data-kt-live-interval="@yield('kt_live_interval', 8000)">
     <div class="layout">
@@ -916,14 +919,15 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 </button>
             </div>
 
-            <div class="sidebar-menu">
+            <nav class="sidebar-menu" aria-label="Staff navigation">
+                <div class="staff-nav-label">Daily clinic</div>
                 <a href="{{ route('staff.dashboard') }}"
                     class="{{ request()->routeIs('staff.dashboard') ? 'active' : '' }}">
                     <i class="fa fa-chart-line"></i> Dashboard
                 </a>
 
                 <a href="{{ route('staff.patients.index') }}"
-                    class="{{ request()->routeIs('staff.patients.*') ? 'active' : '' }}">
+                    class="{{ request()->routeIs('staff.patients.*') || request()->routeIs('staff.records.*') ? 'active' : '' }}">
                     <i class="fa fa-users"></i> Patients
                 </a>
 
@@ -933,7 +937,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                 </a>
 
                 <a href="{{ route('staff.payments.index') }}"
-                    class="{{ request()->routeIs('staff.payments.*') ? 'active' : '' }}">
+                    class="{{ request()->routeIs('staff.payments.*') || request()->routeIs('staff.installments.*') ? 'active' : '' }}">
                     <i class="fa fa-money-bill"></i> Payments
                 </a>
 
@@ -941,6 +945,21 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     class="{{ request()->routeIs('staff.appointments.*') ? 'active' : '' }}">
                     <i class="fa fa-calendar-days"></i> Appointments
                 </a>
+
+                <a href="{{ route('staff.approvals.index') }}"
+                    class="{{ request()->routeIs('staff.approvals.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-list-check"></i> Booking Requests
+                    <span id="approvalNavBadge" class="kt-nav-badge d-none">0</span>
+                </a>
+
+                <a href="{{ route('staff.messages.index') }}"
+                    class="{{ request()->routeIs('staff.messages.*') ? 'active' : '' }}">
+                    <i class="fa fa-inbox"></i> Messages
+                    <span id="msgNavBadge"
+                        class="kt-nav-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
+                </a>
+
+                <div class="staff-nav-label">Clinic setup</div>
 
                 <a href="{{ route('staff.dentist-unavailability.index') }}"
                     class="{{ request()->routeIs('staff.dentist-unavailability.*') ? 'active' : '' }}">
@@ -956,16 +975,16 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     class="{{ request()->routeIs('staff.service_doctor_assignments.*') ? 'active' : '' }}">
                     <i class="fa fa-stethoscope"></i> Treatment Doctors
                 </a>
-
-                <a href="{{ route('staff.messages.index') }}"
-                    class="{{ request()->routeIs('staff.messages.*') ? 'active' : '' }}">
-                    <i class="fa fa-inbox"></i> Messages
-                    <span id="msgNavBadge"
-                        class="kt-nav-badge {{ $unreadMessages > 0 ? '' : 'd-none' }}">{{ $unreadMessages }}</span>
-                </a>
-            </div>
+            </nav>
 
             <div class="sidebar-footer">
+                <div class="staff-user">
+                    <div class="staff-user__avatar">{{ strtoupper(substr(auth()->user()->name ?? 'S', 0, 1)) }}</div>
+                    <div class="staff-user__copy">
+                        <strong>{{ auth()->user()->name ?? 'Clinic Staff' }}</strong>
+                        <span>{{ auth()->user()->email ?? 'Staff account' }}</span>
+                    </div>
+                </div>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="logout-btn">
@@ -1002,13 +1021,27 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             }
             @endphp
 
-            <div class="d-flex align-items-center mb-3">
-                <button class="menu-toggle" id="menuToggle" type="button" title="Menu">
+            @php
+                $routeSection = Illuminate\Support\Str::headline(explode('.', $routeName)[1] ?? 'Dashboard');
+            @endphp
+            <header class="staff-topbar d-flex align-items-center mb-3">
+                <button class="menu-toggle" id="menuToggle" type="button" title="Open navigation" aria-label="Open navigation" aria-controls="staffSidebar" aria-expanded="false">
                     <i class="fa fa-bars"></i>
                 </button>
 
+                <div class="staff-context" aria-hidden="true">
+                    <span>Staff workspace</span>
+                    <strong>{{ $routeSection }}</strong>
+                </div>
+
                 {{-- Right side --}}
                 <div class="ms-auto d-flex align-items-center gap-2 position-relative">
+                    <a href="{{ route('staff.patients.create') }}" class="kt-top-icon staff-quick-action text-decoration-none" title="Add patient" aria-label="Add patient">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </a>
+                    <a href="{{ route('staff.appointments.create') }}" class="kt-top-icon staff-quick-action text-decoration-none" title="Add appointment" aria-label="Add appointment">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                    </a>
                     {{-- ✅ Messages icon (with dot) --}}
                     <a href="{{ route('staff.messages.index') }}"
                         class="kt-top-icon position-relative text-decoration-none" title="Messages">
@@ -1115,7 +1148,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
                     </div>
 
                 </div>
-            </div>
+            </header>
 
             @yield('content')
 
@@ -1711,6 +1744,9 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             </style>
 
             <!-- ✅ Global Loader (CONTENT ONLY) -->
+            {{-- Loaded after legacy page styles so the Staff design system remains authoritative. --}}
+            <link rel="stylesheet" href="{{ asset('css/staff-app.css') }}?v=2">
+
             <div id="ktLoader" class="kt-loader" aria-hidden="true">
                 <div class="kt-loader__card" role="status" aria-live="polite">
                     <div class="kt-spinner"></div>
@@ -1777,11 +1813,13 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     function closeSidebar() {
         side?.classList.remove('open');
         overlay?.classList.remove('show');
+        btnMenu?.setAttribute('aria-expanded', 'false');
     }
 
     btnMenu?.addEventListener('click', () => {
         side?.classList.toggle('open');
         overlay?.classList.toggle('show');
+        btnMenu.setAttribute('aria-expanded', String(side?.classList.contains('open')));
     });
 
     overlay?.addEventListener('click', closeSidebar);
@@ -2023,6 +2061,11 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         n = Number(n || 0);
         if (badgeEl) badgeEl.textContent = String(n);
         if (dotEl) dotEl.classList.toggle('d-none', n <= 0);
+        const navBadge = document.getElementById('approvalNavBadge');
+        if (navBadge) {
+            navBadge.textContent = String(n);
+            navBadge.classList.toggle('d-none', n <= 0);
+        }
     }
 
     function showFlash(type, text) {
@@ -2376,6 +2419,7 @@ if (window.KTPush) {
 
 
 
+@stack('scripts')
 </body>
 
 </html>

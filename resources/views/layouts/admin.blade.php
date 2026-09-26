@@ -6,11 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
-    <title>Krys&Tell — Admin</title>
+    <title>@yield('title', 'Admin') | Krys &amp; Tell</title>
+    <script>
+        try { document.documentElement.setAttribute('data-theme', localStorage.getItem('admin_theme') || 'light'); } catch (e) {}
+    </script>
 
     {{-- ✅ PWA (Installable App) --}}
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#B07C58">
+    <meta name="theme-color" content="#10233f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Krys&Tell">
@@ -18,7 +21,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/images/pwa/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/images/pwa/icon-512.png">
 
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -297,6 +300,15 @@
 
     .navx a.active i {
         color: #fff;
+    }
+
+    .nav-section {
+        padding: 14px 12px 4px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 1.15px;
+        text-transform: uppercase;
     }
 
     .side-footer {
@@ -619,9 +631,10 @@
     </style>
 
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin-app.css') }}?v=1">
 </head>
 
-<body data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}"
+<body class="admin-app" data-kt-live-scope="@yield('kt_live_scope')" data-kt-live-snapshot-url="{{ route('admin.live.snapshot') }}"
     data-kt-live-interval="@yield('kt_live_interval', 10000)">
 
     @php
@@ -632,6 +645,7 @@
     if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
     && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
 
+    $pendingApprovals = \App\Models\Appointment::query()->where('status', 'pending')->count();
     $pendingItems = \App\Models\Appointment::query()
     ->with(['service','doctor','patient'])
     ->where('status', 'pending')
@@ -639,7 +653,6 @@
     ->take(8)
     ->get();
 
-    $pendingApprovals = $pendingItems->count();
     }
     } catch (\Throwable $e) {
     $pendingApprovals = 0;
@@ -647,6 +660,7 @@
     }
     @endphp
 
+    <a class="skip-link" href="#adminMain">Skip to main content</a>
     <div class="app-bg">
         <div class="shell">
 
@@ -656,20 +670,17 @@
             <aside class="side" id="adminSidebar">
                 <div class="brand">
                     <div class="brand-left">
-                        <div class="logo">KT</div>
+                        <div class="logo"><img src="{{ asset('images/krysandtelllogo.jpg') }}" alt=""></div>
                         <div style="min-width:0;">
                             <div class="name">Krys & Tell</div>
-                            <div class="sub">Admin Panel</div>
+                            <div class="sub">Admin Workspace</div>
                         </div>
                     </div>
 
-                    {{-- dark mode toggle beside brand --}}
-                    <button class="theme-toggle" id="themeToggle" type="button" title="Toggle Dark Mode">
-                        <i class="fa-solid fa-moon" id="themeIcon"></i>
-                    </button>
                 </div>
 
                 <div class="navx">
+                    <div class="nav-section">Overview</div>
                     <a href="{{ route('admin.dashboard') }}"
                         class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                         <i class="fa fa-chart-line"></i> Dashboard
@@ -677,9 +688,15 @@
 
                     <a href="{{ route('admin.analytics.index') }}"
                         class="{{ request()->is('admin/analytics*') ? 'active' : '' }}">
-                        <i class="fa fa-chart-pie"></i> Analytics
+                        <i class="fa fa-chart-pie"></i> Reports
                     </a>
 
+                    <div class="nav-section">Clinic Monitoring</div>
+                    <a href="{{ route('admin.approvals.index') }}"
+                        class="{{ request()->is('admin/approvals*') ? 'active' : '' }}">
+                        <i class="fa fa-list-check"></i> Booking Requests
+                        <span id="adminApprovalNavBadge" class="kt-nav-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
+                    </a>
                     <a href="{{ route('admin.schedule.index') }}"
                         class="{{ request()->is('admin/schedule*') ? 'active' : '' }}">
                         <i class="fa fa-calendar-check"></i> Schedule
@@ -690,18 +707,12 @@
                         <i class="fa fa-calendar-days"></i> Appointments
                     </a>
 
-                    <a href="{{ route('admin.approvals.index') }}"
-                        class="{{ request()->is('admin/approvals*') ? 'active' : '' }}">
-                        <i class="fa fa-bell"></i> Approval Requests
-                        <span id="adminApprovalNavBadge"
-                            class="kt-nav-badge {{ $pendingApprovals > 0 ? '' : 'd-none' }}">{{ $pendingApprovals }}</span>
-                    </a>
-
                     <a href="{{ route('admin.patients.index') }}"
                         class="{{ request()->is('admin/patients*') ? 'active' : '' }}">
                         <i class="fa fa-users"></i> Patients
                     </a>
 
+                    <div class="nav-section">Clinic Setup</div>
                     <a href="{{ route('admin.doctors.index') }}"
                         class="{{ request()->is('admin/doctors*') ? 'active' : '' }}">
                         <i class="fa fa-user-doctor"></i> Doctors
@@ -709,26 +720,41 @@
 
                     <a href="{{ route('admin.service_doctor_assignments.index') }}"
                         class="{{ request()->routeIs('admin.service_doctor_assignments.*') ? 'active' : '' }}">
-                        <i class="fa fa-stethoscope"></i> Treatment Doctors
+                        <i class="fa fa-stethoscope"></i> Treatment Assignments
                     </a>
 
                     <a href="{{ route('admin.dentist-unavailability.index') }}"
                         class="{{ request()->routeIs('admin.dentist-unavailability.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-calendar-xmark"></i> Dentist Day-off
+                        <i class="fa-solid fa-calendar-xmark"></i> Dentist Availability
                     </a>
 
+                    <div class="nav-section">Accounts &amp; Security</div>
+                    <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                        <i class="fa fa-user-shield"></i> Staff &amp; Admin Accounts
+                    </a>
                     <a href="{{ route('admin.user_accounts.index') }}"
                         class="{{ request()->routeIs('admin.user_accounts.*') ? 'active' : '' }}">
-                        <i class="fa fa-user"></i> Users
+                        <i class="fa fa-user"></i> Website Accounts
                     </a>
-
-                    <a href="{{ route('admin.users.index') }}"
-                        class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-                        <i class="fa fa-user-shield"></i> Staff Accounts
+                    <a href="{{ route('admin.activity.index') }}" class="{{ request()->routeIs('admin.activity.*') ? 'active' : '' }}">
+                        <i class="fa fa-clock-rotate-left"></i> Activity Log
+                    </a>
+                    <a href="{{ route('admin.deleted_accounts.index') }}" class="{{ request()->routeIs('admin.deleted_accounts.*') ? 'active' : '' }}">
+                        <i class="fa fa-trash-can-arrow-up"></i> Deleted Accounts
                     </a>
                 </div>
 
                 <div class="side-footer">
+                    @php
+                        $adminUser = auth()->user();
+                    @endphp
+                    <div class="admin-identity">
+                        <span class="admin-avatar" aria-hidden="true">{{ strtoupper(substr($adminUser?->name ?: 'A', 0, 1)) }}</span>
+                        <div class="min-w-0">
+                            <div class="admin-identity-name">{{ $adminUser?->name ?: 'Administrator' }}</div>
+                            <div class="admin-identity-email">{{ $adminUser?->email }}</div>
+                        </div>
+                    </div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="btn btn-outline-secondary logout-btn">
@@ -738,14 +764,20 @@
                 </div>
             </aside>
 
-            <main class="main">
+            <main class="main" id="adminMain">
                 {{-- Top bar: menu (left) + approval bell (right) --}}
-                <div class="d-flex align-items-center mb-3">
-                    <button class="menu-toggle" id="menuToggle" type="button" title="Menu">
+                <div class="admin-topbar">
+                    <button class="menu-toggle" id="menuToggle" type="button" title="Open navigation" aria-controls="adminSidebar" aria-expanded="false">
                         <i class="fa fa-bars"></i>
                     </button>
-
-                    <div class="ms-auto d-flex align-items-center gap-2 position-relative">
+                    <div class="admin-topbar-copy">
+                        <div class="admin-workspace-label">Admin Workspace</div>
+                        <div class="admin-crumb">@yield('title', 'Admin Workspace')</div>
+                    </div>
+                    <div class="admin-topbar-actions ms-auto position-relative">
+                        <button class="theme-toggle" id="themeToggle" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">
+                            <i class="fa-solid fa-moon" id="themeIcon"></i>
+                        </button>
                         {{-- ✅ Push notifications (PWA) — ALWAYS BULLHORN --}}
                         <button type="button" id="ktPushBtn" class="kt-top-icon border-0"
                             title="Enable push notifications">
@@ -823,23 +855,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="kt-actions">
-                                        <form class="approval-form" data-action="approve" method="POST"
-                                            action="{{ route('admin.approvals.approve', $a->id) }}">
-                                            @csrf
-                                            <button class="btn btn-mini btn-approve" type="submit">
-                                                <i class="fa-solid fa-check me-1"></i> Approve
-                                            </button>
-                                        </form>
-
-                                        <form class="approval-form" data-action="decline" method="POST"
-                                            action="{{ route('admin.approvals.decline', $a->id) }}">
-                                            @csrf
-                                            <button class="btn btn-mini btn-decline" type="submit">
-                                                <i class="fa-solid fa-xmark me-1"></i> Decline
-                                            </button>
-                                        </form>
-                                    </div>
+                                    <div class="kt-actions"><a class="btn btn-mini btn-approve" href="{{ route('admin.approvals.index') }}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Review request</a></div>
                                 </div>
                                 @endforeach
                                 @endif
@@ -859,6 +875,7 @@
     <script src="{{ asset('js/kt-live.js') }}?v=1"></script>
     <script src="{{ asset('js/kt-push.js') }}?v=1"></script>
     <script src="{{ asset('js/kt-liststate.js') }}?v=1"></script>
+    <script src="{{ asset('js/admin-app.js') }}?v=1"></script>
 
     <script>
     (function() {
@@ -892,11 +909,13 @@
         function closeSidebar() {
             side?.classList.remove('open');
             overlay?.classList.remove('show');
+            btnMenu?.setAttribute('aria-expanded', 'false');
         }
 
         btnMenu?.addEventListener('click', () => {
             side?.classList.toggle('open');
             overlay?.classList.toggle('show');
+            btnMenu?.setAttribute('aria-expanded', side?.classList.contains('open') ? 'true' : 'false');
         });
 
         overlay?.addEventListener('click', closeSidebar);
@@ -1065,8 +1084,6 @@
                 const doctor = escapeHtml(i.doctor || '—');
                 const date = escapeHtml(i.date || '—');
                 const time = escapeHtml(i.time || '—');
-                const approveUrl = escapeHtml(i.approve_url || '');
-                const declineUrl = escapeHtml(i.decline_url || '');
 
                 return `
                     <div class="kt-item" data-approval-id="${id}">
@@ -1083,19 +1100,7 @@
                             <div class="small text-muted text-end">Pending</div>
                         </div>
 
-                        <div class="kt-actions">
-                            <form class="approval-form" data-action="approve" method="POST" action="${approveUrl}">
-                                <button class="btn btn-mini btn-approve" type="submit">
-                                    <i class="fa-solid fa-check me-1"></i> Approve
-                                </button>
-                            </form>
-
-                            <form class="approval-form" data-action="decline" method="POST" action="${declineUrl}">
-                                <button class="btn btn-mini btn-decline" type="submit">
-                                    <i class="fa-solid fa-xmark me-1"></i> Decline
-                                </button>
-                            </form>
-                        </div>
+                        <div class="kt-actions"><a class="btn btn-mini btn-approve" href="{{ route('admin.approvals.index') }}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Review request</a></div>
                     </div>
                 `;
             }).join('');

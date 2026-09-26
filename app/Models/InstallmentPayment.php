@@ -18,6 +18,7 @@ class InstallmentPayment extends Model
         'method',
         'payment_date',
         'notes',
+        'submission_token',
     ];
 
     protected $casts = [

@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Clinic Schedule')
 
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css">
@@ -317,7 +318,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const calendar = new FullCalendar.Calendar(el, {
         initialView: 'timeGridWeek',
-        height: 760,
+        height: 'auto',
+        contentHeight: 'auto',
         expandRows: true,
         nowIndicator: true,
         stickyHeaderDates: true,

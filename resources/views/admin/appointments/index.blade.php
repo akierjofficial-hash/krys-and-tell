@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Appointments')
 
 @section('kt_live_scope', 'appointments')
 @section('kt_live_interval', 15000)

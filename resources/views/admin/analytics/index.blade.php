@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('title', 'Reports')
 
 @push('styles')
 <style>
@@ -340,11 +341,11 @@
 
     <div class="a-grid">
 
-        {{-- Revenue --}}
+        {{-- Collections --}}
         <div class="a-card">
             <div class="a-head2">
                 <div class="a-title2">
-                    Revenue
+                    Collections
                     <span class="badge-delta {{ $revDeltaClass }}">{{ $revDeltaText }}</span>
                 </div>
             </div>

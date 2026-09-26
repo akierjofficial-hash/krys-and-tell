@@ -319,7 +319,7 @@
         ? \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y')
         : '—';
 
-    $procedures = $visit?->procedures ?? collect();
+    $procedures = $payment->procedure ? collect([$payment->procedure]) : ($visit?->procedures ?? collect());
     $computedTotal = (float) $procedures->sum('price');
     $amountPaid = (float) ($payment->amount ?? 0);
     $totalShown = $computedTotal > 0 ? $computedTotal : $amountPaid;
@@ -388,6 +388,9 @@
                     <div class="p-k">Method</div>
                     <div class="p-v">{{ $payment->method ?: '—' }}</div>
 
+                    <div class="p-k">Payment For</div>
+                    <div class="p-v">{{ $payment->procedure?->service?->name ?? 'Entire visit / legacy payment' }}</div>
+
                     <div class="p-k">Visit Date</div>
                     <div class="p-v">{{ $visitDate }}</div>
 
@@ -408,7 +411,7 @@
                 <div class="p-small">
                     Total shown: <strong class="money">₱{{ number_format($totalShown, 2) }}</strong><br>
                     @if($computedTotal > 0)
-                        Procedures total: <strong class="money">₱{{ number_format($computedTotal, 2) }}</strong>
+                        {{ $payment->procedure ? 'Treatment charge' : 'Procedures total' }}: <strong class="money">₱{{ number_format($computedTotal, 2) }}</strong>
                     @endif
                 </div>
             </div>

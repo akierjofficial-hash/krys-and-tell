@@ -17,11 +17,18 @@ class VisitController extends Controller
         $view = $request->query('view', 'patients');
 
         if ($view === 'all') {
+            $request->validate([
+                'date_from' => ['nullable', 'date'],
+                'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            ]);
+
             $visits = Visit::with([
                     'patient',
                     'procedures.service',
                     'doctor',
                 ])
+                ->when($request->filled('date_from'), fn ($query) => $query->whereDate('visit_date', '>=', $request->date_from))
+                ->when($request->filled('date_to'), fn ($query) => $query->whereDate('visit_date', '<=', $request->date_to))
                 ->orderByDesc('visit_date')
                 ->orderByDesc('created_at')
                 ->get();
@@ -63,6 +70,10 @@ return view('staff.visits.index', compact('view', 'patients'));
 
     public function create(Request $request)
 {
+    if ($request->filled('patient_id')) {
+        return redirect()->route('staff.records.index', ['patient_id' => $request->patient_id, 'mode' => 'visit']);
+    }
+
     $patients = Patient::orderBy('last_name')->orderBy('first_name')->get();
 
     // ✅ Load doctors for "Assigned Dentist" dropdown
@@ -150,13 +161,15 @@ return view('staff.visits.index', compact('view', 'patients'));
         $patients = Patient::orderBy('first_name')->get();
         $services = Service::orderBy('name')->get();
 
-        $doctors = Doctor::where('is_active', 1)
+        $doctors = Doctor::where('is_active', 1)->orWhere('id', $visit->doctor_id)
             ->orderBy('name')
             ->get(['id','name','specialty']);
 
         $visit->load(['doctor', 'procedures.service']);
 
         $procedurePayload = $visit->procedures->map(fn ($p) => [
+            'id'          => $p->id,
+            'price'       => $p->price,
             'service_id'   => $p->service_id,
             'service_name' => $p->service?->name,
             'tooth_number' => $p->tooth_number,
@@ -174,18 +187,22 @@ return view('staff.visits.index', compact('view', 'patients'));
             'patient_id' => 'required|exists:patients,id',
             'doctor_id'  => 'required|exists:doctors,id',
             'visit_date' => 'required|date',
-            'notes'      => 'nullable|string|max:1000',
+            'notes'      => 'nullable|string|max:2000',
 
             'procedures' => 'required|array|min:1',
+            'procedures.*.id' => ['nullable', 'integer', 'distinct', \Illuminate\Validation\Rule::exists('visit_procedures', 'id')->where('visit_id', $visit->id)],
             'procedures.*.service_id'   => 'required|exists:services,id',
-            'procedures.*.tooth_number' => 'nullable|string|max:10',
+            'procedures.*.tooth_number' => 'nullable|string|max:50',
             'procedures.*.surface'      => 'nullable|string|max:10',
             'procedures.*.shade'        => 'nullable|string|max:10',
-            'procedures.*.notes'        => 'nullable|string|max:1000',
+            'procedures.*.notes'        => 'nullable|string|max:2000',
         ]);
 
+        \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $visit) {
+        $visit = Visit::whereKey($visit->id)->lockForUpdate()->firstOrFail();
         $doctor = Doctor::findOrFail($validated['doctor_id']);
-
+        $existing = $visit->procedures()->get();
+        $kept = [];
         $visit->update([
             'patient_id'   => $validated['patient_id'],
             'doctor_id'    => $doctor->id,
@@ -194,20 +211,26 @@ return view('staff.visits.index', compact('view', 'patients'));
             'notes'        => $validated['notes'] ?? null,
         ]);
 
-        $visit->procedures()->delete();
-
         foreach ($validated['procedures'] as $procedure) {
             $service = Service::find($procedure['service_id']);
-
-            $visit->procedures()->create([
+            $saved = !empty($procedure['id']) ? $existing->firstWhere('id', $procedure['id']) : $existing->first(fn ($p) => !in_array($p->id, $kept) && $p->service_id == $procedure['service_id'] && (string) $p->tooth_number === (string) ($procedure['tooth_number'] ?? ''));
+            $attributes = [
                 'service_id'   => $procedure['service_id'],
                 'tooth_number' => $procedure['tooth_number'] ?? null,
                 'surface'      => $procedure['surface'] ?? null,
                 'shade'        => $procedure['shade'] ?? null,
                 'notes'        => $procedure['notes'] ?? null,
-                'price'        => $service?->base_price ?? 0,
-            ]);
+                'price'        => $saved ? $saved->price : ($service?->base_price ?? 0),
+            ];
+            if ($saved) {
+                $saved->update($attributes);
+            } else {
+                $saved = $visit->procedures()->create($attributes);
+            }
+            $kept[] = $saved->id;
         }
+        $visit->procedures()->whereNotIn('id', $kept)->delete();
+        });
 
         return $this->ktRedirectToReturn($request, 'staff.visits.index')
             ->with('success', 'Visit updated successfully!');

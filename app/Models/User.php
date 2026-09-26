@@ -42,4 +42,9 @@ class User extends Authenticatable
             'notify_1h'         => 'boolean',
         ];
     }
+
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
 }

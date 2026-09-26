@@ -9,6 +9,7 @@ use App\Models\Visit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Doctor;
+use App\Services\PaymentWorkflowService;
 
 class InstallmentPaymentController extends Controller
 {
@@ -91,7 +92,7 @@ class InstallmentPaymentController extends Controller
 
     private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
-        $plan->loadMissing('payments');
+        $plan->load('payments');
 
         $totalCost = (float)($plan->total_cost ?? 0);
         $down      = (float)($plan->downpayment ?? 0);
@@ -106,7 +107,7 @@ class InstallmentPaymentController extends Controller
         $status  = $balance <= 0 ? 'Fully Paid' : 'Partially Paid';
 
         $plan->balance = $balance;
-        $plan->status  = $status;
+        if ($plan->status !== InstallmentPlan::STATUS_COMPLETED) $plan->status = $status;
         $plan->save();
 
         return $plan;
@@ -135,9 +136,6 @@ class InstallmentPaymentController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'name', 'specialty']);
-
-        $this->ensureDownpaymentPayment($plan);
-        $this->recomputePlan($plan);
 
         $shift  = $this->monthShift($plan);
         $isOpen = (bool)($plan->is_open_contract ?? false);
@@ -193,7 +191,7 @@ class InstallmentPaymentController extends Controller
         return view('staff.payments.installment.pay', compact('plan', 'paidMonths', 'nextMonth', 'maxMonths', 'isOpen', 'doctors'));
     }
 
-    public function store(Request $request, InstallmentPlan $plan)
+    public function store(Request $request, InstallmentPlan $plan, PaymentWorkflowService $workflow)
     {
         $plan->loadMissing(['patient', 'visit', 'service', 'payments']);
 
@@ -213,91 +211,20 @@ class InstallmentPaymentController extends Controller
         ];
         $request->validate($rules);
 
-        $this->ensureDownpaymentPayment($plan);
-        $this->recomputePlan($plan);
-
-        $shift = $this->monthShift($plan);
-
-        if ($isOpen) {
-            // ✅ Server enforces the next payment number
-            $uiMonth = $this->computeNextOpenPaymentNo($plan, $shift);
-        } else {
-            $maxMonths = max(0, (int)($plan->months ?? 0));
-            $uiMonth = (int)$request->month_number;
-
-            if ($uiMonth < 1 || $uiMonth > $maxMonths) {
-                return back()->withErrors('Invalid month selected.')->withInput();
-            }
-        }
-
-        $dbMonth = $uiMonth + $shift;
-
-        if ($plan->payments()->where('month_number', $dbMonth)->exists()) {
-            return back()->withErrors('This payment number is already recorded.')->withInput();
-        }
-
-        $amount = (float)$request->amount;
-        if ($amount > (float)($plan->balance ?? 0)) {
-            return back()->withErrors('Amount exceeds the remaining balance.')->withInput();
-        }
-
-        // ✅ Determine assigned dentist (selected or fallback)
-        $baseVisit = $plan->visit;
-
-        $doctor = null;
-        if ($request->filled('doctor_id')) {
-            $doctor = Doctor::find((int)$request->doctor_id);
-        }
-
-        $assignedDoctorId = $doctor?->id ?? $baseVisit?->doctor_id;
-        $assignedDentistName = $doctor?->name ?? $baseVisit?->dentist_name;
-
-        $visitDate  = $request->payment_date;
-        $visitNotes = trim((string)$request->notes);
-
-        if ($visitNotes === '') {
-            $svc = $plan->service?->name;
-            $label = $isOpen ? "Payment #{$uiMonth}" : "Month {$uiMonth}";
-            $visitNotes = $svc
-                ? "Installment payment ({$label}) - {$svc}"
-                : "Installment payment ({$label})";
-        }
-
-        $visit = Visit::create([
-            'patient_id'   => $plan->patient_id,
-            'doctor_id'    => $assignedDoctorId,
-            'dentist_name' => $assignedDentistName,
-            'visit_date'   => $visitDate,
-            'status'       => 'completed',
-            'notes'        => $visitNotes,
-            'price'        => null,
+        $workflow->record([
+            'patient_id' => $plan->patient_id,
+            'target_type' => 'plan',
+            'target_id' => $plan->id,
+            'amount' => $request->amount,
+            'method' => $request->method,
+            'payment_date' => $request->payment_date,
+            'notes' => $request->notes,
+            'submission_token' => (string) Str::uuid(),
         ]);
-
-        if (!empty($plan->service_id)) {
-            $visit->procedures()->create([
-                'service_id'   => $plan->service_id,
-                'tooth_number' => null,
-                'surface'      => null,
-                'shade'        => null,
-                'notes'        => null,
-                'price'        => 0,
-            ]);
-        }
-
-        InstallmentPayment::create([
-            'installment_plan_id' => $plan->id,
-            'visit_id'            => $visit->id,
-            'month_number'        => $dbMonth,
-            'amount'              => $amount,
-            'method'              => $request->method,
-            'payment_date'        => $request->payment_date,
-            'notes'               => $request->notes,
-        ]);
-
-        $this->recomputePlan($plan);
 
         return $this->ktRedirectToReturn($request, 'staff.installments.show', ['plan' => $plan->id])
-            ->with('success', 'Installment payment recorded and a visit was created.');
+            ->with('success', 'Installment payment recorded.');
+
     }
 
     public function edit(Request $request, InstallmentPlan $plan, InstallmentPayment $payment)
@@ -312,9 +239,6 @@ class InstallmentPaymentController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'name', 'specialty']);
-
-        $this->ensureDownpaymentPayment($plan);
-        $this->recomputePlan($plan);
 
         $return = $this->ktReturnUrl($request, 'staff.installments.show', ['plan' => $plan->id]);
 
@@ -365,27 +289,6 @@ class InstallmentPaymentController extends Controller
         if ($dp && (int)$dp->id === (int)$payment->id) {
             $plan->downpayment = $new;
             $plan->save();
-        }
-
-        if (!empty($payment->visit_id)) {
-            $visit = Visit::find($payment->visit_id);
-            if ($visit) {
-                $visit->visit_date = $request->payment_date;
-
-                // ✅ Update dentist on linked visit (if provided)
-                if ($request->filled('doctor_id')) {
-                    $doc = Doctor::find((int)$request->doctor_id);
-                    if ($doc) {
-                        $visit->doctor_id = $doc->id;
-                        $visit->dentist_name = $doc->name;
-                    }
-                }
-
-                $n = trim((string)$request->notes);
-                if ($n !== '') $visit->notes = $n;
-
-                $visit->save();
-            }
         }
 
         $this->recomputePlan($plan);

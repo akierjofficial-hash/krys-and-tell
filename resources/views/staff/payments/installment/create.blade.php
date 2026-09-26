@@ -283,6 +283,7 @@
     <div class="card-bodyx">
         <form action="{{ route('staff.payments.store.installment') }}" method="POST" id="installmentForm">
             @csrf
+            <input type="hidden" name="submission_token" value="{{ old('submission_token', (string) \Illuminate\Support\Str::uuid()) }}">
             <input type="hidden" name="return" value="{{ old('return', request('return', session('kt.return_url', request()->fullUrl()))) }}">
 
             <div class="row g-3">
@@ -343,7 +344,7 @@
                                 data-treatments="{{ $treatmentsText }}"
                                 data-amount="{{ $balance }}"
                                 data-date="{{ $dateForInput }}"
-                                {{ old('visit_id') == $visit->id ? 'selected' : '' }}
+                                {{ old('visit_id', request('visit_id')) == $visit->id ? 'selected' : '' }}
                             >
                                 Visit - {{ $pName }} ({{ $dateLabel }}) — Balance ₱{{ number_format($balance, 2) }}
                             </option>
@@ -446,6 +447,22 @@
                     <div class="helper">Defaults to 50% of total cost (you can override).</div>
                 </div>
 
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">Downpayment Method <span class="text-danger">*</span></label>
+                    <select name="downpayment_method" class="selectx" required>
+                        @foreach(['Cash', 'GCash', 'Card', 'Bank Transfer'] as $method)
+                            <option value="{{ $method }}" @selected(old('downpayment_method', 'Cash') === $method)>{{ $method }}</option>
+                        @endforeach
+                    </select>
+                    <div class="helper">Used on the downpayment receipt.</div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label class="form-labelx">Downpayment Date <span class="text-danger">*</span></label>
+                    <input type="date" name="downpayment_date" class="inputx" value="{{ old('downpayment_date', date('Y-m-d')) }}" required>
+                    <div class="helper">The date the downpayment was actually received.</div>
+                </div>
+
                 {{-- Open Contract --}}
                 <div class="col-12">
                     <div class="form-check" style="margin-top:2px;">
@@ -517,7 +534,7 @@
                         <i class="fa fa-check"></i> Create Installment Plan
                     </button>
 
-                    <a href="{{ route('staff.payments.choose') }}" class="btn-ghostx">
+                    <a href="{{ route('staff.payments.index', ['tab' => 'plans']) }}" class="btn-ghostx">
                         <i class="fa fa-xmark"></i> Cancel
                     </a>
                 </div>

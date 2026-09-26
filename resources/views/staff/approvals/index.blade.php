@@ -40,6 +40,7 @@
                  data-time-raw="{{ $r->appointment_time ? \Carbon\Carbon::parse($r->appointment_time)->format('H:i') : '' }}"
                  data-is-walkin-request="{{ $isWalkInRequest ? '1' : '0' }}"
                  data-note-raw="{{ $r->staff_note ?? '' }}"
+                 data-decline-url="{{ route('staff.approvals.decline', $r) }}"
                  data-approve-url="{{ route('staff.approvals.approve', $r) }}">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
@@ -76,12 +77,9 @@
                                 </button>
                             </form>
 
-                            <form method="POST" action="{{ route('staff.approvals.decline', $r) }}" data-ajax="1">
-                                @csrf
-                                <button class="btn btn-outline-danger btn-sm" type="submit">
+                                <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button">
                                     <i class="fa-solid fa-xmark me-1"></i> Decline
                                 </button>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -172,6 +170,8 @@
   </div>
 </div>
 
+<div class="modal fade" id="declineModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="declineForm"><div class="modal-header"><h5 class="modal-title">Decline booking request</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><label class="form-label fw-bold" for="declineReason">Reason for the patient</label><textarea class="form-control" id="declineReason" rows="4" required></textarea><div class="alert alert-danger d-none mt-3" id="declineError"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" type="submit">Decline request</button></div></form></div></div></div>
+
 <script>
 (function(){
     const widgetUrl = @json(route('staff.approvals.widget'));
@@ -188,6 +188,11 @@
     // Bootstrap modal
     const modalEl = document.getElementById('editApproveModal');
     const editModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+    const declineModal = new bootstrap.Modal(document.getElementById('declineModal'));
+    const declineForm = document.getElementById('declineForm');
+    const declineReason = document.getElementById('declineReason');
+    const declineError = document.getElementById('declineError');
+    let declineUrl = '';
 
     // Modal fields
     const eaForm = document.getElementById('editApproveForm');
@@ -334,6 +339,7 @@
             data-time-raw="${esc(timeRaw)}"
             data-is-walkin-request="${esc(isWalkInRequest)}"
             data-note-raw="${esc(noteRaw)}"
+            data-decline-url="${esc(item.decline_url)}"
             data-approve-url="${esc(item.approve_url)}">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
@@ -365,12 +371,9 @@
                             </button>
                         </form>
 
-                        <form method="POST" action="${esc(item.decline_url)}" data-ajax="1">
-                            <input type="hidden" name="_token" value="${esc(csrf)}">
-                            <button class="btn btn-outline-danger btn-sm" type="submit">
+                            <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button">
                                 <i class="fa-solid fa-xmark me-1"></i> Decline
                             </button>
-                        </form>
                     </div>
                 </div>
             </div>
@@ -480,6 +483,11 @@
 
     // ✅ Open modal on "Edit & Approve"
     grid.addEventListener('click', async (e) => {
+        const declineButton = e.target.closest('.btn-decline-review');
+        if (declineButton) {
+            declineUrl = declineButton.closest('[data-appointment-id]')?.dataset.declineUrl || '';
+            declineReason.value = ''; declineError.classList.add('d-none'); declineModal.show(); return;
+        }
         const btn = e.target.closest('.btn-edit-approve');
         if(!btn) return;
 
@@ -528,6 +536,15 @@
 
     eaDoctor?.addEventListener('change', loadSlots);
     eaDate?.addEventListener('change', loadSlots);
+
+    declineForm?.addEventListener('submit', async (e) => {
+        e.preventDefault(); const reason = declineReason.value.trim();
+        if (!reason) { declineError.textContent='Enter a decline reason.'; declineError.classList.remove('d-none'); return; }
+        const res = await fetch(declineUrl,{method:'POST',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':csrf,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_token:csrf,staff_note:reason})});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok||data.ok===false){declineError.textContent=data.message||'Decline failed.';declineError.classList.remove('d-none');return;}
+        const card=Array.from(grid.querySelectorAll('[data-appointment-id]')).find(row=>row.dataset.declineUrl===declineUrl); card?.remove(); declineModal.hide(); pendingBadge.textContent=data.pendingCount??Math.max(0,Number(pendingBadge.textContent)-1); showNotice(`<div class="alert alert-success">${esc(data.message||'Booking declined.')}</div>`);
+    });
 
     // ✅ Submit modal form (Save & Approve) + staff_note
     eaForm?.addEventListener('submit', async (e) => {

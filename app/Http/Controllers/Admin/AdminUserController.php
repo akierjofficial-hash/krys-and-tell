@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Services\AdminAccountService;
+use App\Services\AdminAuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -14,6 +16,11 @@ use Illuminate\Support\Facades\DB;
 class AdminUserController extends Controller
 {
     private const MANAGEABLE_ROLES = ['admin', 'staff'];
+
+    public function __construct(
+        private AdminAccountService $accounts,
+        private AdminAuditService $audit,
+    ) {}
 
     private function ensureManageableUser(User $user): void
     {
@@ -55,7 +62,9 @@ class AdminUserController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        return view('admin.users.index', compact('users', 'q', 'role', 'status'));
+        $activeAdminCount = User::where('role', 'admin')->where('is_active', true)->count();
+
+        return view('admin.users.index', compact('users', 'q', 'role', 'status', 'activeAdminCount'));
     }
 
     public function create()
@@ -81,6 +90,9 @@ class AdminUserController extends Controller
         $user->is_active = (bool)($data['is_active'] ?? true);
         $user->save();
 
+        $this->audit->record($request->user(), 'account.created', $user, 'Staff or administrator account created.', [],
+            $user->only(['name', 'email', 'role', 'is_active']));
+
         return $this->ktRedirectToReturn($request, 'admin.users.index')
             ->with('success', 'User created successfully.');
     }
@@ -89,7 +101,10 @@ class AdminUserController extends Controller
     {
         $this->ensureManageableUser($user);
 
-        return view('admin.users.edit', compact('user'));
+        $soleActiveAdmin = $this->accounts->soleActiveAdmin($user);
+        $isSelf = auth()->id() === $user->id;
+
+        return view('admin.users.edit', compact('user', 'soleActiveAdmin', 'isSelf'));
     }
 
     public function update(Request $request, User $user)
@@ -102,18 +117,11 @@ class AdminUserController extends Controller
             'role' => ['required', Rule::in(self::MANAGEABLE_ROLES)],
             'is_active' => ['nullable', 'boolean'],
             'password' => ['nullable', 'string', 'min:8', 'max:72'],
+            'current_password' => ['nullable', 'string', 'max:72'],
+            'admin_reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $user->name = $data['name'];
-        $user->email = $data['email'];
-        $user->role = $data['role'];
-        $user->is_active = (bool)($data['is_active'] ?? false);
-
-        if (!empty($data['password'])) {
-            $user->password = Hash::make($data['password']);
-        }
-
-        $user->save();
+        $this->accounts->update($request->user(), $user, $data);
 
         return $this->ktRedirectToReturn($request, 'admin.users.index')
             ->with('success', 'User updated successfully.');
@@ -123,13 +131,11 @@ class AdminUserController extends Controller
     {
         $this->ensureManageableUser($user);
 
-        if (auth()->id() === $user->id) {
-            return $this->ktRedirectToReturn($request, 'admin.users.index')
-                ->with('error', "You can't deactivate your own account.");
-        }
-
-        $user->is_active = !$user->is_active;
-        $user->save();
+        $data = $request->validate([
+            'current_password' => ['nullable', 'string', 'max:72'],
+            'admin_reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $this->accounts->toggle($request->user(), $user, $data);
 
         return $this->ktRedirectToReturn($request, 'admin.users.index')
             ->with('success', 'User status updated.');
@@ -152,7 +158,7 @@ class AdminUserController extends Controller
     {
         $user = User::withTrashed()->findOrFail($id);
         $this->ensureManageableUser($user);
-        $user->restore();
+        $this->accounts->restore($request->user(), $id);
 
         return $this->ktRedirectToReturn($request, 'admin.users.index')
             ->with('success', 'User restored successfully.');
@@ -162,35 +168,13 @@ class AdminUserController extends Controller
     {
         $this->ensureManageableUser($user);
 
-        $me = auth()->user();
-
-        if ($me && $me->id === $user->id) {
-            return $this->ktRedirectToReturn($request, 'admin.users.index')
-                ->with('error', "You can't delete your own account.");
-        }
-
-        if (strtolower((string) ($user->role ?? '')) === 'admin') {
-            $otherAdmins = User::where('role', 'admin')
-                ->where('id', '!=', $user->id)
-                ->count();
-
-            if ($otherAdmins <= 0) {
-                return $this->ktRedirectToReturn($request, 'admin.users.index')
-                    ->with('error', "You can't delete the last admin account.");
-            }
-        }
+        $data = $request->validate([
+            'current_password' => ['required', 'string', 'max:72'],
+            'admin_reason' => ['required', 'string', 'max:1000'],
+        ]);
 
         try {
-            DB::transaction(function () use ($user) {
-                Appointment::where('user_id', $user->id)
-                    ->whereNull('public_email')
-                    ->update(['public_email' => $user->email]);
-
-                Appointment::where('user_id', $user->id)
-                    ->update(['user_id' => null]);
-
-                $user->delete();
-            });
+            $this->accounts->delete($request->user(), $user, $data);
 
             $returnUrl = $this->ktReturnUrl($request, 'admin.users.index');
 
@@ -201,6 +185,8 @@ class AdminUserController extends Controller
                     'url' => route('admin.users.restore', ['id' => $user->id, 'return' => $returnUrl]),
                     'ms' => 10000,
                 ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             return $this->ktRedirectToReturn($request, 'admin.users.index')
                 ->with('error', 'Unable to delete user (may have related records). Try Deactivate instead.');

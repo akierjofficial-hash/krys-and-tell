@@ -3,118 +3,45 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\Patient;
-use App\Models\Payment;
-use App\Models\InstallmentPlan;
-use App\Models\InstallmentPayment;
-use App\Models\VisitProcedure;
-use App\Models\Service;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Services\FinancialService;
 
 class AdminDashboardController extends Controller
 {
-    public function index()
+    public function index(FinancialService $financials)
     {
-        $start = Carbon::now()->startOfMonth()->toDateString();
-        $end   = Carbon::now()->endOfMonth()->toDateString();
-        $today = Carbon::today()->toDateString();
-
-        // Cards
-        $appointmentsThisMonth = Appointment::whereBetween('appointment_date', [$start, $end])->count();
-
-        $newPatientsThisMonth = Patient::whereBetween(DB::raw('DATE(created_at)'), [$start, $end])->count();
-
-        $cashIncomeThisMonth = Payment::whereBetween('payment_date', [$start, $end])->sum('amount');
-
-        $installmentIncomeThisMonth = InstallmentPayment::whereBetween('payment_date', [$start, $end])->sum('amount');
-
-        $downpaymentsThisMonth = InstallmentPlan::whereBetween('start_date', [$start, $end])->sum('downpayment');
-
-        $totalIncomeThisMonth = (float) $cashIncomeThisMonth
-            + (float) $installmentIncomeThisMonth
-            + (float) $downpaymentsThisMonth;
-
-        // ✅ this counts performed procedures (visit_procedures rows this month)
-        $proceduresThisMonth = VisitProcedure::whereHas('visit', function ($q) use ($start, $end) {
-            $q->whereBetween('visit_date', [$start, $end]);
-        })->count();
-
-        // ✅ this counts ALL services (what you expected to be 17)
-        $servicesTotal = Service::count();
-
-        // Charts
-        $patientsByAge = $this->patientsByAgeBuckets();
-
-        // ✅ include all services even if 0 used this month
-        $proceduresByService = Service::query()
-            ->leftJoin('visit_procedures', 'visit_procedures.service_id', '=', 'services.id')
-            ->leftJoin('visits', function ($join) use ($start, $end) {
-                $join->on('visits.id', '=', 'visit_procedures.visit_id')
-                    ->whereBetween('visits.visit_date', [$start, $end]);
-            })
-            ->groupBy('services.id', 'services.name', 'services.color', 'services.created_at')
-            ->orderByDesc(DB::raw('COUNT(visits.id)'))
-            ->orderByDesc('services.created_at')
-            ->limit(20)
-            ->get([
-                'services.name as name',
-                'services.color as color',
-                DB::raw('COUNT(visits.id) as total'),
-            ]);
-
-        // Nearest appointments table
-        $nearestAppointments = Appointment::with(['patient', 'service'])
-            ->whereDate('appointment_date', '>=', $today)
-            ->orderBy('appointment_date')
-            ->orderBy('appointment_time')
-            ->limit(10)
-            ->get();
-
-        return view('admin.dashboard', [
-            'rangeLabel'            => Carbon::now()->format('F Y'),
-
-            'appointmentsThisMonth' => $appointmentsThisMonth,
-            'newPatientsThisMonth'  => $newPatientsThisMonth,
-            'totalIncomeThisMonth'  => $totalIncomeThisMonth,
-
-            // keep this for real procedure count
-            'proceduresThisMonth'   => $proceduresThisMonth,
-
-            // ✅ add this for total services count
-            'servicesTotal'         => $servicesTotal,
-
-            'patientsByAge'         => $patientsByAge,
-            'proceduresByService'   => $proceduresByService,
-            'nearestAppointments'   => $nearestAppointments,
-        ]);
-    }
-
-    private function patientsByAgeBuckets(): array
-    {
-        $buckets = [
-            '0-12'  => 0,
-            '13-19' => 0,
-            '20-35' => 0,
-            '36-50' => 0,
-            '51+'   => 0,
-        ];
-
-        $patients = Patient::select('birthdate')->get();
-
-        foreach ($patients as $p) {
-            if (!$p->birthdate) continue;
-
-            $age = Carbon::parse($p->birthdate)->age;
-
-            if ($age <= 12) $buckets['0-12']++;
-            elseif ($age <= 19) $buckets['13-19']++;
-            elseif ($age <= 35) $buckets['20-35']++;
-            elseif ($age <= 50) $buckets['36-50']++;
-            else $buckets['51+']++;
+        $now = now(config('app.timezone'));
+        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->endOfMonth();
+        $money = $financials->summary();
+        $pendingRequests = Appointment::where('status', 'pending')->count();
+        $newPatients = Patient::whereBetween('created_at', [$monthStart, $monthEnd])->count();
+        $accountAlerts = collect();
+        if (User::where('role', 'admin')->where('is_active', true)->count() === 1) {
+            $accountAlerts->push(['title' => 'Only one active administrator remains', 'detail' => 'Create or activate another administrator for account recovery.', 'url' => route('admin.users.index')]);
         }
-
-        return $buckets;
+        $deletedCount = User::onlyTrashed()->count();
+        if ($deletedCount) $accountAlerts->push(['title' => "$deletedCount deleted account(s) can be restored", 'detail' => 'Review accounts retained in the recovery area.', 'url' => route('admin.deleted_accounts.index')]);
+        $recentAccountChanges = ActivityLog::whereIn('event', ['account.status_changed', 'account.updated', 'account.deleted'])
+            ->where('created_at', '>=', $now->copy()->subDays(7))->count();
+        if ($recentAccountChanges) $accountAlerts->push(['title' => "$recentAccountChanges sensitive account change(s) this week", 'detail' => 'Review who made each change and the recorded reason.', 'url' => route('admin.activity.index', ['sensitive' => 1])]);
+        $securityAlerts = $accountAlerts->count();
+        $oldestRequests = Appointment::with(['service', 'doctor', 'patient'])->where('status', 'pending')->oldest()->limit(5)->get();
+        $nearestAppointments = Appointment::with(['service', 'doctor', 'patient'])
+            ->whereIn('status', Appointment::STATUS_ACTIVE)->whereDate('appointment_date', '>=', $now->toDateString())
+            ->orderBy('appointment_date')->orderBy('appointment_time')->limit(6)->get();
+        $recentSensitiveActivity = ActivityLog::with('user')->where('is_sensitive', true)->latest('created_at')->limit(6)->get();
+        $collectionLabels = [];
+        $collectionValues = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = $now->copy()->subDays($i);
+            $collectionLabels[] = $day->format('D');
+            $collectionValues[] = $financials->collectedOn($day);
+        }
+        return view('admin.dashboard', compact('now', 'money', 'pendingRequests', 'newPatients', 'securityAlerts',
+            'oldestRequests', 'nearestAppointments', 'recentSensitiveActivity', 'collectionLabels', 'collectionValues', 'accountAlerts'));
     }
 }

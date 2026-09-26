@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Services\FinancialService;
 
 class AdminPatientController extends Controller
 {
@@ -30,7 +31,7 @@ class AdminPatientController extends Controller
         return view('admin.patients.index', compact('patients', 'q'));
     }
 
-    public function show(Patient $patient)
+    public function show(Patient $patient, FinancialService $financials)
     {
         $patient->load(['files']);
 
@@ -66,6 +67,12 @@ class AdminPatientController extends Controller
             })
             ->values();
 
-        return view('admin.patients.show', compact('patient', 'upcoming', 'past', 'procedures'));
+        $ordinaryVisits = $patient->visits()->with(['procedures', 'payments'])->whereDoesntHave('installmentPlan')->get();
+        $plans = \App\Models\InstallmentPlan::with('payments')->where('patient_id', $patient->id)->get();
+        $ordinaryOutstanding = $ordinaryVisits->sum(fn ($visit) => $financials->visitBalance($visit));
+        $installmentOutstanding = $plans->sum(fn ($plan) => $financials->planBalance($plan));
+        $outstandingBalance = $ordinaryOutstanding + $installmentOutstanding;
+
+        return view('admin.patients.show', compact('patient', 'upcoming', 'past', 'procedures', 'ordinaryOutstanding', 'installmentOutstanding', 'outstandingBalance'));
     }
 }
