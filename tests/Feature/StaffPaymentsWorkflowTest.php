@@ -166,6 +166,15 @@ class StaffPaymentsWorkflowTest extends TestCase
             ->assertOk()->assertSeeText('No transactions match these filters.');
     }
 
+    public function test_switching_tabs_keeps_patient_search_but_drops_tab_specific_filters(): void
+    {
+        $response = $this->get(route('staff.payments.index', ['tab' => 'transactions', 'q' => 'Paying',
+            'patient_id' => $this->patient->id, 'status' => 'partial', 'method' => 'Cash',
+            'date_from' => '2026-09-01', 'sort' => 'oldest']))->assertOk();
+        $response->assertSee(e(route('staff.payments.index', ['q' => 'Paying',
+            'patient_id' => $this->patient->id, 'tab' => 'plans'])), false);
+    }
+
     public function test_plan_creation_uses_selected_downpayment_details_and_is_idempotent(): void
     {
         $token = (string) Str::uuid();

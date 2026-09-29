@@ -130,6 +130,16 @@ class PaymentController extends Controller
                 $query->whereHas('patient', fn ($q) => $q
                     ->where('first_name', 'like', "%{$term}%")->orWhere('last_name', 'like', "%{$term}%"))
                     ->orWhereHas('service', fn ($q) => $q->where('name', 'like', "%{$term}%"));
+                $parts = preg_split('/[\s,]+/u', $term, -1, PREG_SPLIT_NO_EMPTY);
+                if (count($parts) > 1) {
+                    $query->orWhereHas('patient', function ($name) use ($parts) {
+                        foreach ($parts as $part) {
+                            $name->where(fn ($piece) => $piece->where('first_name', 'like', "%{$part}%")
+                                ->orWhere('last_name', 'like', "%{$part}%")
+                                ->orWhere('middle_name', 'like', "%{$part}%"));
+                        }
+                    });
+                }
                 if (ctype_digit($term)) $query->orWhere('id', (int) $term);
             });
         }
@@ -139,8 +149,9 @@ class PaymentController extends Controller
         if ($request->filled('date_to')) $plansQuery->whereDate('start_date', '<=', $request->date_to);
         match ($request->input('sort', 'newest')) {
             'oldest' => $plansQuery->orderBy('start_date')->orderBy('id'),
+            'start_newest' => $plansQuery->orderByDesc('start_date')->orderByDesc('id'),
             'patient' => $plansQuery->orderBy('patient_id')->orderByDesc('start_date'),
-            default => $plansQuery->orderByDesc('start_date')->orderByDesc('id'),
+            default => $plansQuery->orderByDesc('created_at')->orderByDesc('id'),
         };
         $plans = $plansQuery->paginate(15, ['*'], 'plans_page')->withQueryString();
         $plans->getCollection()->each(function ($plan) use ($finance) {

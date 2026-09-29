@@ -115,6 +115,40 @@ class StaffRecordEntryTest extends TestCase
         $this->assertDatabaseCount('visits', 1);
     }
 
+    public function test_historical_receipts_and_plan_are_discoverable_on_payments_page_after_entry(): void
+    {
+        $olderPatient = Patient::create(['first_name' => 'Earlier', 'last_name' => 'Patient']);
+        $olderVisit = Visit::create(['patient_id' => $olderPatient->id, 'visit_date' => '2026-09-01']);
+        $olderPayment = Payment::create(['visit_id' => $olderVisit->id, 'amount' => 100,
+            'method' => 'Cash', 'payment_date' => '2026-09-01']);
+        $olderPlan = InstallmentPlan::create(['patient_id' => $olderPatient->id, 'service_id' => $this->service->id,
+            'total_cost' => 1000, 'downpayment' => 0, 'balance' => 1000, 'months' => 4,
+            'start_date' => '2026-09-01', 'status' => 'Pending']);
+        \DB::table('payments')->where('id', $olderPayment->id)->update(['created_at' => '2026-09-01 00:00:00']);
+        \DB::table('installment_plans')->where('id', $olderPlan->id)->update(['created_at' => '2026-09-01 00:00:00']);
+
+        $row = $this->visit();
+        $ordinaryService = Service::create(['name' => 'Cleaning', 'base_price' => 800]);
+        $row['procedures'][] = ['service_id' => $ordinaryService->id, 'price' => '800.00'];
+        $row['payments'] = [[...$this->receipt(), 'payment_date' => '2020-02-05', 'procedure_index' => 1]];
+        $row['arrangement'] = 'installment';
+        $row['plan'] = $this->plan();
+        $this->save($this->review([$row]))->assertOk();
+
+        $this->get(route('staff.payments.index', ['tab' => 'transactions', 'sort' => 'newest']))
+            ->assertOk()->assertViewHas('transactions', fn ($page) => $page->items()[0]->patient_id === $this->patient->id);
+        $this->get(route('staff.payments.index', ['tab' => 'plans', 'sort' => 'newest']))
+            ->assertOk()->assertViewHas('plans', fn ($page) => $page->items()[0]->patient_id === $this->patient->id);
+        $this->get(route('staff.payments.index', ['tab' => 'transactions', 'sort' => 'payment_newest']))
+            ->assertOk()->assertViewHas('transactions', fn ($page) => $page->items()[0]->patient_id === $olderPatient->id);
+        $this->get(route('staff.payments.index', ['tab' => 'plans', 'sort' => 'start_newest']))
+            ->assertOk()->assertViewHas('plans', fn ($page) => $page->items()[0]->patient_id === $olderPatient->id);
+        $this->get(route('staff.payments.index', ['tab' => 'transactions', 'q' => 'Patient, Paper']))
+            ->assertOk()->assertViewHas('transactions', fn ($page) => $page->total() === 4);
+        $this->get(route('staff.payments.index', ['tab' => 'plans', 'q' => 'Patient, Paper']))
+            ->assertOk()->assertViewHas('plans', fn ($page) => $page->total() === 1);
+    }
+
     public function test_optional_installment_links_can_reference_real_batch_or_existing_patient_visits(): void
     {
         $existing = Visit::create(['patient_id' => $this->patient->id, 'visit_date' => '2019-01-01']);
@@ -432,6 +466,10 @@ class StaffRecordEntryTest extends TestCase
         $this->save($this->review([$row]))->assertOk();
         $this->assertDatabaseCount('installment_payments', 0);
         $this->assertEquals(1000, InstallmentPlan::firstOrFail()->balance);
+        $this->get(route('staff.payments.index', ['tab' => 'plans', 'patient_id' => $this->patient->id]))
+            ->assertOk()->assertViewHas('plans', fn ($page) => $page->total() === 1);
+        $this->get(route('staff.payments.index', ['tab' => 'transactions', 'patient_id' => $this->patient->id]))
+            ->assertOk()->assertSeeText('No transactions match these filters.');
     }
 
     public function test_mixed_billing_allocates_ordinary_receipt_to_oral_prophylaxis_and_plan_to_braces(): void

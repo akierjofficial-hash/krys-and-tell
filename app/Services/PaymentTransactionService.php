@@ -21,14 +21,14 @@ class PaymentTransactionService
             ->leftJoin('visit_procedures as vp', 'vp.id', '=', 'tx.visit_procedure_id')
             ->leftJoin('services as service', 'service.id', '=', 'vp.service_id')
             ->whereNull('tx.deleted_at')->whereNull('v.deleted_at')->whereNull('patient.deleted_at')
-            ->selectRaw("'ordinary' as source, tx.id as source_id, tx.payment_date, tx.amount, tx.method, tx.notes, patient.id as patient_id, patient.first_name, patient.last_name, v.id as target_id, COALESCE(service.name, (SELECT s2.name FROM visit_procedures vp2 JOIN services s2 ON s2.id = vp2.service_id WHERE vp2.visit_id = v.id LIMIT 1), 'Visit payment') as treatment, v.status as target_status, 1 as type_order");
+            ->selectRaw("'ordinary' as source, tx.id as source_id, tx.payment_date, tx.created_at as recorded_at, tx.amount, tx.method, tx.notes, patient.id as patient_id, patient.first_name, patient.last_name, v.id as target_id, COALESCE(service.name, (SELECT s2.name FROM visit_procedures vp2 JOIN services s2 ON s2.id = vp2.service_id WHERE vp2.visit_id = v.id LIMIT 1), 'Visit payment') as treatment, v.status as target_status, 1 as type_order");
 
         $plans = DB::table('installment_payments as tx')
             ->join('installment_plans as plan', 'plan.id', '=', 'tx.installment_plan_id')
             ->join('patients as patient', 'patient.id', '=', 'plan.patient_id')
             ->leftJoin('services as service', 'service.id', '=', 'plan.service_id')
             ->whereNull('tx.deleted_at')->whereNull('plan.deleted_at')->whereNull('patient.deleted_at')
-            ->selectRaw("'installment' as source, tx.id as source_id, tx.payment_date, tx.amount, tx.method, tx.notes, patient.id as patient_id, patient.first_name, patient.last_name, plan.id as target_id, COALESCE(service.name, 'Installment plan') as treatment, plan.status as target_status, 2 as type_order");
+            ->selectRaw("'installment' as source, tx.id as source_id, tx.payment_date, tx.created_at as recorded_at, tx.amount, tx.method, tx.notes, patient.id as patient_id, patient.first_name, patient.last_name, plan.id as target_id, COALESCE(service.name, 'Installment plan') as treatment, plan.status as target_status, 2 as type_order");
 
         foreach (['PAY' => $ordinary, 'INS' => $plans] as $referencePrefix => $query) {
             if ($request->filled('patient_id')) $query->where('patient.id', $request->integer('patient_id'));
@@ -45,9 +45,19 @@ class PaymentTransactionService
                     && strtoupper($matches[1]) === $referencePrefix) {
                     $referenceId = (int) $matches[2];
                 }
-                $query->where(function ($q) use ($term, $referenceId) {
+                $query->where(function ($q) use ($term, $search, $referenceId) {
                     $q->where('patient.first_name', 'like', $term)->orWhere('patient.last_name', 'like', $term)
                         ->orWhere('service.name', 'like', $term)->orWhere('tx.notes', 'like', $term);
+                    $parts = preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY);
+                    if (count($parts) > 1) {
+                        $q->orWhere(function ($name) use ($parts) {
+                            foreach ($parts as $part) {
+                                $name->where(fn ($piece) => $piece->where('patient.first_name', 'like', "%{$part}%")
+                                    ->orWhere('patient.last_name', 'like', "%{$part}%")
+                                    ->orWhere('patient.middle_name', 'like', "%{$part}%"));
+                            }
+                        });
+                    }
                     if ($referenceId !== null) $q->orWhere('tx.id', $referenceId);
                 });
             }
@@ -68,10 +78,11 @@ class PaymentTransactionService
         $sort = $request->input('sort', 'newest');
         match ($sort) {
             'oldest' => $query->orderBy('payment_date')->orderBy('source_id'),
+            'payment_newest' => $query->orderByDesc('payment_date')->orderByDesc('source_id'),
             'amount_high' => $query->orderByDesc('amount')->orderByDesc('payment_date'),
             'amount_low' => $query->orderBy('amount')->orderByDesc('payment_date'),
             'patient' => $query->orderBy('last_name')->orderBy('first_name')->orderByDesc('payment_date'),
-            default => $query->orderByDesc('payment_date')->orderByDesc('source_id'),
+            default => $query->orderByDesc('recorded_at')->orderByDesc('source_id'),
         };
         $page = $query->paginate($perPage)->withQueryString();
 
