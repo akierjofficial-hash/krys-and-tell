@@ -127,9 +127,10 @@ class PaymentController extends Controller
         if ($request->filled('q')) {
             $term = trim($request->q);
             $plansQuery->where(function ($query) use ($term) {
-                $query->where('id', $term)->orWhereHas('patient', fn ($q) => $q
+                $query->whereHas('patient', fn ($q) => $q
                     ->where('first_name', 'like', "%{$term}%")->orWhere('last_name', 'like', "%{$term}%"))
                     ->orWhereHas('service', fn ($q) => $q->where('name', 'like', "%{$term}%"));
+                if (ctype_digit($term)) $query->orWhere('id', (int) $term);
             });
         }
         if ($request->filled('patient_id')) $plansQuery->where('patient_id', $request->integer('patient_id'));

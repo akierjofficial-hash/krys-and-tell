@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -111,6 +112,58 @@ class StaffPaymentsWorkflowTest extends TestCase
             'method' => 'Cash', 'payment_date' => '2026-01-01', 'notes' => 'Downpayment']);
         $this->get(route('staff.payments.index', ['q' => 'Paying']))->assertOk()->assertSee('PAY-00001')->assertSee('INS-00001');
         $this->get(route('staff.payments.index', ['type' => 'downpayment']))->assertOk()->assertDontSee('PAY-00001')->assertSeeText('Downpayment');
+    }
+
+    public function test_text_search_does_not_compare_numeric_payment_or_plan_ids_to_patient_name(): void
+    {
+        $this->post(route('staff.payments.record'), $this->payload())->assertRedirect();
+        $plan = $this->plan(['visit_id' => null]);
+        InstallmentPayment::create(['installment_plan_id' => $plan->id, 'month_number' => 0,
+            'amount' => 8000, 'method' => 'Cash', 'payment_date' => '2026-01-01', 'notes' => 'Downpayment']);
+
+        $queries = [];
+        DB::listen(function ($query) use (&$queries): void {
+            if (str_contains($query->sql, 'installment_plans') || str_contains($query->sql, 'from (')) {
+                $queries[] = $query->sql;
+            }
+        });
+
+        $filters = ['tab' => 'transactions', 'q' => 'Paying', 'patient_id' => '', 'type' => '',
+            'method' => '', 'status' => '', 'date_from' => '', 'date_to' => ''];
+        $this->get(route('staff.payments.index', $filters))->assertOk()
+            ->assertSee('PAY-00001')->assertSee('INS-00001');
+        $this->get(route('staff.payments.index', array_merge($filters, ['q' => 'No such patient'])))
+            ->assertOk()->assertSeeText('No transactions match these filters.');
+        $this->get(route('staff.payments.index', array_merge($filters, ['q' => 'PAY-00001'])))
+            ->assertOk()->assertSee('PAY-00001')->assertDontSee('INS-00001');
+        $this->get(route('staff.payments.index', array_merge($filters, ['q' => 'INS-00001'])))
+            ->assertOk()->assertSee('INS-00001')->assertDontSee('PAY-00001');
+        $this->get(route('staff.payments.index', array_merge($filters, ['tab' => 'plans'])))
+            ->assertOk()->assertSeeText('Paying')->assertSeeText('Plan #');
+
+        foreach ($queries as $sql) {
+            $this->assertDoesNotMatchRegularExpression('/["`]tx["`]\.["`]id["`]\s+like\b/i', $sql);
+            $this->assertDoesNotMatchRegularExpression('/["`]installment_plans["`]\.["`]id["`]\s*=\s*\?/i', $sql);
+        }
+    }
+
+    public function test_payment_search_preserves_combined_filters_and_pagination(): void
+    {
+        foreach (range(1, 22) as $day) {
+            Payment::create(['visit_id' => $this->visit->id, 'amount' => 1, 'method' => 'Cash',
+                'payment_date' => sprintf('2026-09-%02d', $day)]);
+        }
+        Payment::create(['visit_id' => $this->visit->id, 'amount' => 1, 'method' => 'GCash',
+            'payment_date' => '2026-09-15']);
+
+        $filters = ['tab' => 'transactions', 'q' => 'Paying', 'type' => 'ordinary',
+            'method' => 'Cash', 'date_from' => '2026-09-01', 'date_to' => '2026-09-30', 'sort' => 'oldest'];
+        $this->get(route('staff.payments.index', $filters))->assertOk()
+            ->assertViewHas('transactions', fn ($page) => $page->total() === 22 && $page->count() === 20);
+        $this->get(route('staff.payments.index', array_merge($filters, ['page' => 2])))->assertOk()
+            ->assertViewHas('transactions', fn ($page) => $page->total() === 22 && $page->count() === 2);
+        $this->get(route('staff.payments.index', array_merge($filters, ['method' => 'Card'])))
+            ->assertOk()->assertSeeText('No transactions match these filters.');
     }
 
     public function test_plan_creation_uses_selected_downpayment_details_and_is_idempotent(): void

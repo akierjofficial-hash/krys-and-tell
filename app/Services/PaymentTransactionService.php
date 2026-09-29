@@ -30,17 +30,25 @@ class PaymentTransactionService
             ->whereNull('tx.deleted_at')->whereNull('plan.deleted_at')->whereNull('patient.deleted_at')
             ->selectRaw("'installment' as source, tx.id as source_id, tx.payment_date, tx.amount, tx.method, tx.notes, patient.id as patient_id, patient.first_name, patient.last_name, plan.id as target_id, COALESCE(service.name, 'Installment plan') as treatment, plan.status as target_status, 2 as type_order");
 
-        foreach ([$ordinary, $plans] as $query) {
+        foreach (['PAY' => $ordinary, 'INS' => $plans] as $referencePrefix => $query) {
             if ($request->filled('patient_id')) $query->where('patient.id', $request->integer('patient_id'));
             if ($request->filled('method')) $query->where('tx.method', $request->method);
             if ($request->filled('date_from')) $query->whereDate('tx.payment_date', '>=', $request->date_from);
             if ($request->filled('date_to')) $query->whereDate('tx.payment_date', '<=', $request->date_to);
             if ($request->filled('q')) {
-                $term = '%' . trim($request->q) . '%';
-                $query->where(function ($q) use ($term) {
+                $search = trim((string) $request->q);
+                $term = '%' . $search . '%';
+                $referenceId = null;
+                if (ctype_digit($search)) {
+                    $referenceId = (int) $search;
+                } elseif (preg_match('/^(PAY|INS)-0*(\d+)$/i', $search, $matches)
+                    && strtoupper($matches[1]) === $referencePrefix) {
+                    $referenceId = (int) $matches[2];
+                }
+                $query->where(function ($q) use ($term, $referenceId) {
                     $q->where('patient.first_name', 'like', $term)->orWhere('patient.last_name', 'like', $term)
-                        ->orWhere('service.name', 'like', $term)->orWhere('tx.notes', 'like', $term)
-                        ->orWhere('tx.id', 'like', $term);
+                        ->orWhere('service.name', 'like', $term)->orWhere('tx.notes', 'like', $term);
+                    if ($referenceId !== null) $q->orWhere('tx.id', $referenceId);
                 });
             }
         }
