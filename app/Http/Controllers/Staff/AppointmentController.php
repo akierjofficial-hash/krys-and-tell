@@ -16,14 +16,60 @@ class AppointmentController extends Controller
     public function index(Request $request)
     {
         $request->validate([
+            'q' => ['nullable', 'string', 'max:200'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'sort' => ['nullable', Rule::in(['dt_desc', 'dt_asc', 'patient_asc', 'patient_desc', 'dentist_asc', 'dentist_desc', 'status_asc', 'status_desc'])],
         ]);
 
+        $search = trim((string) $request->query('q', ''));
+        $sort = $request->query('sort', 'dt_desc');
         $appointments = Appointment::with(['patient', 'service', 'doctor'])
-            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('appointment_date', '>=', $request->date_from))
-            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('appointment_date', '<=', $request->date_to))
-            ->latest()
+            ->leftJoin('patients as sort_patient', 'sort_patient.id', '=', 'appointments.patient_id')
+            ->leftJoin('doctors as sort_doctor', 'sort_doctor.id', '=', 'appointments.doctor_id')
+            ->select('appointments.*')
+            ->when($search !== '', function ($query) use ($search) {
+                $parts = preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $query->where(function ($matching) use ($search, $parts) {
+                    $matching->whereHas('patient', function ($patient) use ($parts) {
+                        foreach ($parts as $part) {
+                            $patient->where(fn ($name) => $name->whereLike('first_name', "%{$part}%")
+                                ->orWhereLike('middle_name', "%{$part}%")
+                                ->orWhereLike('last_name', "%{$part}%"));
+                        }
+                    })->orWhere(function ($public) use ($parts) {
+                        foreach ($parts as $part) {
+                            $public->where(fn ($name) => $name->whereLike('public_first_name', "%{$part}%")
+                                ->orWhereLike('public_middle_name', "%{$part}%")
+                                ->orWhereLike('public_last_name', "%{$part}%")
+                                ->orWhereLike('public_name', "%{$part}%"));
+                        }
+                    })->orWhereHas('service', fn ($service) => $service->whereLike('name', "%{$search}%"))
+                        ->orWhereHas('doctor', fn ($doctor) => $doctor->whereLike('name', "%{$search}%"))
+                        ->orWhereLike('appointments.dentist_name', "%{$search}%")
+                        ->orWhereLike('appointments.status', "%{$search}%");
+                });
+            })
+            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('appointments.appointment_date', '>=', $request->date_from))
+            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('appointments.appointment_date', '<=', $request->date_to))
+            ->when(in_array($sort, ['patient_asc', 'patient_desc'], true), function ($query) use ($sort) {
+                $direction = $sort === 'patient_asc' ? 'asc' : 'desc';
+                $query->orderByRaw("LOWER(COALESCE(sort_patient.last_name, appointments.public_last_name, appointments.public_name, '')) {$direction}")
+                    ->orderByRaw("LOWER(COALESCE(sort_patient.first_name, appointments.public_first_name, '')) {$direction}");
+            })
+            ->when(in_array($sort, ['dentist_asc', 'dentist_desc'], true), function ($query) use ($sort) {
+                $direction = $sort === 'dentist_asc' ? 'asc' : 'desc';
+                $query->orderByRaw("LOWER(COALESCE(appointments.dentist_name, sort_doctor.name, '')) {$direction}");
+            })
+            ->when(in_array($sort, ['status_asc', 'status_desc'], true), function ($query) use ($sort) {
+                $query->orderBy('appointments.status', $sort === 'status_asc' ? 'asc' : 'desc');
+            })
+            ->when(in_array($sort, ['dt_asc', 'dt_desc'], true), function ($query) use ($sort) {
+                $direction = $sort === 'dt_asc' ? 'asc' : 'desc';
+                $query->orderBy('appointments.appointment_date', $direction)
+                    ->orderBy('appointments.appointment_time', $direction);
+            })
+            ->orderByDesc('appointments.id')
             ->paginate(10)
             ->withQueryString();
 

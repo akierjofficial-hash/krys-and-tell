@@ -46,8 +46,8 @@ class AdminUserController extends Controller
             ->whereIn('role', self::MANAGEABLE_ROLES)
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
-                    $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('email', 'like', "%{$q}%");
+                    $sub->whereLike('name', "%{$q}%")
+                        ->orWhereLike('email', "%{$q}%");
                 });
             })
             ->when($role, fn ($query) => $query->where('role', $role))

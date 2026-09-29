@@ -62,5 +62,6 @@
     @endforeach
 
     @if($q !== '' && $accounts->isEmpty())<div class="text-muted">No active website account matched that search.</div>@endif
+    @if($q !== '' && $accounts->hasPages())<div class="mt-3">{{ $accounts->links('pagination::bootstrap-5') }}</div>@endif
 </section>
 @endsection

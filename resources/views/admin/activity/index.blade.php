@@ -11,6 +11,7 @@
  <div class="col-lg-2"><label class="form-label fw-bold">From</label><input type="date" class="form-control" name="from" value="{{ $filters['from'] ?? '' }}"></div>
  <div class="col-lg-2"><label class="form-label fw-bold">To</label><input type="date" class="form-control" name="to" value="{{ $filters['to'] ?? '' }}"></div>
  <div class="col-lg-1 d-flex align-items-end"><button class="btn btn-primary w-100" aria-label="Apply filters"><i class="fa fa-filter"></i></button></div>
+ <div class="col-lg-2 d-flex align-items-end"><a class="btn btn-outline-secondary w-100" href="{{ route('admin.activity.index') }}">Reset filters</a></div>
  <div class="col-12"><label class="form-check-label"><input class="form-check-input me-2" type="checkbox" name="sensitive" value="1" @checked(request()->boolean('sensitive'))>Sensitive actions only</label></div>
 </div></form>
 <div class="cardx overflow-hidden"><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Time</th><th>Actor</th><th>Event</th><th>Target</th><th>Reason / details</th></tr></thead><tbody>

@@ -36,7 +36,7 @@ class PatientController extends Controller
         $applySearch = function ($query) use ($q): void {
             if ($q === '') return;
 
-            $terms = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $terms = preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
             $birthdate = null;
             foreach (['Y-m-d', 'm/d/Y', 'm-d-Y'] as $format) {
                 try {
@@ -55,11 +55,11 @@ class PatientController extends Controller
                     foreach ($terms as $term) {
                         $like = '%' . $term . '%';
                         $names->where(function ($part) use ($like) {
-                            $part->where('first_name', 'like', $like)
-                                ->orWhere('middle_name', 'like', $like)
-                                ->orWhere('last_name', 'like', $like)
-                                ->orWhere('contact_number', 'like', $like)
-                                ->orWhere('email', 'like', $like);
+                            $part->whereLike('first_name', $like)
+                                ->orWhereLike('middle_name', $like)
+                                ->orWhereLike('last_name', $like)
+                                ->orWhereLike('contact_number', $like)
+                                ->orWhereLike('email', $like);
                         });
                     }
                 });

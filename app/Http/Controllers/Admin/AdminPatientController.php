@@ -16,12 +16,18 @@ class AdminPatientController extends Controller
 
         $patients = Patient::query()
             ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($qq) use ($q) {
-                    $qq->where('first_name', 'like', "%{$q}%")
-                       ->orWhere('last_name', 'like', "%{$q}%")
-                       ->orWhere('middle_name', 'like', "%{$q}%")
-                       ->orWhere('contact_number', 'like', "%{$q}%")
-                       ->orWhere('email', 'like', "%{$q}%");
+                $terms = preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $query->where(function ($search) use ($terms) {
+                    foreach ($terms as $term) {
+                        $search->where(function ($part) use ($term) {
+                            $like = "%{$term}%";
+                            $part->whereLike('first_name', $like)
+                                ->orWhereLike('last_name', $like)
+                                ->orWhereLike('middle_name', $like)
+                                ->orWhereLike('contact_number', $like)
+                                ->orWhereLike('email', $like);
+                        });
+                    }
                 });
             })
             ->orderBy('created_at', 'desc')

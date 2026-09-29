@@ -25,12 +25,12 @@ class PatientAccountLinkController extends Controller
                 ->where('role', 'user')
                 ->where('is_active', true)
                 ->where(function ($query) use ($q) {
-                    $query->where('name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%");
+                    $query->whereLike('name', "%{$q}%")->orWhereLike('email', "%{$q}%");
                 })
                 ->withCount(['appointments', 'verifiedPatients'])
                 ->orderBy('name')
-                ->limit(25)
-                ->get();
+                ->paginate(25)
+                ->withQueryString();
         }
 
         return view('staff.patients.account_links', compact('patient', 'links', 'accounts', 'q'));

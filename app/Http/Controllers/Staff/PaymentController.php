@@ -128,15 +128,15 @@ class PaymentController extends Controller
             $term = trim($request->q);
             $plansQuery->where(function ($query) use ($term) {
                 $query->whereHas('patient', fn ($q) => $q
-                    ->where('first_name', 'like', "%{$term}%")->orWhere('last_name', 'like', "%{$term}%"))
-                    ->orWhereHas('service', fn ($q) => $q->where('name', 'like', "%{$term}%"));
+                    ->whereLike('first_name', "%{$term}%")->orWhereLike('last_name', "%{$term}%"))
+                    ->orWhereHas('service', fn ($q) => $q->whereLike('name', "%{$term}%"));
                 $parts = preg_split('/[\s,]+/u', $term, -1, PREG_SPLIT_NO_EMPTY);
                 if (count($parts) > 1) {
                     $query->orWhereHas('patient', function ($name) use ($parts) {
                         foreach ($parts as $part) {
-                            $name->where(fn ($piece) => $piece->where('first_name', 'like', "%{$part}%")
-                                ->orWhere('last_name', 'like', "%{$part}%")
-                                ->orWhere('middle_name', 'like', "%{$part}%"));
+                            $name->where(fn ($piece) => $piece->whereLike('first_name', "%{$part}%")
+                                ->orWhereLike('last_name', "%{$part}%")
+                                ->orWhereLike('middle_name', "%{$part}%"));
                         }
                     });
                 }
@@ -150,7 +150,10 @@ class PaymentController extends Controller
         match ($request->input('sort', 'newest')) {
             'oldest' => $plansQuery->orderBy('start_date')->orderBy('id'),
             'start_newest' => $plansQuery->orderByDesc('start_date')->orderByDesc('id'),
-            'patient' => $plansQuery->orderBy('patient_id')->orderByDesc('start_date'),
+            'patient' => $plansQuery
+                ->orderBy(Patient::query()->select('last_name')->whereColumn('patients.id', 'installment_plans.patient_id'))
+                ->orderBy(Patient::query()->select('first_name')->whereColumn('patients.id', 'installment_plans.patient_id'))
+                ->orderByDesc('start_date')->orderByDesc('id'),
             default => $plansQuery->orderByDesc('created_at')->orderByDesc('id'),
         };
         $plans = $plansQuery->paginate(15, ['*'], 'plans_page')->withQueryString();

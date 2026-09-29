@@ -24,8 +24,9 @@ class AdminDoctorController extends Controller
             ->when($q, function ($qq) use ($q) {
                 // Group OR conditions so they don't escape other filters
                 $qq->where(function ($w) use ($q) {
-                    $w->where('name', 'like', "%{$q}%")
-                      ->orWhere('email', 'like', "%{$q}%");
+                    $w->whereLike('name', "%{$q}%")
+                      ->orWhereLike('email', "%{$q}%")
+                      ->orWhereLike('specialty', "%{$q}%");
                 });
             })
             ->when($status !== '', fn($qq) => $qq->where('is_active', $status === 'active'))

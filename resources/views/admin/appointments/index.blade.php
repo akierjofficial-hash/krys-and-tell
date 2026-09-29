@@ -326,6 +326,7 @@
                         <button class="kt-btn" type="submit">
                             <i class="fa fa-filter me-2"></i>Apply
                         </button>
+                        <a class="kt-btn" href="{{ route('admin.appointments.index') }}">Reset</a>
                     </div>
 
                     <div class="f-right">
@@ -357,8 +358,8 @@
                     <tbody>
                         @forelse($appointments as $i => $a)
                             @php
-                                $patient = trim(($a->patient?->first_name ?? '') . ' ' . ($a->patient?->last_name ?? '')) ?: 'Patient';
-                                $doctorName = $a->dentist_name ?: ($a->assigned_doctor ?: '—');
+                                $patient = $a->displayPatientName();
+                                $doctorName = $a->displayDentistName();
                                 $procName = $a->service?->name ?? '—';
 
                                 $procColor = $a->service?->color ?: \App\Http\Controllers\Admin\AdminAppointmentController::fallbackServiceColor($a->service_id, $procName);

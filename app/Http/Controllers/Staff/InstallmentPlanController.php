@@ -172,34 +172,10 @@ class InstallmentPlanController extends Controller
 
     public function index(Request $request)
     {
-        $query = InstallmentPlan::with([
-            'patient',
-            'service',
-            'visit.patient',
-            'visit.procedures.service',
+        return redirect()->route('staff.payments.index', [
+            'tab' => 'plans',
+            'q' => $request->query('search', $request->query('q', '')),
         ]);
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('patient', function ($sub) use ($search) {
-                    $sub->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('service', function ($sub) use ($search) {
-                    $sub->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('visit.procedures.service', function ($sub) use ($search) {
-                    $sub->where('name', 'like', "%{$search}%");
-                });
-            });
-        }
-
-        $installments = $query->latest()->get();
-        $cashPayments = collect();
-
-        return view('staff.payments.index', compact('installments', 'cashPayments'));
     }
 
     public function create()

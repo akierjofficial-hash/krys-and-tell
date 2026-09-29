@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Doctor;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AdminAppointmentController extends Controller
 {
@@ -25,13 +25,16 @@ class AdminAppointmentController extends Controller
             ->get();
 
         // Dentist/doctor stored as string on appointments
-        $doctors = Appointment::query()
+        $legacyDoctors = Appointment::query()
             ->select('dentist_name')
             ->whereNotNull('dentist_name')
             ->where('dentist_name', '!=', '')
             ->distinct()
             ->orderBy('dentist_name')
             ->pluck('dentist_name');
+        $linkedDoctors = Doctor::query()->whereIn('id', Appointment::query()
+            ->whereNotNull('doctor_id')->select('doctor_id'))->pluck('name');
+        $doctors = $legacyDoctors->merge($linkedDoctors)->unique()->sort()->values();
 
         $statuses = Appointment::query()
             ->select('status')
@@ -43,19 +46,32 @@ class AdminAppointmentController extends Controller
 
         // Main query (read-only)
         $query = Appointment::query()
-            ->with(['patient', 'service'])
+            ->with(['patient', 'service', 'doctor'])
             ->when($search !== '', function ($q) use ($search) {
                 // Group OR search terms so they don't escape other filters (doctor/service/status)
                 $q->where(function ($w) use ($search) {
-                    $w->whereHas('patient', function ($p) use ($search) {
-                        $p->where('first_name', 'like', "%{$search}%")
-                          ->orWhere('last_name', 'like', "%{$search}%")
-                          ->orWhere(DB::raw("CONCAT(first_name,' ',last_name)"), 'like', "%{$search}%");
+                    $parts = preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                    $w->whereHas('patient', function ($p) use ($parts) {
+                        foreach ($parts as $part) {
+                            $p->where(fn ($name) => $name->whereLike('first_name', "%{$part}%")
+                                ->orWhereLike('last_name', "%{$part}%")
+                                ->orWhereLike('middle_name', "%{$part}%"));
+                        }
+                    })->orWhere(function ($public) use ($parts) {
+                        foreach ($parts as $part) {
+                            $public->where(fn ($name) => $name->whereLike('public_first_name', "%{$part}%")
+                                ->orWhereLike('public_middle_name', "%{$part}%")
+                                ->orWhereLike('public_last_name', "%{$part}%")
+                                ->orWhereLike('public_name', "%{$part}%"));
+                        }
                     })
-                    ->orWhere('dentist_name', 'like', "%{$search}%");
+                    ->orWhereLike('dentist_name', "%{$search}%")
+                    ->orWhereHas('doctor', fn ($doctor) => $doctor->whereLike('name', "%{$search}%"));
                 });
             })
-            ->when($doctor !== '', fn ($q) => $q->where('dentist_name', $doctor))
+            ->when($doctor !== '', fn ($q) => $q->where(fn ($matching) => $matching
+                ->where('dentist_name', $doctor)
+                ->orWhereHas('doctor', fn ($linked) => $linked->where('name', $doctor))))
             ->when($serviceId !== null && $serviceId !== '' && $serviceId !== 'all', fn ($q) => $q->where('service_id', $serviceId))
             ->when($status !== '' && $status !== 'all', fn ($q) => $q->where('status', $status))
             ->orderBy('appointment_date', 'desc')

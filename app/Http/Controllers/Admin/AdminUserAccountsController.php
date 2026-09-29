@@ -36,8 +36,8 @@ class AdminUserAccountsController extends Controller
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
-                $w->where('name', 'like', "%{$q}%")
-                  ->orWhere('email', 'like', "%{$q}%");
+                $w->whereLike('name', "%{$q}%")
+                  ->orWhereLike('email', "%{$q}%");
             });
         }
 

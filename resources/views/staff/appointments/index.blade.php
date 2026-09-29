@@ -91,7 +91,7 @@
     }
     .search-box input{
         width: 100%;
-        padding: 11px 12px 11px 38px;
+        padding: 11px 43px 11px 38px;
         border-radius: 12px;
         border: 1px solid var(--kt-input-border);
         background: var(--kt-input-bg);
@@ -102,6 +102,7 @@
         color: var(--text);
         min-width: 0;
     }
+    .search-box button{position:absolute;right:5px;top:50%;transform:translateY(-50%);border:0;border-radius:8px;background:transparent;color:var(--text);padding:7px 9px}
     .search-box input::placeholder{
         color: rgba(148,163,184,.85);
     }
@@ -541,24 +542,28 @@
     </div>
 
     <div class="top-actions">
-        <div class="search-box">
+        <form class="search-box" method="GET" action="{{ route('staff.appointments.index') }}">
             <i class="fa fa-search"></i>
-            <input type="text" id="appointmentSearch" placeholder="Search patient, service, dentist, status…">
-        </div>
+            <input type="search" id="appointmentSearch" name="q" value="{{ request('q') }}" placeholder="Search all appointments" aria-label="Search all appointments">
+            @if(request()->filled('sort'))<input type="hidden" name="sort" value="{{ request('sort') }}">@endif
+            @foreach(['date_from','date_to'] as $dateFilter)@if(request()->filled($dateFilter))<input type="hidden" name="{{ $dateFilter }}" value="{{ request($dateFilter) }}">@endif @endforeach
+            <button type="submit" aria-label="Search appointments" title="Search appointments"><i class="fa fa-arrow-right" style="position:static;transform:none;pointer-events:none"></i></button>
+        </form>
 
-        <div class="sort-box">
+        <form class="sort-box" method="GET" action="{{ route('staff.appointments.index') }}">
             <span class="sort-label">Sort</span>
-            <select id="appointmentSort" class="sort-select">
-                <option value="dt_desc">Date & time (newest)</option>
-                <option value="dt_asc">Date & time (oldest)</option>
-                <option value="patient_asc">Patient (A–Z)</option>
-                <option value="patient_desc">Patient (Z–A)</option>
-                <option value="dentist_asc">Dentist (A–Z)</option>
-                <option value="dentist_desc">Dentist (Z–A)</option>
-                <option value="status_asc">Status (A–Z)</option>
-                <option value="status_desc">Status (Z–A)</option>
+            @foreach(['q','date_from','date_to'] as $filter)@if(request()->filled($filter))<input type="hidden" name="{{ $filter }}" value="{{ request($filter) }}">@endif @endforeach
+            <select id="appointmentSort" name="sort" class="sort-select" onchange="this.form.requestSubmit()">
+                <option value="dt_desc" @selected(request('sort', 'dt_desc') === 'dt_desc')>Date & time (newest)</option>
+                <option value="dt_asc" @selected(request('sort') === 'dt_asc')>Date & time (oldest)</option>
+                <option value="patient_asc" @selected(request('sort') === 'patient_asc')>Patient (A–Z)</option>
+                <option value="patient_desc" @selected(request('sort') === 'patient_desc')>Patient (Z–A)</option>
+                <option value="dentist_asc" @selected(request('sort') === 'dentist_asc')>Dentist (A–Z)</option>
+                <option value="dentist_desc" @selected(request('sort') === 'dentist_desc')>Dentist (Z–A)</option>
+                <option value="status_asc" @selected(request('sort') === 'status_asc')>Status (A–Z)</option>
+                <option value="status_desc" @selected(request('sort') === 'status_desc')>Status (Z–A)</option>
             </select>
-        </div>
+        </form>
 
         <button type="button" id="clearFilters" class="btnx">
             <i class="fa fa-rotate-left"></i> Reset
@@ -575,9 +580,9 @@
     <div class="card-head">
         <div class="hint">
             Showing <strong id="visibleCount">{{ $appointments->count() }}</strong> /
-            <strong id="totalCount">{{ $appointments->count() }}</strong> appointment(s)
+            <strong id="totalCount">{{ $appointments->total() }}</strong> appointment(s)
         </div>
-        <div class="hint">Tip: search + sort works together</div>
+        <div class="hint">Search covers all appointments; sort arranges this page.</div>
     </div>
 
     {{-- ✅ Skeleton overlay --}}
@@ -731,6 +736,8 @@
     </div>
 </div>
 
+@if($appointments->hasPages())<div class="mt-3">{{ $appointments->links('pagination::bootstrap-5') }}</div>@endif
+
 {{-- ✅ Confirm Modal --}}
 <div class="kt-confirm" id="ktConfirm" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="kt-confirm__backdrop" data-kt-close></div>
@@ -766,14 +773,9 @@
 (() => {
     const card = document.getElementById('apptCard');
 
-    const searchInput = document.getElementById('appointmentSearch');
-    const sortSelect  = document.getElementById('appointmentSort');
     const resetBtn    = document.getElementById('clearFilters');
 
-    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
     if (window.KTListState) {
-        window.KTListState.bindInput('#appointmentSearch', 'q');
-        window.KTListState.bindSelect('#appointmentSort', 'sort');
         window.KTListState.injectReturn();
     }
 
@@ -781,13 +783,9 @@
     const rowsAll     = Array.from(document.querySelectorAll('.appointment-row'));
 
     const visibleCountEl = document.getElementById('visibleCount');
-    const totalCountEl   = document.getElementById('totalCount');
     const emptyStateRow  = document.getElementById('emptyStateRow');
 
-    totalCountEl.textContent = rowsAll.length;
     visibleCountEl.textContent = rowsAll.length;
-
-    function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
 
     /* ==========================================================
        ✅ Skeleton helpers
@@ -823,10 +821,6 @@
         skelShownAt = Date.now();
         skelTimer = setTimeout(() => {}, minMs);
     }
-    function showSkeletonSoft(){
-        clearTimeout(skelTimer);
-        skelTimer = setTimeout(() => showSkeletonImmediate(220), 90);
-    }
     function hideSkeleton(){
         if (!card) return;
         const elapsed = Date.now() - (skelShownAt || 0);
@@ -840,109 +834,19 @@
        Search + Sort
        ========================================================== */
     function applySearch(){
-        const q = normalize(searchInput.value);
-        let visible = 0;
-
-        rowsAll.forEach(row => {
-            const show = normalize(row.textContent).includes(q);
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        visibleCountEl.textContent = visible;
+        visibleCountEl.textContent = rowsAll.length;
 
         if (emptyStateRow){
-            emptyStateRow.style.display = (visible === 0) ? '' : 'none';
+            emptyStateRow.style.display = (rowsAll.length === 0) ? '' : 'none';
         }
-    }
-
-    function getComparable(row, mode){
-        const d = row.dataset;
-        switch(mode){
-            case 'dt_desc':
-            case 'dt_asc':
-                return Number(d.dt || 0);
-
-            case 'patient_asc':
-            case 'patient_desc':
-                return d.patient || '';
-
-            case 'dentist_asc':
-            case 'dentist_desc':
-                return d.dentist || '';
-
-            case 'status_asc':
-            case 'status_desc':
-                return d.status || '';
-
-            default:
-                return Number(d.dt || 0);
-        }
-    }
-
-    function applySort(){
-        const mode = sortSelect.value;
-
-        const sorted = [...rowsAll].sort((a, b) => {
-            const va = getComparable(a, mode);
-            const vb = getComparable(b, mode);
-
-            if (typeof va === 'string' || typeof vb === 'string'){
-                const A = String(va), B = String(vb);
-                if (A < B) return mode.endsWith('_desc') ? 1 : -1;
-                if (A > B) return mode.endsWith('_desc') ? -1 : 1;
-
-                // tie-breaker newest first
-                return Number(b.dataset.dt || 0) - Number(a.dataset.dt || 0);
-            }
-
-            if (va === vb) return 0;
-            const asc = mode.endsWith('_asc');
-            return asc ? (va - vb) : (vb - va);
-        });
-
-        sorted.forEach(r => tbody.appendChild(r));
-        if (emptyStateRow) tbody.appendChild(emptyStateRow);
     }
 
     function applyAll(){
-        applySort();
         applySearch();
     }
 
-    let t = null;
-    function debounceApply(){
-        clearTimeout(t);
-        showSkeletonSoft();
-        t = setTimeout(() => {
-            applyAll();
-            hideSkeleton();
-        }, 140);
-    }
-
-    searchInput.addEventListener('input', debounceApply);
-
-    sortSelect.addEventListener('change', () => {
-        showSkeletonImmediate(260);
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-        });
-    });
-
     resetBtn.addEventListener('click', () => {
-        showSkeletonImmediate(260);
-        searchInput.value = '';
-        sortSelect.value = 'dt_desc';
-        if (window.KTListState) {
-            window.KTListState.setParam('q', '');
-            window.KTListState.setParam('sort', '');
-        }
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-            searchInput.focus();
-        });
+        window.location.assign(@json(route('staff.appointments.index')));
     });
 
     // Initial feel

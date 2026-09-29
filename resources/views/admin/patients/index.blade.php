@@ -288,6 +288,7 @@
                         <button class="kt-btn" type="submit">
                             <i class="fa fa-magnifying-glass me-2"></i>Search
                         </button>
+                        @if($q !== '')<a class="kt-btn" href="{{ route('admin.patients.index') }}">Reset</a>@endif
                     </div>
                 </div>
             </div>

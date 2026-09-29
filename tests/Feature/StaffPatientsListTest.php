@@ -40,9 +40,19 @@ class StaffPatientsListTest extends TestCase
         $this->patient('Fern', 'Porpio', ['middle_name' => 'Concepcion', 'contact_number' => '09171234567',
             'email' => 'fern@example.test', 'birthdate' => '1995-06-15']);
         $this->patient('Different', 'Person');
-        foreach (['Fern', 'Fern Porpio', 'Concepcion Porpio', '09171234567', 'fern@example.test', '1995-06-15'] as $term) {
+        foreach (['Fern', 'FERN', 'porpio', 'Fern Porpio', 'Porpio, Fern', 'Concepcion Porpio', '09171234567', 'FERN@EXAMPLE.TEST', '1995-06-15'] as $term) {
             $this->get(route('staff.patients.index', ['q' => $term]))->assertOk()->assertSeeText('Porpio, Fern')->assertDontSeeText('Person, Different');
         }
+        $this->get(route('staff.patients.index', ['initial' => 'D']))
+            ->assertSee("this.form.elements.initial.value=''", false);
+        $response = $this->get(route('staff.patients.index', ['q' => 'Fern', 'initial' => 'D']));
+        $response->assertSee('href="' . route('staff.patients.index') . '" aria-label="Clear search"', false);
+    }
+
+    public function test_search_operator_compiles_case_insensitively_for_postgresql(): void
+    {
+        $sql = DB::connection('pgsql')->table('patients')->whereLike('first_name', '%fern%')->toSql();
+        $this->assertStringContainsString('ilike', strtolower($sql));
     }
 
     public function test_search_and_pagination_work_together(): void

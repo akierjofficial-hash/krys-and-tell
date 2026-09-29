@@ -45,16 +45,26 @@ class PaymentTransactionService
                     && strtoupper($matches[1]) === $referencePrefix) {
                     $referenceId = (int) $matches[2];
                 }
-                $query->where(function ($q) use ($term, $search, $referenceId) {
-                    $q->where('patient.first_name', 'like', $term)->orWhere('patient.last_name', 'like', $term)
-                        ->orWhere('service.name', 'like', $term)->orWhere('tx.notes', 'like', $term);
+                $query->where(function ($q) use ($term, $search, $referenceId, $referencePrefix) {
+                    $q->whereLike('patient.first_name', $term)->orWhereLike('patient.last_name', $term)
+                        ->orWhereLike('service.name', $term)->orWhereLike('tx.notes', $term);
+                    if ($referencePrefix === 'PAY') {
+                        $q->orWhere(function ($fallback) use ($term) {
+                            $fallback->whereNull('tx.visit_procedure_id')->whereExists(function ($procedure) use ($term) {
+                                $procedure->selectRaw('1')->from('visit_procedures as search_vp')
+                                    ->join('services as search_service', 'search_service.id', '=', 'search_vp.service_id')
+                                    ->whereColumn('search_vp.visit_id', 'v.id')
+                                    ->whereLike('search_service.name', $term);
+                            });
+                        });
+                    }
                     $parts = preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY);
                     if (count($parts) > 1) {
                         $q->orWhere(function ($name) use ($parts) {
                             foreach ($parts as $part) {
-                                $name->where(fn ($piece) => $piece->where('patient.first_name', 'like', "%{$part}%")
-                                    ->orWhere('patient.last_name', 'like', "%{$part}%")
-                                    ->orWhere('patient.middle_name', 'like', "%{$part}%"));
+                                $name->where(fn ($piece) => $piece->whereLike('patient.first_name', "%{$part}%")
+                                    ->orWhereLike('patient.last_name', "%{$part}%")
+                                    ->orWhereLike('patient.middle_name', "%{$part}%"));
                             }
                         });
                     }
@@ -81,7 +91,7 @@ class PaymentTransactionService
             'payment_newest' => $query->orderByDesc('payment_date')->orderByDesc('source_id'),
             'amount_high' => $query->orderByDesc('amount')->orderByDesc('payment_date'),
             'amount_low' => $query->orderBy('amount')->orderByDesc('payment_date'),
-            'patient' => $query->orderBy('last_name')->orderBy('first_name')->orderByDesc('payment_date'),
+            'patient' => $query->orderByRaw('LOWER(last_name)')->orderByRaw('LOWER(first_name)')->orderByDesc('payment_date'),
             default => $query->orderByDesc('recorded_at')->orderByDesc('source_id'),
         };
         $page = $query->paginate($perPage)->withQueryString();

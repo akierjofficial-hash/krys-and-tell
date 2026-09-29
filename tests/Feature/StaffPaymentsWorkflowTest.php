@@ -132,6 +132,8 @@ class StaffPaymentsWorkflowTest extends TestCase
             'method' => '', 'status' => '', 'date_from' => '', 'date_to' => ''];
         $this->get(route('staff.payments.index', $filters))->assertOk()
             ->assertSee('PAY-00001')->assertSee('INS-00001');
+        $this->get(route('staff.payments.index', array_merge($filters, ['q' => 'PAYING'])))
+            ->assertOk()->assertSee('PAY-00001')->assertSee('INS-00001');
         $this->get(route('staff.payments.index', array_merge($filters, ['q' => 'No such patient'])))
             ->assertOk()->assertSeeText('No transactions match these filters.');
         $this->get(route('staff.payments.index', array_merge($filters, ['q' => 'PAY-00001'])))
@@ -173,6 +175,36 @@ class StaffPaymentsWorkflowTest extends TestCase
             'date_from' => '2026-09-01', 'sort' => 'oldest']))->assertOk();
         $response->assertSee(e(route('staff.payments.index', ['q' => 'Paying',
             'patient_id' => $this->patient->id, 'tab' => 'plans'])), false);
+    }
+
+    public function test_installment_patient_sort_uses_names_instead_of_patient_ids(): void
+    {
+        $zulu = Patient::create(['first_name' => 'Zed', 'last_name' => 'Zulu']);
+        $alpha = Patient::create(['first_name' => 'Amy', 'last_name' => 'Alpha']);
+        $zuluVisit = Visit::create(['patient_id' => $zulu->id, 'visit_date' => '2026-09-20']);
+        $alphaVisit = Visit::create(['patient_id' => $alpha->id, 'visit_date' => '2026-09-20']);
+        $zuluPlan = $this->plan(['patient_id' => $zulu->id, 'visit_id' => $zuluVisit->id]);
+        $alphaPlan = $this->plan(['patient_id' => $alpha->id, 'visit_id' => $alphaVisit->id]);
+        $patientPlan = $this->plan();
+
+        $this->get(route('staff.payments.index', ['tab' => 'plans', 'sort' => 'patient']))
+            ->assertOk()->assertViewHas('plans', fn ($page) => $page->pluck('id')->all() ===
+                [$alphaPlan->id, $patientPlan->id, $zuluPlan->id]);
+    }
+
+    public function test_treatment_search_finds_receipt_without_a_procedure_id_using_its_displayed_visit_treatment(): void
+    {
+        Payment::create(['visit_id' => $this->visit->id, 'amount' => 250,
+            'method' => 'Cash', 'payment_date' => '2026-09-25']);
+        $this->get(route('staff.payments.index', ['tab' => 'transactions', 'q' => 'CLEANING']))
+            ->assertOk()->assertViewHas('transactions', fn ($page) => $page->total() === 1)
+            ->assertSeeText('Cleaning');
+    }
+
+    public function test_legacy_installment_list_redirects_to_working_plan_search(): void
+    {
+        $this->get(route('staff.installments.index', ['search' => 'PAYING']))
+            ->assertRedirect(route('staff.payments.index', ['tab' => 'plans', 'q' => 'PAYING']));
     }
 
     public function test_plan_creation_uses_selected_downpayment_details_and_is_idempotent(): void

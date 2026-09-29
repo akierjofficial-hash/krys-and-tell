@@ -335,6 +335,7 @@
                         <i class="fa fa-filter me-2"></i> Filter
                     </button>
                 </div>
+                <div class="col-12"><a class="btn btn-outline-secondary" href="{{ route('admin.users.index') }}">Reset filters</a></div>
             </form>
         </div>
     </div>

@@ -18,8 +18,8 @@ class AdminActivityController extends Controller
             'target_type' => ['nullable', 'string', 'max:120'], 'result' => ['nullable', 'in:success,failure'],
         ]);
         $logs = ActivityLog::with('user')
-            ->when($filters['q'] ?? null, fn ($q, $term) => $q->where(fn ($w) => $w->where('description', 'like', "%$term%")
-                ->orWhere('event', 'like', "%$term%")->orWhere('reason', 'like', "%$term%")))
+            ->when($filters['q'] ?? null, fn ($q, $term) => $q->where(fn ($w) => $w->whereLike('description', "%$term%")
+                ->orWhereLike('event', "%$term%")->orWhereLike('reason', "%$term%")))
             ->when($filters['event'] ?? null, fn ($q, $event) => $q->where('event', $event))
             ->when($filters['actor'] ?? null, fn ($q, $actor) => $q->where('user_id', $actor))
             ->when($request->boolean('sensitive'), fn ($q) => $q->where('is_sensitive', true))

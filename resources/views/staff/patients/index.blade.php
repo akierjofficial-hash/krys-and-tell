@@ -39,8 +39,8 @@
         <form class="patients-toolbar" method="GET" action="{{ route('staff.patients.index') }}">
             <div class="patient-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="search" name="q" value="{{ $q }}" placeholder="Search patients" aria-label="Search patients">
-                @if($q !== '')<a class="clear-search" href="{{ route('staff.patients.index', request()->except(['q','page'])) }}" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></a>@endif
+                <input type="search" name="q" value="{{ $q }}" placeholder="Search patients" aria-label="Search patients" oninput="this.form.elements.initial.value=''">
+                @if($q !== '')<a class="clear-search" href="{{ route('staff.patients.index', request()->except(['q','initial','page'])) }}" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></a>@endif
             </div>
             <input type="hidden" name="initial" value="{{ $initial }}"><input type="hidden" name="per_page" value="{{ $perPage }}">
             <div class="patient-filter-actions">

@@ -24,9 +24,9 @@ class StaffRecordAssistant
         return Patient::query()->where(function ($query) use ($terms) {
             foreach ($terms as $term) {
                 $query->where(function ($part) use ($term) {
-                    $part->where('first_name', 'like', '%'.addcslashes($term, '%_\\').'%')
-                        ->orWhere('last_name', 'like', '%'.addcslashes($term, '%_\\').'%')
-                        ->orWhere('middle_name', 'like', '%'.addcslashes($term, '%_\\').'%');
+                    $part->whereLike('first_name', '%'.addcslashes($term, '%_\\').'%')
+                        ->orWhereLike('last_name', '%'.addcslashes($term, '%_\\').'%')
+                        ->orWhereLike('middle_name', '%'.addcslashes($term, '%_\\').'%');
                 });
             }
         })->orderBy('last_name')->orderBy('first_name')->limit(10)
