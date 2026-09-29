@@ -166,11 +166,12 @@ html[data-theme=dark] .sd-badge.pending{background:rgba(245,158,11,.18);color:#f
                 @else <div class="sd-ok"><i class="fa-solid fa-check"></i> No pending requests</div> @endif
             </section>
             <section class="sd-att-group">
-                <div class="sd-att-title"><h3><i class="fa-solid fa-wallet"></i> Outstanding Balances</h3><span class="sd-count">{{ $balanceCount }}</span></div>
+                <div class="sd-att-title"><h3><i class="fa-solid fa-wallet"></i> Patient Balances to Review</h3><span class="sd-count">{{ $balanceCount }}</span></div>
+                <div class="sd-att-meta">{{ $balanceKnownCount }} calculable · ₱{{ number_format($balanceKnownTotal, 2) }} known outstanding @if($balanceIncompleteCount) · {{ $balanceIncompleteCount }} incomplete, excluded from total @endif</div>
                 @forelse($balanceItems as $balance)
-                    <div class="sd-att-item"><div class="sd-att-line"><div><strong>{{ $balance['patient'] }}</strong><div class="sd-att-meta">{{ $balance['label'] }}</div></div><span class="sd-money">₱{{ number_format($balance['balance'], 2) }}</span></div>
-                    <a class="sd-att-action" href="{{ route('staff.payments.index', ['patient_id' => $balance['patient_id'], 'open_record' => 1, 'target_type' => $balance['target_type'], 'target_id' => $balance['target_id'], 'return' => $dashboardReturn]) }}">Record payment <i class="fa-solid fa-arrow-right"></i></a></div>
-                @empty <div class="sd-ok"><i class="fa-solid fa-check"></i> No outstanding balances</div> @endforelse
+                    <div class="sd-att-item"><div class="sd-att-line"><div><strong>{{ $balance['patient'] }}</strong><div class="sd-att-meta">{{ $balance['label'] }}</div></div><span class="sd-money">{{ $balance['incomplete'] ? 'Incomplete' : '₱'.number_format($balance['balance'], 2) }}</span></div>
+                    <a class="sd-att-action" href="{{ $balance['url'] }}">{{ $balance['incomplete'] ? 'Review source record' : 'Review patient balance' }} <i class="fa-solid fa-arrow-right"></i></a></div>
+                @empty <div class="sd-ok"><i class="fa-solid fa-check"></i> No recorded balances need review</div> @endforelse
                 @if($balanceCount)<a class="sd-att-action" href="{{ route('staff.payments.index') }}">View payments</a>@endif
             </section>
             <section class="sd-att-group">

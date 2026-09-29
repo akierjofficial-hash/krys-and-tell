@@ -51,6 +51,10 @@ use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\PublicInstallmentController;
 use App\Http\Controllers\Public\PublicHomeController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\PatientFileAccessController;
+use App\Http\Controllers\Staff\PatientFileController as StaffPatientFileController;
+use App\Http\Controllers\Staff\PatientAccountLinkController;
+use App\Http\Controllers\Staff\RecordAssistantController;
 
 /*
 |--------------------------------------------------------------------------
@@ -106,6 +110,13 @@ Route::middleware('guest')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
+    Route::get('/private/patients/{patient}/files/{patientFile}/preview', [PatientFileAccessController::class, 'preview'])
+        ->name('patient-files.preview');
+    Route::get('/private/patients/{patient}/files/{patientFile}/download', [PatientFileAccessController::class, 'download'])
+        ->name('patient-files.download');
+    Route::get('/private/patients/{patient}/signatures/{kind}', [PatientFileAccessController::class, 'signature'])
+        ->whereIn('kind', ['information', 'consent-patient', 'consent-dentist'])
+        ->name('patient-signatures.show');
     // Public reviews (homepage testimonials)
     Route::post('/reviews', [PublicHomeController::class, 'storeReview'])
         ->middleware('throttle:public-forms')
@@ -256,6 +267,11 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+            Route::post('/assistant/patients', [RecordAssistantController::class, 'patients'])
+                ->middleware('throttle:30,1')->name('assistant.patients');
+            Route::post('/assistant/ask', [RecordAssistantController::class, 'ask'])
+                ->middleware('throttle:20,1')->name('assistant.ask');
+
             // Ã¢Å“â€¦ AJAX realtime snapshots (polling)
             Route::get('/live/snapshot', [StaffLiveSnapshotController::class, 'snapshot'])->name('live.snapshot');
             Route::get('/dashboard/calendar/events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar.events');
@@ -299,6 +315,10 @@ Route::middleware('auth')->group(function () {
             // Patients import/export
             Route::get('/patients/export', [PatientImportExportController::class, 'export'])->name('patients.export');
             Route::post('/patients/import', [PatientImportExportController::class, 'import'])->name('patients.import');
+            Route::post('/patients/{patient}/files', [StaffPatientFileController::class, 'store'])->name('patients.files.store');
+            Route::get('/patients/{patient}/account-links', [PatientAccountLinkController::class, 'index'])->name('patients.account-links.index');
+            Route::post('/patients/{patient}/account-links', [PatientAccountLinkController::class, 'store'])->name('patients.account-links.store');
+            Route::delete('/patients/{patient}/account-links/{link}', [PatientAccountLinkController::class, 'destroy'])->name('patients.account-links.destroy');
 
             // Ã¢Å“â€¦ PRINT Patient Information Record (PDF)
             Route::get('/patients/{patient}/print-info', [PatientController::class, 'printInfo'])->name('patients.printInfo');

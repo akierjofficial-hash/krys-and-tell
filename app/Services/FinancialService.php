@@ -23,8 +23,8 @@ class FinancialService
         $start = $from instanceof CarbonInterface ? $from->toDateString() : $from;
         $end = $to instanceof CarbonInterface ? $to->toDateString() : $to;
 
-        return (float) Payment::whereBetween('payment_date', [$start, $end])->sum('amount')
-            + (float) InstallmentPayment::whereBetween('payment_date', [$start, $end])->sum('amount');
+        return (float) Payment::whereDate('payment_date', '>=', $start)->whereDate('payment_date', '<=', $end)->sum('amount')
+            + (float) InstallmentPayment::whereDate('payment_date', '>=', $start)->whereDate('payment_date', '<=', $end)->sum('amount');
     }
 
     public function visitCharge(Visit $visit): float
@@ -43,6 +43,29 @@ class FinancialService
     public function visitBalance(Visit $visit): float
     {
         return max(0, round($this->visitCharge($visit) - $this->visitPaid($visit), 2));
+    }
+
+    /** The plan covers one procedure in a mixed visit. Null means the old record cannot be allocated safely. */
+    public function ordinaryBalanceOnFinancedVisit(Visit $visit, InstallmentPlan $plan): ?float
+    {
+        $visit->loadMissing(['procedures', 'payments']);
+        $procedures = $visit->procedures;
+        $payments = $visit->payments;
+        if ($procedures->isEmpty()) return $payments->isEmpty() && $visit->price !== null
+            && abs((float) $visit->price - (float) $plan->total_cost) < .01 ? 0.0 : null;
+        if ($procedures->count() === 1) return $payments->isEmpty()
+            && (!$plan->service_id || (int) $procedures->first()->service_id === (int) $plan->service_id) ? 0.0 : null;
+        if ($visit->price !== null || !$plan->service_id) return null;
+
+        $financed = $procedures->where('service_id', $plan->service_id);
+        if ($financed->count() !== 1) return null;
+        $financedId = $financed->first()->id;
+        if ($payments->contains(fn ($payment) => (int) $payment->visit_procedure_id === (int) $financedId)) return null;
+
+        $ordinary = $procedures->reject(fn ($procedure) => $procedure->id === $financedId);
+        if ($ordinary->contains(fn ($procedure) => $procedure->price === null)) return null;
+        return max(0, round((float) $ordinary->sum(fn ($procedure) => (float) $procedure->price)
+            - (float) $payments->sum(fn ($payment) => (float) $payment->amount), 2));
     }
 
     public function downpaymentPayment(InstallmentPlan $plan): ?InstallmentPayment

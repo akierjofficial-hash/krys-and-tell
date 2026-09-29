@@ -47,6 +47,14 @@ return [
             'report' => false,
         ],
 
+        'patient_private' => [
+            'driver' => 'local',
+            'root' => env('PATIENT_PRIVATE_ROOT', storage_path('app/private/patients')),
+            'serve' => false,
+            'throw' => true,
+            'report' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

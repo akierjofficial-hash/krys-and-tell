@@ -11,8 +11,6 @@
 
         if (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'user_id')) {
             $aq->where('user_id', $u->id);
-        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('appointments', 'public_email') && !empty($u->email)) {
-            $aq->where('public_email', $u->email);
         }
 
         $lastAppt = $aq->orderByDesc('id')->first();

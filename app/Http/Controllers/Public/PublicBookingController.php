@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\DoctorUnavailability;
-use App\Models\Patient;
 use App\Models\Service;
 use App\Mail\NewBookingNotification;
 use Carbon\Carbon;
@@ -869,15 +868,8 @@ class PublicBookingController extends Controller
         }
 
         if (Schema::hasTable('patients')) {
-            $pq = Patient::query();
-
-            if (Schema::hasColumn('patients', 'user_id')) {
-                $pq->where('user_id', $user->id);
-            } elseif (Schema::hasColumn('patients', 'email') && !empty($user->email)) {
-                $pq->where('email', $user->email);
-            }
-
-            $patient = $pq->first();
+            $verifiedPatients = $user->verifiedPatients()->limit(2)->get();
+            $patient = $verifiedPatients->count() === 1 ? $verifiedPatients->first() : null;
             if ($patient) {
                 if (empty($data['contact'])) {
                     foreach (['contact', 'contact_number', 'phone', 'mobile'] as $col) {
@@ -904,12 +896,10 @@ class PublicBookingController extends Controller
         if (Schema::hasTable('appointments')) {
             $aq = Appointment::query()->latest();
 
-            if (Schema::hasColumn('appointments', 'user_id')) {
-                $aq->where('user_id', $user->id);
-            } elseif (Schema::hasColumn('appointments', 'public_email') && !empty($user->email)) {
-                $aq->where('public_email', $user->email);
-            } else {
+            if (!Schema::hasColumn('appointments', 'user_id')) {
                 $aq = null;
+            } else {
+                $aq->where('user_id', $user->id);
             }
 
             if ($aq) {
@@ -977,14 +967,6 @@ class PublicBookingController extends Controller
             }
         }
 
-        if (
-            Schema::hasColumn('appointments', 'public_email')
-            && !empty($appointment->public_email)
-            && !empty($user->email)
-        ) {
-            return strcasecmp((string) $appointment->public_email, (string) $user->email) === 0;
-        }
-
         return false;
     }
 
@@ -996,10 +978,6 @@ class PublicBookingController extends Controller
 
         if (Schema::hasColumn('appointments', 'user_id')) {
             return $q->where('user_id', $user->id);
-        }
-
-        if (Schema::hasColumn('appointments', 'public_email') && !empty($user->email)) {
-            return $q->where('public_email', $user->email);
         }
 
         return null;

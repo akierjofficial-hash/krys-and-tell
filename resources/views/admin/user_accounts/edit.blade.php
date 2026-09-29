@@ -7,6 +7,15 @@
 </x-admin.page-header>
 <div class="cardx p-3 p-md-4" style="max-width:760px;">
 
+    <div class="alert alert-info">
+        <strong>Verified patient access (read-only)</strong>
+        @forelse($user->verifiedPatients as $linkedPatient)
+            <div><a href="{{ route('admin.patients.show', $linkedPatient) }}">Patient #{{ $linkedPatient->id }} · {{ $linkedPatient->first_name }} {{ $linkedPatient->last_name }}</a> ({{ ucfirst($linkedPatient->pivot->relationship) }})</div>
+        @empty
+            <div>No clinic patient record is verified for this website account. Staff controls patient linking.</div>
+        @endforelse
+    </div>
+
     @if($errors->any())
         <div class="alert alert-danger" style="border-radius:14px;font-weight:800;">
             {{ $errors->first() }}

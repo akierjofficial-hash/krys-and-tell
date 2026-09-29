@@ -47,4 +47,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(Appointment::class);
     }
+
+    public function patientLinks()
+    {
+        return $this->hasMany(PatientUserLink::class);
+    }
+
+    public function verifiedPatients()
+    {
+        return $this->belongsToMany(Patient::class, 'patient_user_links')
+            ->wherePivotNull('unlinked_at')
+            ->withPivot(['id', 'relationship', 'verification_note', 'verified_at', 'verified_by_user_id'])
+            ->withTimestamps();
+    }
 }

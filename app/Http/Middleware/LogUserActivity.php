@@ -71,6 +71,9 @@ class LogUserActivity
 
     private function shouldSkip(Request $request, string $routeName): bool
     {
+        // Assistant questions are read-only and must not create activity/chat records.
+        if ($request->routeIs('staff.assistant.*')) return true;
+
         // Default: log ONLY non-GET (CRUD/actions)
         if ($request->isMethod('GET') && !$this->logGetPageViews) {
             return true;

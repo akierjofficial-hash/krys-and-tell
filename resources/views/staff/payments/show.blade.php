@@ -322,7 +322,6 @@
     $procedures = $payment->procedure ? collect([$payment->procedure]) : ($visit?->procedures ?? collect());
     $computedTotal = (float) $procedures->sum('price');
     $amountPaid = (float) ($payment->amount ?? 0);
-    $totalShown = $computedTotal > 0 ? $computedTotal : $amountPaid;
 
     $receiptNo = 'PMT-' . str_pad((string)($payment->id ?? 0), 6, '0', STR_PAD_LEFT);
 
@@ -409,7 +408,9 @@
                 <div class="p-amount">₱{{ number_format($amountPaid, 2) }}</div>
 
                 <div class="p-small">
-                    Total shown: <strong class="money">₱{{ number_format($totalShown, 2) }}</strong><br>
+                    @if($visitCharge !== null)
+                        Visit charge: <strong class="money">₱{{ number_format($visitCharge, 2) }}</strong><br>
+                    @endif
                     @if($computedTotal > 0)
                         {{ $payment->procedure ? 'Treatment charge' : 'Procedures total' }}: <strong class="money">₱{{ number_format($computedTotal, 2) }}</strong>
                     @endif

@@ -69,6 +69,7 @@ class PatientInformationRecord extends Model
         'medical_conditions_other',
 
         'signature_path',
+        'signature_disk',
         'signed_at',
     ];
 

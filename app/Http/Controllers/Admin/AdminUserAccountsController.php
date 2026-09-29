@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -33,7 +32,7 @@ class AdminUserAccountsController extends Controller
         $q = trim((string)$request->query('q', ''));
         $status = (string)$request->query('status', '');
 
-        $query = $this->usersQuery()->withCount('appointments');
+        $query = $this->usersQuery()->withCount('appointments')->with('verifiedPatients');
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
@@ -48,19 +47,13 @@ class AdminUserAccountsController extends Controller
 
         $users = $query->orderByDesc('id')->paginate(15)->withQueryString();
 
-        $emails = $users->getCollection()->pluck('email')->filter()->map(fn ($email) => mb_strtolower($email))->all();
-        $patientsByEmail = Patient::whereIn(DB::raw('LOWER(email)'), $emails)->get()->groupBy(fn ($patient) => mb_strtolower($patient->email));
-        $users->getCollection()->each(function ($account) use ($patientsByEmail) {
-            $matches = $patientsByEmail->get(mb_strtolower($account->email), collect());
-            $account->setRelation('linkedPatient', $matches->count() === 1 ? $matches->first() : null);
-        });
-
         return view('admin.user_accounts.index', compact('users', 'q', 'status', 'hasActive'));
     }
 
     public function edit(User $user)
     {
         $this->ensureIsUser($user);
+        $user->load('verifiedPatients');
 
         $hasActive = Schema::hasColumn((new User)->getTable(), 'is_active');
         return view('admin.user_accounts.edit', compact('user', 'hasActive'));
@@ -86,11 +79,13 @@ class AdminUserAccountsController extends Controller
 
         $before = $user->only(['name', 'email', 'is_active', 'password_set']);
 
+        $emailChanged = strcasecmp((string) $user->email, $data['email']) !== 0;
         $user->forceFill([
             'name' => $data['name'],
-            'email' => $data['email'],
+            'email' => strtolower($data['email']),
             'role' => 'user', // ✅ lock role
         ]);
+        if ($emailChanged) $user->email_verified_at = null;
 
         if (!empty($data['password'])) {
             $user->password = Hash::make($data['password']);

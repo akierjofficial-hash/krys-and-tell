@@ -409,7 +409,7 @@
 
                                 <td><span class="badge-soft">{{ $u->google_id ? 'Google connected' : 'Local password' }}</span></td>
                                 <td><span class="badge-soft">{{ $u->appointments_count }}</span></td>
-                                <td>@if($u->linkedPatient)<a href="{{ route('admin.patients.show',$u->linkedPatient) }}">Patient #{{ $u->linkedPatient->id }}</a>@else<span class="email">Not linked</span>@endif</td>
+                                <td>@forelse($u->verifiedPatients as $linkedPatient)<a class="d-block" href="{{ route('admin.patients.show',$linkedPatient) }}">Patient #{{ $linkedPatient->id }} · {{ $linkedPatient->first_name }} {{ $linkedPatient->last_name }}</a>@empty<span class="email">Not verified</span>@endforelse</td>
 
                                 <td>
                                     @if($u->last_login_at)

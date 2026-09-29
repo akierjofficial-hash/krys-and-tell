@@ -20,6 +20,7 @@ class BookingFlowTest extends TestCase
 
     public function test_pending_bookings_do_not_block_slot_availability(): void
     {
+        $this->travelTo(Carbon::parse('2026-09-28 09:00:00', config('app.timezone')));
         $user = User::factory()->create([
             'role' => 'user',
             'is_active' => true,
@@ -58,6 +59,7 @@ class BookingFlowTest extends TestCase
 
     public function test_slots_are_computed_per_selected_dentist_schedule(): void
     {
+        $this->travelTo(Carbon::parse('2026-09-28 09:00:00', config('app.timezone')));
         $user = User::factory()->create([
             'role' => 'user',
             'is_active' => true,

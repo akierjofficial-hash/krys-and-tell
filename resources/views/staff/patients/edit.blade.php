@@ -832,7 +832,7 @@ $isMinorChecked = old('is_minor', $info?->is_minor ? 1 : 0) ? true : false;
 
             @if($info && $info->signature_path)
             <div class="helper">Current saved signature:</div>
-            <img class="sig-preview" src="{{ asset('storage/'.$info->signature_path) }}"
+            <img class="sig-preview" src="{{ route('patient-signatures.show', [$patient, 'information']) }}"
                 alt="Current Patient Signature">
             @endif
         </div>
@@ -888,7 +888,7 @@ $isMinorChecked = old('is_minor', $info?->is_minor ? 1 : 0) ? true : false;
 
                     @if($consent && $consent->patient_signature_path)
                     <div class="helper">Current saved signature:</div>
-                    <img class="sig-preview" src="{{ asset('storage/'.$consent->patient_signature_path) }}"
+                    <img class="sig-preview" src="{{ route('patient-signatures.show', [$patient, 'consent-patient']) }}"
                         alt="Current Consent Patient Signature">
                     @endif
                 </div>
@@ -905,7 +905,7 @@ $isMinorChecked = old('is_minor', $info?->is_minor ? 1 : 0) ? true : false;
 
                     @if($consent && $consent->dentist_signature_path)
                     <div class="helper">Current saved signature:</div>
-                    <img class="sig-preview" src="{{ asset('storage/'.$consent->dentist_signature_path) }}"
+                    <img class="sig-preview" src="{{ route('patient-signatures.show', [$patient, 'consent-dentist']) }}"
                         alt="Current Consent Dentist Signature">
                     @endif
                 </div>

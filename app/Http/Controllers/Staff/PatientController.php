@@ -10,9 +10,8 @@ use App\Models\PatientInformedConsent;
 use App\Models\InstallmentPlan;
 use App\Models\InstallmentPayment;
 use App\Services\FinancialService;
+use App\Services\PatientFileStorage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -131,25 +130,9 @@ class PatientController extends Controller
         return null;
     }
 
-    /**
-     * Store a base64 PNG signature (data:image/png;base64,...) to /storage/app/public/...
-     * Returns the public disk path like: signatures/patient-info/<uuid>.png
-     */
-    private function storeSignature(?string $dataUrl, string $folder): ?string
+    private function storeSignature(?string $dataUrl, string $folder): ?array
     {
-        if (!$dataUrl) return null;
-
-        if (!preg_match('/^data:image\/png;base64,/', $dataUrl)) {
-            return null;
-        }
-
-        $raw = base64_decode(substr($dataUrl, strpos($dataUrl, ',') + 1));
-        if ($raw === false) return null;
-
-        $path = trim($folder, '/') . '/' . Str::uuid() . '.png';
-        Storage::disk('public')->put($path, $raw);
-
-        return $path;
+        return app(PatientFileStorage::class)->storeSignature($dataUrl, $folder);
     }
 
     public function store(Request $request)
@@ -325,9 +308,10 @@ class PatientController extends Controller
         DB::transaction(function () use ($patientData, $infoData, $consentData, $request, &$patient) {
             $patient = Patient::create($patientData);
 
-            $sigInfoPath = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
-            if ($sigInfoPath) {
-                $infoData['signature_path'] = $sigInfoPath;
+            $sigInfo = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
+            if ($sigInfo) {
+                $infoData['signature_path'] = $sigInfo['path'];
+                $infoData['signature_disk'] = $sigInfo['disk'];
                 $infoData['signed_at'] = now();
             }
 
@@ -336,15 +320,17 @@ class PatientController extends Controller
                 $infoData
             ));
 
-            $sigConsentPatientPath = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
-            if ($sigConsentPatientPath) {
-                $consentData['patient_signature_path'] = $sigConsentPatientPath;
+            $sigConsentPatient = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
+            if ($sigConsentPatient) {
+                $consentData['patient_signature_path'] = $sigConsentPatient['path'];
+                $consentData['patient_signature_disk'] = $sigConsentPatient['disk'];
                 $consentData['patient_signed_at'] = now();
             }
 
-            $sigConsentDentistPath = $this->storeSignature($request->input('consent_dentist_signature'), 'signatures/consent/dentist');
-            if ($sigConsentDentistPath) {
-                $consentData['dentist_signature_path'] = $sigConsentDentistPath;
+            $sigConsentDentist = $this->storeSignature($request->input('consent_dentist_signature'), 'signatures/consent/dentist');
+            if ($sigConsentDentist) {
+                $consentData['dentist_signature_path'] = $sigConsentDentist['path'];
+                $consentData['dentist_signature_disk'] = $sigConsentDentist['disk'];
                 $consentData['dentist_signed_at'] = now();
             }
 
@@ -358,9 +344,9 @@ class PatientController extends Controller
             ->with('success', 'Patient added successfully!');
     }
 
-    public function printInfo(\App\Models\Patient $patient)
+    public function printInfo(\App\Models\Patient $patient, PatientFileStorage $files)
     {
-        $patient->loadMissing(['informationRecord']);
+        $patient->loadMissing(['informationRecord', 'informedConsent']);
 
         $info = $patient->informationRecord;
 
@@ -369,21 +355,18 @@ class PatientController extends Controller
             $age = Carbon::parse($patient->birthdate)->age;
         }
 
-        $signatureBase64 = null;
-        if ($info && $info->signature_path) {
-            $abs = public_path('storage/' . $info->signature_path);
-            if (file_exists($abs)) {
-                $mime = mime_content_type($abs) ?: 'image/png';
-                $data = base64_encode(file_get_contents($abs));
-                $signatureBase64 = "data:$mime;base64,$data";
-            }
-        }
+        $consent = $patient->informedConsent;
+        $signatureBase64 = $files->dataUri($info?->signature_disk, $info?->signature_path);
+        $consentPatientSignatureBase64 = $files->dataUri($consent?->patient_signature_disk, $consent?->patient_signature_path);
+        $consentDentistSignatureBase64 = $files->dataUri($consent?->dentist_signature_disk, $consent?->dentist_signature_path);
 
         $pdf = Pdf::loadView('staff.patients.print.patient_information', [
             'patient' => $patient,
             'info' => $info,
             'age' => $age,
             'signatureBase64' => $signatureBase64,
+            'consentPatientSignatureBase64' => $consentPatientSignatureBase64,
+            'consentDentistSignatureBase64' => $consentDentistSignatureBase64,
         ])->setPaper('letter', 'portrait');
 
         return $pdf->stream("patient-{$patient->id}-patient-information.pdf");
@@ -391,7 +374,7 @@ class PatientController extends Controller
 
     public function show(Patient $patient, FinancialService $finance)
     {
-        $patient->loadMissing(['informationRecord', 'informedConsent']);
+        $patient->loadMissing(['informationRecord', 'informedConsent', 'files']);
 
         $visits = $patient->visits()
             ->with(['procedures.service'])
@@ -416,6 +399,7 @@ class PatientController extends Controller
             ->with(['service', 'visit', 'payments'])
             ->orderByDesc('created_at')
             ->get();
+        $installmentPlans->each(fn ($plan) => $plan->computed_balance = $finance->planBalance($plan));
 
         $installmentPayments = InstallmentPayment::whereHas('plan', function ($q) use ($patient) {
                 $q->where('patient_id', $patient->id);
@@ -610,9 +594,10 @@ class PatientController extends Controller
         ]);
 
         if ($request->filled('patient_info_signature')) {
-            $path = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
-            if ($path) {
-                $info->signature_path = $path;
+            $signature = $this->storeSignature($request->input('patient_info_signature'), 'signatures/patient-info');
+            if ($signature) {
+                $info->signature_path = $signature['path'];
+                $info->signature_disk = $signature['disk'];
                 $info->signed_at = now();
             }
         }
@@ -627,17 +612,19 @@ class PatientController extends Controller
         $consent->initials = $validated['consent_initials'] ?? null;
 
         if ($request->filled('consent_patient_signature')) {
-            $path = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
-            if ($path) {
-                $consent->patient_signature_path = $path;
+            $signature = $this->storeSignature($request->input('consent_patient_signature'), 'signatures/consent/patient');
+            if ($signature) {
+                $consent->patient_signature_path = $signature['path'];
+                $consent->patient_signature_disk = $signature['disk'];
                 $consent->patient_signed_at = now();
             }
         }
 
         if ($request->filled('consent_dentist_signature')) {
-            $path = $this->storeSignature($request->input('consent_dentist_signature'), 'signatures/consent/dentist');
-            if ($path) {
-                $consent->dentist_signature_path = $path;
+            $signature = $this->storeSignature($request->input('consent_dentist_signature'), 'signatures/consent/dentist');
+            if ($signature) {
+                $consent->dentist_signature_path = $signature['path'];
+                $consent->dentist_signature_disk = $signature['disk'];
                 $consent->dentist_signed_at = now();
             }
         }

@@ -6,7 +6,6 @@
     use Carbon\Carbon;
 
     $user = auth()->user();
-    $email = $user?->email ?? null;
 @endphp
 
 <section class="kt-installments-page">
@@ -26,13 +25,15 @@
             </p>
         </div>
 
-        @if($plans->isEmpty())
+        @if(!$hasVerifiedPatientLink)
+            <article class="kt-installments-empty kt-reveal">
+                <h3>Your clinic record is not connected yet.</h3>
+                <p>Contact the clinic and ask Staff to verify and connect your website account. Your email, phone number, or name alone will never grant access to balances or treatment records.</p>
+            </article>
+        @elseif($plans->isEmpty())
             <article class="kt-installments-empty kt-reveal">
                 <h3>No installment plans found.</h3>
-                <p>
-                    If you already have a plan, make sure your clinic record email matches your account:
-                    <strong>{{ $email ?: '-' }}</strong>.
-                </p>
+                <p>No installment plans are currently recorded for your verified patient record.</p>
             </article>
         @else
             <div class="kt-installments-grid">

@@ -31,20 +31,32 @@ class GoogleController extends Controller
                 ->withErrors(['email' => 'Google sign-in failed. Please try again.']);
         }
 
-        $googleId = $googleUser->getId();
-        $email    = $googleUser->getEmail();
+        $googleId = (string) $googleUser->getId();
+        $email    = strtolower(trim((string) $googleUser->getEmail()));
 
-        if (empty($email)) {
+        if ($googleId === '' || $email === '') {
             return redirect()
                 ->route('login')
-                ->withErrors(['email' => 'Google did not return an email address. Please use a different account.']);
+                ->withErrors(['email' => 'Google did not return a usable account identifier and email address. Please use a different account.']);
         }
 
-        // Find existing user by google_id OR email
-        $user = User::query()
-            ->where('google_id', $googleId)
-            ->orWhere('email', $email)
-            ->first();
+        $rawGoogleUser = (array) ($googleUser->user ?? []);
+        if (array_key_exists('email_verified', $rawGoogleUser)
+            && filter_var($rawGoogleUser['email_verified'], FILTER_VALIDATE_BOOL) !== true) {
+            return redirect()->route('userlogin')->withErrors(['email' => 'Google did not verify this email address.']);
+        }
+
+        $user = User::where('google_id', $googleId)->first();
+        if (!$user) {
+            $emailAccount = User::whereRaw('LOWER(email) = ?', [$email])->first();
+            if ($emailAccount && !empty($emailAccount->google_id) && !hash_equals((string) $emailAccount->google_id, $googleId)) {
+                return redirect()->route('userlogin')->withErrors(['email' => 'This email is already connected to a different Google account.']);
+            }
+            if ($emailAccount && ($emailAccount->role ?? 'user') !== 'user') {
+                return redirect()->route('login')->withErrors(['email' => 'Clinic accounts cannot be connected through the public Google sign-in.']);
+            }
+            $user = $emailAccount;
+        }
 
         if (!$user) {
             // ✅ New Google signup -> role always "user"

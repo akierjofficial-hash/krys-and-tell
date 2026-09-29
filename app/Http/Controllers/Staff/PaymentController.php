@@ -622,9 +622,10 @@ class PaymentController extends Controller
             ]);
     }
 
-    public function show(Payment $payment)
+    public function show(Payment $payment, FinancialService $finance)
     {
         $payment->load(['visit.patient', 'visit.procedures.service', 'procedure.service']);
-        return view('staff.payments.show', compact('payment'));
+        $visitCharge = $payment->visit ? $finance->visitCharge($payment->visit) : null;
+        return view('staff.payments.show', compact('payment', 'visitCharge'));
     }
 }

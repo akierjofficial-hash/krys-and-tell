@@ -4,25 +4,31 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Services\PatientAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class UserProfileController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, PatientAccessService $access)
     {
         $user = $request->user();
         $now = now();
+        $patientIds = $access->linkedPatientIds($user);
+        $verifiedPatients = $user->verifiedPatients()
+            ->with(['files' => fn ($q) => $q->where('patient_visible', true)])
+            ->get();
+        $sharedPatientFiles = $verifiedPatients->flatMap(fn ($patient) => $patient->files->map(function ($file) use ($patient) {
+            $file->setRelation('patient', $patient);
+            return $file;
+        }));
 
         $base = Appointment::query()
             ->with(['service', 'doctor'])
-            ->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhere(function ($qq) use ($user) {
-                      // fallback for older records created before user_id existed
-                      $qq->whereNull('user_id')->where('public_email', $user->email);
-                  });
+            ->where(function ($q) use ($user, $patientIds) {
+                $q->where('user_id', $user->id);
+                if ($patientIds) $q->orWhereIn('patient_id', $patientIds);
             })
             ->where(function ($q) {
                 $q->whereNull('status')
@@ -51,7 +57,7 @@ class UserProfileController extends Controller
             ->orderByDesc('appointment_time')
             ->paginate(10);
 
-        return view('user.profile', compact('user', 'upcoming', 'history'));
+        return view('user.profile', compact('user', 'upcoming', 'history', 'verifiedPatients', 'sharedPatientFiles'));
     }
 
     public function update(Request $request)
@@ -66,7 +72,10 @@ class UserProfileController extends Controller
         ]);
 
         $user->name = $data['name'];
-        $user->email = $data['email'];
+        if (strcasecmp((string) $user->email, $data['email']) !== 0) {
+            $user->email = strtolower($data['email']);
+            $user->email_verified_at = null;
+        }
         $user->notify_24h = (bool)($data['notify_24h'] ?? false);
         $user->notify_1h = (bool)($data['notify_1h'] ?? false);
         $user->save();

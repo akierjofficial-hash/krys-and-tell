@@ -341,7 +341,7 @@
         : (optional($visit->doctor)->name ?: '—');
 
     $procCount = $visit->procedures->count();
-    $totalCost = (float) $visit->procedures->sum(fn($p) => (float)($p->price ?? 0));
+    $totalCost = (float) $visitCharge;
 
     $teeth = $visit->procedures
         ->pluck('tooth_number')

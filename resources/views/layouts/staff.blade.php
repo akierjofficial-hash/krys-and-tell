@@ -1757,6 +1757,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     </div>
 
     <!-- ✅ Toast container -->
+    @include('staff.partials.record-assistant')
     <div class="kt-toasts" id="ktToasts" aria-live="polite" aria-atomic="true"></div>
 
     <x-undo-bar />
@@ -1942,6 +1943,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         const form = e.target;
         if (!form || !form.matches('form')) return;
 
+        if (e.defaultPrevented) return;
         if (form.hasAttribute('data-no-loader')) return;
         if (form.classList.contains('approval-form')) return;
         if (form.closest('#approvalPopover')) return;

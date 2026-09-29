@@ -8,6 +8,7 @@ use App\Models\Visit;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Doctor;
+use App\Services\FinancialService;
 
 class VisitController extends Controller
 {
@@ -150,10 +151,11 @@ return view('staff.visits.index', compact('view', 'patients'));
             ->with('success', 'Visit created successfully.');
     }
 
-    public function show(Visit $visit)
+    public function show(Visit $visit, FinancialService $finance)
     {
         $visit->load(['patient', 'doctor', 'procedures.service']);
-        return view('staff.visits.show', compact('visit'));
+        $visitCharge = $finance->visitCharge($visit);
+        return view('staff.visits.show', compact('visit', 'visitCharge'));
     }
 
     public function edit(Visit $visit)

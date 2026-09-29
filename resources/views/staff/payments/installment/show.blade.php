@@ -5,6 +5,7 @@
 @section('content')
 
 <style>
+    [id^="installment-payment-"]:target { outline: 3px solid #0d6efd; background: rgba(13,110,253,.08); }
     /* ==========================================================
        Installment Show (Dark mode compatible)
        Uses layout tokens: --kt-text, --kt-muted, --kt-surface, --kt-surface-2,
@@ -530,7 +531,7 @@
             </div>
         </div>
 
-        <div class="i-table-wrap table-responsive">
+        <div class="i-table-wrap table-responsive" id="installment-schedule">
             <table>
                 <thead>
                     <tr>
@@ -713,6 +714,22 @@
                 </tbody>
             </table>
         </div>
+
+        @if($payments->isNotEmpty())
+            <div class="i-panel mt-3" aria-label="Receipt references">
+                <div class="i-section-title">Recorded receipts</div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach($payments->sortByDesc('payment_date') as $receipt)
+                        <div id="installment-payment-{{ $receipt->id }}" class="border rounded-3 px-3 py-2" style="scroll-margin-top:90px;">
+                            <strong>Receipt #{{ $receipt->id }}</strong>
+                            <span class="muted"> · {{ $receipt->payment_date?->format('M d, Y') ?? 'Date not recorded' }}</span>
+                            <span> · ₱{{ number_format((float) $receipt->amount, 2) }}</span>
+                            <span class="muted"> · {{ $receipt->method ?: 'Method not recorded' }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
     </div>
 </div>

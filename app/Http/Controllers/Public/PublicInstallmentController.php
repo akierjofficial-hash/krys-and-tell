@@ -4,55 +4,21 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\InstallmentPlan;
-use App\Models\Patient;
+use App\Services\PatientAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
 class PublicInstallmentController extends Controller
 {
-    /**
-     * Resolve the current user's patient IDs.
-     *
-     * We try (in order): patients.user_id, patients.email, patients.contact_number.
-     */
-    private function patientIdsForCurrentUser(): array
+    private function patientIdsForCurrentUser(PatientAccessService $access): array
     {
-        $user = auth()->user();
-        if (!$user || !Schema::hasTable('patients')) return [];
-
-        $pq = Patient::query();
-
-        // 1) Direct FK (if your schema has it)
-        if (Schema::hasColumn('patients', 'user_id')) {
-            $pq->where('user_id', $user->id);
-            return $pq->pluck('id')->all();
-        }
-
-        // 2) Match by email
-        $email = strtolower(trim((string)($user->email ?? '')));
-        if ($email !== '' && Schema::hasColumn('patients', 'email')) {
-            $pq->whereRaw('LOWER(email) = ?', [$email]);
-            $ids = $pq->pluck('id')->all();
-            if (!empty($ids)) return $ids;
-        }
-
-        // 3) Match by phone
-        if (
-            Schema::hasColumn('patients', 'contact_number') &&
-            Schema::hasColumn('users', 'phone_number') &&
-            !empty($user->phone_number)
-        ) {
-            $pq = Patient::query()->where('contact_number', $user->phone_number);
-            $ids = $pq->pluck('id')->all();
-            if (!empty($ids)) return $ids;
-        }
-
-        return [];
+        return $access->linkedPatientIds(auth()->user());
     }
 
-    public function index(Request $request)
+    public function index(Request $request, PatientAccessService $access)
     {
-        $patientIds = $this->patientIdsForCurrentUser();
+        $patientIds = $this->patientIdsForCurrentUser($access);
+        $hasVerifiedPatientLink = !empty($patientIds);
 
         $plans = collect();
         if (!empty($patientIds)) {
@@ -80,12 +46,12 @@ class PublicInstallmentController extends Controller
                 ->get();
         }
 
-        return view('public.installments.index', compact('plans'));
+        return view('public.installments.index', compact('plans', 'hasVerifiedPatientLink'));
     }
 
-    public function show(InstallmentPlan $plan)
+    public function show(InstallmentPlan $plan, PatientAccessService $access)
 {
-    $patientIds = $this->patientIdsForCurrentUser();
+    $patientIds = $this->patientIdsForCurrentUser($access);
 
     // ✅ Enforce ownership (must belong to this user)
     $ownerPatientId = $plan->patient_id

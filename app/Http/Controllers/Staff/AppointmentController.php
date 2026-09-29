@@ -7,7 +7,6 @@ use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Doctor;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
@@ -81,7 +80,7 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::create($validated);
 
-        // Link appointment to public user (optional but helps patient see it)
+        // Keep the notification email copy without inferring website ownership.
         $this->syncAppointmentPublicLink($appointment);
 
         return $this->ktRedirectToReturn($request, 'staff.appointments.index')
@@ -146,7 +145,7 @@ class AppointmentController extends Controller
 
         $appointment->update($validated);
 
-        // ✅ Ensure patient/public side can see latest doctor/date/time changes
+        // Keep the notification email copy without changing booking ownership.
         $this->syncAppointmentPublicLink($appointment);
 
         return $this->ktRedirectToReturn($request, 'staff.appointments.index')
@@ -182,37 +181,18 @@ class AppointmentController extends Controller
             ]);
     }
 
-    /**
-     * Link appointment to the patient’s public account (user_id + public_email),
-     * so it appears correctly in the patient/public profile.
-     */
+    /** Keep the appointment's notification contact copy in sync. */
     private function syncAppointmentPublicLink(Appointment $appointment): void
     {
-        // Load patient
         $patient = Patient::find($appointment->patient_id);
-        if (!$patient) return;
+        if (!$patient) {
+            return;
+        }
 
         $patientEmail = $patient->email ?? null;
-        if (empty($patientEmail)) return;
-
-        // If appointments has public_email, keep it synced to patient email
-        if (Schema::hasColumn('appointments', 'public_email')) {
+        if (!empty($patientEmail) && Schema::hasColumn('appointments', 'public_email')) {
             $appointment->public_email = $patientEmail;
+            $appointment->save();
         }
-
-        // If appointments has user_id, try to match user by email
-        if (Schema::hasColumn('appointments', 'user_id')) {
-            // If patient has user_id column and it’s set, use it
-            if (Schema::hasColumn('patients', 'user_id') && !empty($patient->user_id)) {
-                $appointment->user_id = $patient->user_id;
-            } else {
-                $userId = User::where('email', $patientEmail)->value('id');
-                if (!empty($userId)) {
-                    $appointment->user_id = $userId;
-                }
-            }
-        }
-
-        $appointment->save();
     }
 }

@@ -33,7 +33,7 @@ class AdminPatientController extends Controller
 
     public function show(Patient $patient, FinancialService $financials)
     {
-        $patient->load(['files']);
+        $patient->load(['files', 'verifiedUsers']);
 
         // Appointment History (from staff appointments)
         $appointments = $patient->appointments()

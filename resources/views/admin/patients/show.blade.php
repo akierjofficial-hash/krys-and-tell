@@ -398,6 +398,25 @@
                         </div>
                     </div>
 
+                    <div style="margin-top:14px;">
+                        <div class="section-title">
+                            <span>Verified portal access</span>
+                            <span class="section-pill">Read-only</span>
+                        </div>
+                        <div class="info-grid" style="grid-template-columns: 1fr;">
+                            @forelse($patient->verifiedUsers as $portalUser)
+                                <div class="info-item">
+                                    <div class="i-label">{{ ucfirst($portalUser->pivot->relationship) }}</div>
+                                    <div class="i-val">{{ $portalUser->name }} · {{ $portalUser->email }}</div>
+                                </div>
+                            @empty
+                                <div class="info-item">
+                                    <div class="i-val">No verified website account is linked.</div>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -434,7 +453,7 @@
                                 </div>
 
                                 <a class="icon-btn"
-                                   href="{{ \Illuminate\Support\Facades\Storage::url($f->file_path) }}"
+                                   href="{{ route('patient-files.download', [$patient, $f]) }}"
                                    target="_blank"
                                    title="Download">
                                     <i class="fa-solid fa-download"></i>

@@ -387,6 +387,7 @@
         <a href="{{ route('staff.payments.index', ['open_record' => 1, 'patient_id' => $patient->id, 'return' => route('staff.patients.show', ['patient' => $patient->id, 'tab' => 'tab-payments'])]) }}" class="btn-ghostx">Record Payment</a>
         <a href="{{ route('staff.payments.create.installment', ['patient_id' => $patient->id, 'return' => route('staff.patients.show', ['patient' => $patient->id, 'tab' => 'tab-payments'])]) }}" class="btn-ghostx">Create Installment Plan</a>
         <a href="{{ route('staff.appointments.create', ['patient_id' => $patient->id, 'return' => route('staff.patients.show', ['patient' => $patient->id, 'tab' => 'tab-appts'])]) }}" class="btn-ghostx">Book Appointment</a>
+        <a href="{{ route('staff.patients.account-links.index', $patient) }}" class="btn-ghostx"><i class="fa fa-link"></i> Portal Access</a>
 
         <a href="{{ route('staff.patients.printInfo', $patient->id) }}" target="_blank" class="btn-ghostx">
             <i class="fa fa-print"></i> Print Patient Info (PDF)
@@ -548,7 +549,7 @@
                                         <div class="label">Signature</div>
                                         <div class="value">
                                             @if($info->signature_path)
-                                                <img src="{{ asset('storage/'.$info->signature_path) }}" class="sig-img" alt="Patient signature">
+                                                <img src="{{ route('patient-signatures.show', [$patient, 'information']) }}" class="sig-img" alt="Patient signature">
                                             @else
                                                 —
                                             @endif
@@ -557,6 +558,34 @@
                                 </div>
                             </div>
                         @endif
+
+                        <div class="info mt-3">
+                            <div class="label">Private Patient Files</div>
+                            <div class="value">
+                                @forelse($patient->files as $file)
+                                    <div class="d-flex align-items-center justify-content-between gap-2 py-2 border-bottom">
+                                        <div>
+                                            <strong>{{ $file->title }}</strong>
+                                            <div class="muted">{{ $file->patient_visible ? 'Shared with verified patient accounts' : 'Clinic only' }}</div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <a class="btn btn-sm btn-outline-secondary" target="_blank" href="{{ route('patient-files.preview', [$patient, $file]) }}">Preview</a>
+                                            <a class="btn btn-sm btn-outline-primary" href="{{ route('patient-files.download', [$patient, $file]) }}">Download</a>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="muted">No patient documents uploaded.</div>
+                                @endforelse
+
+                                <form class="row g-2 mt-2" method="POST" enctype="multipart/form-data" action="{{ route('staff.patients.files.store', $patient) }}">
+                                    @csrf
+                                    <div class="col-12 col-md-4"><input class="form-control" name="title" maxlength="160" placeholder="Document title" required></div>
+                                    <div class="col-12 col-md-5"><input class="form-control" type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required></div>
+                                    <div class="col-12 col-md-3"><button class="btn btn-primary w-100" type="submit">Upload securely</button></div>
+                                    <div class="col-12"><label class="form-check-label"><input class="form-check-input me-1" type="checkbox" name="patient_visible" value="1"> Allow verified patient or guardian accounts to view this file</label></div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- CONSENT --}}
@@ -607,7 +636,7 @@
                                         <div class="label">Patient/Guardian Signature</div>
                                         <div class="value">
                                             @if($consent->patient_signature_path)
-                                                <img src="{{ asset('storage/'.$consent->patient_signature_path) }}" class="sig-img" alt="Consent patient signature">
+                                                <img src="{{ route('patient-signatures.show', [$patient, 'consent-patient']) }}" class="sig-img" alt="Consent patient signature">
                                             @else
                                                 —
                                             @endif
@@ -620,7 +649,7 @@
                                         <div class="label">Dentist Signature</div>
                                         <div class="value">
                                             @if($consent->dentist_signature_path)
-                                                <img src="{{ asset('storage/'.$consent->dentist_signature_path) }}" class="sig-img" alt="Consent dentist signature">
+                                                <img src="{{ route('patient-signatures.show', [$patient, 'consent-dentist']) }}" class="sig-img" alt="Consent dentist signature">
                                             @else
                                                 <span class="muted">Not signed</span>
                                             @endif
@@ -783,7 +812,7 @@
                                                     </td>
                                                     <td class="muted">{{ $plan->service?->name ?? '—' }}</td>
                                                     <td style="font-weight:950;">₱{{ number_format((float)$plan->total_cost, 2) }}</td>
-                                                    <td style="font-weight:950;">₱{{ number_format((float)$plan->balance, 2) }}</td>
+                                                    <td style="font-weight:950;">₱{{ number_format($plan->computed_balance, 2) }}</td>
                                                     <td class="muted">{{ $plan->status ?? '—' }}</td>
                                                     <td class="muted">{{ $plan->is_open_contract ? 'Open Contract' : 'Fixed Term' }}</td>
                                                 </tr>

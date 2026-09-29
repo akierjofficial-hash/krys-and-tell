@@ -13,9 +13,16 @@ class PatientFile extends Model
     protected $fillable = [
         'patient_id',
         'title',
+        'original_name',
         'file_path',
+        'storage_disk',
         'mime',
         'size',
+        'patient_visible',
+    ];
+
+    protected $casts = [
+        'patient_visible' => 'boolean',
     ];
 
     public function patient()

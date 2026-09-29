@@ -15,9 +15,11 @@ class PatientInformedConsent extends Model
         'initials',
 
         'patient_signature_path',
+        'patient_signature_disk',
         'patient_signed_at',
 
         'dentist_signature_path',
+        'dentist_signature_disk',
         'dentist_signed_at',
     ];
 

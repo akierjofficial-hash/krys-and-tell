@@ -144,6 +144,33 @@
                         <span>Book Appointment</span>
                     </a>
                 </article>
+
+                <article class="kt-profile-card" style="margin-top:16px;">
+                    <div class="kt-profile-card__identity">
+                        <div>
+                            <h2 class="kt-profile-card__name">Clinic record access</h2>
+                            @if($verifiedPatients->isEmpty())
+                                <p class="kt-profile-card__email">Not connected. Contact the clinic so Staff can verify and connect your patient record.</p>
+                            @else
+                                @foreach($verifiedPatients as $linkedPatient)
+                                    <p class="kt-profile-card__email">{{ $linkedPatient->first_name }} {{ $linkedPatient->last_name }} · {{ ucfirst($linkedPatient->pivot->relationship) }}</p>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
+
+                    @if($sharedPatientFiles->isNotEmpty())
+                        <div class="kt-profile-card__items">
+                            <strong>Shared documents</strong>
+                            @foreach($sharedPatientFiles as $sharedFile)
+                                <div class="kt-profile-card__item">
+                                    <span>{{ $sharedFile->title }}</span>
+                                    <a href="{{ route('patient-files.download', [$sharedFile->patient, $sharedFile]) }}">Download</a>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </article>
             </aside>
 
             <div class="kt-profile-main kt-reveal-right" id="ktProfileTabs" data-default-tab="{{ $defaultTab }}">

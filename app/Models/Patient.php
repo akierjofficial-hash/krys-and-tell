@@ -26,6 +26,17 @@ public function files()
 {
     return $this->hasMany(\App\Models\PatientFile::class);
 }
+public function accountLinks()
+{
+    return $this->hasMany(PatientUserLink::class);
+}
+public function verifiedUsers()
+{
+    return $this->belongsToMany(User::class, 'patient_user_links')
+        ->wherePivotNull('unlinked_at')
+        ->withPivot(['id', 'relationship', 'verification_note', 'verified_at', 'verified_by_user_id'])
+        ->withTimestamps();
+}
 public function visits()
 {
     return $this->hasMany(Visit::class);

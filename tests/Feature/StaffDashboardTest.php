@@ -212,13 +212,50 @@ class StaffDashboardTest extends TestCase
         ContactMessage::create(['name' => 'Sender', 'email' => 'sender@example.test', 'message' => 'Please call me.']);
         $response = $this->dashboard()
             ->assertSee('data-metric="needs-attention">3', false)
-            ->assertSeeText('1 request · 1 balance · 1 message');
+            ->assertSeeText('1 request · 1 patient balance to review · 1 message');
 
         if (getenv('KT_DASHBOARD_BROWSER_FIXTURE')) {
             $directory = base_path('tests/Browser/.fixtures');
             if (!is_dir($directory)) mkdir($directory, 0777, true);
             file_put_contents($directory . '/staff-dashboard.html', $response->getContent());
         }
+    }
+
+    public function test_dashboard_and_assistant_share_mixed_billing_balance_and_flag_incomplete_records(): void
+    {
+        $ordinaryService = Service::create(['name' => 'Cleaning', 'base_price' => 1000]);
+        $mixed = $this->visit();
+        $mixed->procedures()->create(['service_id' => $this->service->id, 'price' => 40000]);
+        $cleaning = $mixed->procedures()->create(['service_id' => $ordinaryService->id, 'price' => 1000]);
+        $plan = $this->plan($mixed);
+        Payment::create(['visit_id' => $mixed->id, 'visit_procedure_id' => $cleaning->id,
+            'amount' => 400, 'method' => 'Cash', 'payment_date' => '2026-09-26']);
+        InstallmentPayment::create(['installment_plan_id' => $plan->id, 'month_number' => 0,
+            'amount' => 8000, 'method' => 'Cash', 'payment_date' => '2026-09-26', 'notes' => 'Downpayment']);
+        InstallmentPayment::create(['installment_plan_id' => $plan->id, 'month_number' => 1,
+            'amount' => 2000, 'method' => 'Cash', 'payment_date' => '2026-09-26']);
+
+        $unclearPatient = Patient::create(['first_name' => 'Needs', 'last_name' => 'Review']);
+        $unclear = Visit::create(['patient_id' => $unclearPatient->id, 'visit_date' => '2026-09-26']);
+        $unclear->procedures()->create(['service_id' => $this->service->id, 'price' => 40000]);
+        $unclear->procedures()->create(['service_id' => $ordinaryService->id, 'price' => 1000]);
+        InstallmentPlan::create(['patient_id' => $unclearPatient->id, 'visit_id' => $unclear->id,
+            'total_cost' => 40000, 'downpayment' => 0, 'balance' => 40000,
+            'months' => 16, 'start_date' => '2026-09-01']);
+
+        $this->dashboard()->assertOk()
+            ->assertViewHas('balanceCount', 2)
+            ->assertViewHas('balanceKnownCount', 1)
+            ->assertViewHas('balanceIncompleteCount', 1)
+            ->assertViewHas('balanceKnownTotal', 30600.0)
+            ->assertSeeText('Incomplete')
+            ->assertSee(route('staff.visits.show', $unclear), false);
+        $this->postJson(route('staff.assistant.ask'), ['question' => 'Which patients have outstanding balances?'])
+            ->assertOk()->assertJsonPath('record_count', 1)->assertJsonPath('total', 30600)
+            ->assertSee('Incomplete: 1 patient balance(s)')
+            ->assertJsonFragment(['url' => route('staff.visits.show', $unclear)]);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('installment_payments', 2);
     }
 
     public function test_dashboard_get_does_not_create_or_modify_records(): void

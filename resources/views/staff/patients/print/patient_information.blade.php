@@ -340,20 +340,9 @@
 
     $isChecked = fn($needle) => in_array($needle, $conditions, true);
 
-    $sigInfo = ($info && $info->signature_path) ? public_path('storage/'.$info->signature_path) : null;
-    $sigConsentPatient = ($consent && $consent->patient_signature_path) ? public_path('storage/'.$consent->patient_signature_path) : null;
-    $sigConsentDentist = ($consent && $consent->dentist_signature_path) ? public_path('storage/'.$consent->dentist_signature_path) : null;
-
-    $imgData = function($path){
-        if (!$path || !file_exists($path)) return null;
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $mime = $ext === 'jpg' ? 'jpeg' : $ext;
-        return 'data:image/'.$mime.';base64,'.base64_encode(file_get_contents($path));
-    };
-
-    $sigInfoData = $imgData($sigInfo);
-    $sigConsentPatientData = $imgData($sigConsentPatient);
-    $sigConsentDentistData = $imgData($sigConsentDentist);
+    $sigInfoData = $signatureBase64 ?? null;
+    $sigConsentPatientData = $consentPatientSignatureBase64 ?? null;
+    $sigConsentDentistData = $consentDentistSignatureBase64 ?? null;
 
     $consentSections = [
         'treatment'   => 'Treatment to be done',
