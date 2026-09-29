@@ -83,7 +83,10 @@
             button.textContent = `${path.replace(/visits\.(\d+)/, (_, n) => `Visit ${Number(n)+1}`).replaceAll('.', ' › ')}: ${[].concat(messages).join(' ')}`;
             button.onclick = () => {
                 $('re-editor').hidden = false;
-                const field = [...document.querySelectorAll('[data-path]')].find(el => el.dataset.path === path);
+                const fields = [...document.querySelectorAll('[data-path]')];
+                const field = fields.find(el => el.dataset.path === path)
+                    || (path.endsWith('.plan.payments') ? fields.find(el => el.dataset.path.startsWith(`${path}.`) && el.dataset.path.endsWith('.amount')) : null)
+                    || (path.endsWith('.plan.payments') ? fields.find(el => el.dataset.path === path.replace(/\.payments$/, '.downpayment')) : null);
                 if (field) { field.setAttribute('aria-invalid', 'true'); field.scrollIntoView({block:'center'}); field.focus(); }
             }; box.append(button);
         });
@@ -167,19 +170,23 @@
         const financedCharge = v.plan.procedure_index !== '' && v.plan.procedure_index != null ? cents(v.procedures[Number(v.plan.procedure_index)]?.price) : 0;
         const ordinaryCharge = charge-financedCharge;
         const planPaid = cents(v.plan.downpayment)+sum(v.plan.payments,'amount');
-        const agreed = ordinaryCharge+cents(v.plan.total_cost);
-        return {charge, agreed, paid:ordinaryPaid+planPaid, ordinaryPaid, planPaid, balance:(ordinaryCharge-ordinaryPaid)+(cents(v.plan.total_cost)-planPaid)};
+        const planCost = cents(v.plan.total_cost);
+        const agreed = ordinaryCharge+planCost;
+        return {charge, agreed, paid:ordinaryPaid+planPaid, ordinaryPaid, ordinaryCharge, planPaid, planCost,
+            ordinaryBalance:ordinaryCharge-ordinaryPaid, planBalance:planCost-planPaid,
+            balance:(ordinaryCharge-ordinaryPaid)+(planCost-planPaid)};
     }
     function totals() {
-        let charge=0, agreed=0, paid=0;
+        let charge=0, agreed=0, paid=0, planOverpayments=0;
         state.payload.visits.forEach((v,i) => {
             const f = figures(v); charge+=f.charge; agreed+=f.agreed; paid+=f.paid;
             const target = document.querySelector(`[data-totals="${i}"]`);
-            if (target) target.innerHTML = `<span>Treatment charge: ${money(f.charge/100)}</span>${v.arrangement === 'installment' ? `<span>Installment plan: ${money(v.plan.total_cost)}</span><span>Ordinary received: ${money(f.ordinaryPaid/100)}</span><span>Plan received: ${money(f.planPaid/100)}</span>` : `<span>Received: ${money(f.paid/100)}</span>`}<span>Combined balance: ${money(f.balance/100)}</span><span>${f.balance < 0 ? 'Overpayment — correct before saving' : f.balance === 0 ? 'Fully paid' : f.paid ? 'Partially paid' : 'Unpaid'}</span>`;
+            if (f.planBalance < 0) planOverpayments++;
+            if (target) target.innerHTML = `<span>Treatment charge: ${money(f.charge/100)}</span>${v.arrangement === 'installment' ? `<span>Installment plan: ${money(v.plan.total_cost)}</span><span>Ordinary received: ${money(f.ordinaryPaid/100)}</span><span>Plan received: ${money(f.planPaid/100)}</span><span>Ordinary treatment balance: ${money(f.ordinaryBalance/100)}</span><span>Installment plan balance: ${money(f.planBalance/100)}</span>` : `<span>Received: ${money(f.paid/100)}</span>`}<span>Combined balance: ${money(f.balance/100)}</span><span>${f.planBalance < 0 ? 'Plan overpayment — correct before review' : f.balance < 0 ? 'Overpayment — correct before saving' : f.balance === 0 ? 'Fully paid' : f.paid ? 'Partially paid' : 'Unpaid'}</span>${f.planBalance < 0 ? `<div class="re-billing-warning" role="alert">Installment receipts exceed the agreed plan cost by ${money(-f.planBalance/100)}. Check whether a payment for another treatment was entered under installment receipts. Move it to ordinary receipts only if that matches the paper record.</div>` : ''}`;
             const suggestion = document.querySelector(`[data-plan-suggestion="${i}"]`);
             if (suggestion) suggestion.textContent = v.plan.is_open_contract == 1 ? `Suggested monthly: ${money(v.plan.open_monthly_payment)}. No paid months will be generated.` : `Suggested monthly: ${money((cents(v.plan.total_cost)-cents(v.plan.downpayment))/100/Math.max(1,Number(v.plan.months)))}. No paid months will be generated.`;
         });
-        $('re-grand-totals').textContent = `Charges ${money(charge/100)} · Agreed total ${money(agreed/100)} · Received ${money(paid/100)} · Balance ${money((agreed-paid)/100)}`;
+        $('re-grand-totals').textContent = `Charges ${money(charge/100)} · Agreed total ${money(agreed/100)} · Received ${money(paid/100)} · Balance ${money((agreed-paid)/100)}${planOverpayments ? ` · ${planOverpayments} overpaid installment plan(s) need correction` : ''}`;
     }
     $('re-visits').addEventListener('input', event => {
         const el = event.target;

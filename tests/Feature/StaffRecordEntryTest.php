@@ -245,6 +245,27 @@ class StaffRecordEntryTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
     }
 
+    public function test_zero_combined_balance_cannot_hide_an_overpaid_installment_plan(): void
+    {
+        $row = $this->visit();
+        $row['procedures'][0]['price'] = '1000.00';
+        $row['procedures'][] = ['service_id' => $this->service->id, 'price' => '100.00'];
+        $row['arrangement'] = 'installment';
+        $row['plan'] = $this->plan();
+        $row['plan']['payments'] = [[...$this->receipt('900.00'), 'month_number' => 1]];
+        // Agreed total and received total are both 1,100, but the plan is 100 over and the ordinary treatment is 100 unpaid.
+        $response = $this->postJson(route('staff.records.review', (string) Str::uuid()), [
+            'patient_id' => $this->patient->id, 'mode' => 'past', 'version' => 0,
+            'payload' => ['visits' => [$row]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('visits.0.plan.payments');
+        $message = $response->json('errors.visits.0.plan.payments.0');
+        $this->assertStringContainsString('₱100.00 over', $message);
+        $this->assertStringContainsString('ordinary receipt', $message);
+        $this->assertDatabaseCount('visits', 0);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseCount('installment_payments', 0);
+    }
+
     public function test_normal_patient_add_visit_supports_no_payment_payment_or_plan_and_profile_return(): void
     {
         foreach (['none', 'payment', 'plan'] as $offset => $kind) {

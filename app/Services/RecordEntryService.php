@@ -97,9 +97,15 @@ class RecordEntryService
             }
             $plan = $visit['plan'];
             $financedProcedure = (int) $plan['procedure_index'];
-            $totalPaid = self::cents($plan['downpayment']) + array_sum(array_map(fn ($p) => self::cents($p['amount']), $plan['payments']));
-            if ($totalPaid > self::cents($plan['total_cost'])) {
-                $errors["visits.$i.plan.payments"] = 'Downpayment plus receipts exceeds the agreed plan cost.';
+            $downpayment = self::cents($plan['downpayment']);
+            $installmentReceipts = array_sum(array_map(fn ($p) => self::cents($p['amount']), $plan['payments']));
+            $totalPaid = $downpayment + $installmentReceipts;
+            $planCost = self::cents($plan['total_cost']);
+            if ($totalPaid > $planCost) {
+                $format = fn (int $cents) => '₱'.number_format($cents / 100, 2);
+                $errors["visits.$i.plan.payments"] = 'Installment plan cost '.$format($planCost).'; downpayment '.$format($downpayment)
+                    .' plus installment receipts '.$format($installmentReceipts).' is '.$format($totalPaid)
+                    .' ('.$format($totalPaid - $planCost).' over). If a receipt paid another treatment, enter it as an ordinary receipt instead. Otherwise correct the plan cost or receipt amount.';
             }
             $ordinaryByProcedure = [];
             foreach ($visit['payments'] as $j => $payment) {

@@ -12,6 +12,7 @@
     .re-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
     .re-actions .btn{white-space:normal}.re-muted{color:#526278;font-size:.88rem}
     .re-totals{display:flex;flex-wrap:wrap;gap:18px;padding:10px 0;font-weight:600}
+    .re-billing-warning{flex-basis:100%;padding:10px 12px;border:1px solid #f4b4b4;border-radius:8px;background:#fff3f3;color:#9c2019;font-size:.88rem;line-height:1.4}
     .re-footer{position:sticky;bottom:0;z-index:5;background:#fff;border:1px solid #dce4ef;border-radius:10px;padding:12px;box-shadow:0 -3px 12px #243a5310}
     .record-entry [hidden]{display:none!important}.record-entry :focus-visible{outline:3px solid #4479cb;outline-offset:2px}
     .record-entry [aria-invalid=true]{border:2px solid #b42318}.re-error-link{color:#9c2019;text-align:left}
@@ -92,5 +93,5 @@
     @endif
 </div>
 <script>window.recordEntryConfig = {{ Illuminate\Support\Js::from($config) }};</script>
-<script src="{{ asset('js/staff-record-entry.js') }}?v=3" defer></script>
+<script src="{{ asset('js/staff-record-entry.js') }}?v=4" defer></script>
 @endsection
