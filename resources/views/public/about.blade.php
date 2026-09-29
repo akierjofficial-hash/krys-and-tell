@@ -40,8 +40,8 @@
                     <img src="{{ asset('images/pic6.jpg') }}" alt="" loading="lazy">
                 </div>
                 <div class="kt-about-page__hero-chip">
-                    <strong>7+</strong>
-                    <span>Years Serving Smiles</span>
+                    <strong>2022</strong>
+                    <span>Serving Smiles Since</span>
                 </div>
             </div>
         </div>

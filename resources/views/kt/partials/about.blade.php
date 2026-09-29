@@ -1,5 +1,5 @@
 @php
-    $years = (int) ($heroStats['years'] ?? max(1, (int) now()->year - 2022 + 1));
+    $establishedYear = (int) ($heroStats['established_year'] ?? 2022);
 @endphp
 
 <section class="kt-about" id="about">
@@ -10,8 +10,8 @@
             </div>
 
             <div class="kt-about__accent-box">
-                <span class="kt-about__accent-num">{{ max(1, $years) }}<em>+</em></span>
-                <span class="kt-about__accent-label">Years of care</span>
+                <span class="kt-about__accent-num">{{ $establishedYear }}</span>
+                <span class="kt-about__accent-label">Serving smiles since</span>
             </div>
 
             <div class="kt-about__team-row">

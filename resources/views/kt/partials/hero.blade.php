@@ -4,7 +4,7 @@ $avgRatingDisplay = number_format(max(0, $avgRating), 1);
 $happySmiles = (string) ($heroStats['happy_smiles'] ?? '0+');
 
 $patientCount = (int) ($heroStats['patient_count'] ?? 0);
-$years = (int) ($heroStats['years'] ?? 1);
+$establishedYear = (int) ($heroStats['established_year'] ?? 2022);
 $satisfaction = (int) ($heroStats['satisfaction'] ?? 0);
 
 $serviceBarItems = collect($services ?? [])->values()->map(function ($s) {
@@ -19,7 +19,7 @@ return trim((string) ($s->name ?? ''));
     <div class="kt-hero__photo">
         <img src="{{ asset('images/pic1.jpg') }}" alt="" class="kt-hero__photo-img" loading="eager">
         <div class="kt-hero__photo-overlay"></div>
-        <div class="kt-hero__year-tag">Est. 2022</div>
+        <div class="kt-hero__year-tag">Est. {{ $establishedYear }}</div>
         <div class="kt-hero__rating-badge">
             <div class="kt-hero__rating-num">{{ $avgRatingDisplay }}<span>*</span></div>
             <div class="kt-hero__rating-text">
@@ -61,9 +61,8 @@ return trim((string) ($s->name ?? ''));
                 <div class="kt-stat__label">Patients</div>
             </div>
             <div class="kt-stat">
-                <div class="kt-stat__num" data-target="{{ max(1, $years) }}" data-suffix="+">
-                    {{ max(1, $years) }}<em>+</em></div>
-                <div class="kt-stat__label">Years</div>
+                <div class="kt-stat__year">{{ $establishedYear }}</div>
+                <div class="kt-stat__label">Established</div>
             </div>
             <div class="kt-stat">
                 <div class="kt-stat__num" data-target="{{ max(0, $satisfaction) }}" data-suffix="%">

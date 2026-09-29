@@ -59,12 +59,11 @@ class PublicHomeController extends Controller
 
         $patientCount = $this->resolvePatientCount();
         $avgRating = $this->resolveAverageRating($testimonials);
-        $years = max(1, (int) now()->year - self::CLINIC_ESTABLISHED_YEAR + 1);
         $satisfaction = (int) max(0, min(100, round(($avgRating / 5) * 100)));
 
         $heroStats = [
             'patient_count' => $patientCount,
-            'years' => $years,
+            'established_year' => self::CLINIC_ESTABLISHED_YEAR,
             'satisfaction' => $satisfaction,
             'average_rating' => $avgRating,
             'happy_smiles' => number_format($patientCount) . '+',

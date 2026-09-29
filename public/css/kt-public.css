@@ -910,7 +910,8 @@
   margin-right: 0;
 }
 
-.kt-site .kt-stat__num {
+.kt-site .kt-stat__num,
+.kt-site .kt-stat__year {
   font-family: 'Cormorant Garamond', serif;
   font-size: 30px;
   font-weight: 500;
