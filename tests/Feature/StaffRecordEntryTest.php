@@ -258,7 +258,7 @@ class StaffRecordEntryTest extends TestCase
             'patient_id' => $this->patient->id, 'mode' => 'past', 'version' => 0,
             'payload' => ['visits' => [$row]],
         ])->assertUnprocessable()->assertJsonValidationErrors('visits.0.plan.payments');
-        $message = $response->json('errors.visits.0.plan.payments.0');
+        $message = $response->json('errors')['visits.0.plan.payments'][0];
         $this->assertStringContainsString('₱100.00 over', $message);
         $this->assertStringContainsString('ordinary receipt', $message);
         $this->assertDatabaseCount('visits', 0);

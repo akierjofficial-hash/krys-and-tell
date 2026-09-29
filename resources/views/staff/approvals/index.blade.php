@@ -6,7 +6,7 @@
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
             <h3 class="mb-0">Approval Requests</h3>
-            <small class="text-muted">Public bookings waiting for approval</small>
+            <small class="text-muted">Website requests and staff-created pending appointments</small>
         </div>
 
         <div class="d-flex align-items-center gap-2">
@@ -30,7 +30,7 @@
     <div class="row g-3" id="approvalsGrid">
         @forelse($requests as $r)
             @php
-                $isWalkInRequest = (bool)($r->is_walk_in_request ?? false);
+                $isWalkInRequest = \App\Services\BookingKind::isWalkIn($r);
             @endphp
             <div class="col-lg-6 col-xl-4"
                  data-appointment-id="{{ $r->id }}"
@@ -41,14 +41,17 @@
                  data-is-walkin-request="{{ $isWalkInRequest ? '1' : '0' }}"
                  data-note-raw="{{ $r->staff_note ?? '' }}"
                  data-decline-url="{{ route('staff.approvals.decline', $r) }}"
+                 data-void-url="{{ route('staff.approvals.void', $r) }}"
+                 data-candidates-url="{{ route('staff.approvals.patients', $r) }}"
                  data-approve-url="{{ route('staff.approvals.approve', $r) }}">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <div class="fw-bold">
-                            {{ $r->public_name ?? trim(($r->public_first_name ?? '').' '.($r->public_middle_name ? $r->public_middle_name.' ' : '').($r->public_last_name ?? '')) }}
+                            {{ $r->displayPatientName() }}
                         </div>
 
                         <div class="small text-muted mt-1">
+                            <div>{{ \App\Services\BookingKind::origin($r) }}{{ $isWalkInRequest ? ' · No reserved time' : '' }}</div>
                             <div>
                                 <i class="fa-regular fa-calendar me-1"></i>
                                 {{ $r->appointment_date }} • {{ $isWalkInRequest ? 'Walk-in Request' : $r->appointment_time }}
@@ -78,8 +81,9 @@
                             </form>
 
                                 <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button">
-                                    <i class="fa-solid fa-xmark me-1"></i> Decline
+                                    <i class="fa-solid fa-xmark me-1"></i> Decline and notify patient
                                 </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-void-review" type="button">Void request (internal)</button>
                         </div>
                     </div>
                 </div>
@@ -147,6 +151,11 @@
                 </select>
                 <div class="small text-muted mt-1" id="eaTimeHelp"></div>
             </div>
+            <div class="mb-3" id="eaPatientMatchWrap" hidden>
+                <label class="form-label" for="eaPatientMatch">Clinic patient record</label>
+                <select class="form-select" id="eaPatientMatch" name="patient_id"></select>
+                <div class="small text-muted mt-1">Confirm the patient before linking this booking. Shared contact details do not prove identity.</div>
+            </div>
 
             {{-- ✅ NEW: staff note / reason --}}
             <div class="mb-2">
@@ -171,6 +180,8 @@
 </div>
 
 <div class="modal fade" id="declineModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="declineForm"><div class="modal-header"><h5 class="modal-title">Decline booking request</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><label class="form-label fw-bold" for="declineReason">Reason for the patient</label><textarea class="form-control" id="declineReason" rows="4" required></textarea><div class="alert alert-danger d-none mt-3" id="declineError"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" type="submit">Decline request</button></div></form></div></div></div>
+
+<div class="modal fade" id="voidModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="voidForm"><div class="modal-header"><h5 class="modal-title">Void request internally</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p class="text-muted">Use for an erroneous or duplicate request. No patient email will be sent. Check the patient history first; older visits may lack an appointment link.</p><label class="form-label" for="voidReason">Internal reason</label><textarea id="voidReason" class="form-control" rows="3" required maxlength="1000"></textarea><div id="voidError" class="alert alert-danger d-none mt-3"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-outline-danger" type="submit">Void request</button></div></form></div></div></div>
 
 <script>
 (function(){
@@ -340,12 +351,15 @@
             data-is-walkin-request="${esc(isWalkInRequest)}"
             data-note-raw="${esc(noteRaw)}"
             data-decline-url="${esc(item.decline_url)}"
+            data-void-url="${esc(item.void_url)}"
+            data-candidates-url="${esc(item.candidates_url)}"
             data-approve-url="${esc(item.approve_url)}">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
                     <div class="fw-bold">${esc(item.patient)}</div>
 
                     <div class="small text-muted mt-1">
+                        <div>${esc(item.origin)}${isWalkInRequest ? ' · No reserved time' : ''}</div>
                         <div><i class="fa-regular fa-calendar me-1"></i> ${esc(item.date)} • ${esc(timeText)}</div>
                         <div><i class="fa-solid fa-tooth me-1"></i> ${esc(item.service)}</div>
                         <div><i class="fa-solid fa-user-doctor me-1"></i> ${esc(item.doctor)}</div>
@@ -372,8 +386,9 @@
                         </form>
 
                             <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button">
-                                <i class="fa-solid fa-xmark me-1"></i> Decline
+                                <i class="fa-solid fa-xmark me-1"></i> Decline and notify patient
                             </button>
+                            <button class="btn btn-outline-secondary btn-sm btn-void-review" type="button">Void request (internal)</button>
                     </div>
                 </div>
             </div>
@@ -494,6 +509,22 @@
         const card = btn.closest('[data-appointment-id]');
         if(!card) return;
 
+        const matchWrap = document.getElementById('eaPatientMatchWrap');
+        const matchSelect = document.getElementById('eaPatientMatch');
+        matchWrap.hidden = true;
+        matchSelect.innerHTML = '';
+        try {
+            const response = await fetch(card.dataset.candidatesUrl, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error('Could not load matching patient records.');
+            const candidates = (await response.json()).items || [];
+            if (candidates.length) {
+                matchWrap.hidden = false;
+                matchSelect.innerHTML = '<option value="">Confirm patient record</option>' + candidates.map(p =>
+                    `<option value="${esc(p.id)}">${esc(p.name)} · #${esc(p.id)} · DOB ${esc(p.birthdate || 'unknown')} · ${esc(p.contact || p.email || 'no contact')}</option>`
+                ).join('') + '<option value="new">Create a new patient record</option>';
+            }
+        } catch (error) { setError(error.message); return; }
+
         setError('');
         clearTime();
 
@@ -563,6 +594,7 @@
         fd.append('appointment_date', eaDate?.value || '');
         fd.append('appointment_time', eaTime?.disabled ? '' : (eaTime?.value || ''));
         fd.append('staff_note', eaNote?.value || '');
+        fd.append('patient_id', document.getElementById('eaPatientMatch')?.value || '');
 
         const submitBtn = eaForm.querySelector('button[type="submit"]');
         if(submitBtn){ submitBtn.disabled = true; submitBtn.style.opacity = '.7'; }
@@ -604,6 +636,34 @@
         }finally{
             if(submitBtn){ submitBtn.disabled = false; submitBtn.style.opacity = ''; }
         }
+    });
+
+    const voidModal = new bootstrap.Modal(document.getElementById('voidModal'));
+    const voidReason = document.getElementById('voidReason');
+    const voidError = document.getElementById('voidError');
+    let voidCard = null;
+    grid.addEventListener('click', event => {
+        if (!event.target.closest('.btn-void-review')) return;
+        voidCard = event.target.closest('[data-appointment-id]');
+        voidReason.value = '';
+        voidError.classList.add('d-none');
+        voidModal.show();
+    });
+    document.getElementById('voidForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!voidCard) return;
+        try {
+            const response = await fetch(voidCard.dataset.voidUrl, {
+                method: 'POST',
+                headers: {'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest', 'X-CSRF-TOKEN':csrf},
+                body: new URLSearchParams({_token:csrf, reason:voidReason.value.trim()})
+            });
+            const data = await response.json();
+            if (!response.ok || data.ok === false) throw new Error(data.message || 'Could not void request.');
+            voidCard.remove(); voidModal.hide();
+            pendingBadge.textContent = data.pendingCount;
+            showNotice(`<div class="alert alert-success">${esc(data.message)}</div>`);
+        } catch (error) { voidError.textContent = error.message; voidError.classList.remove('d-none'); }
     });
 
     poll();

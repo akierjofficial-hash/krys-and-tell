@@ -313,6 +313,13 @@
                 <div class="label">Notes</div>
                 <div class="value">{{ $appointment->notes ?? 'None' }}</div>
             </div>
+            @if($appointment->status === 'voided')
+                <div class="field notes">
+                    <div class="label">Internal void record</div>
+                    <div class="value">{{ $appointment->void_reason ?: 'No reason recorded' }}</div>
+                    <div class="subvalue">{{ $appointment->voidedBy?->name ?: 'Unknown staff member' }} · {{ $appointment->voided_at?->format('M d, Y h:i A') ?: 'Time unavailable' }}</div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -324,9 +331,11 @@
             label="Back"
         />
 
+        @if($appointment->status !== 'voided')
         <a href="{{ route('staff.appointments.edit', [$appointment->id, 'return' => url()->full()]) }}" class="btn-primary-soft">
             <i class="fa fa-pen me-1"></i> Edit Appointment
         </a>
+        @endif
     </div>
 
 </div>

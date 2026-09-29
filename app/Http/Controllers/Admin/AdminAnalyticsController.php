@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,6 +95,7 @@ class AdminAnalyticsController extends Controller
             return DB::table('appointments')
                 ->selectRaw('DATE(appointment_date) as d, COUNT(*) as total')
                 ->whereNull('deleted_at')
+                ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Appointment::STATUS_VOIDED))
                 ->whereBetween(DB::raw('DATE(appointment_date)'), [$s->toDateString(), $e->toDateString()])
                 ->groupBy('d')
                 ->pluck('total', 'd'); // [Y-m-d => count]

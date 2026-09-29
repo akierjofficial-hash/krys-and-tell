@@ -46,7 +46,7 @@ class InstallmentPlanCreationService
         $appointment = Appointment::with('service')->lockForUpdate()->findOrFail($id);
         if (!$appointment->patient_id) $this->invalid('appointment_id', 'This appointment has no patient record.');
         if (in_array(strtolower((string) $appointment->status), ['completed', 'cancelled', 'declined'], true)) $this->invalid('appointment_id', 'This appointment is no longer payable.');
-        $visit = Visit::create(['patient_id' => $appointment->patient_id, 'doctor_id' => $appointment->doctor_id,
+        $visit = Visit::create(['patient_id' => $appointment->patient_id, 'source_appointment_id' => $appointment->id, 'doctor_id' => $appointment->doctor_id,
             'dentist_name' => $appointment->dentist_name, 'visit_date' => $date, 'status' => 'installment',
             'notes' => 'Installment plan created from appointment']);
         if ($appointment->service_id) $visit->procedures()->create(['service_id' => $appointment->service_id,

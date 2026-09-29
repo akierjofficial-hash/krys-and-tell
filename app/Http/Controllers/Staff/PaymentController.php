@@ -357,6 +357,7 @@ class PaymentController extends Controller
 
                 $visit = Visit::create([
                     'patient_id' => $appointment->patient_id,
+                    'source_appointment_id' => $appointment->id,
                     'visit_date' => now()->toDateString(),
                     'status'     => 'partial',
                 ]);

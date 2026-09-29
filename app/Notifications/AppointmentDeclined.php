@@ -40,13 +40,17 @@ class AppointmentDeclined extends Notification
             ?: ($a->patient->name ?? null)
             ?: 'there';
 
-        return (new MailMessage)
+        $message = (new MailMessage)
             ->subject("Booking Declined: {$service}")
             ->greeting('Hi '.$patientName.',')
             ->line('Your booking request was declined.')
             ->line("**Requested schedule:** {$when}")
-            ->line("**Service:** {$service}")
-            ->action('Book Another Schedule', route('public.services.index'))
+            ->line("**Service:** {$service}");
+
+        $reason = trim((string) $a->staff_note);
+        if ($reason !== '') $message->line("**Reason from the clinic:** {$reason}");
+
+        return $message->action('Book Another Schedule', route('public.services.index'))
             ->line('If you want help choosing another time, please contact the clinic.');
     }
 }

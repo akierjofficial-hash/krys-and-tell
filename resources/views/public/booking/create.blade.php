@@ -32,17 +32,7 @@
     $fullName = trim(old('full_name', $recentBookingName ?? ($u->name ?? '')));
     $email = trim(old('email', $u->email ?? ''));
 
-    $isWalkIn = $isWalkIn ?? (function () use ($service) {
-        $durRaw = $service->duration_minutes ?? null;
-        if ($durRaw === null || $durRaw === '') {
-            return true;
-        }
-        if (is_numeric($durRaw)) {
-            $d = (int) $durRaw;
-            return $d > 0 && $d <= 5;
-        }
-        return false;
-    })();
+    $isWalkIn = $isWalkIn ?? \App\Services\BookingKind::isWalkInService($service);
 
     $parts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY);
     $first = $parts[0] ?? '';

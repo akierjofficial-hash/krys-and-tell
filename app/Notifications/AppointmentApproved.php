@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Appointment;
+use App\Services\BookingKind;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -33,7 +34,7 @@ class AppointmentApproved extends Notification
         $service = optional($a->service)->name ?? 'Dental Appointment';
         $doctor  = optional($a->doctor)->name ?? ($a->dentist_name ?? 'To be assigned');
         $when    = $dt ? $dt->format('M d, Y h:i A') : '—';
-        $isWalkInRequest = (bool) ($a->is_walk_in_request ?? false);
+        $isWalkInRequest = BookingKind::isWalkIn($a);
 
         // ✅ Safe greeting name (works for AnonymousNotifiable too)
         $patientName =

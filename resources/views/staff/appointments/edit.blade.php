@@ -421,6 +421,10 @@
                 <div class="col-12 col-md-6">
                     <label class="form-labelx">Status <span class="text-danger">*</span></label>
                     @php $st = old('status', $appointment->status); @endphp
+                    @if($appointment->status === 'pending')
+                        <input type="hidden" name="status" value="pending">
+                        <div class="helper">Pending — use Booking Requests to approve, decline and notify, or void internally.</div>
+                    @else
                     <select name="status" class="selectx" required>
                         <option value="pending"   @selected($st === 'pending')>Pending</option>
                         <option value="approved"  @selected($st === 'approved')>Approved</option>
@@ -431,6 +435,7 @@
                         <option value="canceled"  @selected($st === 'canceled' || $st === 'cancelled')>Canceled</option>
                         <option value="declined"  @selected($st === 'declined' || $st === 'rejected')>Declined</option>
                     </select>
+                    @endif
                     <div class="helper">Public side typically shows the latest status after refresh.</div>
                 </div>
 

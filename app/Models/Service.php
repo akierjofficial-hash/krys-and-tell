@@ -17,6 +17,8 @@ class Service extends Model
         'description',
         'color',
         'duration_minutes',
+        'is_walk_in',
+        'walk_in_note',
         'restrict_to_assigned_doctors',
     ];
 
@@ -24,6 +26,7 @@ class Service extends Model
         'allow_custom_price' => 'boolean',
         'base_price' => 'decimal:2',
         'restrict_to_assigned_doctors' => 'boolean',
+        'is_walk_in' => 'boolean',
     ];
 
     public function visitProcedures()

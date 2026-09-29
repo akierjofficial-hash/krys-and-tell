@@ -219,6 +219,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/approvals/widget', [AdminApprovalRequestController::class, 'widget'])->name('approvals.widget');
             Route::post('/approvals/{appointment}/approve', [AdminApprovalRequestController::class, 'approve'])->name('approvals.approve');
             Route::post('/approvals/{appointment}/decline', [AdminApprovalRequestController::class, 'decline'])->name('approvals.decline');
+            Route::get('/approvals/{appointment}/patients', [AdminApprovalRequestController::class, 'patients'])->name('approvals.patients');
+            Route::post('/approvals/{appointment}/void', [AdminApprovalRequestController::class, 'void'])->name('approvals.void');
 
             Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
             Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
@@ -282,6 +284,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/widget', [ApprovalRequestController::class, 'widget'])->name('widget');
                 Route::post('/{appointment}/approve', [ApprovalRequestController::class, 'approve'])->name('approve');
                 Route::post('/{appointment}/decline', [ApprovalRequestController::class, 'decline'])->name('decline');
+                Route::get('/{appointment}/patients', [ApprovalRequestController::class, 'patients'])->name('patients');
+                Route::post('/{appointment}/void', [ApprovalRequestController::class, 'void'])->name('void');
             });
 
             // Ã¢Å“â€¦ Contact Messages Inbox (Staff)

@@ -40,6 +40,7 @@ class AdminScheduleController extends Controller
 
         $appointments = Appointment::with(['patient', 'service'])
             ->whereBetween('appointment_date', [$start->toDateString(), $end->toDateString()])
+            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Appointment::STATUS_VOIDED))
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
             ->get();

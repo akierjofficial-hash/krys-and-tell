@@ -695,11 +695,14 @@
                                 <i class="fa fa-eye"></i> <span>View</span>
                             </a>
 
+                            @if($appointment->status !== 'voided')
                             <a href="{{ route('staff.appointments.edit', $appointment) }}" class="pill pill-edit" data-kt-return>
                                 <i class="fa fa-pen"></i> <span>Edit</span>
                             </a>
+                            @endif
 
                             {{-- ✅ Animated confirm delete --}}
+                            @if(!in_array($appointment->status, ['pending', 'voided'], true))
                             <form id="del-appt-{{ $appointment->id }}" action="{{ route('staff.appointments.destroy', $appointment) }}" method="POST" style="display:inline;" data-kt-return>
                                 @csrf
                                 @method('DELETE')
@@ -712,6 +715,7 @@
                                     <i class="fa fa-trash"></i> <span>Delete</span>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>

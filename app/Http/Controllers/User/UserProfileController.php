@@ -32,7 +32,7 @@ class UserProfileController extends Controller
             })
             ->where(function ($q) {
                 $q->whereNull('status')
-                  ->orWhereNotIn('status', ['cancelled','canceled','declined','rejected']);
+                  ->orWhereNotIn('status', ['cancelled','canceled','declined','rejected','voided']);
             });
 
         $upcoming = (clone $base)

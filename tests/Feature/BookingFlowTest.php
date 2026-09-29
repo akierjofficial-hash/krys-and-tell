@@ -421,7 +421,7 @@ class BookingFlowTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('pendingCount', 1);
-        $response->assertJsonPath('items.0.time', 'Walk-in Request');
+        $response->assertJsonPath('items.0.time', 'Walk-in · no reserved time');
         $response->assertJsonPath('items.0.is_walk_in_request', true);
     }
 

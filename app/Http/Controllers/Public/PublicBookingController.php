@@ -8,6 +8,7 @@ use App\Models\Doctor;
 use App\Models\DoctorUnavailability;
 use App\Models\Service;
 use App\Mail\NewBookingNotification;
+use App\Services\BookingKind;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,15 +32,7 @@ class PublicBookingController extends Controller
     // - duration_minutes 1Ã¢â‚¬â€œ5 => walk-in
     private function isWalkIn(Service $service): bool
     {
-        $durRaw = $service->duration_minutes ?? null;
-        if ($durRaw === null || $durRaw === '') return true;
-
-        if (is_numeric($durRaw)) {
-            $d = (int) $durRaw;
-            return $d > 0 && $d <= 5;
-        }
-
-        return false;
+        return BookingKind::isWalkInService($service);
     }
 
     public function create(Service $service)

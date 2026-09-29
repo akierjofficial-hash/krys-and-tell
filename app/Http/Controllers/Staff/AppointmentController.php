@@ -96,6 +96,7 @@ class AppointmentController extends Controller
 
     public function edit(Appointment $appointment)
     {
+        abort_if($appointment->status === 'voided', 404);
         $appointment->load(['patient', 'service', 'doctor']);
 
         $patients = Patient::orderBy('first_name')->get();
@@ -110,6 +111,9 @@ class AppointmentController extends Controller
 
     public function update(Request $request, Appointment $appointment)
     {
+        if ($appointment->status === 'voided') {
+            return back()->withErrors(['appointment' => 'Voided requests are retained as internal history.']);
+        }
         $validated = $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
             'service_id' => ['required', 'exists:services,id'],
@@ -129,6 +133,10 @@ class AppointmentController extends Controller
 
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        if ($appointment->status === 'pending' && $validated['status'] !== 'pending') {
+            return back()->withErrors(['status' => 'Use Booking Requests to approve, decline, or void a pending request.']);
+        }
 
         // Require at least one dentist identifier
         if (empty($validated['doctor_id']) && empty($validated['dentist_name'])) {
@@ -163,6 +171,9 @@ class AppointmentController extends Controller
 
     public function destroy(Request $request, Appointment $appointment)
     {
+        if (in_array($appointment->status, ['pending', 'voided'], true)) {
+            return back()->withErrors(['appointment' => 'Use Booking Requests to decide a pending request. Voided requests must remain in history.']);
+        }
         $label = 'Appointment #' . $appointment->id;
         if (!empty($appointment->appointment_date)) {
             try { $label .= ' (' . \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y') . ')'; } catch (\Throwable $e) {}

@@ -6,12 +6,14 @@ use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\DoctorUnavailability;
 use App\Models\Patient;
+use App\Models\Visit;
 use App\Notifications\AppointmentApproved;
 use App\Notifications\AppointmentDeclined;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Collection;
 
 class BookingApprovalService
 {
@@ -27,9 +29,7 @@ class BookingApprovalService
             $appointment = Appointment::with(['user', 'service', 'doctor'])->lockForUpdate()->findOrFail($source->id);
             $this->assertPending($appointment);
 
-            $service = $appointment->service;
-            $walkIn = (bool) $appointment->is_walk_in_request
-                || ($service && is_numeric($service->duration_minutes) && (int) $service->duration_minutes <= 5);
+            $walkIn = BookingKind::isWalkIn($appointment);
             $original = [
                 'appointment_date' => $this->date($appointment->appointment_date),
                 'appointment_time' => $this->time($appointment->appointment_time),
@@ -52,14 +52,14 @@ class BookingApprovalService
             if ($final['doctor_id']) $this->assertDentistEligible($appointment, $final['doctor_id']);
             if (!$walkIn) $this->assertSlotAvailable($appointment, $final);
 
-            if (!$appointment->patient_id) $appointment->patient_id = $this->resolvePatient($appointment);
+            if (!$appointment->patient_id) $appointment->patient_id = $this->resolvePatient($appointment, $input['patient_id'] ?? null);
             $appointment->appointment_date = $final['appointment_date'];
             $appointment->appointment_time = $final['appointment_time'];
             $appointment->doctor_id = $final['doctor_id'];
             $appointment->dentist_name = $final['doctor_id'] ? Doctor::whereKey($final['doctor_id'])->value('name') : null;
             $appointment->staff_note = $note ?: null;
             if (!$walkIn && !$appointment->duration_minutes) $appointment->duration_minutes = 60;
-            $appointment->status = $appointment->is_walk_in_request ? 'walked_in' : 'upcoming';
+            $appointment->status = $walkIn ? 'walked_in' : 'upcoming';
             $appointment->save();
             $notify = true;
 
@@ -90,6 +90,27 @@ class BookingApprovalService
 
         $this->notify($appointment, new AppointmentDeclined($appointment));
         return $appointment;
+    }
+
+    public function void(Appointment $source, string $reason, $actor): Appointment
+    {
+        $reason = trim($reason);
+        if ($reason === '') $this->fail('reason', 'Enter an internal reason for voiding this request.');
+        return DB::transaction(function () use ($source, $reason, $actor) {
+            $appointment = Appointment::lockForUpdate()->findOrFail($source->id);
+            $this->assertPending($appointment);
+            if (Visit::withTrashed()->where('source_appointment_id', $appointment->id)->exists()) {
+                $this->fail('appointment', 'A visit or financial record is linked to this request. Review it before voiding.');
+            }
+            $appointment->status = 'voided';
+            $appointment->void_reason = $reason;
+            $appointment->voided_by = $actor->id;
+            $appointment->voided_at = now();
+            $appointment->save();
+            $this->audit->record($actor, 'booking.voided', $appointment, 'Erroneous or duplicate request voided internally.',
+                ['status' => 'pending'], ['status' => 'voided'], $reason, true);
+            return $appointment;
+        });
     }
 
     private function assertPending(Appointment $appointment): void
@@ -138,18 +159,37 @@ class BookingApprovalService
         }
     }
 
-    private function resolvePatient(Appointment $appointment): int
+    public function patientCandidates(Appointment $appointment): Collection
     {
         $email = trim((string) ($appointment->public_email ?: $appointment->user?->email));
         $phone = trim((string) $appointment->public_phone);
-        if ($email !== '') {
-            $matches = Patient::whereRaw('LOWER(email) = ?', [mb_strtolower($email)])->get();
-            if ($matches->count() === 1) return $matches->first()->id;
+        if ($email === '' && $phone === '') return collect();
+        return Patient::query()->where(function ($query) use ($email, $phone) {
+            if ($email !== '') $query->whereRaw('LOWER(email) = ?', [mb_strtolower($email)]);
+            if ($phone !== '') {
+                $method = $email !== '' ? 'orWhere' : 'where';
+                $query->{$method}('contact_number', $phone);
+            }
+        })->orderBy('id')->get(['id', 'first_name', 'middle_name', 'last_name', 'birthdate', 'contact_number', 'email']);
+    }
+
+    private function resolvePatient(Appointment $appointment, ?string $selectedId = null): int
+    {
+        $matches = $this->patientCandidates($appointment);
+        if ($selectedId === 'new') return $this->createPatient($appointment);
+        if ($selectedId !== null && $selectedId !== '') {
+            $selected = $matches->firstWhere('id', (int) $selectedId);
+            if (!$selected) $this->fail('patient_id', 'Select a patient from the matching records.');
+            return $selected->id;
         }
-        if ($phone !== '') {
-            $matches = Patient::where('contact_number', $phone)->get();
-            if ($matches->count() === 1) return $matches->first()->id;
-        }
+        if ($matches->isNotEmpty()) $this->fail('patient_id', 'Matching clinic records need review. Use Edit & Approve to confirm the correct patient or create a new record.');
+        return $this->createPatient($appointment);
+    }
+
+    private function createPatient(Appointment $appointment): int
+    {
+        $email = trim((string) ($appointment->public_email ?: $appointment->user?->email));
+        $phone = trim((string) $appointment->public_phone);
 
         $first = trim((string) $appointment->public_first_name);
         $middle = trim((string) $appointment->public_middle_name);

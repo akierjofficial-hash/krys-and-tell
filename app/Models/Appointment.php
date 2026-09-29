@@ -14,6 +14,7 @@ class Appointment extends Model
     public const STATUS_ACTIVE = ['upcoming', 'approved', 'confirmed', 'scheduled', 'walked_in'];
     public const STATUS_COMPLETED = ['completed', 'done'];
     public const STATUS_CANCELLED = ['canceled', 'cancelled', 'declined', 'rejected'];
+    public const STATUS_VOIDED = 'voided';
 
     public const STATUS_DASHBOARD = [
         'pending', 'upcoming', 'approved', 'confirmed', 'scheduled', 'walked_in',
@@ -28,6 +29,9 @@ class Appointment extends Model
         'duration_minutes',
         'status',
         'is_walk_in_request',
+        'voided_by',
+        'voided_at',
+        'void_reason',
         'notes',
         'dentist_name',
 
@@ -37,6 +41,7 @@ class Appointment extends Model
 
     protected $casts = [
         'is_walk_in_request' => 'boolean',
+        'voided_at' => 'datetime',
     ];
 
     public function user()
@@ -57,6 +62,16 @@ class Appointment extends Model
     public function doctor()
     {
         return $this->belongsTo(\App\Models\Doctor::class, 'doctor_id');
+    }
+
+    public function sourceVisits()
+    {
+        return $this->hasMany(Visit::class, 'source_appointment_id');
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by')->withTrashed();
     }
 
     public function scopeDashboardActive($query)

@@ -267,7 +267,7 @@
 
 @section('content')
 <div class="container-fluid">
-    <x-admin.page-header title="Booking requests" description="Review and resolve public booking requests before they enter the clinic schedule.">
+    <x-admin.page-header title="Booking requests" description="Review website requests and staff-created pending appointments before they enter the clinic schedule.">
         <x-slot:actions><div class="d-flex align-items-center gap-2">
             <span class="badge bg-warning text-dark" style="border-radius:999px;font-weight:900;">
                 Pending: <span id="pendingCountBadge">{{ $requests->total() }}</span>
@@ -290,10 +290,8 @@
     <div class="row g-3" id="approvalsGrid">
         @forelse($requests as $r)
             @php
-                $isWalkInRequest = (bool)($r->is_walk_in_request ?? false);
-                $patientName = $r->public_name
-                    ?? trim(($r->public_first_name ?? '').' '.($r->public_middle_name ? $r->public_middle_name.' ' : '').($r->public_last_name ?? ''))
-                    ?: 'Patient';
+                $isWalkInRequest = \App\Services\BookingKind::isWalkIn($r);
+                $patientName = $r->displayPatientName();
             @endphp
             <div class="col-lg-6 col-xl-4"
                  data-appointment-id="{{ $r->id }}"
@@ -303,21 +301,23 @@
                  data-time-raw="{{ $r->appointment_time ? \Carbon\Carbon::parse($r->appointment_time)->format('H:i') : '' }}"
                  data-is-walkin-request="{{ $isWalkInRequest ? '1' : '0' }}"
                  data-note-raw="{{ $r->staff_note ?? '' }}"
-                 data-patient-name="{{ $r->public_name ?? trim(($r->public_first_name ?? '').' '.($r->public_middle_name ? $r->public_middle_name.' ' : '').($r->public_last_name ?? '')) }}"
+                 data-patient-name="{{ $patientName }}"
                  data-service-name="{{ optional($r->service)->name ?? 'Service not set' }}"
                  data-doctor-name="{{ optional($r->doctor)->name ?? $r->dentist_name ?? 'Doctor to be assigned' }}"
                  data-email="{{ $r->public_email ?? 'Not provided' }}"
                  data-phone="{{ $r->public_phone ?? 'Not provided' }}"
                  data-address="{{ $r->public_address ?? 'Not provided' }}"
-                 data-approve-url="{{ route('admin.approvals.approve', $r) }}">
+                 data-approve-url="{{ route('admin.approvals.approve', $r) }}"
+                 data-candidates-url="{{ route('admin.approvals.patients', $r) }}"
+                 data-void-url="{{ route('admin.approvals.void', $r) }}">
                 <div class="card kt-approval-card h-100">
                     <div class="card-body p-4">
                         <div class="kt-approval-card__top">
                             <div>
                                 <h4 class="kt-approval-card__name">
-                                    {{ $r->public_name ?? trim(($r->public_first_name ?? '').' '.($r->public_middle_name ? $r->public_middle_name.' ' : '').($r->public_last_name ?? '')) }}
+                                    {{ $patientName }}
                                 </h4>
-                                <div class="kt-approval-card__sub">Request #{{ $r->id }} ready for review</div>
+                                <div class="kt-approval-card__sub">{{ \App\Services\BookingKind::origin($r) }} #{{ $r->id }}</div>
                             </div>
 
                             <div class="d-flex flex-column align-items-end gap-2">
@@ -335,7 +335,7 @@
                             </div>
                             <div class="kt-approval-grid__item">
                                 <span class="kt-approval-grid__label">Requested Time</span>
-                                <span class="kt-approval-grid__value">{{ $isWalkInRequest ? 'Walk-in request' : ($r->appointment_time ?: 'Not set yet') }}</span>
+                                <span class="kt-approval-grid__value">{{ $isWalkInRequest ? 'Walk-in · no reserved time' : ($r->appointment_time ?: 'Time needed') }}</span>
                             </div>
                             <div class="kt-approval-grid__item">
                                 <span class="kt-approval-grid__label">Service</span>
@@ -375,8 +375,9 @@
                             </form>
 
                                 <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button" data-decline-url="{{ route('admin.approvals.decline', $r) }}" data-patient-name="{{ $patientName }}">
-                                    <i class="fa-solid fa-xmark me-1"></i> Decline
+                                    <i class="fa-solid fa-xmark me-1"></i> Decline and notify patient
                                 </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-void-review" type="button">Void request (internal)</button>
                         </div>
                     </div>
                 </div>
@@ -463,6 +464,11 @@
                     </select>
                     <div class="small text-muted mt-1" id="eaTimeHelp"></div>
                 </div>
+                <div class="col-12" id="eaPatientMatchWrap" hidden>
+                    <label class="form-label" for="eaPatientMatch">Clinic patient record</label>
+                    <select class="form-select" id="eaPatientMatch" name="patient_id"></select>
+                    <div class="small text-muted mt-1">Confirm the patient before linking. Shared contact details do not prove identity.</div>
+                </div>
 
                 <div class="col-12">
                     <div class="kt-approval-note-meta mb-2">
@@ -492,6 +498,8 @@
 </div>
 
 <div class="modal fade" id="declineModal" tabindex="-1" aria-labelledby="declineModalTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="declineForm"><div class="modal-header"><h5 class="modal-title" id="declineModalTitle">Decline booking request</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p class="text-muted" id="declinePatientText"></p><label class="form-label fw-bold" for="declineReason">Reason for the patient</label><textarea class="form-control" id="declineReason" name="staff_note" rows="4" required placeholder="Explain why this booking cannot be accepted."></textarea><div class="alert alert-danger d-none mt-3" id="declineError"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger">Decline request</button></div></form></div></div></div>
+
+<div class="modal fade" id="voidModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="voidForm"><div class="modal-header"><h5 class="modal-title">Void request internally</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p class="text-muted">Use for an erroneous or duplicate request. No patient email will be sent. Check the patient history first; older visits may lack an appointment link.</p><label class="form-label" for="voidReason">Internal reason</label><textarea id="voidReason" class="form-control" rows="3" required maxlength="1000"></textarea><div id="voidError" class="alert alert-danger d-none mt-3"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-outline-danger" type="submit">Void request</button></div></form></div></div></div>
 
 <script>
 (function(){
@@ -816,13 +824,15 @@
             data-email="${esc(email)}"
             data-phone="${esc(phone)}"
             data-address="${esc(address)}"
-            data-approve-url="${esc(item.approve_url)}">
+            data-approve-url="${esc(item.approve_url)}"
+            data-candidates-url="${esc(item.candidates_url)}"
+            data-void-url="${esc(item.void_url)}">
             <div class="card kt-approval-card h-100">
                 <div class="card-body p-4">
                     <div class="kt-approval-card__top">
                         <div>
                             <h4 class="kt-approval-card__name">${esc(patientName)}</h4>
-                            <div class="kt-approval-card__sub">Request #${esc(id)} ready for review</div>
+                            <div class="kt-approval-card__sub">${esc(item.origin)} #${esc(id)}</div>
                         </div>
 
                         <div class="d-flex flex-column align-items-end gap-2">
@@ -878,8 +888,9 @@
                         </form>
 
                             <button class="btn btn-outline-danger btn-sm btn-decline-review" type="button" data-decline-url="${esc(item.decline_url)}" data-patient-name="${esc(patient)}">
-                                <i class="fa-solid fa-xmark me-1"></i> Decline
+                                <i class="fa-solid fa-xmark me-1"></i> Decline and notify patient
                             </button>
+                            <button class="btn btn-outline-secondary btn-sm btn-void-review" type="button">Void request (internal)</button>
                     </div>
                 </div>
             </div>
@@ -1001,6 +1012,22 @@
         const noteRaw = card.getAttribute('data-note-raw') || '';
         const approveUrl = card.getAttribute('data-approve-url') || '';
 
+        const matchWrap = document.getElementById('eaPatientMatchWrap');
+        const matchSelect = document.getElementById('eaPatientMatch');
+        matchWrap.hidden = true;
+        matchSelect.innerHTML = '';
+        try {
+            const response = await fetch(card.dataset.candidatesUrl, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error('Could not load matching patient records.');
+            const candidates = (await response.json()).items || [];
+            if (candidates.length) {
+                matchWrap.hidden = false;
+                matchSelect.innerHTML = '<option value="">Confirm patient record</option>' + candidates.map(p =>
+                    `<option value="${esc(p.id)}">${esc(p.name)} · #${esc(p.id)} · DOB ${esc(p.birthdate || 'unknown')} · ${esc(p.contact || p.email || 'no contact')}</option>`
+                ).join('') + '<option value="new">Create a new patient record</option>';
+            }
+        } catch (error) { setError(error.message); return; }
+
         currentRequest = {
             appointmentId: apptId,
             patientName: card.getAttribute('data-patient-name') || 'Patient',
@@ -1105,6 +1132,7 @@
         fd.append('appointment_date', eaDate?.value || '');
         fd.append('appointment_time', eaTime?.disabled ? '' : (eaTime?.value || ''));
         fd.append('staff_note', eaNote?.value || '');
+        fd.append('patient_id', document.getElementById('eaPatientMatch')?.value || '');
 
         setSubmitLoading(true);
 
@@ -1168,6 +1196,34 @@
         declineModal?.hide(); ensureEmptyState();
         pendingBadge.textContent = data.pendingCount ?? Math.max(0, Number(pendingBadge.textContent)-1);
         showNotice(`<div class="alert alert-success" style="border-radius:14px;">${esc(data.message || 'Booking declined.')}</div>`);
+    });
+
+    const voidModal = new bootstrap.Modal(document.getElementById('voidModal'));
+    const voidReason = document.getElementById('voidReason');
+    const voidError = document.getElementById('voidError');
+    let voidCard = null;
+    grid.addEventListener('click', event => {
+        if (!event.target.closest('.btn-void-review')) return;
+        voidCard = event.target.closest('[data-appointment-id]');
+        voidReason.value = '';
+        voidError.classList.add('d-none');
+        voidModal.show();
+    });
+    document.getElementById('voidForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!voidCard) return;
+        try {
+            const response = await fetch(voidCard.dataset.voidUrl, {
+                method: 'POST',
+                headers: {'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest', 'X-CSRF-TOKEN':csrf},
+                body: new URLSearchParams({_token:csrf, reason:voidReason.value.trim()})
+            });
+            const data = await response.json();
+            if (!response.ok || data.ok === false) throw new Error(data.message || 'Could not void request.');
+            voidCard.remove(); voidModal.hide(); ensureEmptyState();
+            pendingBadge.textContent = data.pendingCount;
+            showNotice(`<div class="alert alert-success">${esc(data.message)}</div>`);
+        } catch (error) { voidError.textContent = error.message; voidError.classList.remove('d-none'); }
     });
 
     poll();
