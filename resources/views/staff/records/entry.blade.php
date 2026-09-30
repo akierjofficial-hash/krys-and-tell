@@ -52,6 +52,11 @@
     .kt-staff .record-entry .re-procedure-main{grid-template-columns:minmax(230px,2fr) minmax(160px,1fr) !important}
     .re-procedure-extra{margin-top:13px}.re-procedure-extra summary,.re-paste-panel summary{width:fit-content;color:#1266bf;font-size:13px;font-weight:700;cursor:pointer;padding:5px 0}
     .re-procedure-extra-grid{margin-top:12px}.re-procedure-extra-grid textarea{min-height:44px}
+    .re-recement-context{max-width:620px;margin-top:13px}
+    .re-recement-context label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}
+    .re-recement-context select{width:100%;min-height:44px;border:1px solid #bac6d6;border-radius:8px;padding:8px;background:#fff;color:#263246}
+    .re-recement-context p{margin:7px 0 0}
+    html[data-theme="dark"] .record-entry .re-recement-context select{background:#101b2b;color:#e2e8f0;border-color:#65778e}
     .kt-staff .record-entry .re-plan-overview{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
     .kt-staff .record-entry .re-plan-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important;margin-top:18px}
     .re-unknown-total{align-self:end;margin:0;padding:11px 13px;background:#eaf4ff;border:1px solid #c9dffa;border-radius:9px;color:#164978;font-size:13px;font-weight:700}
@@ -218,5 +223,5 @@
     @endif
 </div>
 <script>window.recordEntryConfig = {{ Illuminate\Support\Js::from($config) }};</script>
-<script src="{{ asset('js/staff-record-entry.js') }}?v=12" defer></script>
+<script src="{{ asset('js/staff-record-entry.js') }}?v=13" defer></script>
 @endsection

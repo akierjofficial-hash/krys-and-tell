@@ -503,7 +503,28 @@
                                         @endif
                                     </td>
 
-                                    <td>{{ trim((string)$p->notes) !== '' ? $p->notes : '—' }}</td>
+                                    <td>
+                                        {{ trim((string)$p->notes) !== '' ? $p->notes : '—' }}
+                                        @if($p->relatedInstallmentPlan)
+                                            <div>
+                                                @if($p->relatedInstallmentPlan->trashed())
+                                                    Related braces plan #{{ $p->relatedInstallmentPlan->id }} (archived)
+                                                @else
+                                                    <a href="{{ route('staff.installments.show', $p->relatedInstallmentPlan) }}">Related braces plan #{{ $p->relatedInstallmentPlan->id }}</a>
+                                                @endif
+                                                <small>(context only)</small>
+                                            </div>
+                                        @elseif($p->relatedVisit)
+                                            <div>
+                                                @if($p->relatedVisit->trashed())
+                                                    Related braces visit #{{ $p->relatedVisit->id }} (archived)
+                                                @else
+                                                    <a href="{{ route('staff.visits.show', $p->relatedVisit) }}">Related braces visit #{{ $p->relatedVisit->id }}</a>
+                                                @endif
+                                                <small>(context only)</small>
+                                            </div>
+                                        @endif
+                                    </td>
 
                                     <td class="text-end" style="font-weight:950;">
                                         {{ $p->price !== null ? '₱'.number_format((float)$p->price, 2) : '—' }}

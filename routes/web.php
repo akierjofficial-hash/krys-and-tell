@@ -311,6 +311,7 @@ Route::middleware('auth')->group(function () {
             Route::prefix('record-entry')->name('records.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Staff\RecordEntryController::class, 'index'])->name('index');
                 Route::get('/patients', [\App\Http\Controllers\Staff\RecordEntryController::class, 'patients'])->name('patients');
+                Route::get('/recement-contexts', [\App\Http\Controllers\Staff\RecordEntryController::class, 'recementContexts'])->name('recement-contexts');
                 Route::put('/{id}/draft', [\App\Http\Controllers\Staff\RecordEntryController::class, 'draft'])->name('draft');
                 Route::post('/{id}/review', [\App\Http\Controllers\Staff\RecordEntryController::class, 'review'])->name('review');
                 Route::post('/{id}/save', [\App\Http\Controllers\Staff\RecordEntryController::class, 'store'])->name('store');

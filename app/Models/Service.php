@@ -20,6 +20,8 @@ class Service extends Model
         'is_walk_in',
         'walk_in_note',
         'restrict_to_assigned_doctors',
+        'is_staff_only',
+        'internal_code',
     ];
 
     protected $casts = [
@@ -27,7 +29,18 @@ class Service extends Model
         'base_price' => 'decimal:2',
         'restrict_to_assigned_doctors' => 'boolean',
         'is_walk_in' => 'boolean',
+        'is_staff_only' => 'boolean',
     ];
+
+    public function scopePubliclyAvailable($query)
+    {
+        return $query->where('is_staff_only', false);
+    }
+
+    public function isRecement(): bool
+    {
+        return $this->internal_code === 'recement';
+    }
 
     public function visitProcedures()
     {

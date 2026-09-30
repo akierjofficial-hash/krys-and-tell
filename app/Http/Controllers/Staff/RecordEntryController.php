@@ -9,6 +9,7 @@ use App\Models\RecordEntryBatch;
 use App\Models\Service;
 use App\Models\Visit;
 use App\Services\RecordEntryService;
+use App\Services\RecementContextService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -16,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class RecordEntryController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, RecementContextService $recementContexts)
     {
         $request->validate(['patient_id' => ['nullable', 'integer', Rule::exists('patients', 'id')->whereNull('deleted_at')], 'mode' => ['nullable', Rule::in(['past', 'visit'])]]);
         $mode = $request->input('mode', 'past');
@@ -27,6 +28,8 @@ class RecordEntryController extends Controller
             'patientSearchUrl' => route('staff.records.patients'),
             'doctors' => Doctor::orderBy('name')->get(['id', 'name', 'is_active']),
             'services' => Service::orderBy('name')->get(['id', 'name', 'base_price']),
+            'recementServiceId' => Service::where('internal_code', 'recement')->value('id'),
+            'recementContexts' => $patient ? $recementContexts->options($patient->id) : [],
             'existingVisits' => $patient ? Visit::where('patient_id', $patient->id)->orderByDesc('visit_date')->get(['id', 'visit_date', 'dentist_name']) : [],
             'drafts' => $patient ? RecordEntryBatch::where('user_id', $request->user()->id)->where('patient_id', $patient->id)->where('mode', $mode)->whereIn('status', ['draft', 'reviewed'])->latest('updated_at')->get() : [],
             'baseUrl' => route('staff.records.index'), 'today' => today()->toDateString(),
@@ -61,6 +64,13 @@ class RecordEntryController extends Controller
 
         return response()->json(['patients' => $query->orderBy('last_name')->orderBy('first_name')
             ->limit(20)->get(['id', 'first_name', 'last_name', 'birthdate', 'contact_number'])]);
+    }
+
+    public function recementContexts(Request $request, RecementContextService $recementContexts)
+    {
+        $data = $request->validate(['patient_id' => ['required', 'integer', Rule::exists('patients', 'id')->whereNull('deleted_at')]]);
+
+        return response()->json(['contexts' => $recementContexts->options((int) $data['patient_id'])]);
     }
 
     private function writeDraft(Request $request, string $id): RecordEntryBatch

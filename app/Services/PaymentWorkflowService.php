@@ -6,6 +6,7 @@ use App\Models\InstallmentPayment;
 use App\Models\InstallmentPlan;
 use App\Models\Payment;
 use App\Models\Visit;
+use App\Models\VisitProcedure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,35 @@ class PaymentWorkflowService
                     'submission_token' => $data['submission_token'],
                 ]);
                 $visit->load('payments');
+                $this->finance->syncVisitStatus($visit);
+                return $payment;
+            }
+
+            if ($data['target_type'] === 'recement') {
+                $procedure = VisitProcedure::with(['service', 'visit.payments', 'visit.installmentPlan'])
+                    ->lockForUpdate()->findOrFail($data['target_id']);
+                $visit = $procedure->visit;
+                $plan = $visit?->installmentPlan;
+                if (!$procedure->service?->isRecement() || !$plan
+                    || (int) $plan->service_id === (int) $procedure->service_id
+                    || (int) $visit->patient_id !== (int) $data['patient_id']
+                    || (int) $plan->patient_id !== (int) $data['patient_id']) {
+                    $this->invalid('target_id', 'Choose a Recement charge linked to this patient’s braces visit.');
+                }
+                if ($visit->payments->contains(fn ($payment) => $payment->visit_procedure_id === null)) {
+                    $this->invalid('target_id', 'This visit has an unallocated receipt. Review its payment history before collecting more.');
+                }
+                $paid = (float) $visit->payments->where('visit_procedure_id', $procedure->id)->sum('amount');
+                $this->validateAmount((float) $data['amount'], round((float) $procedure->price - $paid, 2));
+                $payment = Payment::create([
+                    'visit_id' => $visit->id,
+                    'visit_procedure_id' => $procedure->id,
+                    'amount' => $data['amount'],
+                    'method' => $data['method'],
+                    'payment_date' => $data['payment_date'],
+                    'notes' => $data['notes'] ?? null,
+                    'submission_token' => $data['submission_token'],
+                ]);
                 $this->finance->syncVisitStatus($visit);
                 return $payment;
             }

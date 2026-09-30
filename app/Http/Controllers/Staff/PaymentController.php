@@ -42,6 +42,10 @@ class PaymentController extends Controller
 
         $visit->loadMissing('procedures.service');
 
+        // A partial receipt must not silently turn a separately billed recement
+        // into a discounted charge. Staff set its actual price on the visit.
+        if ($visit->procedures->contains(fn ($procedure) => $procedure->service?->isRecement())) return false;
+
         $hasCustom = $visit->procedures->contains(fn ($p) => (bool) ($p->service?->allow_custom_price ?? false));
         if (!$hasCustom) return false;
 
@@ -185,6 +189,19 @@ class PaymentController extends Controller
                 return ['type' => 'visit', 'id' => $visit->id, 'balance' => $balance,
                     'label' => 'Visit #' . $visit->id . ' · ' . optional($visit->visit_date)->format('M j, Y') . ' · ' . ($services ?: 'Treatment')];
             })->filter(fn ($item) => $item['balance'] > 0)->values();
+        $recementOnPlans = Visit::with(['procedures.service', 'payments'])
+            ->where('patient_id', $patientId)->whereHas('installmentPlan')->orderByDesc('visit_date')->get()
+            ->filter(fn ($visit) => $visit->payments->every(fn ($payment) => $payment->visit_procedure_id !== null))
+            ->flatMap(fn ($visit) => $visit->procedures
+                ->filter(fn ($procedure) => $procedure->service?->isRecement())
+                ->map(function ($procedure) use ($visit) {
+                    $paid = $visit->payments->where('visit_procedure_id', $procedure->id)->sum('amount');
+                    return [
+                        'type' => 'recement', 'id' => $procedure->id,
+                        'balance' => max(0, round((float) $procedure->price - (float) $paid, 2)),
+                        'label' => 'Recement on visit #'.$visit->id.' · '.$visit->visit_date?->format('M j, Y').' (separate from braces plan)',
+                    ];
+                }))->filter(fn ($item) => $item['balance'] > 0)->values();
         $plans = InstallmentPlan::with(['service', 'payments'])->where('patient_id', $patientId)
             ->where('status', '!=', InstallmentPlan::STATUS_COMPLETED)->orderByDesc('start_date')->get()
             ->map(fn ($plan) => ['type' => 'plan', 'id' => $plan->id, 'balance' => $plan->hasUnknownTotal() ? null : $finance->planBalance($plan),
@@ -192,14 +209,14 @@ class PaymentController extends Controller
                 'label' => 'Plan #' . $plan->id . ' · ' . ($plan->service?->name ?: 'Treatment plan')
                     . ($plan->hasUnknownTotal() ? ' · Open monthly — no final total' : '')])
             ->filter(fn ($item) => $item['unknown_total'] || $item['balance'] > 0)->values();
-        return response()->json(['items' => $visits->concat($plans)->values()]);
+        return response()->json(['items' => $visits->concat($recementOnPlans)->concat($plans)->values()]);
     }
 
     public function record(Request $request, PaymentWorkflowService $workflow)
     {
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
-            'target_type' => 'required|in:visit,plan',
+            'target_type' => 'required|in:visit,plan,recement',
             'target_id' => 'required|integer|min:1',
             'amount' => 'required|numeric|gt:0',
             'method' => 'required|in:Cash,GCash,Card,Bank Transfer',
@@ -468,6 +485,7 @@ class PaymentController extends Controller
             ->get()
             ->filter(function (Visit $visit) use ($installmentSet) {
                 if (isset($installmentSet[$visit->id])) return false;
+                if ($visit->procedures->contains(fn ($procedure) => $procedure->service?->isRecement())) return false;
 
                 $paid = (float) ($visit->total_paid ?? 0);
                 if ($paid > 0) return false;
@@ -483,6 +501,7 @@ class PaymentController extends Controller
             ->whereNotIn('status', ['completed', 'cancelled', 'declined'])
             ->whereIn('status', $payableStatuses)
             ->whereNotNull('patient_id')
+            ->whereHas('service', fn ($query) => $query->where('is_staff_only', false))
             ->orderBy('appointment_date', 'desc')
             ->orderBy('appointment_time', 'desc')
             ->get();
@@ -547,6 +566,11 @@ class PaymentController extends Controller
 
         $oldVisitId = (int) $payment->visit_id;
         $newVisitId = (int) $request->visit_id;
+        if ($oldVisitId !== $newVisitId && $payment->procedure?->service?->isRecement()) {
+            throw ValidationException::withMessages([
+                'visit_id' => 'This receipt is linked to a Recement procedure. Keep it on the original visit or correct that visit first.',
+            ]);
+        }
         $newAmount = (float) $request->amount;
         $epsilon = 0.0001;
 

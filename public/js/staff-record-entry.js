@@ -96,7 +96,7 @@
         badge.classList.toggle('re-state-warning', /unsaved|not saved|waiting|recovered|enter the|failed|needs/.test(message));
     }).observe(statusNode, {childList:true, subtree:true, characterData:true});
     const uuid = () => crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, n => (n ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> n / 4).toString(16));
-    const procedure = () => ({service_id:'', tooth_number:'', surface:'', shade:'', price:'', notes:''});
+    const procedure = () => ({service_id:'', tooth_number:'', surface:'', shade:'', price:'', notes:'', related_context:''});
     const receipt = date => ({amount:'', payment_date:date || c.today, method:'Cash', notes:'', procedure_index:''});
     const visit = () => ({visit_date:c.mode === 'visit' ? c.today : '', doctor_id:$('re-default-doctor').value, notes:'', arrangement:'ordinary', procedures:[procedure()], payments:[], plan:null});
     let state = {id:uuid(), version:0, payload:{default_doctor_id:'',visits:[visit()]}}, drafts = [];
@@ -109,7 +109,7 @@
         const parts = path.split('.');
         const names = {
             visit_date:'Visit date', doctor_id:'Dentist', service_id:'Treatment / service', price:'Actual charge',
-            tooth_number:'Tooth number', surface:'Surface', shade:'Shade', notes:'Notes',
+            tooth_number:'Tooth number', surface:'Surface', shade:'Shade', notes:'Notes', related_context:'Related braces treatment',
             arrangement:'Payment arrangement', procedures:'Procedures', payments:'Receipts',
             amount:'Amount', payment_date:'Payment date', method:'Payment method',
             procedure_index:'Treatment paid', month_number:'Payment number', total_cost:'Agreed total',
@@ -283,8 +283,9 @@
         const listId = `re-service-options-${visitIndex}-${procedureIndex}`;
         return `<div class="re-service-field"><label for="re-service-${visitIndex}-${procedureIndex}">Treatment / service</label><div class="re-service-picker"><input id="re-service-${visitIndex}-${procedureIndex}" type="search" role="combobox" aria-autocomplete="list" aria-required="true" aria-expanded="false" aria-controls="${listId}" autocomplete="off" data-service-picker="${path}" value="${esc(serviceName(selectedId))}" placeholder="Search or choose treatment"><input type="hidden" data-path="${path}.service_id" value="${esc(selectedId)}"><div id="${listId}" class="re-service-options" role="listbox" hidden></div></div></div>`;
     }
-    function treatmentOptions(v, selected, emptyLabel) {
+    function treatmentOptions(v, selected, emptyLabel, excludeRecement=false) {
         return option('', emptyLabel, selected) + state.payload.visits[v].procedures.map((p,i) => {
+            if (excludeRecement && String(p.service_id) === String(c.recementServiceId)) return '';
             const service = c.services.find(s => String(s.id) === String(p.service_id));
             return option(i, `${service?.name || `Treatment ${i+1}`} — ${p.price === null || p.price === '' ? 'Charge not agreed' : money(p.price)}`, selected);
         }).join('');
@@ -304,7 +305,7 @@
     }
     function planFields(v, i, base, arrangementChoices) {
         const p = v.plan, path = `${base}.plan`, unknown = p.is_unpriced_contract == 1;
-        const overview = `<div class="re-grid re-plan-overview">${select('Financed treatment',`${path}.procedure_index`,treatmentOptions(i,p.procedure_index,'Choose financed treatment'))}${input('Plan start date',`${path}.start_date`,p.start_date,'date')}${unknown ? '<p class="re-unknown-total">Final total not agreed. The financed procedure charge stays blank.</p>' : input('Total agreed cost',`${path}.total_cost`,p.total_cost,'number')}</div>`;
+        const overview = `<div class="re-grid re-plan-overview">${select('Financed treatment',`${path}.procedure_index`,treatmentOptions(i,p.procedure_index,'Choose financed treatment',true))}${input('Plan start date',`${path}.start_date`,p.start_date,'date')}${unknown ? '<p class="re-unknown-total">Final total not agreed. The financed procedure charge stays blank.</p>' : input('Total agreed cost',`${path}.total_cost`,p.total_cost,'number')}</div>`;
         const initial = `<div class="re-grid re-plan-grid">${input('Initial payment received (counted once)',`${path}.downpayment`,p.downpayment,'number')}${input('Initial payment date',`${path}.downpayment_date`,p.downpayment_date,'date')}${select('Initial payment method',`${path}.downpayment_method`,methods.map(m => option(m,m,p.downpayment_method)).join(''))}${unknown ? `${input('Monthly amount',`${path}.open_monthly_payment`,p.open_monthly_payment,'number')}${input('First monthly due date',`${path}.first_due_date`,p.first_due_date,'date')}` : `${select('Contract term',`${path}.is_open_contract`,option(0,'Fixed term',p.is_open_contract)+option(1,'Open term, agreed total',p.is_open_contract))}${p.is_open_contract == 1 ? input('Suggested monthly amount (optional)',`${path}.open_monthly_payment`,p.open_monthly_payment,'number') : input('Number of months',`${path}.months`,p.months,'number','inputmode="numeric"')}`}</div>`;
         const end = unknown ? `<label class="re-ended-choice"><input type="checkbox" data-ended-toggle="${i}" ${p.ended_at ? 'checked' : ''}> Treatment has ended</label><div class="re-end-fields" ${p.ended_at ? '' : 'hidden'}><div class="re-grid">${input('Treatment end date',`${path}.ended_at`,p.ended_at,'date')}</div><label class="re-closure-review"><input type="checkbox" data-path="${path}.acknowledge_unpaid" value="1" ${p.acknowledge_unpaid == 1 ? 'checked' : ''}> I reviewed the monthly amounts due through the end date and any unpaid amount.</label></div>` : '';
         const paste = c.mode === 'past' && unknown ? `<details class="re-paste-panel"><summary>Paste multiple past receipts</summary><div class="re-paste-content"><p class="re-muted">One per line: YYYY-MM-DD, amount, method. Example: 2024-02-01, 2000, Cash. Do not include the initial payment again.</p><label for="re-monthly-import-${i}">Past monthly receipts</label><textarea id="re-monthly-import-${i}" class="form-control" data-monthly-import="${i}" rows="4" placeholder="2024-02-01, 2000, Cash"></textarea><button type="button" class="btn btn-outline-secondary btn-sm" data-action="import-monthly-receipts" data-v="${i}">Import pasted receipts</button></div></details>` : '';
@@ -328,7 +329,9 @@
             const procs = v.procedures.map((p,j) => {
                 const path = `${base}.procedures.${j}`;
                 const details = [p.tooth_number, p.surface, p.shade, p.notes].some(Boolean);
-                return `<div class="re-row re-procedure-row"><div class="re-row-heading"><strong>Procedure ${j+1}</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-procedure" data-v="${i}" data-j="${j}">Remove procedure</button></div><div class="re-grid re-procedure-main">${servicePicker(path,p.service_id,i,j)}${input(v.plan?.is_unpriced_contract == 1 && Number(v.plan.procedure_index) === j ? 'Actual charge (not agreed)' : 'Actual charge',`${path}.price`,p.price,'number')}</div><details class="re-procedure-extra" data-procedure-details="${i}-${j}" ${details || expandedProcedures.has(`${i}-${j}`) ? 'open' : ''}><summary>More details: tooth, surface, shade & notes</summary><div class="re-grid re-procedure-extra-grid">${input('Tooth number(s)',`${path}.tooth_number`,p.tooth_number,'text','maxlength="50"')}${input('Surface',`${path}.surface`,p.surface,'text','maxlength="10"')}${input('Shade',`${path}.shade`,p.shade,'text','maxlength="10"')}${notes('Procedure notes',`${path}.notes`,p.notes)}</div></details></div>`;
+                const recementContext = String(p.service_id) === String(c.recementServiceId)
+                    ? `<div class="re-recement-context">${select('Related braces visit or plan (optional)',`${path}.related_context`,option('', 'No linked braces record', p.related_context)+(c.recementContexts || []).map(row => option(row.value,row.label,p.related_context)).join(''))}<p class="re-muted">Context only. Recement is billed separately from the braces plan; the usual charge is ₱500 and you may adjust it above.</p></div>` : '';
+                return `<div class="re-row re-procedure-row"><div class="re-row-heading"><strong>Procedure ${j+1}</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-procedure" data-v="${i}" data-j="${j}">Remove procedure</button></div><div class="re-grid re-procedure-main">${servicePicker(path,p.service_id,i,j)}${input(v.plan?.is_unpriced_contract == 1 && Number(v.plan.procedure_index) === j ? 'Actual charge (not agreed)' : 'Actual charge',`${path}.price`,p.price,'number')}</div>${recementContext}<details class="re-procedure-extra" data-procedure-details="${i}-${j}" ${details || expandedProcedures.has(`${i}-${j}`) ? 'open' : ''}><summary>More details: tooth, surface, shade & notes</summary><div class="re-grid re-procedure-extra-grid">${input('Tooth number(s)',`${path}.tooth_number`,p.tooth_number,'text','maxlength="50"')}${input('Surface',`${path}.surface`,p.surface,'text','maxlength="10"')}${input('Shade',`${path}.shade`,p.shade,'text','maxlength="10"')}${notes('Procedure notes',`${path}.notes`,p.notes)}</div></details></div>`;
             }).join('');
             const ordinaryReceipts = section('Ordinary payments', `<p class="re-muted">Use for treatments paid outside a plan. For mixed billing, choose the treatment each receipt pays for.</p>${v.payments.map((p,j) => paymentRow(p,`${base}.payments.${j}`,i,j)).join('')}<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-payment" data-v="${i}">+ Add ordinary receipt</button>`, 're-ordinary-section');
             const arrangement = v.arrangement === 'ordinary' ? 'ordinary' : v.plan?.is_unpriced_contract == 1 ? 'open' : 'installment';
@@ -453,8 +456,12 @@
         const visit = state.payload.visits[Number(parts[1])];
         const procedure = visit?.procedures[Number(parts[3])];
         if (!procedure) return;
+        const previousServiceId = procedure.service_id;
         at(`${path}.service_id`, String(service.id));
-        if ((procedure.price === '' || procedure.price === null)
+        if (String(previousServiceId) !== String(service.id)) procedure.related_context = '';
+        if (service.id == c.recementServiceId && String(previousServiceId) !== String(service.id)) {
+            procedure.price = service.base_price ?? '500.00';
+        } else if ((procedure.price === '' || procedure.price === null)
             && !(visit.plan?.is_unpriced_contract == 1 && Number(visit.plan.procedure_index) === Number(parts[3]))) {
             procedure.price = service.base_price ?? '';
         }
@@ -678,7 +685,8 @@
         const doctor = c.doctors.find(row => String(row.id) === String(v.doctor_id))?.name || 'Dentist unavailable';
         const procedures = v.procedures.map((p, j) => {
             const name = c.services.find(row => String(row.id) === String(p.service_id))?.name || `Treatment #${p.service_id}`;
-            const detail = [p.tooth_number && `Tooth ${p.tooth_number}`, p.surface && `Surface ${p.surface}`, p.shade && `Shade ${p.shade}`, p.notes].filter(Boolean).join(' · ');
+            const context = (c.recementContexts || []).find(row => row.value === p.related_context)?.label;
+            const detail = [p.tooth_number && `Tooth ${p.tooth_number}`, p.surface && `Surface ${p.surface}`, p.shade && `Shade ${p.shade}`, p.notes, context && `Related to ${context}`].filter(Boolean).join(' · ');
             return `<li><span><strong>${esc(name)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</span><span>${p.price === null || p.price === '' ? 'Charge not agreed' : money(p.price)}</span></li>`;
         }).join('');
         const arrangement = !plan ? 'Paid normally / unpaid' : unknown ? 'Open contract — monthly fee until treatment ends' : plan.is_open_contract == 1 ? 'Open term, agreed total' : 'Fixed-total installment';

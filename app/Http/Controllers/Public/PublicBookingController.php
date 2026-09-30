@@ -37,6 +37,7 @@ class PublicBookingController extends Controller
 
     public function create(Service $service)
     {
+        abort_if($service->is_staff_only, 404);
         $doctors = $this->availableDoctorsForService($service);
         $doctorRequired = $this->doctorRequired($service);
         $autoAssignedDoctorId = $this->autoAssignedDoctorId($service, $doctors);
@@ -91,6 +92,7 @@ class PublicBookingController extends Controller
             return redirect()->route('profile.show')
                 ->with('error', 'Unable to edit booking because service data is missing.');
         }
+        abort_if($service->is_staff_only, 404);
 
         $dateValue = null;
         $timeValue = null;
@@ -155,6 +157,7 @@ class PublicBookingController extends Controller
             return redirect()->route('profile.show')
                 ->with('error', 'Unable to edit booking because service data is missing.');
         }
+        abort_if($service->is_staff_only, 404);
 
         $doctorRequired = $this->doctorRequired($service);
         $autoAssignedDoctorId = $this->autoAssignedDoctorId($service);
@@ -246,6 +249,7 @@ class PublicBookingController extends Controller
 
     public function slots(Request $request, Service $service)
     {
+        abort_if($service->is_staff_only, 404);
         $serviceDoctors = $this->availableDoctorsForService($service);
         $doctorRequired = $this->doctorRequired($service);
         $autoAssignedDoctorId = $this->autoAssignedDoctorId($service, $serviceDoctors);
@@ -369,6 +373,7 @@ class PublicBookingController extends Controller
 
     public function doctors(Request $request, Service $service)
     {
+        abort_if($service->is_staff_only, 404);
         $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],
         ]);
@@ -434,6 +439,7 @@ class PublicBookingController extends Controller
 
     public function store(Request $request, Service $service)
     {
+        abort_if($service->is_staff_only, 404);
         $doctorRequired = $this->doctorRequired($service);
         $autoAssignedDoctorId = $this->autoAssignedDoctorId($service);
         $user = auth()->user();

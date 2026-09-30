@@ -744,7 +744,7 @@
                             <span class="idpill" title="Service ID">#{{ $service->id }}</span>
                         </td>
 
-                        <td class="fw-semibold">{{ $service->name }}</td>
+                        <td class="fw-semibold">{{ $service->name }} @if($service->is_staff_only)<span class="badge bg-secondary ms-1">Staff only</span>@endif</td>
 
                         <td class="fw-semibold">₱{{ number_format((float)($service->base_price ?? 0), 2) }}</td>
 
@@ -768,15 +768,18 @@
 
                         <td class="text-end actions-sticky">
                             <div class="action-pills">
+                                @unless($service->isRecement())
                                 <a href="{{ route('staff.services.edit', $service->id) }}" class="pill pill-edit" title="Edit" data-kt-return>
                                     <i class="fa fa-pen"></i> <span>Edit</span>
                                 </a>
+                                @endunless
 
                                 <a href="{{ route('staff.services.patients', $service->id) }}" class="pill pill-view" title="Patients" data-kt-return>
                                     <i class="fa fa-folder-open"></i> <span>Patients</span>
                                 </a>
 
                                 {{-- ✅ Animated confirm delete --}}
+                                @unless($service->isRecement())
                                 <form id="del-svc-{{ $service->id }}" action="{{ route('staff.services.destroy', $service->id) }}" method="POST" style="display:inline;" data-kt-return>
                                     @csrf
                                     @method('DELETE')
@@ -789,6 +792,7 @@
                                         <i class="fa fa-trash"></i> <span>Delete</span>
                                     </button>
                                 </form>
+                                @endunless
                             </div>
                         </td>
                     </tr>

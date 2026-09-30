@@ -17,10 +17,13 @@ class InstallmentPlanCreationService
         return DB::transaction(function () use ($data) {
             if (!empty($data['submission_token']) && $existing = InstallmentPlan::where('submission_token', $data['submission_token'])->first()) return $existing;
             $unknown = (bool) ($data['is_unpriced_contract'] ?? false);
-            $visit = !empty($data['visit_id']) ? Visit::with(['procedures', 'payments'])->lockForUpdate()->findOrFail($data['visit_id'])
+            $visit = !empty($data['visit_id']) ? Visit::with(['procedures.service', 'payments'])->lockForUpdate()->findOrFail($data['visit_id'])
                 : $this->visitFromAppointment((int) $data['appointment_id'], $data['start_date'], $unknown);
             if (InstallmentPlan::where('visit_id', $visit->id)->exists()) $this->invalid('visit_id', 'This visit already has an installment plan.');
             if ($visit->procedures->isEmpty()) $this->invalid('visit_id', 'This visit has no treatment to finance.');
+            if ($visit->procedures->contains(fn ($procedure) => $procedure->service?->isRecement())) {
+                $this->invalid('visit_id', 'Recement must remain an ordinary charge. Record the braces installment plan separately from this visit.');
+            }
             if ($this->finance->visitPaid($visit) > 0) $this->invalid('visit_id', 'This visit already has ordinary payments. Continue that payment flow instead.');
             if (!$unknown && $visit->procedures->every(fn ($procedure) => $procedure->price === null)) {
                 $this->invalid('visit_id', 'This visit has no agreed charge. Select the open monthly contract arrangement or record an agreed total.');
@@ -53,6 +56,7 @@ class InstallmentPlanCreationService
     {
         $appointment = Appointment::with('service')->lockForUpdate()->findOrFail($id);
         if (!$appointment->patient_id) $this->invalid('appointment_id', 'This appointment has no patient record.');
+        if ($appointment->service?->isRecement()) $this->invalid('appointment_id', 'Recement cannot be converted into an installment plan.');
         if (in_array(strtolower((string) $appointment->status), ['completed', 'cancelled', 'declined'], true)) $this->invalid('appointment_id', 'This appointment is no longer payable.');
         $visit = Visit::create(['patient_id' => $appointment->patient_id, 'source_appointment_id' => $appointment->id, 'doctor_id' => $appointment->doctor_id,
             'dentist_name' => $appointment->dentist_name, 'visit_date' => $date, 'status' => 'installment',
@@ -60,7 +64,7 @@ class InstallmentPlanCreationService
         if ($appointment->service_id) $visit->procedures()->create(['service_id' => $appointment->service_id,
             'price' => $unknown ? null : ($appointment->service?->base_price ?? 0)]);
         $appointment->update(['status' => 'completed']);
-        return $visit->load(['procedures', 'payments']);
+        return $visit->load(['procedures.service', 'payments']);
     }
 
     private function invalid(string $key, string $message): never

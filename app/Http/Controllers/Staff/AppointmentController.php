@@ -80,7 +80,7 @@ class AppointmentController extends Controller
     {
         $request->validate(['patient_id' => ['nullable', Rule::exists('patients', 'id')->whereNull('deleted_at')]]);
         $patients = Patient::when($request->filled('patient_id'), fn ($q) => $q->whereKey($request->patient_id))->orderBy('first_name')->get();
-        $services = Service::orderBy('name')->get();
+        $services = Service::publiclyAvailable()->orderBy('name')->get();
 
         $doctors = Doctor::where('is_active', 1)
             ->orderBy('name')
@@ -93,7 +93,7 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
-            'service_id' => ['required', 'exists:services,id'],
+            'service_id' => ['required', Rule::exists('services', 'id')->where('is_staff_only', 0)->whereNull('deleted_at')],
             'appointment_date' => ['required', 'date'],
             'appointment_time' => ['required'],
 
@@ -146,7 +146,7 @@ class AppointmentController extends Controller
         $appointment->load(['patient', 'service', 'doctor']);
 
         $patients = Patient::orderBy('first_name')->get();
-        $services = Service::orderBy('name')->get();
+        $services = Service::publiclyAvailable()->orderBy('name')->get();
 
         $doctors = Doctor::where('is_active', 1)
             ->orderBy('name')
@@ -162,7 +162,7 @@ class AppointmentController extends Controller
         }
         $validated = $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
-            'service_id' => ['required', 'exists:services,id'],
+            'service_id' => ['required', Rule::exists('services', 'id')->where('is_staff_only', 0)->whereNull('deleted_at')],
             'appointment_date' => ['required', 'date'],
             'appointment_time' => ['required'],
 

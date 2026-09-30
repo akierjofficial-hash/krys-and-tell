@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Service;
 use App\Models\Patient;
+use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
@@ -57,6 +58,9 @@ class ServiceController extends Controller
             // clinic said treatments max 1 hour -> max 60
             'duration_minutes'   => 'nullable|integer|min:15|max:60',
         ]);
+        if (strtolower(trim($validated['name'])) === 'recement') {
+            throw ValidationException::withMessages(['name' => 'Recement is already available as a staff-only procedure.']);
+        }
 
         $isWalkIn = (bool)($validated['is_walk_in'] ?? false);
 
@@ -79,11 +83,18 @@ class ServiceController extends Controller
 
     public function edit(Service $service)
     {
+        if ($service->isRecement()) {
+            return redirect()->route('staff.services.index')
+                ->with('error', 'Recement uses the clinic default of ₱500. Set an exceptional actual charge on the visit.');
+        }
         return view('staff.services.edit', compact('service'));
     }
 
     public function update(Request $request, Service $service)
     {
+        if ($service->isRecement()) {
+            throw ValidationException::withMessages(['name' => 'Recement is a protected staff-only procedure. Set an exceptional actual charge on the visit.']);
+        }
         $validated = $request->validate([
             'name'               => 'required|string|max:255',
             'base_price'         => 'required|numeric|min:0',
@@ -95,6 +106,9 @@ class ServiceController extends Controller
 
             'duration_minutes'   => 'nullable|integer|min:15|max:60',
         ]);
+        if (strtolower(trim($validated['name'])) === 'recement' && ! $service->isRecement()) {
+            throw ValidationException::withMessages(['name' => 'Recement is already available as a staff-only procedure.']);
+        }
 
         $isWalkIn = (bool)($validated['is_walk_in'] ?? false);
 
@@ -146,6 +160,9 @@ class ServiceController extends Controller
 
     public function destroy(Request $request, Service $service)
     {
+        if ($service->isRecement()) {
+            throw ValidationException::withMessages(['name' => 'Recement is a protected staff-only procedure and cannot be deleted.']);
+        }
         $name = $service->name ?? ('#'.$service->id);
 
         $service->delete();

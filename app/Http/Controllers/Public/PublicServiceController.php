@@ -22,7 +22,7 @@ class PublicServiceController extends Controller
             ]);
         }
 
-        $q = Service::query();
+        $q = Service::publiclyAvailable();
 
         // Optional "active" filtering if your table has it
         if (Schema::hasColumn('services', 'is_active')) {
@@ -58,6 +58,8 @@ class PublicServiceController extends Controller
      */
     public function show(Service $service)
     {
+        abort_if($service->is_staff_only, 404);
+
         return view('public.services.show', [
             'service' => $service,
         ]);

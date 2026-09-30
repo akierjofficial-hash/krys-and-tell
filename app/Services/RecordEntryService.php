@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Doctor;
 use App\Models\InstallmentPlan;
 use App\Models\Patient;
+use App\Models\Service;
 use App\Models\Visit;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -13,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 class RecordEntryService
 {
     public const METHODS = ['Cash', 'GCash', 'Card', 'Bank Transfer'];
+
+    public function __construct(private RecementContextService $recementContexts) {}
 
     public static function cents($amount): int
     {
@@ -51,6 +54,7 @@ class RecordEntryService
             foreach ($visit['procedures'] as $j => $procedure) {
                 $p = "$base.procedures.$j";
                 $rules["$p.service_id"] = ['required', 'integer', Rule::exists('services', 'id')->whereNull('deleted_at')];
+                $rules["$p.related_context"] = ['nullable', 'string', 'max:50'];
                 $messages["$p.service_id.required"] = 'Choose a treatment or service for this procedure.';
                 foreach (['tooth_number' => 50, 'surface' => 10, 'shade' => 10, 'notes' => 2000] as $field => $max) {
                     $rules["$p.$field"] = ['nullable', 'string', "max:$max"];
@@ -102,7 +106,16 @@ class RecordEntryService
         unset($visit);
         $data = Validator::make($payload, $rules, $messages, $this->attributeNames($rules))->validate();
         $errors = [];
+        $recementId = Service::where('internal_code', 'recement')->value('id');
         foreach ($data['visits'] as $i => $visit) {
+            foreach ($visit['procedures'] as $j => $procedure) {
+                $context = $procedure['related_context'] ?? null;
+                if ($context === null || $context === '') continue;
+                if ((int) $procedure['service_id'] !== (int) $recementId
+                    || $this->recementContexts->attributes($context, $patientId) === null) {
+                    $errors["visits.$i.procedures.$j.related_context"] = 'Choose a braces visit or plan belonging to this patient, or leave the context blank.';
+                }
+            }
             $charge = array_sum(array_map(fn ($p) => self::cents($p['price'] ?? null), $visit['procedures']));
             $paid = array_sum(array_map(fn ($p) => self::cents($p['amount']), $visit['payments']));
             if ($charge > 9999999999) {
@@ -117,6 +130,9 @@ class RecordEntryService
             $plan = $visit['plan'];
             $unknown = !empty($plan['is_unpriced_contract']);
             $financedProcedure = (int) $plan['procedure_index'];
+            if ((int) ($visit['procedures'][$financedProcedure]['service_id'] ?? 0) === (int) $recementId) {
+                $errors["visits.$i.plan.procedure_index"] = 'Recement is an ordinary charge. Select the braces treatment for the installment plan.';
+            }
             if ($unknown && (empty($plan['is_open_contract']) || ($visit['procedures'][$financedProcedure]['price'] ?? null) !== null
                 || ($plan['total_cost'] ?? null) !== null)) {
                 $errors["visits.$i.plan.total_cost"] = 'For a no-total contract, leave both the agreed total and financed procedure charge blank.';
@@ -199,6 +215,7 @@ class RecordEntryService
             'open_monthly_payment' => 'monthly amount', 'first_due_date' => 'first monthly due date',
             'ended_at' => 'treatment end date', 'acknowledge_unpaid' => 'monthly-obligation review',
             'visit_id' => 'related visit', 'visit_index' => 'related visit',
+            'related_context' => 'related braces treatment',
         ];
         foreach (array_keys($rules) as $path) {
             if (! preg_match('/^visits\.(\d+)(?:\.(.*))?$/', $path, $match)) {
@@ -289,7 +306,14 @@ class RecordEntryService
             $visits[$i] = $visit;
             $summary['visits']++;
             foreach ($row['procedures'] as $j => $p) {
-                $procedures[$i][$j] = $visit->procedures()->create(collect($p)->only(['service_id', 'tooth_number', 'surface', 'shade', 'price', 'notes'])->all());
+                $context = $this->recementContexts->attributes($p['related_context'] ?? null, $patientId);
+                if ($context === null) {
+                    throw ValidationException::withMessages(["visits.$i.procedures.$j.related_context" => 'The related braces record is no longer available. Review this entry again.']);
+                }
+                $procedures[$i][$j] = $visit->procedures()->create([
+                    ...collect($p)->only(['service_id', 'tooth_number', 'surface', 'shade', 'price', 'notes'])->all(),
+                    ...$context,
+                ]);
                 $summary['procedures']++;
             }
             foreach ($row['payments'] as $p) {

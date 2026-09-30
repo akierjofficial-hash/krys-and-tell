@@ -745,9 +745,18 @@
                                     <select id="serviceSelect" class="selectx">
                                         <option value="">-- Select Service --</option>
                                         @foreach($services as $service)
-                                            <option value="{{ $service->id }}">{{ $service->name }}</option>
+                                            <option value="{{ $service->id }}" data-price="{{ $service->base_price }}" data-recement="{{ $service->isRecement() ? '1' : '0' }}">{{ $service->name }}</option>
                                         @endforeach
                                     </select>
+                                </div>
+                                <div id="recementPriceWrap" hidden>
+                                    <label class="form-labelx" for="recementPrice">Recement actual charge (₱)</label>
+                                    <input type="number" id="recementPrice" class="inputx" min="0" max="99999999.99" step="0.01" value="500.00">
+                                </div>
+                                <div id="recementContextWrap" hidden>
+                                    <label class="form-labelx" for="recementContext">Related braces visit or plan (optional)</label>
+                                    <select id="recementContext" class="selectx"><option value="">No linked braces record</option></select>
+                                    <div class="helptext">Context only. Recement is charged outside the braces plan.</div>
                                 </div>
 
                                 <div>
@@ -851,6 +860,10 @@
     const selectedTeeth = new Set();
 
     const serviceSelect = document.getElementById('serviceSelect');
+    const recementPriceWrap = document.getElementById('recementPriceWrap');
+    const recementContextWrap = document.getElementById('recementContextWrap');
+    const recementPrice = document.getElementById('recementPrice');
+    const recementContext = document.getElementById('recementContext');
     const toothInput    = document.getElementById('toothInput');
     const surfaceInput  = document.getElementById('surfaceInput');
     const shadeInput    = document.getElementById('shadeInput');
@@ -899,11 +912,11 @@
             const tr = document.createElement('tr');
 
             tr.innerHTML = `
-                <td><span class="cell-chip"><i class="fa fa-stethoscope"></i> ${escapeHtml(p.service_name)}</span></td>
+                <td><span class="cell-chip"><i class="fa fa-stethoscope"></i> ${escapeHtml(p.service_name)}</span>${p.price !== '' ? `<small>₱${Number(p.price).toFixed(2)}</small>` : ''}</td>
                 <td>${p.tooth_number ? `<span class="cell-chip">${escapeHtml(p.tooth_number)}</span>` : `<span class="muted-dash">—</span>`}</td>
                 <td>${p.surface ? `<span class="cell-chip">${escapeHtml(p.surface)}</span>` : `<span class="muted-dash">—</span>`}</td>
                 <td>${p.shade ? `<span class="cell-chip">${escapeHtml(p.shade)}</span>` : `<span class="muted-dash">—</span>`}</td>
-                <td>${p.notes ? escapeHtml(p.notes) : `<span class="muted-dash">—</span>`}</td>
+                <td>${p.notes ? escapeHtml(p.notes) : `<span class="muted-dash">—</span>`}${p.related_label ? `<small>Related: ${escapeHtml(p.related_label)}</small>` : ''}</td>
                 <td class="text-end">
                     <button type="button" class="btn-dangerx" data-remove="${i}" title="Remove">✕</button>
                 </td>
@@ -913,6 +926,8 @@
                 <input type="hidden" name="procedures[${i}][surface]" value="${escapeAttr(p.surface)}">
                 <input type="hidden" name="procedures[${i}][shade]" value="${escapeAttr(p.shade)}">
                 <input type="hidden" name="procedures[${i}][notes]" value="${escapeAttr(p.notes)}">
+                <input type="hidden" name="procedures[${i}][price]" value="${escapeAttr(p.price)}">
+                <input type="hidden" name="procedures[${i}][related_context]" value="${escapeAttr(p.related_context)}">
             `;
 
             tableBody.appendChild(tr);
@@ -927,10 +942,16 @@
 
         const serviceId = serviceSelect.value;
         const serviceName = serviceSelect.options[serviceSelect.selectedIndex]?.text?.trim();
+        const isRecement = serviceSelect.selectedOptions[0]?.dataset.recement === '1';
 
         if (!serviceId) {
             flashInvalid(serviceSelect);
             alert('Please select a service.');
+            return;
+        }
+        if (isRecement && (recementPrice.value === '' || Number(recementPrice.value) < 0)) {
+            flashInvalid(recementPrice);
+            recementPrice.focus();
             return;
         }
 
@@ -947,6 +968,9 @@
                 surface: surfaceInput.value.trim(),
                 shade: shadeInput.value.trim(),
                 notes: noteInput.value.trim(),
+                price: isRecement ? recementPrice.value : '',
+                related_context: isRecement ? recementContext.value : '',
+                related_label: isRecement && recementContext.value ? recementContext.selectedOptions[0]?.text : '',
             });
         });
 
@@ -963,6 +987,37 @@
     }
 
     addBtn.addEventListener('click', addProcedure);
+    async function loadRecementContexts() {
+        recementContext.replaceChildren(new Option('No linked braces record', ''));
+        if (!patientSelectEl.value) return;
+        recementContext.disabled = true;
+        try {
+            const url = new URL(@json(route('staff.records.recement-contexts')));
+            url.searchParams.set('patient_id', patientSelectEl.value);
+            const response = await fetch(url, {headers:{Accept:'application/json'}, credentials:'same-origin'});
+            if (!response.ok) throw new Error('Could not load braces records.');
+            const data = await response.json();
+            (data.contexts || []).forEach(row => recementContext.add(new Option(row.label, row.value)));
+        } catch {
+            recementContext.add(new Option('Braces records unavailable — try again', '', true, true));
+        } finally {
+            recementContext.disabled = false;
+        }
+    }
+    serviceSelect.addEventListener('change', () => {
+        const isRecement = serviceSelect.selectedOptions[0]?.dataset.recement === '1';
+        recementPriceWrap.hidden = !isRecement;
+        recementContextWrap.hidden = !isRecement;
+        if (isRecement) {
+            recementPrice.value = serviceSelect.selectedOptions[0]?.dataset.price || '500.00';
+            loadRecementContexts();
+        } else {
+            recementContext.value = '';
+        }
+    });
+    patientSelectEl.addEventListener('change', () => {
+        if (serviceSelect.selectedOptions[0]?.dataset.recement === '1') loadRecementContexts();
+    });
 
     [serviceSelect, toothInput, surfaceInput, shadeInput, noteInput].forEach(el => {
         el.addEventListener('keydown', (e) => {

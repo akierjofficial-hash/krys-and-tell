@@ -9,6 +9,8 @@ use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Doctor;
 use App\Services\FinancialService;
+use App\Services\RecementContextService;
+use Illuminate\Validation\ValidationException;
 
 class VisitController extends Controller
 {
@@ -149,7 +151,7 @@ return view('staff.visits.index', compact('view', 'patients'));
     ));
 }
 
-    public function store(Request $request)
+    public function store(Request $request, RecementContextService $recementContexts)
     {
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
@@ -163,7 +165,22 @@ return view('staff.visits.index', compact('view', 'patients'));
             'procedures.*.surface'      => 'nullable|string|max:10',
             'procedures.*.shade'        => 'nullable|string|max:10',
             'procedures.*.notes'        => 'nullable|string|max:1000',
+            'procedures.*.price'        => 'nullable|numeric|decimal:0,2|min:0|max:99999999.99',
+            'procedures.*.related_context' => 'nullable|string|max:50',
         ]);
+
+        $contexts = [];
+        foreach ($validated['procedures'] as $index => $procedure) {
+            $service = Service::findOrFail($procedure['service_id']);
+            $context = $procedure['related_context'] ?? null;
+            if ($context && ! $service->isRecement()) {
+                throw ValidationException::withMessages(["procedures.$index.related_context" => 'Only Recement may link to a braces record.']);
+            }
+            $contexts[$index] = $recementContexts->attributes($context, (int) $validated['patient_id']);
+            if ($contexts[$index] === null) {
+                throw ValidationException::withMessages(["procedures.$index.related_context" => 'Choose a braces visit or plan belonging to this patient.']);
+            }
+        }
 
         $doctor = Doctor::findOrFail($validated['doctor_id']);
 
@@ -175,7 +192,7 @@ return view('staff.visits.index', compact('view', 'patients'));
             'notes'        => $validated['notes'] ?? null,
         ]);
 
-        foreach ($validated['procedures'] as $procedure) {
+        foreach ($validated['procedures'] as $index => $procedure) {
             $service = Service::find($procedure['service_id']);
 
             $visit->procedures()->create([
@@ -184,7 +201,9 @@ return view('staff.visits.index', compact('view', 'patients'));
                 'surface'      => $procedure['surface'] ?? null,
                 'shade'        => $procedure['shade'] ?? null,
                 'notes'        => $procedure['notes'] ?? null,
-                'price'        => $service?->base_price ?? 0,
+                'price'        => $service?->isRecement() && isset($procedure['price'])
+                    ? $procedure['price'] : ($service?->base_price ?? 0),
+                ...$contexts[$index],
             ]);
         }
 
@@ -194,7 +213,7 @@ return view('staff.visits.index', compact('view', 'patients'));
 
     public function show(Visit $visit, FinancialService $finance)
     {
-        $visit->load(['patient', 'doctor', 'procedures.service', 'installmentPlan']);
+        $visit->load(['patient', 'doctor', 'procedures.service', 'procedures.relatedVisit', 'procedures.relatedInstallmentPlan', 'installmentPlan']);
         $visitCharge = $finance->visitCharge($visit);
         return view('staff.visits.show', compact('visit', 'visitCharge'));
     }
@@ -245,6 +264,12 @@ return view('staff.visits.index', compact('view', 'patients'));
         $visit = Visit::whereKey($visit->id)->lockForUpdate()->firstOrFail();
         $doctor = Doctor::findOrFail($validated['doctor_id']);
         $existing = $visit->procedures()->get();
+        if ((int) $visit->patient_id !== (int) $validated['patient_id']
+            && $existing->contains(fn ($procedure) => $procedure->related_visit_id || $procedure->related_installment_plan_id)) {
+            throw ValidationException::withMessages([
+                'patient_id' => 'This visit links to a braces record for its current patient. Keep that patient or review the linked procedure before moving the visit.',
+            ]);
+        }
         $kept = [];
         $visit->update([
             'patient_id'   => $validated['patient_id'],
@@ -264,6 +289,8 @@ return view('staff.visits.index', compact('view', 'patients'));
                 'shade'        => $procedure['shade'] ?? null,
                 'notes'        => $procedure['notes'] ?? null,
                 'price'        => $saved ? $saved->price : ($service?->base_price ?? 0),
+                'related_visit_id' => $service?->isRecement() ? $saved?->related_visit_id : null,
+                'related_installment_plan_id' => $service?->isRecement() ? $saved?->related_installment_plan_id : null,
             ];
             if ($saved) {
                 $saved->update($attributes);

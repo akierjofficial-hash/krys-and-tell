@@ -34,7 +34,7 @@ class LiveListSearchTest extends TestCase
         $this->get(route('staff.services.index', ['q' => 'missing']))
             ->assertOk()->assertSeeText('No services found.');
         $this->get(route('staff.services.index'))
-            ->assertOk()->assertViewHas('services', fn ($page) => $page->total() === 28);
+            ->assertOk()->assertViewHas('services', fn ($page) => $page->total() === 28 + Service::where('internal_code', 'recement')->count());
 
         $patient = Patient::create(['first_name' => 'Fern', 'last_name' => 'Porpio']);
         Visit::create(['patient_id' => $patient->id, 'visit_date' => '2026-09-01', 'notes' => 'Adjustment']);

@@ -26,7 +26,7 @@ class PublicHomeController extends Controller
 
         try {
             if (Schema::hasTable('services')) {
-                $serviceQuery = Service::query();
+                $serviceQuery = Service::publiclyAvailable();
                 if (Schema::hasColumn('services', 'is_active')) {
                     $serviceQuery->where('is_active', 1);
                 }
