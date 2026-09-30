@@ -1,0 +1,5 @@
+@extends('errors.minimal')
+@section('code', 'NOT FOUND')
+@section('title', 'This page or record was not found')
+@section('message', 'The link may be outdated, or the record may have been archived or removed.')
+@section('next', 'Search for the record again from your workspace. If you expected it to be here, ask an administrator to check its history.')

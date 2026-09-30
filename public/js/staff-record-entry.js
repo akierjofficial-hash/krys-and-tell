@@ -92,8 +92,8 @@
     new MutationObserver(() => {
         const badge = statusNode.closest('.re-state');
         const message = statusNode.textContent.toLowerCase();
-        badge.classList.toggle('re-state-success', /saved|restored|reviewed/.test(message) && !/unsaved|waiting/.test(message));
-        badge.classList.toggle('re-state-warning', /unsaved|waiting|recovered|enter the/.test(message));
+        badge.classList.toggle('re-state-success', /saved|restored|reviewed/.test(message) && !/unsaved|not saved|no .* saved|waiting|failed|needs/.test(message));
+        badge.classList.toggle('re-state-warning', /unsaved|not saved|waiting|recovered|enter the|failed|needs/.test(message));
     }).observe(statusNode, {childList:true, subtree:true, characterData:true});
     const uuid = () => crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, n => (n ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> n / 4).toString(16));
     const procedure = () => ({service_id:'', tooth_number:'', surface:'', shade:'', price:'', notes:''});
@@ -105,17 +105,62 @@
     const cached = (() => {try {return JSON.parse(sessionStorage.getItem(storageKey));} catch {return null;}})();
     function localSave() {try {sessionStorage.setItem(storageKey, JSON.stringify(state));} catch { /* Server draft remains primary; unload warning stays enabled. */ }}
     function clearLocal() {try {sessionStorage.removeItem(storageKey);} catch {}}
-    function errors(error) {
+    function errorLocation(path) {
+        const parts = path.split('.');
+        const names = {
+            visit_date:'Visit date', doctor_id:'Dentist', service_id:'Treatment / service', price:'Actual charge',
+            tooth_number:'Tooth number', surface:'Surface', shade:'Shade', notes:'Notes',
+            arrangement:'Payment arrangement', procedures:'Procedures', payments:'Receipts',
+            amount:'Amount', payment_date:'Payment date', method:'Payment method',
+            procedure_index:'Treatment paid', month_number:'Payment number', total_cost:'Agreed total',
+            downpayment:'Initial payment', downpayment_date:'Initial payment date',
+            downpayment_method:'Initial payment method', start_date:'Plan start date',
+            months:'Number of months', open_monthly_payment:'Monthly amount',
+            first_due_date:'First monthly due date', ended_at:'Treatment end date',
+            acknowledge_unpaid:'Monthly-obligation review', duplicates:'Possible duplicates',
+            default_doctor_id:'Default dentist', payload:'Record batch',
+        };
+        if (path === 'visits') return 'Visits';
+        if (parts[0] !== 'visits') return names[parts.at(-1)] || path.replaceAll('_', ' ');
+        if (!/^\d+$/.test(parts[1] || '')) return 'Visits';
+        const labels = [`Visit ${Number(parts[1]) + 1}`];
+        let index = 2;
+        if (parts[index] === 'procedures' && /^\d+$/.test(parts[index + 1] || '')) {
+            labels.push(`Procedure ${Number(parts[index + 1]) + 1}`); index += 2;
+        } else if (parts[index] === 'payments' && /^\d+$/.test(parts[index + 1] || '')) {
+            labels.push(`Ordinary receipt ${Number(parts[index + 1]) + 1}`); index += 2;
+        } else if (parts[index] === 'plan') {
+            labels.push('Installment plan'); index++;
+            if (parts[index] === 'payments' && /^\d+$/.test(parts[index + 1] || '')) {
+                labels.push(`Monthly receipt ${Number(parts[index + 1]) + 1}`); index += 2;
+            }
+        }
+        const field = parts.slice(index).at(-1);
+        if (field) labels.push(names[field] || field.replaceAll('_', ' '));
+        return labels.join(' · ');
+    }
+    function errorSummary(error) {
+        const count = Object.keys(error.errors || {}).length;
+        if (count) return `Correct ${count} ${count === 1 ? 'field' : 'fields'} below. Your entry is still here and has not been saved as patient records.`;
+        if ([401, 403, 419].includes(error.status)) return 'Your session expired or access changed. Sign in again, then reopen this patient record. Your unsaved entry remains in this browser tab.';
+        if (error.status >= 500 || error.status === 0) return 'The clinic server could not complete this request. Your entry is still here. Check the connection and retry; if it happens again, contact the administrator.';
+        return error.message || 'This action could not be completed. Your entry is still here.';
+    }
+    function errors(error, action = 'review') {
         fieldErrors = error.errors || {};
+        statusNode.textContent = action === 'draft' ? 'Draft not saved — correct the issue below'
+            : action === 'review' ? 'Review needs corrections — no records saved'
+            : 'Action not completed — entry remains here';
         const box = $('re-errors'); box.hidden = false; box.replaceChildren();
-        const title = document.createElement('strong'); title.textContent = error.message || 'Unable to save. Your entry is still on this page.'; box.append(title);
+        const title = document.createElement('strong'); title.textContent = errorSummary(error); box.append(title);
         Object.entries(error.errors || {}).forEach(([path, messages]) => {
             const button = document.createElement('button'); button.type = 'button'; button.className = 'btn d-block re-error-link';
-            button.textContent = `${path.replace(/visits\.(\d+)/, (_, n) => `Visit ${Number(n)+1}`).replaceAll('.', ' › ')}: ${[].concat(messages).join(' ')}`;
+            button.textContent = `${errorLocation(path)}: ${[].concat(messages).join(' ')}`;
             button.onclick = () => {
                 $('re-editor').hidden = false;
                 const fields = [...document.querySelectorAll('[data-path]')];
-                const field = (path.endsWith('.service_id') ? document.querySelector(`[data-service-picker="${path.replace(/\.service_id$/, '')}"]`) : null)
+                const field = (path === 'default_doctor_id' ? $('re-default-doctor') : null)
+                    || (path.endsWith('.service_id') ? document.querySelector(`[data-service-picker="${path.replace(/\.service_id$/, '')}"]`) : null)
                     || fields.find(el => el.dataset.path === path)
                     || (path.endsWith('.plan.payments') ? fields.find(el => el.dataset.path.startsWith(`${path}.`) && el.dataset.path.endsWith('.amount')) : null)
                     || (path.endsWith('.plan.payments') ? fields.find(el => el.dataset.path === path.replace(/\.payments$/, '.downpayment')) : null);
@@ -130,9 +175,11 @@
     }
     function showFieldErrors() {
         document.querySelectorAll('.re-field-error').forEach(node => node.remove());
-        document.querySelectorAll('#re-visits [aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
+        document.querySelectorAll('#re-visits [aria-invalid="true"], #re-default-doctor[aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
         Object.entries(fieldErrors).forEach(([path, messages]) => {
-            const field = path.endsWith('.service_id') ? document.querySelector(`[data-service-picker="${path.replace(/\.service_id$/, '')}"]`) : document.querySelector(`[data-path="${path}"]`);
+            const field = path === 'default_doctor_id' ? $('re-default-doctor')
+                : path.endsWith('.service_id') ? document.querySelector(`[data-service-picker="${path.replace(/\.service_id$/, '')}"]`)
+                : document.querySelector(`[data-path="${path}"]`);
             const target = field
                 || (path.endsWith('.plan.payments') ? document.querySelector(`[data-path^="${path}."][data-path$=".amount"]`) || document.querySelector(`[data-path="${path.replace(/\.payments$/, '.downpayment')}"]`) : null)
                 || (path.endsWith('.payments') ? document.querySelector(`[data-path^="${path}."][data-path$=".amount"]`) : null)
@@ -147,9 +194,12 @@
         });
     }
     async function request(action, method, body, batchId=state.id) {
-        const response = await fetch(`${c.baseUrl}/${batchId}/${action}`, {method, credentials:'same-origin', headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':c.csrf}, body:JSON.stringify(body)});
-        let json; try {json = await response.json();} catch {throw {message:'The server did not return a valid response. Check your connection and sign-in, then retry.'};}
-        if (!response.ok) throw json;
+        let response;
+        try {
+            response = await fetch(`${c.baseUrl}/${batchId}/${action}`, {method, credentials:'same-origin', headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':c.csrf}, body:JSON.stringify(body)});
+        } catch { throw {status:0}; }
+        let json; try {json = await response.json();} catch {throw {status:response.status, message:'The server returned an unreadable response. Your entry is still here; retry, then contact the administrator if it continues.'};}
+        if (!response.ok) throw {...json, status:response.status};
         return json;
     }
     const body = () => ({patient_id:c.patientId, mode:c.mode, version:state.version, payload:structuredClone(state.payload)});
@@ -171,28 +221,67 @@
         fieldErrors = {};
         $('re-errors').hidden = true;
         document.querySelectorAll('.re-field-error').forEach(node => node.remove());
-        document.querySelectorAll('#re-visits [aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
+        document.querySelectorAll('#re-visits [aria-invalid="true"], #re-default-doctor[aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
         revision++; dirty = true; reviewed = null;
         $('re-review').hidden = true; $('re-editor').hidden = false;
         $('re-status').textContent = 'Unsaved changes'; localSave(); totals();
-        clearTimeout(timer); timer = setTimeout(() => saveDraft().catch(errors), 900);
+        syncRequiredIndicators();
+        clearTimeout(timer); timer = setTimeout(() => saveDraft().catch(error => errors(error, 'draft')), 900);
     }
     function at(path, value) {
         const parts = path.split('.'); let object = state.payload;
         parts.slice(0,-1).forEach(key => object = object[key]); object[parts.at(-1)] = value;
     }
-    function input(label, path, value, type='text', extra='') {
-        return `<label>${esc(label)}<input data-path="${path}" type="${type}" value="${esc(value)}" ${type === 'number' ? 'step="0.01" min="0"' : ''} ${extra}></label>`;
+    function requiredForPath(path) {
+        const match = /^visits\.(\d+)\.(.+)$/.exec(path);
+        if (!match) return false;
+        const visit = state.payload.visits[Number(match[1])];
+        if (!visit) return false;
+        const field = match[2];
+        if (['visit_date', 'doctor_id', 'arrangement'].includes(field)) return true;
+        const procedure = /^procedures\.(\d+)\.(service_id|price)$/.exec(field);
+        if (procedure) return procedure[2] === 'service_id'
+            || !(visit.plan?.is_unpriced_contract == 1 && Number(visit.plan.procedure_index) === Number(procedure[1]));
+        const ordinary = /^payments\.(\d+)\.(amount|payment_date|method|procedure_index)$/.exec(field);
+        if (ordinary) {
+            const hasAmount = visit.payments[Number(ordinary[1])]?.amount !== '' && visit.payments[Number(ordinary[1])]?.amount != null;
+            return hasAmount && (ordinary[2] !== 'procedure_index' || visit.arrangement === 'installment');
+        }
+        if (!field.startsWith('plan.') || !visit.plan) return false;
+        const plan = visit.plan;
+        const planField = field.slice(5);
+        if (['procedure_index', 'start_date', 'downpayment', 'is_open_contract'].includes(planField)) return true;
+        if (planField === 'total_cost') return plan.is_unpriced_contract != 1;
+        if (['downpayment_date', 'downpayment_method'].includes(planField)) return cents(plan.downpayment) > 0;
+        if (['open_monthly_payment', 'first_due_date', 'ended_at', 'acknowledge_unpaid'].includes(planField)) return plan.is_unpriced_contract == 1;
+        if (planField === 'months') return plan.is_open_contract == 0;
+        const monthly = /^payments\.(\d+)\.(month_number|amount|payment_date|method)$/.exec(planField);
+        if (monthly) {
+            const amount = plan.payments[Number(monthly[1])]?.amount;
+            return amount !== '' && amount != null;
+        }
+        return false;
     }
-    function select(label, path, options) {return `<label>${esc(label)}<select data-path="${path}">${options}</select></label>`;}
-    function notes(label, path, value) {return `<label>${esc(label)}<textarea data-path="${path}" maxlength="2000">${esc(value)}</textarea></label>`;}
+    function syncRequiredIndicators() {
+        const root = $('re-visits');
+        root.querySelectorAll('[data-path]').forEach(field => {
+            if (requiredForPath(field.dataset.path)) field.setAttribute('aria-required', 'true');
+            else field.removeAttribute('aria-required');
+        });
+        window.KTRequiredFields?.refresh(root);
+    }
+    function input(label, path, value, type='text', extra='') {
+        return `<label><span class="re-field-caption">${esc(label)}</span><input data-path="${path}" type="${type}" value="${esc(value)}" ${requiredForPath(path) ? 'aria-required="true"' : ''} ${type === 'number' ? 'step="0.01" min="0"' : ''} ${extra}></label>`;
+    }
+    function select(label, path, options) {return `<label><span class="re-field-caption">${esc(label)}</span><select data-path="${path}" ${requiredForPath(path) ? 'aria-required="true"' : ''}>${options}</select></label>`;}
+    function notes(label, path, value) {return `<label><span class="re-field-caption">${esc(label)}</span><textarea data-path="${path}" maxlength="2000">${esc(value)}</textarea></label>`;}
     function serviceName(id) {
         if (id === '' || id === null || id === undefined) return '';
         return c.services.find(service => String(service.id) === String(id))?.name || `Treatment #${id} (unavailable — choose another)`;
     }
     function servicePicker(path, selectedId, visitIndex, procedureIndex) {
         const listId = `re-service-options-${visitIndex}-${procedureIndex}`;
-        return `<div class="re-service-field"><label for="re-service-${visitIndex}-${procedureIndex}">Treatment / service</label><div class="re-service-picker"><input id="re-service-${visitIndex}-${procedureIndex}" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" autocomplete="off" data-service-picker="${path}" value="${esc(serviceName(selectedId))}" placeholder="Search or choose treatment"><input type="hidden" data-path="${path}.service_id" value="${esc(selectedId)}"><div id="${listId}" class="re-service-options" role="listbox" hidden></div></div></div>`;
+        return `<div class="re-service-field"><label for="re-service-${visitIndex}-${procedureIndex}">Treatment / service</label><div class="re-service-picker"><input id="re-service-${visitIndex}-${procedureIndex}" type="search" role="combobox" aria-autocomplete="list" aria-required="true" aria-expanded="false" aria-controls="${listId}" autocomplete="off" data-service-picker="${path}" value="${esc(serviceName(selectedId))}" placeholder="Search or choose treatment"><input type="hidden" data-path="${path}.service_id" value="${esc(selectedId)}"><div id="${listId}" class="re-service-options" role="listbox" hidden></div></div></div>`;
     }
     function treatmentOptions(v, selected, emptyLabel) {
         return option('', emptyLabel, selected) + state.payload.visits[v].procedures.map((p,i) => {
@@ -207,19 +296,26 @@
             related = `<label>Related treatment (optional)<select data-link="${path}">${option('', 'Collection only — no visit', selected)}${state.payload.visits.map((row,i) => option(`batch:${i}`, `Batch visit ${i+1}: ${row.visit_date || 'Date not entered'}`, selected)).join('')}${c.existingVisits.map(row => option(`existing:${row.id}`, `Existing #${row.id}: ${row.visit_date.slice(0,10)}`, selected)).join('')}</select></label>`;
         }
         const appliesTo = installment ? '' : select('Payment applies to', `${path}.procedure_index`, treatmentOptions(v, p.procedure_index, state.payload.visits[v].arrangement === 'installment' ? 'Choose non-installment treatment' : 'Entire visit / not allocated'));
-        return `<div class="re-row re-receipt-row"><div class="re-row-heading"><strong>${installment ? 'Monthly receipt' : 'Ordinary receipt'} ${j+1}</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-payment" data-v="${v}" data-j="${j}" data-installment="${installment}">Remove receipt</button></div><div class="re-grid re-payment-grid">${installment ? input('Payment / month number', `${path}.month_number`, p.month_number, 'number', 'inputmode="numeric"') : ''}${appliesTo}${input('Amount received', `${path}.amount`, p.amount, 'number')}${input('Payment date', `${path}.payment_date`, p.payment_date, 'date')}${select('Payment method', `${path}.method`, methods.map(m => option(m,m,p.method)).join(''))}${notes('Receipt notes', `${path}.notes`, p.notes)}${related}</div></div>`;
+        const details = installment ? `<details class="re-receipt-extra" ${p.notes || p.visit_id || p.visit_index !== undefined && p.visit_index !== null && p.visit_index !== '' ? 'open' : ''}><summary>Optional receipt details</summary><div class="re-grid">${notes('Receipt notes', `${path}.notes`, p.notes)}${related}</div></details>` : '';
+        return `<div class="re-row re-receipt-row"><div class="re-row-heading"><strong>${installment ? 'Monthly receipt' : 'Ordinary receipt'} ${j+1}</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-payment" data-v="${v}" data-j="${j}" data-installment="${installment}">Remove receipt</button></div><div class="re-grid re-payment-grid">${installment ? input('Month number', `${path}.month_number`, p.month_number, 'number', 'inputmode="numeric"') : ''}${appliesTo}${input('Amount received', `${path}.amount`, p.amount, 'number')}${input('Payment date', `${path}.payment_date`, p.payment_date, 'date')}${select('Payment method', `${path}.method`, methods.map(m => option(m,m,p.method)).join(''))}${installment ? '' : notes('Receipt notes', `${path}.notes`, p.notes)}</div>${details}</div>`;
     }
     function section(title, content, className = '') {
         return `<section class="re-section ${className}"><h4>${title}</h4>${content}</section>`;
     }
-    function planFields(v, i, base) {
+    function planFields(v, i, base, arrangementChoices) {
         const p = v.plan, path = `${base}.plan`, unknown = p.is_unpriced_contract == 1;
         const overview = `<div class="re-grid re-plan-overview">${select('Financed treatment',`${path}.procedure_index`,treatmentOptions(i,p.procedure_index,'Choose financed treatment'))}${input('Plan start date',`${path}.start_date`,p.start_date,'date')}${unknown ? '<p class="re-unknown-total">Final total not agreed. The financed procedure charge stays blank.</p>' : input('Total agreed cost',`${path}.total_cost`,p.total_cost,'number')}</div>`;
         const initial = `<div class="re-grid re-plan-grid">${input('Initial payment received (counted once)',`${path}.downpayment`,p.downpayment,'number')}${input('Initial payment date',`${path}.downpayment_date`,p.downpayment_date,'date')}${select('Initial payment method',`${path}.downpayment_method`,methods.map(m => option(m,m,p.downpayment_method)).join(''))}${unknown ? `${input('Monthly amount',`${path}.open_monthly_payment`,p.open_monthly_payment,'number')}${input('First monthly due date',`${path}.first_due_date`,p.first_due_date,'date')}` : `${select('Contract term',`${path}.is_open_contract`,option(0,'Fixed term',p.is_open_contract)+option(1,'Open term, agreed total',p.is_open_contract))}${p.is_open_contract == 1 ? input('Suggested monthly amount (optional)',`${path}.open_monthly_payment`,p.open_monthly_payment,'number') : input('Number of months',`${path}.months`,p.months,'number','inputmode="numeric"')}`}</div>`;
         const end = unknown ? `<label class="re-ended-choice"><input type="checkbox" data-ended-toggle="${i}" ${p.ended_at ? 'checked' : ''}> Treatment has ended</label><div class="re-end-fields" ${p.ended_at ? '' : 'hidden'}><div class="re-grid">${input('Treatment end date',`${path}.ended_at`,p.ended_at,'date')}</div><label class="re-closure-review"><input type="checkbox" data-path="${path}.acknowledge_unpaid" value="1" ${p.acknowledge_unpaid == 1 ? 'checked' : ''}> I reviewed the monthly amounts due through the end date and any unpaid amount.</label></div>` : '';
         const paste = c.mode === 'past' && unknown ? `<details class="re-paste-panel"><summary>Paste multiple past receipts</summary><div class="re-paste-content"><p class="re-muted">One per line: YYYY-MM-DD, amount, method. Example: 2024-02-01, 2000, Cash. Do not include the initial payment again.</p><label for="re-monthly-import-${i}">Past monthly receipts</label><textarea id="re-monthly-import-${i}" class="form-control" data-monthly-import="${i}" rows="4" placeholder="2024-02-01, 2000, Cash"></textarea><button type="button" class="btn btn-outline-secondary btn-sm" data-action="import-monthly-receipts" data-v="${i}">Import pasted receipts</button></div></details>` : '';
         const receipts = `<div class="re-subsection"><h5>Past monthly payments</h5><p class="re-muted">Initial payment is counted above. Add only later monthly receipts here; a receipt does not create a treatment visit.</p>${p.payments.map((r,j) => paymentRow(r,`${path}.payments.${j}`,i,j,true)).join('')}<div class="re-payment-actions"><button type="button" class="btn btn-outline-primary btn-sm" data-action="add-installment-payment" data-v="${i}">+ Add monthly receipt</button>${paste}</div></div>`;
-        return section(unknown ? 'Open contract details' : 'Fixed-total installment details', overview + initial + end + `<p class="re-muted re-plan-hint" data-plan-suggestion="${i}"></p>` + receipts, 're-plan-section');
+        const fields = document.createElement('div');
+        fields.innerHTML = overview + initial;
+        const overviewFields = [...fields.querySelector('.re-plan-overview').children];
+        const paymentFields = [...fields.querySelector('.re-plan-grid').children];
+        const agreement = `<div class="re-grid re-plan-agreement">${overviewFields[0].outerHTML}${arrangementChoices}${overviewFields[1].outerHTML}${unknown ? paymentFields.slice(3).map(el => el.outerHTML).join('') : overviewFields[2].outerHTML + paymentFields.slice(3).map(el => el.outerHTML).join('')}</div>${unknown ? overviewFields[2].outerHTML : ''}<p class="re-plan-notice" data-plan-charge-notice="${i}" hidden>This treatment says “Charge not agreed.” A fixed-total plan needs the agreed charge in Procedures and the total agreed cost here. If no final total was agreed, choose Open contract.</p>${end}<p class="re-muted re-plan-hint" data-plan-suggestion="${i}"></p>`;
+        const initialPayment = `<p class="re-muted">Enter this payment once. Do not add it again as a monthly receipt.</p><div class="re-grid re-plan-initial">${paymentFields.slice(0,3).map(el => el.outerHTML).join('')}</div>`;
+        return section('Installment plan', `<div class="re-plan-block"><h5>Agreement</h5>${agreement}</div><div class="re-plan-block"><h5>Initial payment</h5>${initialPayment}</div><div class="re-plan-block"><h5>Past payments</h5>${receipts}</div><div class="re-plan-summary" data-plan-summary="${i}" aria-live="polite"></div>`, 're-plan-section');
     }
     function render(focusServicePath = null) {
         const focusPath = document.activeElement?.dataset?.path;
@@ -237,13 +333,14 @@
             const ordinaryReceipts = section('Ordinary payments', `<p class="re-muted">Use for treatments paid outside a plan. For mixed billing, choose the treatment each receipt pays for.</p>${v.payments.map((p,j) => paymentRow(p,`${base}.payments.${j}`,i,j)).join('')}<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-payment" data-v="${i}">+ Add ordinary receipt</button>`, 're-ordinary-section');
             const arrangement = v.arrangement === 'ordinary' ? 'ordinary' : v.plan?.is_unpriced_contract == 1 ? 'open' : 'installment';
             const arrangementChoices = select('Billing type',`${base}.arrangement`,option('ordinary','Paid normally / unpaid',arrangement)+option('installment','Fixed-total installment',arrangement)+option('open','Open contract — monthly fee until treatment ends',arrangement));
-            return `<section class="re-card re-visit-card" aria-label="Visit ${i+1}"><div class="re-visit-heading"><h3>Visit ${i+1}</h3>${c.mode === 'past' ? `<div class="re-actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-v="${i}">Duplicate visit</button><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-visit" data-v="${i}">Remove unsaved visit</button></div>` : ''}</div>${section('Visit details',`<div class="re-grid re-visit-grid">${input('Visit date',`${base}.visit_date`,v.visit_date,'date')}${select('Dentist',`${base}.doctor_id`,option('','Select dentist',v.doctor_id)+c.doctors.map(d => option(d.id,d.name+(d.is_active ? '' : ' (inactive)'),v.doctor_id)).join(''))}${notes('Visit notes',`${base}.notes`,v.notes)}</div>`)}${section('Procedures',`${procs}<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-procedure" data-v="${i}">+ Add procedure</button>`)}${section('Payment arrangement',`<div class="re-grid re-arrangement-grid">${arrangementChoices}</div><p class="re-muted">Choose how the financed treatment is billed. Ordinary receipts may also be entered for other procedures.</p>`)}${v.arrangement === 'installment' ? planFields(v,i,base) : ''}${ordinaryReceipts}${section('Review summary',`<div class="re-totals" data-totals="${i}" aria-live="polite"></div>`,'re-summary-section')}</section>`;
+            return `<section class="re-card re-visit-card" aria-label="Visit ${i+1}"><div class="re-visit-heading"><h3>Visit ${i+1}</h3>${c.mode === 'past' ? `<div class="re-actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-v="${i}">Duplicate visit</button><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-visit" data-v="${i}">Remove unsaved visit</button></div>` : ''}</div>${section('Visit details',`<div class="re-grid re-visit-grid">${input('Visit date',`${base}.visit_date`,v.visit_date,'date')}${select('Dentist',`${base}.doctor_id`,option('','Select dentist',v.doctor_id)+c.doctors.map(d => option(d.id,d.name+(d.is_active ? '' : ' (inactive)'),v.doctor_id)).join(''))}${notes('Visit notes',`${base}.notes`,v.notes)}</div>`)}${section('Procedures',`${procs}<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-procedure" data-v="${i}">+ Add procedure</button>`)}${v.arrangement === 'installment' ? planFields(v,i,base,arrangementChoices) : section('Payment arrangement',`<div class="re-grid re-arrangement-grid">${arrangementChoices}</div><p class="re-muted">Choose how this visit is billed. Ordinary receipts may also be entered for other procedures.</p>`)}${ordinaryReceipts}${section('Review summary',`<div class="re-totals" data-totals="${i}" aria-live="polite"></div>`,'re-summary-section')}</section>`;
         }).join('');
         pasted.forEach(([i, value, open]) => {
             const field = document.querySelector(`[data-monthly-import="${i}"]`);
             if (field) { field.value = value; if (open) field.closest('details').open = true; }
         });
         showFieldErrors();
+        syncRequiredIndicators();
         totals();
         if (focusServicePath) {
             const picker = document.querySelector(`[data-service-picker="${focusServicePath}"]`);
@@ -287,19 +384,35 @@
         state.payload.visits.forEach((v,i) => {
             const f = figures(v); charge+=f.charge; agreed+=f.agreed; paid+=f.paid;
             const target = document.querySelector(`[data-totals="${i}"]`);
-            if (f.planBalance !== null && f.planBalance < 0) planOverpayments++;
+            const hasTotal = v.arrangement === 'installment' && v.plan.total_cost !== '' && v.plan.total_cost !== null && v.plan.total_cost !== undefined;
+            const unknownTotal = v.arrangement === 'installment' && v.plan.is_unpriced_contract == 1;
+            const fixedTotalMissing = v.arrangement === 'installment' && !unknownTotal && !hasTotal;
+            const financed = v.arrangement === 'installment' ? v.procedures[Number(v.plan.procedure_index)] : null;
+            const fixedChargeMissing = v.arrangement === 'installment' && !unknownTotal && v.plan.procedure_index !== '' && v.plan.procedure_index != null && financed && (financed.price === '' || financed.price === null);
+            const fixedPlanIncomplete = fixedTotalMissing || fixedChargeMissing;
+            if (!fixedPlanIncomplete && f.planBalance !== null && f.planBalance < 0) planOverpayments++;
             if (f.balance === null) { unknownPlans++; } else { knownBalance += f.balance; }
+            const chargeNotice = document.querySelector(`[data-plan-charge-notice="${i}"]`);
+            if (chargeNotice) chargeNotice.hidden = !fixedChargeMissing;
+            const planSummary = document.querySelector(`[data-plan-summary="${i}"]`);
+            if (planSummary) {
+                const unknown = v.plan.is_unpriced_contract == 1;
+                const summaryItem = (label, value) => `<div class="re-summary-item"><span>${label}</span><strong>${value}</strong></div>`;
+                planSummary.innerHTML = summaryItem('Agreed total', unknown ? 'No final total agreed' : fixedChargeMissing ? 'Review treatment charge' : hasTotal ? money(f.planCost/100) : 'Not entered')
+                    + summaryItem('Plan payments received', money(f.planPaid/100))
+                    + summaryItem('Plan balance', unknown ? 'Balance not yet determined' : fixedChargeMissing ? 'Review treatment charge' : hasTotal ? money(f.planBalance/100) : 'Enter agreed total');
+            }
             if (target) {
                 const item = (label, value) => `<div class="re-summary-item"><span>${label}</span><strong>${value}</strong></div>`;
                 const due = v.plan?.is_unpriced_contract == 1 ? monthlyDue(v) : null;
                 target.innerHTML = item('Total collected', money(f.paid/100))
                     + (v.plan?.is_unpriced_contract == 1 ? item('Monthly dues so far', due === null ? 'Enter due date and monthly amount' : money(due)) : '')
                     + (v.arrangement === 'installment' ? item('Known other balance', money(f.ordinaryBalance/100)) : '')
-                    + item(v.plan?.is_unpriced_contract == 1 ? 'Final contract balance' : 'Balance', f.balance === null ? 'Not determinable — no total agreed' : money(f.balance/100))
-                    + (f.planBalance !== null && f.planBalance < 0 ? `<div class="re-billing-warning" role="alert">Installment receipts exceed the agreed plan cost by ${money(-f.planBalance/100)}.</div>` : '');
+                    + item(v.plan?.is_unpriced_contract == 1 ? 'Final contract balance' : 'Balance', fixedChargeMissing ? 'Review treatment charge' : fixedTotalMissing ? 'Enter agreed total' : f.balance === null ? 'Not determinable — no total agreed' : money(f.balance/100))
+                    + (!fixedPlanIncomplete && f.planBalance !== null && f.planBalance < 0 ? `<div class="re-billing-warning" role="alert">Installment receipts exceed the agreed plan cost by ${money(-f.planBalance/100)}.</div>` : '');
             }
             const suggestion = document.querySelector(`[data-plan-suggestion="${i}"]`);
-            if (suggestion) suggestion.textContent = v.plan.is_unpriced_contract == 1 ? 'Monthly dues stop at the treatment end date. Future months are not a final balance.' : v.plan.is_open_contract == 1 ? `Suggested monthly: ${money(v.plan.open_monthly_payment)}. No paid months will be generated.` : `Suggested monthly: ${money((cents(v.plan.total_cost)-cents(v.plan.downpayment))/100/Math.max(1,Number(v.plan.months)))}. No paid months will be generated.`;
+            if (suggestion) suggestion.textContent = v.plan.is_unpriced_contract == 1 ? 'Monthly dues stop at the treatment end date. Future months are not a final balance.' : fixedChargeMissing ? 'Enter the agreed treatment charge in Procedures before reviewing this fixed-total plan.' : fixedTotalMissing ? 'Enter the agreed total to see a suggested monthly amount.' : v.plan.is_open_contract == 1 ? `Suggested monthly: ${money(v.plan.open_monthly_payment)}. No paid months will be generated.` : `Suggested monthly: ${money((cents(v.plan.total_cost)-cents(v.plan.downpayment))/100/Math.max(1,Number(v.plan.months)))}. No paid months will be generated.`;
         });
         $('re-grand-totals').textContent = `${state.payload.visits.length} ${state.payload.visits.length === 1 ? 'visit' : 'visits'} in this batch${unknownPlans ? ` · ${unknownPlans} open contract${unknownPlans === 1 ? '' : 's'} with no agreed total` : ''}${planOverpayments ? ` · ${planOverpayments} installment overpayment${planOverpayments === 1 ? '' : 's'} to review` : ''}`;
     }
@@ -540,7 +653,7 @@
         }
         $('re-review-button').click();
     });
-    $('re-save-draft').onclick = () => {dirty=true;saveDraft().catch(errors);};
+    $('re-save-draft').onclick = () => {dirty=true;saveDraft().catch(error => errors(error, 'draft'));};
     function setLocked(value) {locked=value; ['re-editor','re-footer','re-review','re-drafts'].forEach(id => {$(id).querySelectorAll('input,select,textarea,button').forEach(el => el.disabled=value);});}
     let saving = false;
     function reviewReceipts(title, rows, details) {
@@ -611,14 +724,14 @@
             $('re-save-all').onclick=saveAll;
             $('re-status').textContent='Reviewed — no clinical records saved yet';
             $('re-review-heading').focus();
-        } catch(error) {errors(error);} finally {setLocked(false);syncReviewSaveState();}
+        } catch(error) {reviewed = null; errors(error, 'review');} finally {setLocked(false);syncReviewSaveState();}
     };
     async function saveAll() {
         if (!reviewed || saving || (reviewed.warnings?.length && !$('re-ack')?.checked)) return;
         saving = true;
         const button = $('re-save-all'), failure = $('re-save-error');
         failure.hidden = true;
-        button.textContent = 'Saving records…';
+        const restoreButton = window.KTLoading?.button(button, 'Saving records…');
         $('re-review').setAttribute('aria-busy', 'true');
         $('re-status').textContent = 'Saving records…';
         try {
@@ -626,7 +739,8 @@
             const result = await request('save','POST',{review_hash:reviewed.review_hash,acknowledge_duplicates:!!$('re-ack')?.checked});
             dirty=false;clearLocal();location.href=result.redirect;
         } catch(error) {
-            failure.textContent = [error.message || 'Could not save these records.', ...Object.values(error.errors || {}).flat()].join(' ');
+            if (Object.keys(error.errors || {}).length) errors(error, 'save');
+            failure.textContent = errorSummary(error);
             failure.hidden = false;
             failure.focus();
             $('re-review').querySelector('.re-review-unsaved strong').textContent = 'Save not confirmed.';
@@ -635,6 +749,7 @@
         } finally {
             saving = false;
             $('re-review').removeAttribute('aria-busy');
+            restoreButton?.();
             button.textContent = c.mode === 'past' ? 'Save all records' : 'Save visit records';
             setLocked(false);syncReviewSaveState();
         }
@@ -642,7 +757,7 @@
     $('re-discard').onclick=async()=>{
         if(!confirm('Discard this unfinished draft? Saved patient records will remain unchanged.'))return;
         clearTimeout(timer);
-        try{setLocked(true);await enqueue(async()=>{if(state.version>0)await request('draft','DELETE',{});});clearLocal();dirty=false;location.href=`${c.baseUrl}?patient_id=${c.patientId}&mode=${c.mode}`;}catch(error){errors(error);setLocked(false);}
+        try{setLocked(true);await enqueue(async()=>{if(state.version>0)await request('draft','DELETE',{});});clearLocal();dirty=false;location.href=`${c.baseUrl}?patient_id=${c.patientId}&mode=${c.mode}`;}catch(error){errors(error, 'discard');setLocked(false);}
     };
     function resume(draft, fromCache=false) {
         clearTimeout(timer);

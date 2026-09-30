@@ -21,6 +21,28 @@
         let timer;
         let controller;
         let sequence = 0;
+        let skeletonTimer;
+        let skeleton;
+
+        function showResultsSkeleton() {
+            if (skeleton) return;
+            const host = target.tagName === 'TBODY'
+                ? (target.closest('.table-wrap') || target.closest('table')?.parentElement || target.parentElement)
+                : target;
+            host.classList.add('kt-loading-host');
+            skeleton = document.createElement('div');
+            skeleton.className = 'kt-results-skeleton';
+            skeleton.setAttribute('aria-hidden', 'true');
+            skeleton.innerHTML = Array.from({length: 4}, () => '<div class="kt-skeleton-row"><span class="kt-skeleton-line" style="width:80%"></span><span class="kt-skeleton-line" style="width:65%"></span><span class="kt-skeleton-line" style="width:72%"></span><span class="kt-skeleton-line" style="width:55%"></span></div>').join('');
+            host.append(skeleton);
+            target.style.opacity = '0.72';
+        }
+
+        function hideResultsSkeleton() {
+            clearTimeout(skeletonTimer);
+            skeleton?.remove();
+            skeleton = null;
+        }
 
         function urlForForm() {
             const url = new URL(form.action || location.href, location.href);
@@ -41,8 +63,8 @@
             controller = new AbortController();
             const ticket = ++sequence;
             target.setAttribute('aria-busy', 'true');
-            target.style.opacity = '0.72';
-            target.style.transition = 'opacity 120ms ease';
+            clearTimeout(skeletonTimer);
+            if (!skeleton) skeletonTimer = setTimeout(showResultsSkeleton, 450);
             status.textContent = 'Searching…';
 
             try {
@@ -51,10 +73,14 @@
                     credentials: 'same-origin',
                     headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest', 'X-KT-Live-Search': '1' },
                 });
-                if (!response.ok || response.redirected) throw new Error('Search unavailable');
+                if (response.redirected || [401, 403, 419].includes(response.status)) {
+                    throw new Error('Your session ended or access changed. Sign in again to search these records.');
+                }
+                if (response.status === 429) throw new Error('Too many searches. Wait a moment, then retry.');
+                if (!response.ok) throw new Error('Results are temporarily unavailable. Your filters have not changed; retry or refresh this page.');
                 const documentResult = new DOMParser().parseFromString(await response.text(), 'text/html');
                 const incoming = documentResult.querySelector(form.dataset.liveTarget || '[data-live-results]');
-                if (!incoming) throw new Error('Search results missing');
+                if (!incoming) throw new Error('The results could not be read. Refresh this page and try again.');
                 if (ticket !== sequence) return;
                 target.innerHTML = incoming.innerHTML;
                 if (extra) {
@@ -98,9 +124,14 @@
                 status.textContent = 'Results updated';
                 document.dispatchEvent(new CustomEvent('kt:live-search:updated', { detail: { target, url } }));
             } catch (error) {
-                if (error.name !== 'AbortError' && ticket === sequence) status.textContent = 'Search could not load. Press Enter to retry.';
+                if (error.name !== 'AbortError' && ticket === sequence) {
+                    status.textContent = error instanceof TypeError
+                        ? 'Connection lost while searching. Check your connection and retry.'
+                        : error.message;
+                }
             } finally {
                 if (ticket === sequence) {
+                    hideResultsSkeleton();
                     target.removeAttribute('aria-busy');
                     target.style.opacity = '';
                 }
@@ -111,10 +142,10 @@
             clearTimeout(timer);
             controller?.abort();
             ++sequence;
+            clearTimeout(skeletonTimer);
             target.setAttribute('aria-busy', 'true');
-            target.style.opacity = '0.72';
             status.textContent = 'Searching…';
-            timer = setTimeout(() => load(urlForForm(), true), 180);
+            timer = setTimeout(() => load(urlForForm(), true), 120);
         }
 
         input.addEventListener('input', queue);

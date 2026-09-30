@@ -7,6 +7,7 @@
     .re-card{background:#fff;border:1px solid #dce4ef;border-radius:14px;padding:20px;margin:16px 0;overflow:visible}
     .re-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:start}
     .re-grid label{display:flex;flex-direction:column;gap:5px;font-size:.87rem;font-weight:600}
+    .re-field-caption{display:inline;line-height:1.35}
     .re-grid input,.re-grid select,.re-grid textarea{width:100%;min-height:40px;border:1px solid #bac6d6;border-radius:7px;padding:8px;background:white;color:#263246}
     .re-service-field{min-width:0;font-size:.87rem;font-weight:600}
     .re-service-field>label{display:block;margin-bottom:5px}
@@ -66,6 +67,33 @@
     .re-summary-item{display:flex;flex-direction:column;gap:4px;padding:12px 14px;background:#f6f9fd;border:1px solid #e1e8f2;border-radius:10px}
     .re-summary-item span{color:#526278;font-size:12px}.re-summary-item strong{font-size:14px;line-height:1.35}
     .re-field-error{display:block;color:#b42318;font-size:12px;font-weight:600;line-height:1.35}
+    .record-entry label:has([aria-invalid="true"])>.re-field-caption{color:#b42318}
+    .kt-staff .record-entry .re-plan-section{display:grid;gap:14px}
+    .kt-staff .record-entry .re-plan-section>h4{margin-bottom:0 !important}
+    .re-plan-block{min-width:0;padding:18px 20px;border:1px solid #dce5f0;border-radius:12px;background:#fbfcfe}
+    .re-plan-block>h5{margin:0 0 13px;font-size:14px;font-weight:800;color:#243956}
+    .re-plan-block>.re-muted{margin:0 0 13px;line-height:1.45}
+    .kt-staff .record-entry :is(.re-plan-agreement,.re-plan-initial){grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:15px 16px}
+    .re-plan-section .re-grid label{min-width:0;gap:7px}
+    .re-plan-section .re-grid :is(input:not([type="checkbox"]),select){box-sizing:border-box;width:100%;height:44px;min-height:44px;margin:0}
+    .re-plan-section .re-grid textarea{box-sizing:border-box;width:100%;min-height:44px;margin:0}
+    .re-plan-section .re-unknown-total,.re-plan-notice{margin:14px 0 0;padding:11px 13px;border-radius:9px;font-size:13px;line-height:1.45}
+    .re-plan-notice{background:#fff7e9;border:1px solid #edce91;color:#6d4a16}
+    .re-plan-section .re-plan-hint{margin:12px 0 0}
+    .re-plan-section .re-end-fields .re-grid{max-width:380px}
+    .re-plan-section .re-subsection{margin:0;padding:0;border:0}
+    .re-plan-section .re-subsection>h5{display:none}
+    .re-plan-section .re-receipt-row{padding:12px 14px !important;margin:8px 0 !important}
+    .kt-staff .record-entry .re-plan-section .re-payment-grid{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:10px 12px}
+    .re-receipt-extra{margin-top:10px}
+    .re-receipt-extra summary{width:fit-content;color:#1266bf;font-size:13px;font-weight:700;cursor:pointer}
+    .re-receipt-extra .re-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:10px}
+    .re-plan-section .re-payment-actions{margin-top:14px}
+    .re-plan-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .re-plan-summary .re-summary-item{background:#f1f6fd}
+    html[data-theme="dark"] .record-entry .re-plan-block,html[data-theme="dark"] .record-entry .re-plan-summary .re-summary-item{background:#1b2a40;border-color:#3b4d64}
+    html[data-theme="dark"] .record-entry .re-plan-block>h5{color:#e2e8f0}
+    html[data-theme="dark"] .record-entry .re-plan-notice{background:#3b321e;border-color:#80683b;color:#f9e8c4}
     .record-entry{scroll-padding-bottom:110px}.record-entry :is(input,select,textarea,button,summary){scroll-margin-bottom:110px}
     .kt-staff .record-entry{padding-bottom:120px !important}
     .kt-staff .record-entry .re-footer{bottom:env(safe-area-inset-bottom,0px);padding:10px 14px !important}
@@ -121,9 +149,10 @@
     html[data-theme="dark"] .record-entry .re-review-unsaved,html[data-theme="dark"] .record-entry .re-review-warning{background:#3b321e;border-color:#80683b;color:#f9e8c4}
     @media(max-width:900px){.re-review-visit-body{grid-template-columns:1fr}.re-review-identity{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:650px){.kt-staff .record-entry .re-review .re-card{padding:16px !important}.re-review-identity{grid-template-columns:repeat(2,minmax(0,1fr))}.re-review-identity>div:first-child{grid-column:1/-1}.re-review-visit-body{gap:12px}.re-review-receipts li{grid-template-columns:22px minmax(0,1fr) auto;gap:4px 8px}.re-review-receipts li>span:nth-last-of-type(1){grid-column:2/-1}.re-review-receipts small{grid-column:2/-1}.re-review-initial{grid-template-columns:minmax(0,1fr) auto}.re-review-initial span{grid-column:1/-1}.re-review-actions{align-items:stretch}.re-review-actions>div{width:100%}.re-review-actions .btn{flex:1 1 45%}}
-    @media(max-width:900px){.kt-staff .record-entry .re-plan-overview{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
+    @media(max-width:900px){.kt-staff .record-entry .re-plan-overview{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.kt-staff .record-entry .re-plan-agreement{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.kt-staff .record-entry .re-plan-section .re-payment-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
     @media(max-width:650px){.kt-staff .record-entry .re-visit-card{padding:16px !important}.kt-staff .record-entry .re-procedure-main,.kt-staff .record-entry .re-plan-overview,.kt-staff .record-entry .re-plan-grid{grid-template-columns:1fr !important}.re-section{padding:18px 0}.re-visit-heading .re-actions{width:100%}.kt-staff .record-entry .re-footer{position:sticky !important;bottom:0;display:flex;flex-direction:column;align-items:stretch}.kt-staff .record-entry .re-footer .re-actions{display:flex;margin:0 !important}.kt-staff .record-entry #re-grand-totals{display:none}.kt-staff .record-entry .re-footer .re-actions .btn{flex:1 1 45%}}
     @media(max-width:650px){.re-card{padding:12px}.re-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.re-footer{position:static}}
+    @media(max-width:650px){.re-plan-block{padding:16px}.kt-staff .record-entry :is(.re-plan-agreement,.re-plan-initial,.re-plan-section .re-payment-grid,.re-receipt-extra .re-grid){grid-template-columns:1fr !important}.re-plan-summary{grid-template-columns:1fr}}
 </style>
 <div class="record-entry" id="record-entry">
     <x-staff.page-header
@@ -135,7 +164,7 @@
         <div class="re-card">
             <label for="re-patient-search" class="form-label">Find patient by name, ID, birthdate, or contact number</label>
             <div class="re-patient-picker">
-                <input class="form-control" id="re-patient-search" type="search" placeholder="Start typing a patient name or record detail" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="re-patient-results" aria-expanded="false">
+                <input class="form-control" id="re-patient-search" type="search" placeholder="Start typing a patient name or record detail" autocomplete="off" role="combobox" aria-required="true" aria-autocomplete="list" aria-controls="re-patient-results" aria-expanded="false">
                 <div class="re-patient-results" id="re-patient-results" role="listbox" hidden></div>
             </div>
             <p class="re-muted mt-2 mb-0">Select a result to open the entry form immediately. Use ↑, ↓, and Enter from the keyboard.</p>
@@ -189,5 +218,5 @@
     @endif
 </div>
 <script>window.recordEntryConfig = {{ Illuminate\Support\Js::from($config) }};</script>
-<script src="{{ asset('js/staff-record-entry.js') }}?v=7" defer></script>
+<script src="{{ asset('js/staff-record-entry.js') }}?v=12" defer></script>
 @endsection

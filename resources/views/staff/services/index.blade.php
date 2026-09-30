@@ -661,7 +661,7 @@
 
         <div class="sort-box">
             <span class="sort-label">Sort</span>
-            <select id="serviceSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
+            <select id="serviceSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.KTLoading?.prepareNavigation(url);location.assign(url)">
                 <option value="created_desc" @selected(request('sort')==='created_desc')>Date added (newest)</option>
                 <option value="created_asc" @selected(request('sort')==='created_asc')>Date added (oldest)</option>
 

@@ -26,6 +26,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ asset('css/kt-loading.css') }}?v=1">
+    <link rel="stylesheet" href="{{ asset('css/kt-required-fields.css') }}?v=2">
 
     <style>
     /* ==========================================================
@@ -989,6 +991,7 @@
         async function postAction(form) {
             const item = form.closest('.kt-item');
             const action = form.dataset.action || 'approve';
+            const restoreButton = window.KTLoading?.button(form.querySelector('button'), action === 'approve' ? 'Approving…' : 'Declining…');
             const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
             btns.forEach(b => b.disabled = true);
 
@@ -1011,6 +1014,7 @@
 
                 if (!res.ok || data.ok === false) {
                     showFlash('danger', data.message || 'Action failed. Please try again.');
+                    restoreButton?.();
                     btns.forEach(b => b.disabled = false);
                     return;
                 }
@@ -1028,6 +1032,7 @@
                 ensureEmptyState();
             } catch (e) {
                 showFlash('danger', 'Network error. Please try again.');
+                restoreButton?.();
                 btns.forEach(b => b.disabled = false);
             }
         }
@@ -1148,8 +1153,10 @@
     })();
     </script>
 
-    <script src="{{ asset('js/kt-live-search.js') }}?v=3" defer></script>
+    <script src="{{ asset('js/kt-live-search.js') }}?v=5" defer></script>
     @stack('scripts')
+    <script src="{{ asset('js/kt-loading.js') }}?v=1" defer></script>
+    <script src="{{ asset('js/kt-required-fields.js') }}?v=2" defer></script>
 
     {{-- ✅ PWA Service Worker --}}
     <script>

@@ -1,0 +1,5 @@
+@extends('errors.minimal')
+@section('code', 'ACCESS DENIED')
+@section('title', 'You cannot access this record')
+@section('message', 'Your account does not have permission to open this page or perform this action.')
+@section('next', 'Return to your workspace. If access is needed for your work, ask an administrator to review your permissions.')

@@ -32,6 +32,8 @@
     @stack('styles')
     {{-- Early load prevents a flash of legacy styling; the final link below fixes cascade order. --}}
     <link rel="stylesheet" href="{{ asset('css/staff-app.css') }}?v=2">
+    <link rel="stylesheet" href="{{ asset('css/kt-loading.css') }}?v=1">
+    <link rel="stylesheet" href="{{ asset('css/kt-required-fields.css') }}?v=2">
     {{-- ✅ IMPORTANT: removed "defer" so Bootstrap is available for inline scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/kt-liststate.js') }}?v=2"></script>
@@ -662,56 +664,6 @@
 
     :where(.kt-top-icon, .menu-toggle, .sidebar-menu a):active { transform: scale(.98); }
     :where(.btn, button):active { transform: translateY(1px) scale(.99); }
-
-    .kt-loader {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: var(--kt-sidebar-w, 245px);
-        display: grid;
-        place-items: center;
-        background: rgba(2, 6, 23, .35);
-        backdrop-filter: blur(6px);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 160ms ease;
-        z-index: 9999;
-    }
-
-    @media (max-width: 900px) { .kt-loader { left: 0; } }
-
-    .kt-loader.is-active { opacity: 1; pointer-events: auto; }
-
-    .kt-loader__card {
-        min-width: 220px;
-        padding: 14px 16px;
-        border-radius: 16px;
-        border: 1px solid var(--kt-border, rgba(148, 163, 184, .25));
-        background: var(--kt-surface, rgba(15, 23, 42, .92));
-        color: var(--kt-text, #e2e8f0);
-        box-shadow: var(--kt-shadow, 0 10px 25px rgba(0, 0, 0, .18));
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transform: translateY(8px) scale(.98);
-        transition: transform 160ms ease;
-    }
-
-    .kt-loader.is-active .kt-loader__card { transform: translateY(0) scale(1); }
-
-    .kt-spinner {
-        width: 22px;
-        height: 22px;
-        border-radius: 999px;
-        border: 3px solid rgba(148, 163, 184, .35);
-        border-top-color: rgba(255, 255, 255, .9);
-        animation: ktSpin .8s linear infinite;
-    }
-
-    @keyframes ktSpin { to { transform: rotate(360deg); } }
-
-    .kt-loader__text { font-size: 13px; opacity: .9; }
 
     .kt-modal {
         position: fixed;
@@ -1740,12 +1692,6 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             {{-- Loaded after legacy page styles so the Staff design system remains authoritative. --}}
             <link rel="stylesheet" href="{{ asset('css/staff-app.css') }}?v=2">
 
-            <div id="ktLoader" class="kt-loader" aria-hidden="true">
-                <div class="kt-loader__card" role="status" aria-live="polite">
-                    <div class="kt-spinner"></div>
-                    <div class="kt-loader__text">Loading…</div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -1874,75 +1820,6 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     }
 
     window.KTToast = { show: showToast };
-
-    // =========================
-    // ✅ Global Loader (CONTENT ONLY) — FIXED for Back/Forward (BFCache)
-    // =========================
-    const loader = document.getElementById('ktLoader');
-    const KTLoader = {
-        show() {
-            if (!loader) return;
-            loader.classList.add('is-active');
-            loader.setAttribute('aria-hidden', 'false');
-        },
-        hide() {
-            if (!loader) return;
-            loader.classList.remove('is-active');
-            loader.setAttribute('aria-hidden', 'true');
-        }
-    };
-    window.KTLoader = KTLoader;
-
-    const hideLoaderSoon = () => requestAnimationFrame(() => KTLoader.hide());
-
-    // Normal first load
-    window.addEventListener('DOMContentLoaded', () => setTimeout(() => KTLoader.hide(), 80));
-    window.addEventListener('load', hideLoaderSoon);
-
-    // ✅ Critical: when returning via browser back/forward (BFCache)
-    window.addEventListener('pageshow', () => hideLoaderSoon());
-    window.addEventListener('pagehide', (e) => { if (e.persisted) KTLoader.hide(); });
-
-    // Extra safety: if tab becomes visible again, hide loader
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) KTLoader.hide();
-    });
-
-    // (Removed beforeunload loader to allow BFCache back/forward)
-
-    // Optional: show loader for normal <a> navigation (non-ajax)
-    document.addEventListener('click', (e) => {
-        const a = e.target.closest('a[href]');
-        if (!a) return;
-
-        if (a.hasAttribute('data-no-loader')) return;
-        if (a.closest('#approvalPopover')) return; // keep popover interactions clean
-        if (e.defaultPrevented) return;
-
-        // Only left click with no modifiers
-        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-
-        const href = a.getAttribute('href') || '';
-        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-
-        const target = (a.getAttribute('target') || '').toLowerCase();
-        if (target && target !== '_self') return;
-
-        KTLoader.show();
-    });
-
-    // Show loader on form submit (except excluded)
-    document.addEventListener('submit', (e) => {
-        const form = e.target;
-        if (!form || !form.matches('form')) return;
-
-        if (e.defaultPrevented) return;
-        if (form.hasAttribute('data-no-loader')) return;
-        if (form.classList.contains('approval-form')) return;
-        if (form.closest('#approvalPopover')) return;
-
-        KTLoader.show();
-    });
 
     // =========================
     // Confirm Modal (data-confirm)
@@ -2095,6 +1972,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
     async function postAction(form) {
         const item = form.closest('.kt-item');
         const action = form.dataset.action || 'approve';
+        const restoreButton = window.KTLoading?.button(form.querySelector('button'), action === 'approve' ? 'Approving…' : 'Declining…');
 
         const btns = item ? item.querySelectorAll('button') : form.querySelectorAll('button');
         btns.forEach(b => b.disabled = true);
@@ -2118,6 +1996,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
 
             if (!res.ok || data.ok === false) {
                 showFlash('danger', data.message || 'Action failed. Please try again.');
+                restoreButton?.();
                 btns.forEach(b => b.disabled = false);
                 return;
             }
@@ -2134,6 +2013,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             ensureEmptyState();
         } catch (e) {
             showFlash('danger', 'Network error. Please try again.');
+            restoreButton?.();
             btns.forEach(b => b.disabled = false);
         }
     }
@@ -2414,8 +2294,10 @@ if (window.KTPush) {
 
 
 
-<script src="{{ asset('js/kt-live-search.js') }}?v=3" defer></script>
+<script src="{{ asset('js/kt-live-search.js') }}?v=5" defer></script>
 @stack('scripts')
+<script src="{{ asset('js/kt-loading.js') }}?v=1" defer></script>
+<script src="{{ asset('js/kt-required-fields.js') }}?v=2" defer></script>
 </body>
 
 </html>

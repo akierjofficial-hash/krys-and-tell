@@ -1,0 +1,8 @@
+.kt-required-mark {
+    margin-left: .25em;
+    color: #66758d;
+    font-weight: 800;
+}
+html[data-theme="dark"] .kt-required-mark {
+    color: #aebbd0 !important;
+}

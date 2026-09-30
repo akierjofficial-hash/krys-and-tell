@@ -1,0 +1,5 @@
+@extends('errors.minimal')
+@section('code', 'SESSION EXPIRED')
+@section('title', 'Your session expired')
+@section('message', 'This request was not accepted because the page was open too long or your sign-in changed.')
+@section('next', 'Sign in again, then reopen the record. Check whether your work was saved before entering it again.')

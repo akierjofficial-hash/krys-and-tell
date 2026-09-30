@@ -22,7 +22,7 @@ class RecordEntryService
     public function validate(array $payload, int $patientId, string $mode): array
     {
         Patient::findOrFail($patientId);
-        Validator::make($payload, [
+        $shapeRules = [
             'visits' => ['required', 'array', 'list', 'min:1', 'max:'.($mode === 'visit' ? 1 : 100)],
             'visits.*' => ['required', 'array'],
             'visits.*.procedures' => ['required', 'array', 'list', 'min:1', 'max:100'],
@@ -32,20 +32,26 @@ class RecordEntryService
             'visits.*.plan' => ['nullable', 'array'],
             'visits.*.plan.payments' => ['sometimes', 'array', 'max:200'],
             'visits.*.plan.payments.*' => ['required', 'array'],
-        ])->validate();
+        ];
+        Validator::make($payload, $shapeRules, [], $this->attributeNames($shapeRules))->validate();
 
         $money = ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'];
         $rules = ['visits' => ['required', 'array'], 'default_doctor_id' => ['nullable', 'integer', 'exists:doctors,id']];
+        $messages = [];
         foreach ($payload['visits'] as $i => &$visit) {
             $base = "visits.$i";
             $rules["$base.visit_date"] = ['required', 'date_format:Y-m-d', 'before_or_equal:today'];
+            $messages["$base.visit_date.required"] = 'Enter the date this visit happened.';
+            $messages["$base.visit_date.before_or_equal"] = 'The visit date cannot be in the future.';
             $rules["$base.doctor_id"] = ['required', 'integer', 'exists:doctors,id'];
+            $messages["$base.doctor_id.required"] = 'Choose the dentist who treated the patient.';
             $rules["$base.notes"] = ['nullable', 'string', 'max:2000'];
             $rules["$base.arrangement"] = ['required', Rule::in(['ordinary', 'installment'])];
             $rules["$base.procedures"] = ['required', 'array'];
             foreach ($visit['procedures'] as $j => $procedure) {
                 $p = "$base.procedures.$j";
                 $rules["$p.service_id"] = ['required', 'integer', Rule::exists('services', 'id')->whereNull('deleted_at')];
+                $messages["$p.service_id.required"] = 'Choose a treatment or service for this procedure.';
                 foreach (['tooth_number' => 50, 'surface' => 10, 'shade' => 10, 'notes' => 2000] as $field => $max) {
                     $rules["$p.$field"] = ['nullable', 'string', "max:$max"];
                 }
@@ -53,6 +59,9 @@ class RecordEntryService
                     && !empty($visit['plan']['is_unpriced_contract'])
                     && (int) ($visit['plan']['procedure_index'] ?? -1) === $j;
                 $rules["$p.price"] = $unknownFinanced ? ['nullable'] : $money;
+                if (! $unknownFinanced) {
+                    $messages["$p.price.required"] = 'Enter the actual charge for this procedure. For an open contract with no agreed total, choose Open contract and leave its financed charge blank.';
+                }
             }
             // Blank rows are not receipts. A typed zero is rejected below.
             $visit['payments'] = array_values(array_filter($visit['payments'] ?? [], fn ($p) => isset($p['amount']) && $p['amount'] !== ''));
@@ -91,7 +100,7 @@ class RecordEntryService
             unset($plan);
         }
         unset($visit);
-        $data = Validator::make($payload, $rules)->validate();
+        $data = Validator::make($payload, $rules, $messages, $this->attributeNames($rules))->validate();
         $errors = [];
         foreach ($data['visits'] as $i => $visit) {
             $charge = array_sum(array_map(fn ($p) => self::cents($p['price'] ?? null), $visit['procedures']));
@@ -173,6 +182,49 @@ class RecordEntryService
         }
 
         return $data;
+    }
+
+    private function attributeNames(array $rules): array
+    {
+        $names = [];
+        $fields = [
+            'visit_date' => 'visit date', 'doctor_id' => 'dentist', 'service_id' => 'treatment or service',
+            'price' => 'actual charge', 'tooth_number' => 'tooth number', 'surface' => 'surface',
+            'shade' => 'shade', 'notes' => 'notes', 'arrangement' => 'payment arrangement',
+            'amount' => 'amount', 'payment_date' => 'payment date', 'method' => 'payment method',
+            'procedure_index' => 'treatment paid', 'month_number' => 'payment number',
+            'total_cost' => 'agreed total', 'downpayment' => 'initial payment',
+            'downpayment_date' => 'initial payment date', 'downpayment_method' => 'initial payment method',
+            'start_date' => 'plan start date', 'months' => 'number of months',
+            'open_monthly_payment' => 'monthly amount', 'first_due_date' => 'first monthly due date',
+            'ended_at' => 'treatment end date', 'acknowledge_unpaid' => 'monthly-obligation review',
+            'visit_id' => 'related visit', 'visit_index' => 'related visit',
+        ];
+        foreach (array_keys($rules) as $path) {
+            if (! preg_match('/^visits\.(\d+)(?:\.(.*))?$/', $path, $match)) {
+                $names[$path] = $path === 'default_doctor_id' ? 'default dentist' : 'visits';
+
+                continue;
+            }
+            $label = 'Visit '.((int) $match[1] + 1);
+            $rest = $match[2] ?? '';
+            if (preg_match('/^procedures\.(\d+)(?:\.(.*))?$/', $rest, $row)) {
+                $label .= ' procedure '.((int) $row[1] + 1);
+                $rest = $row[2] ?? '';
+            } elseif (preg_match('/^payments\.(\d+)(?:\.(.*))?$/', $rest, $row)) {
+                $label .= ' ordinary receipt '.((int) $row[1] + 1);
+                $rest = $row[2] ?? '';
+            } elseif (preg_match('/^plan\.payments\.(\d+)(?:\.(.*))?$/', $rest, $row)) {
+                $label .= ' monthly receipt '.((int) $row[1] + 1);
+                $rest = $row[2] ?? '';
+            } elseif (str_starts_with($rest, 'plan.')) {
+                $label .= ' installment plan';
+                $rest = substr($rest, 5);
+            }
+            $names[$path] = $rest === '' ? $label : $label.' '.($fields[$rest] ?? $fields[basename(str_replace('.', '/', $rest))] ?? str_replace('_', ' ', $rest));
+        }
+
+        return $names;
     }
 
     private function paymentRules(array &$rules, string $path, array $payments, ?int $patientId = null, ?int $procedureCount = null): void

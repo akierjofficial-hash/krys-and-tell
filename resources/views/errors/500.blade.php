@@ -1,0 +1,5 @@
+@extends('errors.minimal')
+@section('code', 'SERVER ERROR')
+@section('title', 'This request could not be completed')
+@section('message', request()->isMethod('get') ? 'The page could not be loaded right now.' : 'The result of your action could not be confirmed. It may have been recorded even though this page failed.')
+@section('next', request()->isMethod('get') ? 'Try opening the page again. If it still fails, tell the administrator which page and time.' : 'Before retrying, check the relevant patient, payment, or booking record to avoid a duplicate. If you cannot confirm the result, contact the administrator with the page and time.')

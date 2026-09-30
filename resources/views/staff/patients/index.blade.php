@@ -44,7 +44,7 @@
             </div>
             <input type="hidden" name="initial" value="{{ $initial }}"><input type="hidden" name="per_page" value="{{ $perPage }}">
             <div class="patient-filter-actions">
-            <select class="patient-sort" name="sort" aria-label="Sort patients" onchange="if(event.isTrusted)this.form.submit()">
+            <select class="patient-sort" name="sort" aria-label="Sort patients" onchange="if(event.isTrusted)this.form.requestSubmit()">
                 <option value="last_asc" @selected($sort==='last_asc')>Last name A–Z</option><option value="last_desc" @selected($sort==='last_desc')>Last name Z–A</option>
                 <option value="newest" @selected($sort==='newest')>Newest added</option><option value="oldest" @selected($sort==='oldest')>Oldest added</option><option value="recent_visit" @selected($sort==='recent_visit')>Most recent visit</option>
             </select>
@@ -109,7 +109,7 @@
             @endforeach
         </tbody></table></div>
         <footer class="patients-footer"><div class="page-summary">Showing {{ number_format($patients->firstItem()) }}–{{ number_format($patients->lastItem()) }} of {{ number_format($patients->total()) }} patients</div><div class="page-controls">
-            <form class="per-page" method="GET"><span>Rows per page</span>@foreach(request()->except(['per_page','page']) as $key=>$value)@if(is_scalar($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<select name="per_page" onchange="if(event.isTrusted)this.form.submit()">@foreach([25,50,100] as $size)<option value="{{ $size }}" @selected($perPage===$size)>{{ $size }}</option>@endforeach</select></form>
+            <form class="per-page" method="GET"><span>Rows per page</span>@foreach(request()->except(['per_page','page']) as $key=>$value)@if(is_scalar($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach<select name="per_page" onchange="if(event.isTrusted)this.form.requestSubmit()">@foreach([25,50,100] as $size)<option value="{{ $size }}" @selected($perPage===$size)>{{ $size }}</option>@endforeach</select></form>
             @if($patients->hasPages())<nav class="compact-pages" aria-label="Patient pages"><a class="{{ $patients->onFirstPage()?'disabled':'' }}" href="{{ $patients->previousPageUrl() ?: '#' }}" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></a>@foreach($patients->getUrlRange(max(1,$patients->currentPage()-2),min($patients->lastPage(),$patients->currentPage()+2)) as $page=>$url)<a class="page-number {{ $page===$patients->currentPage()?'active':'' }}" href="{{ $url }}">{{ $page }}</a>@endforeach<a class="{{ !$patients->hasMorePages()?'disabled':'' }}" href="{{ $patients->nextPageUrl() ?: '#' }}" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></a></nav>@endif
         </div></footer>
         @endif

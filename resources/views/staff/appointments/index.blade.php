@@ -553,7 +553,7 @@
         <form class="sort-box" method="GET" action="{{ route('staff.appointments.index') }}">
             <span class="sort-label">Sort</span>
             @foreach(['q','date_from','date_to'] as $filter)@if(request()->filled($filter))<input type="hidden" name="{{ $filter }}" value="{{ request($filter) }}">@endif @endforeach
-            <select id="appointmentSort" name="sort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
+            <select id="appointmentSort" name="sort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.KTLoading?.prepareNavigation(url);location.assign(url)">
                 <option value="dt_desc" @selected(request('sort', 'dt_desc') === 'dt_desc')>Date & time (newest)</option>
                 <option value="dt_asc" @selected(request('sort') === 'dt_asc')>Date & time (oldest)</option>
                 <option value="patient_asc" @selected(request('sort') === 'patient_asc')>Patient (A–Z)</option>
@@ -850,12 +850,7 @@
         window.location.assign(@json(route('staff.appointments.index')));
     });
 
-    // Initial feel
-    showSkeletonImmediate(240);
-    requestAnimationFrame(() => {
-        applyAll();
-        hideSkeleton();
-    });
+    applyAll();
 
     /* ==========================================================
        ✅ Animated Confirm Delete (built-in modal)

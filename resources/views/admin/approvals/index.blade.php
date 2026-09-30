@@ -612,8 +612,11 @@
         `);
     }
 
+    let restoreSubmitButton = null;
     function setSubmitLoading(isLoading){
         if(!eaSubmitBtn) return;
+        if (isLoading) restoreSubmitButton = window.KTLoading?.button(eaSubmitBtn, 'Approving…');
+        else { restoreSubmitButton?.(); restoreSubmitButton = null; }
         eaSubmitBtn.disabled = isLoading;
         eaSubmitBtn.style.opacity = isLoading ? '.7' : '';
     }
@@ -747,7 +750,7 @@
             const data = await res.json().catch(() => ({}));
 
             if(!res.ok){
-                throw new Error(data?.message || 'Failed to load slots.');
+                throw new Error(data?.message || 'Available times could not load. Check the selected dentist and date, then try again.');
             }
 
             if(data?.meta?.walk_in){
@@ -785,7 +788,7 @@
                 eaTimeHelp.textContent = `${slots.length} available slot(s).`;
             }
         }catch(err){
-            setError(err.message || 'Failed to load slots.');
+            setError(err.message || 'Available times could not load. Check the selected dentist and date, then try again.');
             if(eaTimeHelp) eaTimeHelp.textContent = '';
             eaTime.disabled = false;
         } finally {
@@ -952,6 +955,7 @@
 
         e.preventDefault();
         const btn = form.querySelector('button[type="submit"]');
+        const restoreButton = window.KTLoading?.button(btn, form.dataset.action === 'decline' ? 'Declining…' : 'Approving…');
         if (btn) { btn.disabled = true; btn.style.opacity = '.7'; }
 
         try{
@@ -967,7 +971,7 @@
 
             const data = await res.json().catch(() => ({}));
             if (!res.ok || data.ok === false) {
-                throw new Error(data.message || 'Action failed');
+                throw new Error(data.message || (form.dataset.action === 'decline' ? 'Decline could not be completed. Check the request before retrying.' : 'Approval could not be completed. Check the patient match, dentist, date and time.'));
             }
 
             const card = form.closest('[data-appointment-id]');
@@ -986,9 +990,10 @@
         }catch(err){
             showNotice(`<div class="alert alert-danger" style="border-radius:14px;">
                 <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                ${esc(err.message || 'Action failed')}
+                ${esc(err.message || 'The booking decision could not be confirmed. Check whether this request is still pending before retrying.')}
             </div>`);
         }finally{
+            restoreButton?.();
             if (btn) { btn.disabled = false; btn.style.opacity = ''; }
         }
     });
@@ -1149,7 +1154,7 @@
 
             const data = await res.json().catch(() => ({}));
             if(!res.ok || data.ok === false){
-                throw new Error(data.message || 'Approval failed');
+                throw new Error(data.message || 'Approval could not be completed. Check the patient match, dentist, date and time.');
             }
 
             const apptId = eaAppointmentId?.value;
@@ -1168,7 +1173,7 @@
                 ${esc(data.message || 'Approved')}
             </div>`);
         }catch(err){
-            setError(err.message || 'Approval failed.');
+            setError(err.message || 'Approval could not be completed. Check the patient match, dentist, date and time.');
         }finally{
             setSubmitLoading(false);
         }
@@ -1188,14 +1193,21 @@
         event.preventDefault();
         const reason = declineReason.value.trim();
         if (!reason) { declineError.textContent = 'Enter a decline reason.'; declineError.classList.remove('d-none'); declineReason.focus(); return; }
+        const actionButton = declineForm.querySelector('[type="submit"]');
+        if (actionButton.disabled) return;
+        actionButton.disabled = true;
+        const restoreButton = window.KTLoading?.button(actionButton, 'Declining…');
+        try {
         const response = await fetch(declineUrl, {method:'POST', headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':csrf,'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({_token:csrf,staff_note:reason})});
         const data = await response.json().catch(()=>({}));
-        if (!response.ok || data.ok === false) { declineError.textContent = data.message || 'Decline failed.'; declineError.classList.remove('d-none'); return; }
+        if (!response.ok || data.ok === false) { declineError.textContent = data.message || 'Decline could not be completed. Check the reason and request before retrying.'; declineError.classList.remove('d-none'); return; }
         const button = grid.querySelector(`[data-decline-url="${CSS.escape(declineUrl)}"]`);
         button?.closest('[data-appointment-id]')?.remove();
         declineModal?.hide(); ensureEmptyState();
         pendingBadge.textContent = data.pendingCount ?? Math.max(0, Number(pendingBadge.textContent)-1);
         showNotice(`<div class="alert alert-success" style="border-radius:14px;">${esc(data.message || 'Booking declined.')}</div>`);
+        } catch (error) { declineError.textContent = 'Network error. Please retry.'; declineError.classList.remove('d-none'); }
+        finally { restoreButton?.(); actionButton.disabled = false; }
     });
 
     const voidModal = new bootstrap.Modal(document.getElementById('voidModal'));
@@ -1212,6 +1224,10 @@
     document.getElementById('voidForm').addEventListener('submit', async event => {
         event.preventDefault();
         if (!voidCard) return;
+        const actionButton = document.querySelector('#voidForm [type="submit"]');
+        if (actionButton.disabled) return;
+        actionButton.disabled = true;
+        const restoreButton = window.KTLoading?.button(actionButton, 'Processing…');
         try {
             const response = await fetch(voidCard.dataset.voidUrl, {
                 method: 'POST',
@@ -1219,11 +1235,12 @@
                 body: new URLSearchParams({_token:csrf, reason:voidReason.value.trim()})
             });
             const data = await response.json();
-            if (!response.ok || data.ok === false) throw new Error(data.message || 'Could not void request.');
+            if (!response.ok || data.ok === false) throw new Error(data.message || 'Request could not be voided. Check for linked visits or payments, then retry.');
             voidCard.remove(); voidModal.hide(); ensureEmptyState();
             pendingBadge.textContent = data.pendingCount;
             showNotice(`<div class="alert alert-success">${esc(data.message)}</div>`);
         } catch (error) { voidError.textContent = error.message; voidError.classList.remove('d-none'); }
+        finally { restoreButton?.(); actionButton.disabled = false; }
     });
 
     poll();

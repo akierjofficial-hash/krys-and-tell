@@ -442,7 +442,7 @@
             <span class="sort-label">Sort</span>
 
             @if($isAll)
-                <select id="visitSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
+                <select id="visitSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.KTLoading?.prepareNavigation(url);location.assign(url)">
                     <option value="vdate_desc">Visit date (newest)</option>
                     <option value="vdate_asc">Visit date (oldest)</option>
                     <option value="created_desc">Date added (newest)</option>
@@ -453,7 +453,7 @@
                     <option value="treat_asc">Least treatments</option>
                 </select>
             @else
-                <select id="visitSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
+                <select id="visitSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.KTLoading?.prepareNavigation(url);location.assign(url)">
                     <option value="patient_asc">Patient (A–Z)</option>
                     <option value="patient_desc">Patient (Z–A)</option>
                     <option value="last_desc">Last visit (newest)</option>

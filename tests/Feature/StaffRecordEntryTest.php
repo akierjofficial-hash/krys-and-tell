@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Visit;
 use App\Models\VisitProcedure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -74,6 +75,59 @@ class StaffRecordEntryTest extends TestCase
     private function save(array $review, bool $ack = false)
     {
         return $this->postJson(route('staff.records.store', $review[0]), ['review_hash' => $review[1], 'acknowledge_duplicates' => $ack]);
+    }
+
+    public function test_review_errors_explain_missing_visit_fields_without_raw_attribute_paths(): void
+    {
+        $row = $this->visit();
+        $row['visit_date'] = '';
+        $row['doctor_id'] = '';
+        $row['procedures'][0]['service_id'] = '';
+        $row['procedures'][0]['price'] = '';
+
+        $response = $this->postJson(route('staff.records.review', (string) Str::uuid()), [
+            'patient_id' => $this->patient->id, 'mode' => 'past', 'version' => 0,
+            'payload' => ['visits' => [$row]],
+        ])->assertUnprocessable()->assertJsonValidationErrors([
+            'visits.0.visit_date', 'visits.0.doctor_id',
+            'visits.0.procedures.0.service_id', 'visits.0.procedures.0.price',
+        ]);
+
+        $errors = $response->json('errors');
+        $this->assertSame('Enter the date this visit happened.', $errors['visits.0.visit_date'][0]);
+        $this->assertSame('Choose the dentist who treated the patient.', $errors['visits.0.doctor_id'][0]);
+        $this->assertSame('Choose a treatment or service for this procedure.', $errors['visits.0.procedures.0.service_id'][0]);
+        $this->assertStringStartsWith('Enter the actual charge for this procedure.', $errors['visits.0.procedures.0.price'][0]);
+        $this->assertDatabaseCount('visits', 0);
+    }
+
+    public function test_review_errors_name_invalid_nested_receipt_and_procedure_fields(): void
+    {
+        $row = $this->visit();
+        $row['procedures'][0]['price'] = '-1';
+        $row['payments'] = [['amount' => '100.00', 'payment_date' => 'not-a-date', 'method' => 'Cash']];
+
+        $errors = $this->postJson(route('staff.records.review', (string) Str::uuid()), [
+            'patient_id' => $this->patient->id, 'mode' => 'past', 'version' => 0,
+            'payload' => ['visits' => [$row]],
+        ])->assertUnprocessable()->json('errors');
+
+        $this->assertStringContainsString('Visit 1 procedure 1 actual charge', $errors['visits.0.procedures.0.price'][0]);
+        $this->assertStringContainsString('Visit 1 ordinary receipt 1 payment date', $errors['visits.0.payments.0.payment_date'][0]);
+        $this->assertStringNotContainsString('visits.0', implode(' ', array_merge(...array_values($errors))));
+    }
+
+    public function test_shared_validation_messages_name_common_staff_and_admin_fields(): void
+    {
+        $errors = Validator::make([], [
+            'patient_id' => 'required', 'doctor_id' => 'required',
+            'appointment_date' => 'required', 'appointment_time' => 'required',
+        ])->errors();
+
+        $this->assertSame('Select a patient.', $errors->first('patient_id'));
+        $this->assertSame('Select a dentist.', $errors->first('doctor_id'));
+        $this->assertSame('Select an appointment date.', $errors->first('appointment_date'));
+        $this->assertSame('Select an appointment time.', $errors->first('appointment_time'));
     }
 
     public function test_patient_picker_searches_on_demand_without_embedding_all_patients_in_entry_page(): void
