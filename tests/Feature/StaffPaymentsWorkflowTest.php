@@ -9,6 +9,8 @@ use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Visit;
+use App\Services\PaymentTransactionService;
+use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,7 +54,10 @@ class StaffPaymentsWorkflowTest extends TestCase
     {
         $this->get(route('staff.payments.index'))->assertOk()->assertSeeText('Received today')
             ->assertSeeText('Outstanding')->assertSeeText('Transactions')->assertSeeText('Installment Plans')
-            ->assertSeeText('Record Payment')->assertSee('payable-items');
+            ->assertSeeText('Record Payment')->assertSee('payable-items')
+            ->assertViewHas('plans', null);
+        $this->get(route('staff.payments.index', ['tab' => 'plans']))->assertOk()
+            ->assertViewHas('transactions', null);
     }
 
     public function test_payable_items_only_return_real_outstanding_targets_for_patient(): void
@@ -112,6 +117,32 @@ class StaffPaymentsWorkflowTest extends TestCase
             'method' => 'Cash', 'payment_date' => '2026-01-01', 'notes' => 'Downpayment']);
         $this->get(route('staff.payments.index', ['q' => 'Paying']))->assertOk()->assertSee('PAY-00001')->assertSee('INS-00001');
         $this->get(route('staff.payments.index', ['type' => 'downpayment']))->assertOk()->assertDontSee('PAY-00001')->assertSeeText('Downpayment');
+    }
+
+    public function test_ledger_balance_after_uses_loaded_receipts_without_per_row_sum_queries(): void
+    {
+        $first = Payment::create(['visit_id' => $this->visit->id, 'amount' => 200,
+            'method' => 'Cash', 'payment_date' => '2026-09-20']);
+        $second = Payment::create(['visit_id' => $this->visit->id, 'amount' => 100,
+            'method' => 'GCash', 'payment_date' => '2026-09-21']);
+        $plan = $this->plan(['visit_id' => null, 'downpayment' => 0]);
+        $planFirst = InstallmentPayment::create(['installment_plan_id' => $plan->id,
+            'month_number' => 1, 'amount' => 2000, 'method' => 'Cash', 'payment_date' => '2026-09-20']);
+        $planSecond = InstallmentPayment::create(['installment_plan_id' => $plan->id,
+            'month_number' => 2, 'amount' => 3000, 'method' => 'Cash', 'payment_date' => '2026-09-21']);
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $rows = app(PaymentTransactionService::class)->paginate(Request::create('/staff/payments'))
+            ->getCollection()->keyBy(fn ($row) => $row->source.':'.$row->source_id);
+        $queries = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        $this->assertEquals(800, $rows['ordinary:'.$first->id]->balance_after);
+        $this->assertEquals(700, $rows['ordinary:'.$second->id]->balance_after);
+        $this->assertEquals(38000, $rows['installment:'.$planFirst->id]->balance_after);
+        $this->assertEquals(35000, $rows['installment:'.$planSecond->id]->balance_after);
+        $this->assertFalse($queries->contains(fn ($sql) => preg_match('/select\s+sum\s*\(/i', $sql)));
     }
 
     public function test_text_search_does_not_compare_numeric_payment_or_plan_ids_to_patient_name(): void
@@ -174,7 +205,7 @@ class StaffPaymentsWorkflowTest extends TestCase
             'patient_id' => $this->patient->id, 'status' => 'partial', 'method' => 'Cash',
             'date_from' => '2026-09-01', 'sort' => 'oldest']))->assertOk();
         $response->assertSee(e(route('staff.payments.index', ['q' => 'Paying',
-            'patient_id' => $this->patient->id, 'tab' => 'plans'])), false);
+            'patient_id' => $this->patient->id, 'date_from' => '2026-09-01', 'tab' => 'plans'])), false);
     }
 
     public function test_installment_patient_sort_uses_names_instead_of_patient_ids(): void

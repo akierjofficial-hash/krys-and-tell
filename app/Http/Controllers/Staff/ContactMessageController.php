@@ -15,6 +15,12 @@ class ContactMessageController extends Controller
     public function index(Request $request)
     {
         $messages = ContactMessage::query()
+            ->when(trim((string) $request->query('q', '')) !== '', function ($query) use ($request) {
+                $term = trim((string) $request->query('q'));
+                $query->where(fn ($match) => $match->whereLike('name', "%{$term}%")
+                    ->orWhereLike('email', "%{$term}%")
+                    ->orWhereLike('message', "%{$term}%"));
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();

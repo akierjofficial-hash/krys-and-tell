@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('title', 'Patient Portal Access')
 
@@ -43,11 +43,12 @@
 
 <section class="staff-section-card">
     <div class="staff-section-card__header"><div><h2>Find a website account</h2><p>Search by account name or sign-in email, compare the details above, then explicitly confirm the match.</p></div></div>
-    <form class="d-flex gap-2 mb-3" method="GET">
+    <form class="d-flex gap-2 mb-3" method="GET" data-live-search>
         <input class="form-control" type="search" name="q" value="{{ $q }}" placeholder="Search account name or email" required>
         <button class="btn btn-primary" type="submit">Search</button>
     </form>
 
+    <div data-live-results>
     @foreach($accounts as $account)
         <form class="border rounded p-3 mb-2" method="POST" action="{{ route('staff.patients.account-links.store', $patient) }}">
             @csrf
@@ -63,5 +64,6 @@
 
     @if($q !== '' && $accounts->isEmpty())<div class="text-muted">No active website account matched that search.</div>@endif
     @if($q !== '' && $accounts->hasPages())<div class="mt-3">{{ $accounts->links('pagination::bootstrap-5') }}</div>@endif
+    </div>
 </section>
 @endsection

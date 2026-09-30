@@ -228,6 +228,7 @@ class BookingFlowTest extends TestCase
 
     public function test_repeat_booking_updates_existing_pending_request_instead_of_creating_new_row(): void
     {
+        $this->travelTo(Carbon::parse('2026-09-28 09:00:00', config('app.timezone')));
         Mail::fake();
 
         $user = User::factory()->create([

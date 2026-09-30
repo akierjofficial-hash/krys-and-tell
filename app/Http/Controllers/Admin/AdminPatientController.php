@@ -73,12 +73,20 @@ class AdminPatientController extends Controller
             })
             ->values();
 
-        $ordinaryVisits = $patient->visits()->with(['procedures', 'payments'])->whereDoesntHave('installmentPlan')->get();
+        $ordinaryVisits = $patient->visits()->with(['procedures', 'payments', 'installmentPlan'])->get();
         $plans = \App\Models\InstallmentPlan::with('payments')->where('patient_id', $patient->id)->get();
-        $ordinaryOutstanding = $ordinaryVisits->sum(fn ($visit) => $financials->visitBalance($visit));
+        $incompleteMixed = 0;
+        $ordinaryOutstanding = $ordinaryVisits->sum(function ($visit) use ($financials, &$incompleteMixed) {
+            if (!$visit->installmentPlan) return $financials->visitBalance($visit);
+            $balance = $financials->ordinaryBalanceOnFinancedVisit($visit, $visit->installmentPlan);
+            if ($balance === null) $incompleteMixed++;
+            return $balance ?? 0;
+        });
         $installmentOutstanding = $plans->sum(fn ($plan) => $financials->planBalance($plan));
+        $unknownTotalPlans = $plans->filter(fn ($plan) => $plan->hasUnknownTotal());
+        $monthlyContracts = $plans->filter(fn ($plan) => $plan->is_unpriced_contract);
         $outstandingBalance = $ordinaryOutstanding + $installmentOutstanding;
 
-        return view('admin.patients.show', compact('patient', 'upcoming', 'past', 'procedures', 'ordinaryOutstanding', 'installmentOutstanding', 'outstandingBalance'));
+        return view('admin.patients.show', compact('patient', 'upcoming', 'past', 'procedures', 'ordinaryOutstanding', 'installmentOutstanding', 'outstandingBalance', 'unknownTotalPlans', 'monthlyContracts', 'incompleteMixed'));
     }
 }

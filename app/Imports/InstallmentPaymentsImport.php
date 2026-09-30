@@ -8,6 +8,7 @@ use App\Models\Visit;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Services\FinancialService;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -29,6 +30,10 @@ class InstallmentPaymentsImport implements ToCollection, WithHeadingRow, SkipsEm
     public function collection(Collection $rows)
     {
         $this->plan->loadMissing(['visit', 'service']);
+        if ($this->plan->status === InstallmentPlan::STATUS_COMPLETED) {
+            $this->errors[] = 'Closed plans cannot receive imported payments.';
+            return;
+        }
 
         foreach ($rows as $i => $row) {
             $rowNo = $i + 2;
@@ -53,9 +58,9 @@ class InstallmentPaymentsImport implements ToCollection, WithHeadingRow, SkipsEm
                 }
 
                 $amount = $this->toMoney($row['amount'] ?? null);
-                if ($amount === null || (float)$amount < 0) {
+                if ($amount === null || ($this->plan->is_unpriced_contract && (float)$amount <= 0)) {
                     $this->skipped++;
-                    $this->errors[] = "Row {$rowNo}: amount is required and must be >= 0.";
+                    $this->errors[] = "Row {$rowNo}: amount is required and must be ".($this->plan->is_unpriced_contract ? '> 0.' : '>= 0.');
                     return;
                 }
 
@@ -74,6 +79,15 @@ class InstallmentPaymentsImport implements ToCollection, WithHeadingRow, SkipsEm
                 $existing = InstallmentPayment::where('installment_plan_id', $this->plan->id)
                     ->where('month_number', $month)
                     ->first();
+                if ($this->plan->is_unpriced_contract && $this->plan->total_cost !== null) {
+                    $otherReceipts = InstallmentPayment::where('installment_plan_id', $this->plan->id)
+                        ->when($existing, fn ($query) => $query->where('id', '!=', $existing->id))->sum('amount');
+                    if ((float) $otherReceipts + (float) $amount > (float) $this->plan->total_cost + 0.0001) {
+                        $this->skipped++;
+                        $this->errors[] = "Row {$rowNo}: receipts would exceed the later agreed final total.";
+                        return;
+                    }
+                }
 
                 // Determine visit_id:
                 // - If month 0: link to plan->visit_id by default
@@ -90,7 +104,7 @@ class InstallmentPaymentsImport implements ToCollection, WithHeadingRow, SkipsEm
 
                     if (!$notes) $notes = 'Downpayment';
                 } else {
-                    if (!$visitId) {
+                    if (!$visitId && !$this->plan->is_unpriced_contract) {
                         $visitId = $this->createVisitForPayment($paymentDate, $notes, $month);
                     }
                 }
@@ -177,6 +191,10 @@ class InstallmentPaymentsImport implements ToCollection, WithHeadingRow, SkipsEm
 
     private function recomputePlan(InstallmentPlan $plan): void
     {
+        if ($plan->is_unpriced_contract) {
+            app(FinancialService::class)->recomputePlan($plan);
+            return;
+        }
         $total = (float)($plan->total_cost ?? 0);
 
         $paymentsTotal = (float)InstallmentPayment::where('installment_plan_id', $plan->id)->sum('amount');

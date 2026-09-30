@@ -127,20 +127,25 @@ class PaymentTransactionService
     private function ordinaryBalanceAfter(Payment $payment): float
     {
         $charge = $this->finance->visitCharge($payment->visit);
-        $paid = Payment::where('visit_id', $payment->visit_id)
-            ->where(fn ($q) => $q->whereDate('payment_date', '<', $payment->payment_date)
-                ->orWhere(fn ($same) => $same->whereDate('payment_date', $payment->payment_date)->where('id', '<=', $payment->id)))
-            ->sum('amount');
+        $date = $payment->payment_date?->toDateString();
+        $paid = $payment->visit->payments->sum(function (Payment $receipt) use ($date, $payment) {
+            $receiptDate = $receipt->payment_date?->toDateString();
+            return $date && $receiptDate && ($receiptDate < $date
+                || ($receiptDate === $date && $receipt->id <= $payment->id)) ? (float) $receipt->amount : 0;
+        });
         return max(0, $charge - (float) $paid);
     }
 
-    private function planBalanceAfter(InstallmentPayment $payment): float
+    private function planBalanceAfter(InstallmentPayment $payment): ?float
     {
         $plan = $payment->plan;
-        $paid = InstallmentPayment::where('installment_plan_id', $plan->id)
-            ->where(fn ($q) => $q->whereDate('payment_date', '<', $payment->payment_date)
-                ->orWhere(fn ($same) => $same->whereDate('payment_date', $payment->payment_date)->where('id', '<=', $payment->id)))
-            ->sum('amount');
+        if ($plan->hasUnknownTotal()) return null;
+        $date = $payment->payment_date?->toDateString();
+        $paid = $plan->payments->sum(function (InstallmentPayment $receipt) use ($date, $payment) {
+            $receiptDate = $receipt->payment_date?->toDateString();
+            return $date && $receiptDate && ($receiptDate < $date
+                || ($receiptDate === $date && $receipt->id <= $payment->id)) ? (float) $receipt->amount : 0;
+        });
         if (!$this->finance->downpaymentPayment($plan)) $paid += (float) $plan->downpayment;
         return max(0, (float) $plan->total_cost - (float) $paid);
     }

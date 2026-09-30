@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('content')
 
@@ -218,13 +218,13 @@
         <div class="toolbar">
             <div style="font-weight:950;">Inbox</div>
 
-            <div class="search">
+            <form class="search" method="GET" data-live-search data-live-target="#msgTbody" data-live-extra="#msgPager">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"/>
                 </svg>
-                <input id="msgSearch" type="text" placeholder="Search name, email, message…" autocomplete="off">
-            </div>
+                <input id="msgSearch" type="search" name="q" value="{{ request('q') }}" aria-label="Search messages" placeholder="Search name, email, message…" autocomplete="off">
+            </form>
 
             <a class="btnx" href="{{ route('staff.messages.index') }}" title="Refresh">
                 <i class="fa-solid fa-rotate-right"></i> Refresh
@@ -244,7 +244,7 @@
                     </tr>
                 </thead>
 
-                <tbody id="msgTbody">
+                <tbody id="msgTbody" data-live-results>
                     @forelse($messages as $m)
                         @php
                             $isUnread = !$m->read_at;
@@ -299,7 +299,7 @@
                     @empty
                         <tr id="emptyRow">
                             <td colspan="6" class="text-center py-4" style="color:var(--muted);">
-                                No messages yet.
+                                {{ request('q') ? 'No messages match your search.' : 'No messages yet.' }}
                             </td>
                         </tr>
                     @endforelse
@@ -308,17 +308,14 @@
         </div>
     </div>
 
-    <div class="mt-3">
+    <div class="mt-3" id="msgPager">
         {{ $messages->links('pagination::bootstrap-5') }}
     </div>
 </div>
 
 <script>
 (function(){
-    if (window.KTListState) {
-        window.KTListState.bindInput('#msgSearch', 'q');
-        window.KTListState.injectReturn();
-    }
+    if (window.KTListState) window.KTListState.injectReturn();
     const input = document.getElementById('msgSearch');
     const tbody = document.getElementById('msgTbody');
     const unreadText = document.getElementById('unreadCountText');
@@ -348,16 +345,6 @@
             if (href) window.location.href = href;
         });
     }
-
-    // search filter
-    input?.addEventListener('input', () => {
-        const q = (input.value || '').toLowerCase().trim();
-        const rows = tbody?.querySelectorAll('tr[data-search]') || [];
-        rows.forEach(r => {
-            const hay = r.getAttribute('data-search') || '';
-            r.style.display = hay.includes(q) ? '' : 'none';
-        });
-    });
 
     // live unread count updates from layout poller
     window.addEventListener('kt:messages:count', (ev) => {

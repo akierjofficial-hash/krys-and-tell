@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('kt_live_scope', 'services')
 @section('kt_live_interval', 15000)
@@ -654,31 +654,31 @@
     </div>
 
     <div class="top-actions">
-        <div class="search-box">
+        <form class="search-box" method="GET" data-live-search>
             <i class="fa fa-search"></i>
-            <input type="text" id="serviceSearch" placeholder="Search service id, name, description, or price…">
-        </div>
+            <input type="search" id="serviceSearch" name="q" value="{{ request('q') }}" aria-label="Search services" placeholder="Search service id, name, description, or price…">
+        </form>
 
         <div class="sort-box">
             <span class="sort-label">Sort</span>
-            <select id="serviceSort" class="sort-select">
-                <option value="created_desc">Date added (newest)</option>
-                <option value="created_asc">Date added (oldest)</option>
+            <select id="serviceSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
+                <option value="created_desc" @selected(request('sort')==='created_desc')>Date added (newest)</option>
+                <option value="created_asc" @selected(request('sort')==='created_asc')>Date added (oldest)</option>
 
                 {{-- ✅ Default: A–Z --}}
-                <option value="name_asc" selected>Name (A–Z)</option>
+                <option value="name_asc" @selected(request('sort','name_asc')==='name_asc')>Name (A–Z)</option>
 
-                <option value="name_desc">Name (Z–A)</option>
-                <option value="price_desc">Base price (high → low)</option>
-                <option value="price_asc">Base price (low → high)</option>
-                <option value="custom_yes">Custom price (Yes first)</option>
-                <option value="custom_no">Custom price (No first)</option>
+                <option value="name_desc" @selected(request('sort')==='name_desc')>Name (Z–A)</option>
+                <option value="price_desc" @selected(request('sort')==='price_desc')>Base price (high → low)</option>
+                <option value="price_asc" @selected(request('sort')==='price_asc')>Base price (low → high)</option>
+                <option value="custom_yes" @selected(request('sort')==='custom_yes')>Custom price (Yes first)</option>
+                <option value="custom_no" @selected(request('sort')==='custom_no')>Custom price (No first)</option>
             </select>
         </div>
 
-        <button type="button" id="clearFilters" class="btnx">
+        <a href="{{ route('staff.services.index') }}" id="clearFilters" class="btnx">
             <i class="fa fa-rotate-left"></i> Reset
-        </button>
+        </a>
 
         <a href="{{ route('staff.services.create') }}" class="add-btn" data-kt-return>
             <i class="fa fa-plus"></i> Add Service
@@ -687,10 +687,10 @@
 </div>
 
 {{-- Table Card --}}
-<div class="card-shell" id="svcCard">
+<div class="card-shell" id="svcCard" data-live-results>
     <div class="card-head">
         <div class="hint">
-            Showing <strong id="visibleCount">{{ $services->count() }}</strong> / <strong id="totalCount">{{ $services->count() }}</strong> service(s)
+            Showing <strong id="visibleCount">{{ $services->count() }}</strong> / <strong id="totalCount">{{ $services->total() }}</strong> service(s)
         </div>
         <div class="hint">Tip: search + sort works together</div>
     </div>
@@ -800,6 +800,7 @@
             </tbody>
         </table>
     </div>
+    <div class="p-3">{{ $services->links('pagination::bootstrap-5') }}</div>
 </div>
 
 {{-- ✅ Confirm Modal --}}
@@ -831,199 +832,7 @@
 
 <script>
 (() => {
-    const card = document.getElementById('svcCard');
-
-    const searchInput = document.getElementById('serviceSearch');
-    const sortSelect  = document.getElementById('serviceSort');
-    const resetBtn    = document.getElementById('clearFilters');
-
-    // Keep client-side filters in the URL (q/sort) for back/forward/refresh
-    if (window.KTListState) {
-        window.KTListState.bindInput('#serviceSearch', 'q');
-        window.KTListState.bindSelect('#serviceSort', 'sort');
-        window.KTListState.injectReturn();
-    }
-
-    const tbody       = document.getElementById('servicesTableBody');
-    const rowsAll     = Array.from(document.querySelectorAll('.service-row'));
-
-    const visibleCountEl = document.getElementById('visibleCount');
-    const totalCountEl   = document.getElementById('totalCount');
-
-    totalCountEl.textContent = rowsAll.length;
-    visibleCountEl.textContent = rowsAll.length;
-
-    // “No results” row (only for search/filter)
-    const noResultsRow = document.createElement('tr');
-    noResultsRow.innerHTML = `<td colspan="6" class="empty-state">No matching services.</td>`;
-    noResultsRow.style.display = 'none';
-    if (rowsAll.length) tbody.appendChild(noResultsRow);
-
-    function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
-
-    /* ==========================================================
-       ✅ Skeleton helpers
-       ========================================================== */
-    const skelRowsEl = document.getElementById('svcSkelRows');
-    function buildSkelRows(n = 9){
-        if (!skelRowsEl) return;
-        skelRowsEl.innerHTML = '';
-        for (let i=0;i<n;i++){
-            const row = document.createElement('div');
-            row.className = 'kt-skel__row';
-            row.innerHTML = `
-                <div class="kt-skel__bar" style="width:${48 + (i%4)*10}%"></div>
-                <div class="kt-skel__bar" style="width:${66 + (i%3)*12}%"></div>
-                <div class="kt-skel__bar" style="width:${56 + (i%4)*8}%"></div>
-                <div class="kt-skel__bar" style="width:${54 + (i%5)*7}%"></div>
-                <div class="kt-skel__bar" style="width:${78 + (i%3)*7}%"></div>
-                <div class="kt-skel__bar" style="width:${58 + (i%4)*8}%"></div>
-            `;
-            skelRowsEl.appendChild(row);
-        }
-    }
-    buildSkelRows(9);
-
-    let skelTimer = null;
-    let skelShownAt = 0;
-
-    function showSkeletonImmediate(minMs = 240){
-        if (!card) return;
-        clearTimeout(skelTimer);
-        card.classList.add('is-loading');
-        skelShownAt = Date.now();
-        skelTimer = setTimeout(() => {}, minMs);
-    }
-    function showSkeletonSoft(){
-        clearTimeout(skelTimer);
-        skelTimer = setTimeout(() => showSkeletonImmediate(220), 90);
-    }
-    function hideSkeleton(){
-        if (!card) return;
-        const elapsed = Date.now() - (skelShownAt || 0);
-        const minMs = 220;
-        const wait = Math.max(0, minMs - elapsed);
-        clearTimeout(skelTimer);
-        setTimeout(() => card.classList.remove('is-loading'), wait);
-    }
-
-    function applySearch(){
-        const q = normalize(searchInput.value);
-        let visible = 0;
-
-        rowsAll.forEach(row => {
-            const hay = normalize(row.textContent) + ' ' + normalize(row.dataset.id);
-            const show = hay.includes(q);
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        visibleCountEl.textContent = visible;
-
-        if (rowsAll.length){
-            noResultsRow.style.display = (visible === 0) ? '' : 'none';
-        }
-    }
-
-    function applySort(){
-        const mode = sortSelect.value;
-
-        const sorted = [...rowsAll].sort((a, b) => {
-            const da = a.dataset;
-            const db = b.dataset;
-
-            const nameA = da.name || '';
-            const nameB = db.name || '';
-            const createdA = Number(da.created || 0);
-            const createdB = Number(db.created || 0);
-            const priceA = Number(da.price || 0);
-            const priceB = Number(db.price || 0);
-            const customA = Number(da.custom || 0);
-            const customB = Number(db.custom || 0);
-
-            switch(mode){
-                case 'created_desc': return createdB - createdA;
-                case 'created_asc':  return createdA - createdB;
-
-                case 'name_asc':  return nameA.localeCompare(nameB) || (createdB - createdA);
-                case 'name_desc': return nameB.localeCompare(nameA) || (createdB - createdA);
-
-                case 'price_desc': return (priceB - priceA) || nameA.localeCompare(nameB);
-                case 'price_asc':  return (priceA - priceB) || nameA.localeCompare(nameB);
-
-                case 'custom_yes': return (customB - customA) || nameA.localeCompare(nameB);
-                case 'custom_no':  return (customA - customB) || nameA.localeCompare(nameB);
-
-                default: return nameA.localeCompare(nameB) || (createdB - createdA);
-            }
-        });
-
-        sorted.forEach(r => tbody.appendChild(r));
-        if (rowsAll.length) tbody.appendChild(noResultsRow);
-    }
-
-    function applyAll(){
-        applySort();
-        applySearch();
-    }
-
-    // Smooth UX: skeleton on interactions
-    let t = null;
-    function debounceApply(){
-        clearTimeout(t);
-        showSkeletonSoft();
-        t = setTimeout(() => {
-            applyAll();
-            hideSkeleton();
-        }, 140);
-    }
-
-    searchInput?.addEventListener('input', debounceApply);
-
-    sortSelect?.addEventListener('change', () => {
-        showSkeletonImmediate(260);
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-        });
-    });
-
-    resetBtn?.addEventListener('click', () => {
-        showSkeletonImmediate(260);
-        searchInput.value = '';
-        sortSelect.value = 'name_asc';
-        if (window.KTListState) {
-            window.KTListState.setParam('q', '');
-            window.KTListState.setParam('sort', '');
-        }
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-            searchInput.focus();
-        });
-    });
-
-    // Escape clears search
-    searchInput?.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape'){
-            searchInput.value = '';
-            if (window.KTListState) window.KTListState.setParam('q', '');
-            showSkeletonImmediate(220);
-            requestAnimationFrame(() => {
-                applyAll();
-                hideSkeleton();
-                searchInput.blur();
-            });
-        }
-    });
-
-    // Initial
-    sortSelect.value = sortSelect.value || 'name_asc';
-    showSkeletonImmediate(240);
-    requestAnimationFrame(() => {
-        applyAll();
-        hideSkeleton();
-    });
+    // Search and sorting are handled by the server-backed list controls.
 
     /* ==========================================================
        ✅ Animated Confirm Delete

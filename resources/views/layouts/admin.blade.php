@@ -1148,6 +1148,7 @@
     })();
     </script>
 
+    <script src="{{ asset('js/kt-live-search.js') }}?v=3" defer></script>
     @stack('scripts')
 
     {{-- ✅ PWA Service Worker --}}

@@ -16,6 +16,8 @@ class VisitController extends Controller
     {
         // Toggle: show "All Visits" (old behavior) when ?view=all
         $view = $request->query('view', 'patients');
+        $q = trim((string) $request->query('q', ''));
+        $sort = (string) $request->query('sort', $view === 'all' ? 'vdate_desc' : 'patient_asc');
 
         if ($view === 'all') {
             $request->validate([
@@ -30,9 +32,36 @@ class VisitController extends Controller
                 ])
                 ->when($request->filled('date_from'), fn ($query) => $query->whereDate('visit_date', '>=', $request->date_from))
                 ->when($request->filled('date_to'), fn ($query) => $query->whereDate('visit_date', '<=', $request->date_to))
-                ->orderByDesc('visit_date')
-                ->orderByDesc('created_at')
-                ->get();
+                ->when($q !== '', function ($query) use ($q) {
+                    $query->where(function ($match) use ($q) {
+                        $parts = preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                        $match->whereHas('patient', fn ($patient) => $patient->where(function ($names) use ($parts) {
+                            foreach ($parts as $part) $names->where(fn ($word) => $word->whereLike('first_name', "%{$part}%")
+                                ->orWhereLike('last_name', "%{$part}%")
+                                ->orWhereLike('middle_name', "%{$part}%"));
+                        }))
+                            ->orWhereLike('dentist_name', "%{$q}%")
+                            ->orWhereLike('notes', "%{$q}%")
+                            ->orWhereHas('doctor', fn ($doctor) => $doctor->whereLike('name', "%{$q}%"))
+                            ->orWhereHas('procedures.service', fn ($service) => $service->whereLike('name', "%{$q}%"));
+                        try {
+                            $date = \Carbon\Carbon::parse($q)->toDateString();
+                            $match->orWhereDate('visit_date', $date);
+                        } catch (\Throwable) {}
+                    });
+                });
+            if (in_array($sort, ['treat_desc', 'treat_asc'], true)) $visits->withCount('procedures');
+            match ($sort) {
+                'vdate_asc' => $visits->orderBy('visit_date'),
+                'created_desc' => $visits->orderByDesc('created_at'),
+                'created_asc' => $visits->orderBy('created_at'),
+                'patient_asc' => $visits->orderBy(Patient::select('last_name')->whereColumn('patients.id', 'visits.patient_id')),
+                'patient_desc' => $visits->orderByDesc(Patient::select('last_name')->whereColumn('patients.id', 'visits.patient_id')),
+                'treat_desc' => $visits->orderByDesc('procedures_count'),
+                'treat_asc' => $visits->orderBy('procedures_count'),
+                default => $visits->orderByDesc('visit_date'),
+            };
+            $visits = $visits->orderByDesc('id')->paginate(25)->withQueryString();
 
             return view('staff.visits.index', compact('view', 'visits'));
         }
@@ -44,10 +73,22 @@ $patients = Patient::query()
     ->select('patients.*')
     ->withCount('visits')
     ->withMax('visits as last_visit_date', 'visit_date')
-    ->orderByDesc('last_visit_date')
-    ->orderBy('last_name')
-    ->orderBy('first_name')
-    ->get();
+    ->when($q !== '', function ($query) use ($q) {
+        foreach (preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $part) {
+            $query->where(fn ($match) => $match->whereLike('first_name', "%{$part}%")
+                ->orWhereLike('last_name', "%{$part}%")
+                ->orWhereLike('middle_name', "%{$part}%"));
+        }
+    });
+match ($sort) {
+    'patient_desc' => $patients->orderByDesc('last_name')->orderByDesc('first_name'),
+    'last_desc' => $patients->orderByDesc('last_visit_date'),
+    'last_asc' => $patients->orderBy('last_visit_date'),
+    'count_desc' => $patients->orderByDesc('visits_count'),
+    'count_asc' => $patients->orderBy('visits_count'),
+    default => $patients->orderBy('last_name')->orderBy('first_name'),
+};
+$patients = $patients->orderBy('id')->paginate(25)->withQueryString();
 
 return view('staff.visits.index', compact('view', 'patients'));
 
@@ -153,7 +194,7 @@ return view('staff.visits.index', compact('view', 'patients'));
 
     public function show(Visit $visit, FinancialService $finance)
     {
-        $visit->load(['patient', 'doctor', 'procedures.service']);
+        $visit->load(['patient', 'doctor', 'procedures.service', 'installmentPlan']);
         $visitCharge = $finance->visitCharge($visit);
         return view('staff.visits.show', compact('visit', 'visitCharge'));
     }

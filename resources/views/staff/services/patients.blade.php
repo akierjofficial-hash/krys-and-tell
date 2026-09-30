@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('content')
 
@@ -186,10 +186,10 @@
     </div>
 
     <div class="top-actions">
-        <div class="search-box">
+        <form class="search-box" method="GET" data-live-search>
             <i class="fa fa-search"></i>
-            <input type="text" id="patientSearch" placeholder="Search patient name…">
-        </div>
+            <input type="search" id="patientSearch" name="q" value="{{ request('q') }}" aria-label="Search patients for this service" placeholder="Search patient name…">
+        </form>
 
         <x-back-button
             fallback="{{ route('staff.services.index') }}"
@@ -199,11 +199,11 @@
     </div>
 </div>
 
-<div class="card-shell">
+<div class="card-shell" data-live-results>
     <div class="card-head">
         <span class="count-pill">
             <i class="fa fa-folder-open"></i>
-            Showing <strong id="visibleCount">{{ $patients->count() }}</strong> / <strong id="totalCount">{{ $patients->count() }}</strong>
+            Showing <strong id="visibleCount">{{ $patients->count() }}</strong> / <strong id="totalCount">{{ $patients->total() }}</strong>
         </span>
         <div style="font-size:12px; color: rgba(15,23,42,.55); font-weight:800;">Sorted by last name (A–Z)</div>
     </div>
@@ -231,39 +231,18 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" class="text-center text-muted py-4">No patients found for this service.</td>
+                        <td colspan="2" class="text-center text-muted py-4">{{ request('q') ? 'No patients match this search for this service.' : 'No patients found for this service.' }}</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
+    <div class="p-3">{{ $patients->links('pagination::bootstrap-5') }}</div>
 </div>
 
 <script>
 (() => {
-    const input = document.getElementById('patientSearch');
-    const rows  = Array.from(document.querySelectorAll('.p-row'));
-    const visibleCountEl = document.getElementById('visibleCount');
-    const totalCountEl   = document.getElementById('totalCount');
-
-    const normalize = s => (s || '').toString().toLowerCase().trim();
-
-    totalCountEl.textContent = rows.length;
-    visibleCountEl.textContent = rows.length;
-
-    input?.addEventListener('keyup', () => {
-        const q = normalize(input.value);
-        let visible = 0;
-
-        rows.forEach(r => {
-            const text = normalize(r.textContent);
-            const show = text.includes(q);
-            r.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        visibleCountEl.textContent = visible;
-    });
+    // Results are filtered and paginated by the authenticated controller.
 })();
 </script>
 

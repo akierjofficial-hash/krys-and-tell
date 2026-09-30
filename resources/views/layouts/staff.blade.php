@@ -894,10 +894,7 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         // ✅ unread message badge for sidebar/top
         $unreadMessages = 0;
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('contact_messages')
-                && \Illuminate\Support\Facades\Schema::hasColumn('contact_messages', 'read_at')) {
-                $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
-            }
+            $unreadMessages = \App\Models\ContactMessage::query()->whereNull('read_at')->count();
         } catch (\Throwable $e) { $unreadMessages = 0; }
         @endphp
 
@@ -1003,18 +1000,14 @@ $routeName = request()->route() ? request()->route()->getName() : '';
             $pendingItems = collect();
 
             try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('appointments')
-                    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'status')) {
+                $pendingItems = \App\Models\Appointment::query()
+                    ->with(['service','doctor','patient'])
+                    ->where('status', 'pending')
+                    ->orderByDesc('created_at')
+                    ->take(8)
+                    ->get();
 
-                    $pendingItems = \App\Models\Appointment::query()
-                        ->with(['service','doctor','patient'])
-                        ->where('status', 'pending')
-                        ->orderByDesc('created_at')
-                        ->take(8)
-                        ->get();
-
-                    $pendingApprovals = $pendingItems->count();
-                }
+                $pendingApprovals = $pendingItems->count();
             } catch (\Throwable $e) {
                 $pendingApprovals = 0;
                 $pendingItems = collect();
@@ -2254,8 +2247,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         }
     }
 
-    pollApprovals();
     setInterval(pollApprovals, 5000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pollApprovals(); });
 
     // =========================
     // ✅ Messages realtime polling (AJAX) + badges (widget endpoint)
@@ -2342,8 +2335,8 @@ $routeName = request()->route() ? request()->route()->getName() : '';
         }
     }
 
-    pollMessages();
     setInterval(pollMessages, 6000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pollMessages(); });
 
 })();
 </script>
@@ -2421,6 +2414,7 @@ if (window.KTPush) {
 
 
 
+<script src="{{ asset('js/kt-live-search.js') }}?v=3" defer></script>
 @stack('scripts')
 </body>
 

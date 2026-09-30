@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('kt_live_scope', 'patients')
 @section('kt_live_interval', 12000)
@@ -36,7 +36,7 @@
 <div class="patients-page">
     <header class="patients-head">
         <div><h1 class="patients-title">Patients</h1><p class="patients-subtitle">Manage patient records</p></div>
-        <form class="patients-toolbar" method="GET" action="{{ route('staff.patients.index') }}">
+        <form class="patients-toolbar" method="GET" action="{{ route('staff.patients.index') }}" data-live-search data-live-target=".patient-panel" data-live-extra=".alphabet">
             <div class="patient-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="search" name="q" value="{{ $q }}" placeholder="Search patients" aria-label="Search patients" oninput="this.form.elements.initial.value=''">
@@ -73,7 +73,7 @@
         @endforeach
     </nav>
 
-    <section class="patient-panel">
+    <section class="patient-panel" data-live-results>
         @if($patients->isEmpty())
             <div class="patient-empty"><i class="fa-regular fa-folder-open"></i><h3>{{ $q!=='' || $initial!=='' ? 'No patients match your filters.' : 'No patients yet.' }}</h3><p>{{ $q!=='' || $initial!=='' ? 'Try another search or clear the selected initial.' : 'Add the first patient to begin.' }}</p>@if($q!=='' || $initial!=='')<a class="pbtn" href="{{ route('staff.patients.index') }}">Reset Filters</a>@else<a class="pbtn primary" href="{{ route('staff.patients.create',['return'=>$listUrl]) }}">Add Patient</a>@endif</div>
         @else

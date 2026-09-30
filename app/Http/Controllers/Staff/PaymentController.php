@@ -122,7 +122,9 @@ class PaymentController extends Controller
     public function index(Request $request, PaymentTransactionService $ledger, FinancialService $finance)
     {
         $tab = in_array($request->tab, ['plans', 'installment'], true) ? 'plans' : 'transactions';
-        $transactions = $ledger->paginate($request);
+        $transactions = $tab === 'transactions' ? $ledger->paginate($request) : null;
+        $plans = null;
+        if ($tab === 'plans') {
         $plansQuery = InstallmentPlan::with(['patient', 'service', 'payments']);
         if ($request->filled('q')) {
             $term = trim($request->q);
@@ -158,9 +160,13 @@ class PaymentController extends Controller
         };
         $plans = $plansQuery->paginate(15, ['*'], 'plans_page')->withQueryString();
         $plans->getCollection()->each(function ($plan) use ($finance) {
-            $plan->computed_paid = $finance->planPaid($plan);
+            $plan->computed_paid = $plan->is_unpriced_contract ? (float) $plan->payments->sum('amount') : $finance->planPaid($plan);
             $plan->computed_balance = $finance->planBalance($plan);
         });
+        }
+        if ($request->header('X-KT-Live-Search') === '1') {
+            return view('staff.payments.partials.results', compact('tab', 'transactions', 'plans'));
+        }
         $patients = Patient::orderBy('last_name')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
         $summary = $finance->summary();
         $submissionToken = (string) Str::uuid();
@@ -181,9 +187,11 @@ class PaymentController extends Controller
             })->filter(fn ($item) => $item['balance'] > 0)->values();
         $plans = InstallmentPlan::with(['service', 'payments'])->where('patient_id', $patientId)
             ->where('status', '!=', InstallmentPlan::STATUS_COMPLETED)->orderByDesc('start_date')->get()
-            ->map(fn ($plan) => ['type' => 'plan', 'id' => $plan->id, 'balance' => $finance->planBalance($plan),
-                'label' => 'Plan #' . $plan->id . ' · ' . ($plan->service?->name ?: 'Treatment plan')])
-            ->filter(fn ($item) => $item['balance'] > 0)->values();
+            ->map(fn ($plan) => ['type' => 'plan', 'id' => $plan->id, 'balance' => $plan->hasUnknownTotal() ? null : $finance->planBalance($plan),
+                'unknown_total' => $plan->hasUnknownTotal(),
+                'label' => 'Plan #' . $plan->id . ' · ' . ($plan->service?->name ?: 'Treatment plan')
+                    . ($plan->hasUnknownTotal() ? ' · Open monthly — no final total' : '')])
+            ->filter(fn ($item) => $item['unknown_total'] || $item['balance'] > 0)->values();
         return response()->json(['items' => $visits->concat($plans)->values()]);
     }
 
@@ -488,14 +496,17 @@ class PaymentController extends Controller
 
     public function storeInstallment(Request $request, InstallmentPlanCreationService $creator)
     {
-        $isOpen = $request->boolean('is_open_contract');
+        $unknown = $request->boolean('is_unpriced_contract');
+        $isOpen = $unknown || $request->boolean('is_open_contract');
         $data = $request->validate([
             'visit_id' => 'nullable|exists:visits,id|required_without:appointment_id',
             'appointment_id' => 'nullable|exists:appointments,id|required_without:visit_id',
-            'total_cost' => 'required|numeric|min:0',
-            'downpayment' => 'required|numeric|min:0|lte:total_cost',
+            'total_cost' => $unknown ? 'nullable' : 'required|numeric|min:0',
+            'downpayment' => $unknown ? 'required|numeric|gt:0' : 'required|numeric|min:0|lte:total_cost',
+            'is_unpriced_contract' => 'nullable|boolean',
+            'first_due_date' => $unknown ? 'required|date|after_or_equal:start_date' : 'nullable|date',
             'is_open_contract' => 'nullable|boolean',
-            'open_monthly_payment' => $isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
+            'open_monthly_payment' => $unknown ? 'required|numeric|gt:0' : ($isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0'),
             'months' => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
             'start_date' => 'required|date',
             'downpayment_method' => 'required|in:Cash,GCash,Card,Bank Transfer',
@@ -506,6 +517,7 @@ class PaymentController extends Controller
             throw ValidationException::withMessages(['visit_id' => 'Select only one source.']);
         }
         $data['is_open_contract'] = $isOpen;
+        $data['is_unpriced_contract'] = $unknown;
         $creator->create($data);
         return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'plans'])
             ->with('success', 'Installment plan created.');

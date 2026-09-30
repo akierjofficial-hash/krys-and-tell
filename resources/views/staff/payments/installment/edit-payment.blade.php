@@ -280,6 +280,7 @@
 
     $planTotal = (float)($plan->total_cost ?? 0);
     $planBal   = (float)($plan->balance ?? 0);
+    $unknownTotal = $plan->hasUnknownTotal();
 
     $docVal = old('doctor_id', $payment->visit?->doctor_id);
     $hasDocs = isset($doctors) && count($doctors);
@@ -332,7 +333,7 @@
 
             <div class="tile">
                 <div class="k"><i class="fa fa-peso-sign"></i> Remaining Balance (current)</div>
-                <div class="v">₱{{ number_format($planBal, 2) }}</div>
+                <div class="v">{{ $unknownTotal ? 'Not determinable — no total agreed' : '₱'.number_format($planBal, 2) }}</div>
             </div>
         </div>
 
@@ -392,7 +393,7 @@
                         value="{{ old('amount', (float)($payment->amount ?? 0)) }}"
                         required
                     >
-                    <div class="helper">System should prevent exceeding the remaining balance / total cost.</div>
+                    <div class="helper">{{ $unknownTotal ? 'Enter the amount actually received. There is no agreed final total.' : 'System prevents exceeding the remaining balance / total cost.' }}</div>
                 </div>
 
                 <div class="col-12 col-md-6">
@@ -418,6 +419,7 @@
                 </div>
 
                 {{-- Live preview (client-side only) --}}
+                @unless($unknownTotal)
                 <div class="col-12">
                     <div class="live" id="liveBox" style="display:none;">
                         <div>
@@ -430,6 +432,7 @@
                         </div>
                     </div>
                 </div>
+                @endunless
 
                 <div class="col-12 d-flex gap-2 flex-wrap pt-2">
                     <button type="submit" class="btn-primaryx">

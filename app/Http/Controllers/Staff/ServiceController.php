@@ -9,9 +9,30 @@ use App\Models\Patient;
 
 class ServiceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $services = Service::all();
+        $q = trim((string) $request->query('q', ''));
+        $sort = (string) $request->query('sort', 'name_asc');
+        $services = Service::query()
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($match) use ($q) {
+                    $match->whereLike('name', "%{$q}%")
+                        ->orWhereLike('description', "%{$q}%");
+                    if (ctype_digit($q)) $match->orWhereKey((int) $q);
+                    if (is_numeric($q)) $match->orWhere('base_price', $q);
+                });
+            });
+        match ($sort) {
+            'created_desc' => $services->orderByDesc('created_at'),
+            'created_asc' => $services->orderBy('created_at'),
+            'name_desc' => $services->orderByDesc('name'),
+            'price_desc' => $services->orderByDesc('base_price'),
+            'price_asc' => $services->orderBy('base_price'),
+            'custom_yes' => $services->orderByDesc('allow_custom_price'),
+            'custom_no' => $services->orderBy('allow_custom_price'),
+            default => $services->orderBy('name'),
+        };
+        $services = $services->orderBy('id')->paginate(25)->withQueryString();
         return view('staff.services.index', compact('services'));
     }
 
@@ -93,15 +114,23 @@ class ServiceController extends Controller
             ->with('success', 'Service updated successfully!');
     }
 
-    public function patients(Service $service)
+    public function patients(Request $request, Service $service)
     {
+        $q = trim((string) $request->query('q', ''));
         $patients = Patient::query()
             ->whereHas('visits.procedures', function ($q) use ($service) {
                 $q->where('service_id', $service->id);
             })
+            ->when($q !== '', function ($query) use ($q) {
+                foreach (preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $part) {
+                    $query->where(fn ($match) => $match->whereLike('first_name', "%{$part}%")
+                        ->orWhereLike('last_name', "%{$part}%")
+                        ->orWhereLike('middle_name', "%{$part}%"));
+                }
+            })
             ->orderBy('last_name')
             ->orderBy('first_name')
-            ->get();
+            ->paginate(25)->withQueryString();
 
         return view('staff.services.patients', compact('service', 'patients'));
     }

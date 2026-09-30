@@ -10,6 +10,11 @@ use App\Models\InstallmentPayment;
 use App\Models\Visit;
 use App\Models\Appointment;
 use Carbon\Carbon;
+use App\Services\AdminAuditService;
+use App\Services\OpenMonthlyContractService;
+use App\Services\FinancialService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class InstallmentPlanController extends Controller
 {
@@ -67,6 +72,7 @@ class InstallmentPlanController extends Controller
 
     private function ensureDownpaymentPayment(InstallmentPlan $plan): void
     {
+        if ($plan->hasUnknownTotal()) return;
         $plan->loadMissing('payments');
 
         $down = (float)($plan->downpayment ?? 0);
@@ -90,6 +96,7 @@ class InstallmentPlanController extends Controller
 
     private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
+        if ($plan->hasUnknownTotal()) return app(FinancialService::class)->recomputePlan($plan);
         $this->refreshPayments($plan);
 
         $totalCost = (float)($plan->total_cost ?? 0);
@@ -122,6 +129,7 @@ class InstallmentPlanController extends Controller
 
     private function syncDownpaymentPayment(InstallmentPlan $plan): void
     {
+        if ($plan->hasUnknownTotal()) return;
         $this->refreshPayments($plan);
 
         $down = (float)($plan->downpayment ?? 0);
@@ -193,15 +201,18 @@ class InstallmentPlanController extends Controller
 
     public function store(Request $request, InstallmentPlanCreationService $creator)
     {
-        $isOpen = $request->boolean('is_open_contract');
+        $unknown = $request->boolean('is_unpriced_contract');
+        $isOpen = $unknown || $request->boolean('is_open_contract');
         $data = $request->validate([
             'visit_id' => 'nullable|exists:visits,id|required_without:appointment_id',
             'appointment_id' => 'nullable|exists:appointments,id|required_without:visit_id',
-            'total_cost' => 'required|numeric|min:0',
-            'downpayment' => 'required|numeric|min:0|lte:total_cost',
+            'total_cost' => $unknown ? 'nullable' : 'required|numeric|min:0',
+            'downpayment' => $unknown ? 'required|numeric|gt:0' : 'required|numeric|min:0|lte:total_cost',
+            'is_unpriced_contract' => 'nullable|boolean',
+            'first_due_date' => $unknown ? 'required|date|after_or_equal:start_date' : 'nullable|date',
             'is_open_contract' => 'nullable|boolean',
             'months' => $isOpen ? 'nullable|integer|min:0' : 'required|integer|min:1',
-            'open_monthly_payment' => $isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
+            'open_monthly_payment' => $unknown ? 'required|numeric|gt:0' : ($isOpen ? 'required|numeric|min:0' : 'nullable|numeric|min:0'),
             'start_date' => 'required|date',
             'downpayment_method' => 'required|in:Cash,GCash,Card,Bank Transfer',
             'downpayment_date' => 'required|date',
@@ -211,11 +222,12 @@ class InstallmentPlanController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages(['visit_id' => 'Select only one source.']);
         }
         $data['is_open_contract'] = $isOpen;
+        $data['is_unpriced_contract'] = $unknown;
         $creator->create($data);
         return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'plans'])
             ->with('success', 'Installment plan created.');
     }
-    public function show(InstallmentPlan $plan)
+    public function show(InstallmentPlan $plan, OpenMonthlyContractService $monthly)
     {
         $plan->load([
             'patient',
@@ -225,7 +237,8 @@ class InstallmentPlanController extends Controller
             'payments',
         ]);
 
-        return view('staff.payments.installment.show', compact('plan'));
+        $openContractDetails = $plan->is_unpriced_contract ? $monthly->details($plan) : null;
+        return view('staff.payments.installment.show', compact('plan', 'openContractDetails'));
     }
 
     public function edit(InstallmentPlan $plan)
@@ -246,6 +259,9 @@ class InstallmentPlanController extends Controller
 
     public function update(Request $request, InstallmentPlan $plan)
     {
+        if ($plan->is_unpriced_contract) {
+            throw ValidationException::withMessages(['total_cost' => 'Use Agree final total on the plan page; changes to an unknown-total contract must be audited.']);
+        }
         $isOpen = $request->boolean('is_open_contract');
 
         $request->validate([
@@ -305,14 +321,32 @@ class InstallmentPlanController extends Controller
             ]);
     }
 
-    public function complete(Request $request, InstallmentPlan $plan)
+    public function complete(Request $request, InstallmentPlan $plan, OpenMonthlyContractService $monthly, AdminAuditService $audit)
     {
+        if ($plan->is_unpriced_contract && $plan->status === InstallmentPlan::STATUS_COMPLETED) {
+            throw ValidationException::withMessages(['ended_at' => 'This contract is already closed.']);
+        }
         if (!(bool)($plan->is_open_contract ?? false)) {
             return back()->with('error', 'Only Open Contract plans can be marked as completed.');
         }
 
-        $plan->status = InstallmentPlan::STATUS_COMPLETED;
-        $plan->save();
+        if ($plan->is_unpriced_contract) {
+            $data = $request->validate(['ended_at' => ['required', 'date', 'after_or_equal:'.$plan->start_date?->toDateString(), 'before_or_equal:today'],
+                'acknowledge_unpaid' => ['nullable', 'accepted'], 'closure_note' => ['required', 'string', 'min:5', 'max:1000']]);
+            $due = $monthly->details($plan, $data['ended_at'])['unpaid_due'];
+            if ($due > 0 && !$request->boolean('acknowledge_unpaid')) {
+                throw ValidationException::withMessages(['acknowledge_unpaid' => 'Unpaid monthly obligations at the selected end date are ₱'.number_format($due, 2).'. Review and acknowledge this amount before closing.']);
+            }
+            DB::transaction(function () use ($plan, $data, $audit, $due, $request) {
+                $plan->update(['status' => InstallmentPlan::STATUS_COMPLETED, 'ended_at' => $data['ended_at']]);
+                $audit->record($request->user(), 'open_contract_closed', $plan,
+                    'Closed unknown-total monthly contract', [], ['ended_at' => $data['ended_at'], 'unpaid_due' => $due],
+                    $data['closure_note'], true);
+            });
+        } else {
+            $plan->status = InstallmentPlan::STATUS_COMPLETED;
+            $plan->save();
+        }
 
         $this->recomputePlan($plan);
 
@@ -320,18 +354,46 @@ class InstallmentPlanController extends Controller
             ->with('success', 'Installment plan marked as Completed.');
     }
 
-    public function reopen(Request $request, InstallmentPlan $plan)
+    public function reopen(Request $request, InstallmentPlan $plan, AdminAuditService $audit)
     {
         if (!(bool)($plan->is_open_contract ?? false)) {
             return back()->with('error', 'Only Open Contract plans can be reopened.');
         }
 
-        $plan->status = InstallmentPlan::STATUS_PARTIALLY_PAID;
-        $plan->save();
+        if ($plan->is_unpriced_contract && $plan->status !== InstallmentPlan::STATUS_COMPLETED) {
+            throw ValidationException::withMessages(['plan' => 'Only a closed plan can be reopened.']);
+        }
+        DB::transaction(function () use ($plan, $request, $audit) {
+            $previousEnd = $plan->ended_at?->toDateString();
+            $plan->status = InstallmentPlan::STATUS_PARTIALLY_PAID;
+            if ($plan->is_unpriced_contract) $plan->ended_at = null;
+            $plan->save();
+            if ($plan->is_unpriced_contract) $audit->record($request->user(), 'open_contract_reopened', $plan,
+                'Reopened monthly contract', ['ended_at' => $previousEnd], ['ended_at' => null], null, true);
+        });
 
         $this->recomputePlan($plan);
 
         return $this->ktRedirectToReturn($request, 'staff.payments.index', ['tab' => 'installment'])
             ->with('success', 'Installment plan reopened.');
+    }
+
+    public function agreeTotal(Request $request, InstallmentPlan $plan, FinancialService $finance, AdminAuditService $audit)
+    {
+        abort_unless($plan->hasUnknownTotal(), 404);
+        $data = $request->validate(['total_cost' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
+            'reason' => ['required', 'string', 'min:5', 'max:1000']]);
+        DB::transaction(function () use ($request, $plan, $data, $finance, $audit) {
+            $plan = InstallmentPlan::with('payments')->lockForUpdate()->findOrFail($plan->id);
+            if (!$plan->hasUnknownTotal()) throw ValidationException::withMessages(['total_cost' => 'A final total was already recorded.']);
+            if ((float) $data['total_cost'] < (float) $plan->payments->sum('amount')) {
+                throw ValidationException::withMessages(['total_cost' => 'The final total cannot be less than recorded receipts.']);
+            }
+            $plan->update(['total_cost' => $data['total_cost'], 'total_agreed_at' => now(), 'total_agreed_by' => $request->user()->id]);
+            $finance->recomputePlan($plan);
+            $audit->record($request->user(), 'open_contract_total_agreed', $plan,
+                'Recorded a later agreed final total', ['total_cost' => null], ['total_cost' => $data['total_cost']], $data['reason'], true);
+        });
+        return redirect()->route('staff.installments.show', $plan)->with('success', 'Agreed final total recorded with an audit trail.');
     }
 }

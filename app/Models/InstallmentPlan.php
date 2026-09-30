@@ -28,10 +28,15 @@ class InstallmentPlan extends Model
         'is_open_contract',
         'submission_token',
         'open_monthly_payment', // ✅ add this
+        'is_unpriced_contract', 'first_due_date', 'ended_at', 'total_agreed_at', 'total_agreed_by',
     ];
 
     protected $casts = [
         'is_open_contract'      => 'boolean',
+        'is_unpriced_contract'  => 'boolean',
+        'first_due_date'        => 'date',
+        'ended_at'             => 'date',
+        'total_agreed_at'      => 'datetime',
         'open_monthly_payment'  => 'decimal:2',
         'total_cost'            => 'decimal:2',
         'downpayment'           => 'decimal:2',
@@ -75,4 +80,9 @@ class InstallmentPlan extends Model
     public function patient() { return $this->belongsTo(Patient::class)->withTrashed(); }
     public function service() { return $this->belongsTo(Service::class)->withTrashed(); }
     public function payments() { return $this->hasMany(InstallmentPayment::class, 'installment_plan_id'); }
+
+    public function hasUnknownTotal(): bool
+    {
+        return (bool) $this->is_unpriced_contract && $this->total_cost === null;
+    }
 }

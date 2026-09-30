@@ -49,7 +49,10 @@ class RecordEntryService
                 foreach (['tooth_number' => 50, 'surface' => 10, 'shade' => 10, 'notes' => 2000] as $field => $max) {
                     $rules["$p.$field"] = ['nullable', 'string', "max:$max"];
                 }
-                $rules["$p.price"] = $money;
+                $unknownFinanced = ($visit['arrangement'] ?? '') === 'installment'
+                    && !empty($visit['plan']['is_unpriced_contract'])
+                    && (int) ($visit['plan']['procedure_index'] ?? -1) === $j;
+                $rules["$p.price"] = $unknownFinanced ? ['nullable'] : $money;
             }
             // Blank rows are not receipts. A typed zero is rejected below.
             $visit['payments'] = array_values(array_filter($visit['payments'] ?? [], fn ($p) => isset($p['amount']) && $p['amount'] !== ''));
@@ -65,13 +68,20 @@ class RecordEntryService
             if (! is_array($plan)) {
                 $plan = [];
             }
-            $rules["$base.plan.total_cost"] = $money;
+            $unknown = !empty($plan['is_unpriced_contract']);
+            $rules["$base.plan.is_unpriced_contract"] = ['nullable', 'boolean'];
+            $rules["$base.plan.total_cost"] = $unknown ? ['nullable'] : $money;
             $rules["$base.plan.procedure_index"] = ['required', 'integer', 'min:0', 'max:'.(count($visit['procedures']) - 1)];
             $rules["$base.plan.downpayment"] = $money;
             $rules["$base.plan.start_date"] = ['required', 'date_format:Y-m-d', 'before_or_equal:today'];
             $rules["$base.plan.is_open_contract"] = ['required', 'boolean'];
             $rules["$base.plan.months"] = ! empty($plan['is_open_contract']) ? ['nullable', 'integer', 'min:0', 'max:1200'] : ['required', 'integer', 'min:1', 'max:1200'];
-            $rules["$base.plan.open_monthly_payment"] = ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'];
+            $rules["$base.plan.open_monthly_payment"] = $unknown
+                ? ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:99999999.99']
+                : ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'];
+            $rules["$base.plan.first_due_date"] = $unknown ? ['required', 'date_format:Y-m-d', 'after_or_equal:'.$base.'.start_date'] : ['nullable', 'date_format:Y-m-d'];
+            $rules["$base.plan.ended_at"] = ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.$base.'.start_date', 'before_or_equal:today'];
+            $rules["$base.plan.acknowledge_unpaid"] = ['nullable', 'boolean'];
             $downpaymentRequired = self::cents($plan['downpayment'] ?? 0) > 0 ? 'required' : 'nullable';
             $rules["$base.plan.downpayment_method"] = [$downpaymentRequired, Rule::in(self::METHODS)];
             $rules["$base.plan.downpayment_date"] = [$downpaymentRequired, 'date_format:Y-m-d', 'before_or_equal:today'];
@@ -84,7 +94,7 @@ class RecordEntryService
         $data = Validator::make($payload, $rules)->validate();
         $errors = [];
         foreach ($data['visits'] as $i => $visit) {
-            $charge = array_sum(array_map(fn ($p) => self::cents($p['price']), $visit['procedures']));
+            $charge = array_sum(array_map(fn ($p) => self::cents($p['price'] ?? null), $visit['procedures']));
             $paid = array_sum(array_map(fn ($p) => self::cents($p['amount']), $visit['payments']));
             if ($charge > 9999999999) {
                 $errors["visits.$i.procedures"] = 'Total visit charge is too large.';
@@ -96,12 +106,23 @@ class RecordEntryService
                 continue;
             }
             $plan = $visit['plan'];
+            $unknown = !empty($plan['is_unpriced_contract']);
             $financedProcedure = (int) $plan['procedure_index'];
+            if ($unknown && (empty($plan['is_open_contract']) || ($visit['procedures'][$financedProcedure]['price'] ?? null) !== null
+                || ($plan['total_cost'] ?? null) !== null)) {
+                $errors["visits.$i.plan.total_cost"] = 'For a no-total contract, leave both the agreed total and financed procedure charge blank.';
+            }
+            if ($unknown && !empty($plan['ended_at']) && empty($plan['acknowledge_unpaid'])) {
+                $errors["visits.$i.plan.acknowledge_unpaid"] = 'Review monthly obligations and acknowledge any unpaid amount before importing an ended contract.';
+            }
             $downpayment = self::cents($plan['downpayment']);
+            if ($unknown && $downpayment <= 0) {
+                $errors["visits.$i.plan.downpayment"] = 'Enter the actual initial payment received for this open monthly contract.';
+            }
             $installmentReceipts = array_sum(array_map(fn ($p) => self::cents($p['amount']), $plan['payments']));
             $totalPaid = $downpayment + $installmentReceipts;
-            $planCost = self::cents($plan['total_cost']);
-            if ($totalPaid > $planCost) {
+            $planCost = $unknown ? null : self::cents($plan['total_cost']);
+            if ($planCost !== null && $totalPaid > $planCost) {
                 $format = fn (int $cents) => '₱'.number_format($cents / 100, 2);
                 $errors["visits.$i.plan.payments"] = 'Installment plan cost '.$format($planCost).'; downpayment '.$format($downpayment)
                     .' plus installment receipts '.$format($installmentReceipts).' is '.$format($totalPaid)
@@ -179,7 +200,7 @@ class RecordEntryService
         $seen = [];
         foreach ($data['visits'] as $i => $visit) {
             foreach ($visit['procedures'] as $j => $p) {
-                $signature = implode('|', [$visit['visit_date'], $visit['doctor_id'], $p['service_id'], self::cents($p['price'])]);
+                $signature = implode('|', [$visit['visit_date'], $visit['doctor_id'], $p['service_id'], self::cents($p['price'] ?? null)]);
                 $row = 'Visit '.($i + 1).', procedure '.($j + 1);
                 if (isset($seen[$signature])) {
                     $warnings[] = "$row resembles {$seen[$signature]} in this batch (same patient, date, dentist, service and charge).";
@@ -187,7 +208,7 @@ class RecordEntryService
                 $seen[$signature] = $row;
                 $ids = Visit::withTrashed()->where('patient_id', $patientId)
                     ->whereDate('visit_date', $visit['visit_date'])->where('doctor_id', $visit['doctor_id'])
-                    ->whereHas('procedures', fn ($q) => $q->where('service_id', $p['service_id'])->where('price', $p['price']))
+                    ->whereHas('procedures', fn ($q) => $q->where('service_id', $p['service_id'])->where('price', $p['price'] ?? null))
                     ->orderBy('id')->pluck('id')->implode(', #');
                 if ($ids !== '') {
                     $warnings[] = "$row resembles existing visit #$ids (including archived records).";
@@ -206,7 +227,7 @@ class RecordEntryService
         $procedures = [];
         foreach ($data['visits'] as $i => $row) {
             $paid = array_sum(array_map(fn ($p) => self::cents($p['amount']), $row['payments']));
-            $charge = array_sum(array_map(fn ($p) => self::cents($p['price']), $row['procedures']));
+            $charge = array_sum(array_map(fn ($p) => self::cents($p['price'] ?? null), $row['procedures']));
             $visit = Visit::create([
                 'patient_id' => $patientId, 'doctor_id' => $row['doctor_id'],
                 'dentist_name' => Doctor::findOrFail($row['doctor_id'])->name,
@@ -235,14 +256,18 @@ class RecordEntryService
             }
             $p = $row['plan'];
             $paid = self::cents($p['downpayment']) + array_sum(array_map(fn ($r) => self::cents($r['amount']), $p['payments']));
-            $balance = self::cents($p['total_cost']) - $paid;
+            $unknown = !empty($p['is_unpriced_contract']);
+            $balance = $unknown ? null : self::cents($p['total_cost']) - $paid;
             $plan = InstallmentPlan::create([
                 'patient_id' => $patientId, 'visit_id' => $visits[$i]->id, 'service_id' => $row['procedures'][(int) $p['procedure_index']]['service_id'],
-                'total_cost' => $p['total_cost'], 'downpayment' => $p['downpayment'], 'balance' => $balance / 100,
+                'total_cost' => $unknown ? null : $p['total_cost'], 'downpayment' => $p['downpayment'], 'balance' => $unknown ? null : $balance / 100,
                 'start_date' => $p['start_date'], 'is_open_contract' => $p['is_open_contract'],
                 'months' => $p['is_open_contract'] ? 0 : $p['months'],
                 'open_monthly_payment' => $p['is_open_contract'] ? ($p['open_monthly_payment'] ?? null) : null,
-                'status' => $balance <= 0 ? InstallmentPlan::STATUS_FULLY_PAID : InstallmentPlan::STATUS_PARTIALLY_PAID,
+                'is_unpriced_contract' => $unknown, 'first_due_date' => $unknown ? $p['first_due_date'] : null,
+                'ended_at' => $unknown ? ($p['ended_at'] ?? null) : null,
+                'status' => $unknown ? (empty($p['ended_at']) ? InstallmentPlan::STATUS_PARTIALLY_PAID : InstallmentPlan::STATUS_COMPLETED)
+                    : ($balance <= 0 ? InstallmentPlan::STATUS_FULLY_PAID : InstallmentPlan::STATUS_PARTIALLY_PAID),
             ]);
             $summary['installment_plans']++;
             if (self::cents($p['downpayment']) > 0) {

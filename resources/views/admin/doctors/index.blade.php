@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.admin')
 @section('title', 'Doctors')
 
 @section('kt_live_scope', 'doctors')
@@ -289,13 +289,14 @@
     <div class="alert alert-danger" style="border-radius:12px;">{{ session('error') }}</div>
 @endif
 
-<form method="GET" action="{{ route('admin.doctors.index') }}">
+<form method="GET" action="{{ route('admin.doctors.index') }}" data-live-search>
     <div class="toolbar">
         <div class="left">
             <input
                 class="kt-input"
                 type="text"
                 name="q"
+                aria-label="Search doctors"
                 value="{{ $q ?? '' }}"
                 placeholder="Search doctor (name, email, specialty)"
             />
@@ -323,7 +324,7 @@
     </div>
 </form>
 
-<div class="cardx table-card">
+<div class="cardx table-card" data-live-results>
     <div class="table-wrap">
         <table class="kt-table">
             <thead>

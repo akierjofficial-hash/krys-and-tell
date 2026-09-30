@@ -23,16 +23,44 @@ class RecordEntryController extends Controller
         $patient = $request->filled('patient_id') ? Patient::findOrFail($request->patient_id) : null;
         $config = [
             'mode' => $mode, 'userId' => $request->user()->id, 'patientId' => $patient?->id,
-            'patients' => Patient::orderBy('last_name')->get(['id', 'first_name', 'last_name', 'birthdate', 'contact_number']),
+            'selectedPatient' => $patient?->only(['id', 'first_name', 'last_name']),
+            'patientSearchUrl' => route('staff.records.patients'),
             'doctors' => Doctor::orderBy('name')->get(['id', 'name', 'is_active']),
             'services' => Service::orderBy('name')->get(['id', 'name', 'base_price']),
             'existingVisits' => $patient ? Visit::where('patient_id', $patient->id)->orderByDesc('visit_date')->get(['id', 'visit_date', 'dentist_name']) : [],
             'drafts' => $patient ? RecordEntryBatch::where('user_id', $request->user()->id)->where('patient_id', $patient->id)->where('mode', $mode)->whereIn('status', ['draft', 'reviewed'])->latest('updated_at')->get() : [],
             'baseUrl' => route('staff.records.index'), 'today' => today()->toDateString(),
             'csrf' => csrf_token(), 'profileUrl' => $patient ? route('staff.patients.show', $patient) : null,
+            'visitUrlTemplate' => route('staff.visits.show', ['visit' => '__VISIT_ID__']),
         ];
 
         return view('staff.records.entry', compact('config', 'patient', 'mode'));
+    }
+
+    public function patients(Request $request)
+    {
+        $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $search = trim((string) $request->query('q', ''));
+        $query = Patient::query();
+        if ($search !== '') {
+            $parts = preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $query->where(function ($match) use ($search, $parts) {
+                $match->where(function ($names) use ($parts) {
+                    foreach ($parts as $part) {
+                        $names->where(fn ($word) => $word->whereLike('first_name', "%{$part}%")
+                            ->orWhereLike('last_name', "%{$part}%")
+                            ->orWhereLike('middle_name', "%{$part}%"));
+                    }
+                })->orWhereLike('contact_number', "%{$search}%");
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $search)) {
+                    $match->orWhereDate('birthdate', $search);
+                }
+                if (ctype_digit($search)) $match->orWhereKey((int) $search);
+            });
+        }
+
+        return response()->json(['patients' => $query->orderBy('last_name')->orderBy('first_name')
+            ->limit(20)->get(['id', 'first_name', 'last_name', 'birthdate', 'contact_number'])]);
     }
 
     private function writeDraft(Request $request, string $id): RecordEntryBatch

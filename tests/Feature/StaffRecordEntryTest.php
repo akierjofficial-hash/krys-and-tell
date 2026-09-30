@@ -76,6 +76,24 @@ class StaffRecordEntryTest extends TestCase
         return $this->postJson(route('staff.records.store', $review[0]), ['review_hash' => $review[1], 'acknowledge_duplicates' => $ack]);
     }
 
+    public function test_patient_picker_searches_on_demand_without_embedding_all_patients_in_entry_page(): void
+    {
+        $other = Patient::create(['first_name' => 'Specific', 'last_name' => 'Record', 'birthdate' => '1994-04-05']);
+        $this->get(route('staff.records.index'))->assertOk()
+            ->assertDontSee('Specific, Record')
+            ->assertSee('patientSearchUrl');
+
+        $this->getJson(route('staff.records.patients', ['q' => 'record specific']))
+            ->assertOk()->assertJsonCount(1, 'patients')->assertJsonPath('patients.0.id', $other->id);
+        $this->getJson(route('staff.records.patients', ['q' => '1994-04-05']))
+            ->assertOk()->assertJsonPath('patients.0.id', $other->id);
+        $this->getJson(route('staff.records.patients', ['q' => 'not-a-patient']))
+            ->assertOk()->assertJsonCount(0, 'patients');
+
+        $this->actingAs(User::factory()->create(['role' => 'patient', 'is_active' => true]));
+        $this->getJson(route('staff.records.patients', ['q' => 'record']))->assertForbidden();
+    }
+
     public function test_staff_can_save_multiple_visits_and_procedures_at_actual_historical_prices(): void
     {
         $first = $this->visit();
@@ -113,6 +131,79 @@ class StaffRecordEntryTest extends TestCase
         $this->assertEquals(1, $plan->payments()->where('month_number', 0)->count());
         $this->assertEquals(0, $plan->payments()->whereNotNull('visit_id')->count());
         $this->assertDatabaseCount('visits', 1);
+    }
+
+    public function test_reviewed_receipt_count_matches_saved_rows_across_ordinary_fixed_and_open_visits(): void
+    {
+        $ordinary = $this->visit('2024-01-01');
+        $ordinary['payments'] = [$this->receipt('100.00'), ['amount' => '', 'method' => 'Cash']];
+
+        $fixed = $this->visit('2024-02-01');
+        $fixed['arrangement'] = 'installment';
+        $fixed['plan'] = $this->plan();
+        $fixed['plan']['downpayment'] = '0';
+
+        $open = $this->visit('2024-03-01');
+        $open['procedures'][0]['price'] = null;
+        $open['arrangement'] = 'installment';
+        $open['plan'] = [
+            'procedure_index' => 0, 'is_open_contract' => true, 'is_unpriced_contract' => true,
+            'total_cost' => null, 'downpayment' => '7000.00', 'start_date' => '2024-03-01',
+            'downpayment_date' => '2024-03-01', 'downpayment_method' => 'Cash',
+            'open_monthly_payment' => '2000.00', 'first_due_date' => '2024-04-01',
+            'payments' => [
+                ['month_number' => 1, 'amount' => '2000.00', 'payment_date' => '2024-04-01', 'method' => 'Cash'],
+                ['month_number' => 2, 'amount' => '1500.00', 'payment_date' => '2024-05-01', 'method' => 'GCash'],
+            ],
+        ];
+
+        $id = (string) Str::uuid();
+        $review = $this->postJson(route('staff.records.review', $id), [
+            'patient_id' => $this->patient->id, 'mode' => 'past', 'version' => 0,
+            'payload' => ['visits' => [$ordinary, $fixed, $open]],
+        ])->assertOk();
+        $visits = $review->json('payload.visits');
+        $receipts = collect($visits)->sum(fn ($visit) => count($visit['payments'])
+            + (isset($visit['plan']) ? count($visit['plan']['payments']) + ((float) $visit['plan']['downpayment'] > 0 ? 1 : 0) : 0));
+        $this->assertSame(6, $receipts);
+        $this->assertCount(1, $visits[0]['payments']);
+
+        $saved = $this->postJson(route('staff.records.store', $id), [
+            'review_hash' => $review->json('review_hash'), 'acknowledge_duplicates' => false,
+        ])->assertOk()->assertJsonPath('summary.visits', 3)
+            ->assertJsonPath('summary.ordinary_payments', 1)
+            ->assertJsonPath('summary.installment_payments', 5);
+        $this->assertSame($receipts, $saved->json('summary.ordinary_payments') + $saved->json('summary.installment_payments'));
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('installment_payments', 5);
+    }
+
+    public function test_past_unknown_total_contract_keeps_charge_null_and_imports_multiple_monthly_receipts(): void
+    {
+        $row = $this->visit('2024-01-01');
+        $row['procedures'][0]['price'] = null;
+        $row['arrangement'] = 'installment';
+        $row['plan'] = ['procedure_index' => 0, 'is_open_contract' => true, 'is_unpriced_contract' => true,
+            'total_cost' => null, 'downpayment' => '7000.00', 'start_date' => '2024-01-01',
+            'downpayment_date' => '2024-01-01', 'downpayment_method' => 'Cash',
+            'open_monthly_payment' => '2000.00', 'first_due_date' => '2024-02-01', 'payments' => [
+                ['month_number' => 1, 'amount' => '2000.00', 'payment_date' => '2024-02-01', 'method' => 'Cash'],
+                ['month_number' => 2, 'amount' => '1500.00', 'payment_date' => '2024-03-01', 'method' => 'GCash'],
+            ]];
+        $row['plan']['ended_at'] = '2024-04-01';
+        $this->postJson(route('staff.records.review', (string) Str::uuid()), [
+            'patient_id' => $this->patient->id, 'mode' => 'past', 'version' => 0, 'payload' => ['visits' => [$row]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('visits.0.plan.acknowledge_unpaid');
+        $row['plan']['acknowledge_unpaid'] = 1;
+        $this->save($this->review([$row]))->assertOk()->assertJsonPath('summary.installment_payments', 3);
+        $plan = InstallmentPlan::firstOrFail();
+        $this->assertNull($plan->total_cost);
+        $this->assertNull($plan->balance);
+        $this->assertNull(VisitProcedure::firstOrFail()->price);
+        $this->assertEquals(10500, $plan->payments()->sum('amount'));
+        $this->assertDatabaseCount('visits', 1);
+        $this->assertEquals(0, $plan->payments()->whereNotNull('visit_id')->count());
+        $this->get(route('staff.payments.index', ['tab' => 'plans']))->assertOk()->assertSee('Not determinable');
     }
 
     public function test_historical_receipts_and_plan_are_discoverable_on_payments_page_after_entry(): void
@@ -435,7 +526,8 @@ class StaffRecordEntryTest extends TestCase
         $selector = $this->get(route('staff.records.index'))
             ->assertOk()
             ->assertSee('role="combobox"', false)
-            ->assertSee('09171234567')
+            ->assertSee('patientSearchUrl')
+            ->assertDontSee('09171234567')
             ->assertDontSee('id="re-patient-select"', false);
 
         if (getenv('KT_BROWSER_FIXTURES')) {

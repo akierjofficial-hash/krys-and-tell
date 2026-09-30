@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.admin')
 @section('title', 'Appointments')
 
 @section('kt_live_scope', 'appointments')
@@ -289,7 +289,7 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" action="{{ route('admin.appointments.index') }}">
+    <form method="GET" action="{{ route('admin.appointments.index') }}" data-live-search>
         <div class="glass filters">
             <div class="glass-inner">
                 <div class="f-row">
@@ -298,6 +298,7 @@
                             class="kt-input"
                             type="text"
                             name="q"
+                            aria-label="Search appointments"
                             value="{{ $search }}"
                             placeholder="Search appointment (patient or doctor)"
                         />
@@ -340,7 +341,7 @@
     </form>
 
     {{-- Table --}}
-    <div class="glass table-card">
+    <div class="glass table-card" data-live-results>
         <div class="glass-inner">
             <div class="table-wrap">
                 <table class="kt-table">

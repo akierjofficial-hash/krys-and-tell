@@ -428,8 +428,14 @@
                     <div class="section-title"><span>Financial Overview</span><span class="section-pill">Read-only</span></div>
                     <div class="info-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
                         <div class="info-item"><div class="i-label">Ordinary balance</div><div class="i-val">₱{{ number_format($ordinaryOutstanding,2) }}</div></div>
-                        <div class="info-item"><div class="i-label">Installment balance</div><div class="i-val">₱{{ number_format($installmentOutstanding,2) }}</div></div>
-                        <div class="info-item"><div class="i-label">Total outstanding</div><div class="i-val">₱{{ number_format($outstandingBalance,2) }}</div></div>
+                        <div class="info-item"><div class="i-label">Known installment balance</div><div class="i-val">₱{{ number_format($installmentOutstanding,2) }}</div></div>
+                        <div class="info-item"><div class="i-label">Known outstanding</div><div class="i-val">₱{{ number_format($outstandingBalance,2) }}</div></div>
+                        @if($unknownTotalPlans->isNotEmpty())<div class="info-item"><div class="i-label">Open monthly contract</div><div class="i-val">Final balance not determinable — no total agreed ({{ $unknownTotalPlans->count() }} plan(s))</div></div>@endif
+                        @if($incompleteMixed)<div class="info-item"><div class="i-label">Other incomplete balances</div><div class="i-val">{{ $incompleteMixed }} mixed visit(s) need charge allocation review; excluded from known outstanding.</div></div>@endif
+                        @foreach($monthlyContracts as $monthlyPlan)
+                            @php $monthlyDetails = app(\App\Services\OpenMonthlyContractService::class)->details($monthlyPlan); @endphp
+                            <div class="info-item"><div class="i-label">Open plan #{{ $monthlyPlan->id }}</div><div class="i-val">Collected ₱{{ number_format($monthlyDetails['collected'], 2) }} · Monthly ₱{{ number_format($monthlyDetails['monthly_amount'], 2) }} · Due so far ₱{{ number_format($monthlyDetails['unpaid_due'], 2) }} · Next {{ $monthlyDetails['next_due_date'] ?? 'none' }}</div></div>
+                        @endforeach
                     </div>
                 </div>
             </div>

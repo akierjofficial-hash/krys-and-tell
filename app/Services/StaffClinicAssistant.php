@@ -54,7 +54,7 @@ class StaffClinicAssistant
             ->map(fn ($item) => ['label' => $item['link_label'], 'url' => $item['url']])->all();
         $message = 'Current recorded balances, checked '.$today.' ('.config('app.timezone').'): '.$count.' patients have a calculable outstanding balance totaling '.$this->money($total).'.'
             .$this->limited($count + $unresolved).' Financed treatments are counted through their plan once.';
-        if ($unresolved) $message .= ' Incomplete: '.$unresolved.' patient balance(s) have mixed charges, mismatched plan links, or an unreceipted downpayment. Their balances are excluded from this total; review the linked records.';
+        if ($unresolved) $message .= ' Incomplete: '.$unresolved.' patient balance(s) include mixed charges, mismatched plan links, an unreceipted downpayment, or a monthly contract with no agreed total. Their final balances are excluded from this total; review the linked records.';
         if ($overview['assumed_downpayments']) $message .= ' '.$overview['assumed_downpayments'].' plan(s) count an entered downpayment without a receipt under the existing balance rule; this is not proof of collection.';
         return $this->result($message, $count, $total, $today, $today, $links);
     }
@@ -85,17 +85,18 @@ class StaffClinicAssistant
                 });
                 $patientPlans = $plans->get($patient->id) ?? collect();
                 $financed = $patientPlans->sum(fn ($plan) => $this->finance->planBalance($plan));
+                $unknownPlan = $patientPlans->first(fn ($plan) => $plan->hasUnknownTotal());
                 $unreceipted = $patientPlans->first(fn ($plan) => (float) $plan->downpayment > 0 && !$this->finance->downpaymentPayment($plan));
                 $assumedDownpayments += $patientPlans->filter(fn ($plan) => (float) $plan->downpayment > 0 && !$this->finance->downpaymentPayment($plan))->count();
                 $balance = round($ordinary + $financed, 2);
                 $name = trim($patient->first_name.' '.$patient->last_name);
-                if ($reviewVisit || $unreceipted) {
+                if ($reviewVisit || $unreceipted || $unknownPlan) {
                     $reviewCount++;
                     if (count($reviewItems) < self::LIST_LIMIT) $reviewItems[] = [
                         'patient_id' => $patient->id, 'patient' => $name, 'balance' => $balance,
                         'label' => 'Incomplete balance', 'incomplete' => true,
                         'link_label' => 'Review '.$name.' (#'.$patient->id.') - balance incomplete',
-                        'url' => $reviewVisit ? route('staff.visits.show', $reviewVisit) : route('staff.installments.show', $unreceipted),
+                        'url' => $reviewVisit ? route('staff.visits.show', $reviewVisit) : route('staff.installments.show', $unknownPlan ?: $unreceipted),
                     ];
                     continue;
                 }
@@ -127,10 +128,20 @@ class StaffClinicAssistant
         $unscheduled = 0;
         $completedWithBalance = 0;
         $truncated = 0;
+        $openDue = 0.0;
+        $openPlans = 0;
         $unlinked = InstallmentPlan::whereNull('patient_id')->count();
         InstallmentPlan::with(['payments', 'patient'])->whereHas('patient', fn ($query) => $query->whereNull('deleted_at'))
-            ->orderBy('id')->chunkById(100, function ($plans) use ($today, &$count, &$overdue, &$dueToday, &$affected, &$links, &$unscheduled, &$completedWithBalance, &$truncated) {
+            ->orderBy('id')->chunkById(100, function ($plans) use ($today, &$count, &$overdue, &$dueToday, &$affected, &$links, &$unscheduled, &$completedWithBalance, &$truncated, &$openDue, &$openPlans) {
                 foreach ($plans as $plan) {
+                    if ($plan->is_unpriced_contract) {
+                        $details = app(OpenMonthlyContractService::class)->details($plan, $today);
+                        $openPlans++;
+                        $openDue += $details['unpaid_due'];
+                        if (count($links) < self::LIST_LIMIT) $links[] = ['label' => 'Open monthly plan #'.$plan->id.' — due ₱'.number_format($details['unpaid_due'], 2),
+                            'url' => route('staff.installments.show', $plan).'#installment-schedule'];
+                        continue;
+                    }
                     $balance = $this->finance->planBalance($plan);
                     if ($balance <= 0) continue;
                     if ($plan->status === InstallmentPlan::STATUS_COMPLETED) { $completedWithBalance++; continue; }
@@ -164,6 +175,7 @@ class StaffClinicAssistant
         $message = 'As of '.$today.' ('.config('app.timezone').'): '.$count.' scheduled months have no receipt ('.$overdue.' overdue, '.$dueToday.' due today) across '.count($affected).' plans. Remaining balance across those plans: '.$this->money($total).'.'
             .$this->limited($count).' This balance is per plan, not the amount due for each month. The existing plan page marks a month with any receipt as paid, even if the payment was partial; review the plan balance for such cases.';
         if ($unscheduled) $message .= ' '.$unscheduled.' open or undated plan(s) have a balance but no fixed due date and are excluded.';
+        if ($openPlans) $message .= ' Separately, '.$openPlans.' open monthly contract(s) have '.$this->money($openDue).' in unpaid monthly obligations due so far. Their monthly dues are separate from any agreed final contract balance; contracts without an agreed total have no determinable final balance.';
         if ($completedWithBalance) $message .= ' '.$completedWithBalance.' completed plan(s) still have a calculated balance and need review.';
         if ($truncated) $message .= ' '.$truncated.' plan(s) exceed the 1,200-month entry limit; only their first 1,200 months were checked.';
         if ($unlinked) $message .= ' '.$unlinked.' plan(s) lack a patient link and were excluded from due counts; review the plan records.';

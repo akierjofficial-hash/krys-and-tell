@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('kt_live_scope', 'visits')
 @section('kt_live_interval', 12000)
@@ -420,28 +420,29 @@
 
     <div class="top-actions">
         <div class="toggle-group">
-            <a href="{{ route('staff.visits.index') }}"
+            <a href="{{ route('staff.visits.index', request()->only('q')) }}" data-live-keep-q
                class="btnx {{ !$isAll ? 'btn-active' : 'btn-ghost' }}">
                 <i class="fa fa-user"></i> Patients
             </a>
 
-            <a href="{{ route('staff.visits.index', ['view' => 'all']) }}"
+            <a href="{{ route('staff.visits.index', array_merge(request()->only('q'), ['view' => 'all'])) }}" data-live-keep-q
                class="btnx {{ $isAll ? 'btn-active' : 'btn-ghost' }}">
                 <i class="fa fa-list"></i> All Visits
             </a>
         </div>
 
-        <div class="search-box">
+        <form class="search-box" method="GET" data-live-search>
             <i class="fa fa-search"></i>
-            <input type="text" id="visitSearch"
+            <input type="search" id="visitSearch" name="q" value="{{ request('q') }}" aria-label="Search visits"
                    placeholder="{{ $isAll ? 'Search by patient name, dentist, date, notes, or treatment…' : 'Search patient name…' }}">
-        </div>
+            @if($isAll)<input type="hidden" name="view" value="all">@endif
+        </form>
 
         <div class="sort-box">
             <span class="sort-label">Sort</span>
 
             @if($isAll)
-                <select id="visitSort" class="sort-select">
+                <select id="visitSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
                     <option value="vdate_desc">Visit date (newest)</option>
                     <option value="vdate_asc">Visit date (oldest)</option>
                     <option value="created_desc">Date added (newest)</option>
@@ -452,7 +453,7 @@
                     <option value="treat_asc">Least treatments</option>
                 </select>
             @else
-                <select id="visitSort" class="sort-select">
+                <select id="visitSort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
                     <option value="patient_asc">Patient (A–Z)</option>
                     <option value="patient_desc">Patient (Z–A)</option>
                     <option value="last_desc">Last visit (newest)</option>
@@ -463,9 +464,9 @@
             @endif
         </div>
 
-        <button type="button" id="clearFilters" class="btnx btn-ghost">
+        <a href="{{ route('staff.visits.index', $isAll ? ['view'=>'all'] : []) }}" id="clearFilters" class="btnx btn-ghost">
             <i class="fa fa-rotate-left"></i> Reset
-        </button>
+        </a>
 
         {{-- Visits template download --}}
         <a href="{{ route('staff.visits.template') }}" class="btnx btn-ghost" title="Download Excel template">
@@ -511,12 +512,12 @@
     </div>
 @endif
 
-<div class="card-shell" id="visitsCard" data-skel="{{ $isAll ? 'all' : 'patients' }}">
+<div class="card-shell" id="visitsCard" data-skel="{{ $isAll ? 'all' : 'patients' }}" data-live-results>
     <div class="card-head">
         <div class="hint">
             <span class="count-pill">
                 <i class="fa fa-calendar-check"></i>
-                Showing <strong id="visibleCount">0</strong> / <strong id="totalCount">0</strong>
+                Showing <strong id="visibleCount">{{ $isAll ? $visits->count() : $patients->count() }}</strong> / <strong id="totalCount">{{ $isAll ? $visits->total() : $patients->total() }}</strong>
             </span>
         </div>
         <div class="hint">Tip: search + sort works together</div>
@@ -725,6 +726,7 @@
             @endif
         </table>
     </div>
+    <div class="p-3">{{ ($isAll ? $visits : $patients)->links('pagination::bootstrap-5') }}</div>
 </div>
 
 <script>
@@ -741,199 +743,8 @@
         }
     });
 
-    const card = document.getElementById('visitsCard');
-    const skelRowsEl = document.getElementById('visitsSkelRows');
-
-    const searchInput = document.getElementById('visitSearch');
-    const sortSelect  = document.getElementById('visitSort');
-
-    if (window.KTListState) {
-        window.KTListState.bindInput('#visitSearch', 'q');
-        window.KTListState.bindSelect('#visitSort', 'sort');
-        window.KTListState.injectReturn();
-    }
-
-    const tbody       = document.getElementById('visitTableBody');
-    const visibleCountEl = document.getElementById('visibleCount');
-    const totalCountEl   = document.getElementById('totalCount');
-    const resetBtn    = document.getElementById('clearFilters');
-
-    const rowsAll = Array.from(document.querySelectorAll('.visit-row'));
-
-    function normalize(s){ return (s || '').toString().toLowerCase().trim(); }
-
-    // Skeleton
-    function buildSkeletonRows(n = 8){
-        if (!skelRowsEl || !card) return;
-        const mode = card.getAttribute('data-skel') || 'patients';
-
-        skelRowsEl.innerHTML = '';
-        for (let i=0;i<n;i++){
-            const row = document.createElement('div');
-            row.className = 'kt-skel__row';
-
-            if (mode === 'all'){
-                row.innerHTML = `
-                    <div class="kt-skel__bar" style="width:${62 + (i%3)*10}%"></div>
-                    <div class="kt-skel__bar" style="width:${48 + (i%4)*9}%"></div>
-                    <div class="kt-skel__bar" style="width:${55 + (i%3)*8}%"></div>
-                    <div class="kt-skel__bar" style="width:${72 + (i%3)*7}%"></div>
-                    <div class="kt-skel__bar" style="width:${64 + (i%4)*6}%"></div>
-                    <div class="kt-skel__bar" style="width:${42 + (i%3)*10}%"></div>
-                `;
-            } else {
-                row.innerHTML = `
-                    <div class="kt-skel__bar" style="width:${65 + (i%3)*10}%"></div>
-                    <div class="kt-skel__bar" style="width:${55 + (i%4)*8}%"></div>
-                    <div class="kt-skel__bar" style="width:${40 + (i%5)*8}%"></div>
-                    <div class="kt-skel__bar" style="width:${46 + (i%3)*10}%"></div>
-                `;
-            }
-
-            skelRowsEl.appendChild(row);
-        }
-    }
-    buildSkeletonRows(9);
-
-    let skelTimer = null;
-    let skelShownAt = 0;
-
-    function showSkeletonImmediate(minMs = 240){
-        if (!card) return;
-        clearTimeout(skelTimer);
-        card.classList.add('is-loading');
-        skelShownAt = Date.now();
-        skelTimer = setTimeout(() => {}, minMs);
-    }
-
-    function showSkeletonSoft(){
-        if (!card) return;
-        clearTimeout(skelTimer);
-        skelTimer = setTimeout(() => showSkeletonImmediate(220), 90);
-    }
-
-    function hideSkeleton(){
-        if (!card) return;
-        clearTimeout(skelTimer);
-        const elapsed = Date.now() - skelShownAt;
-        const minMs = 220;
-        const wait = Math.max(0, minMs - elapsed);
-        setTimeout(() => card.classList.remove('is-loading'), wait);
-    }
-
-    function applySearch() {
-        const keyword = normalize(searchInput.value);
-
-        let visible = 0;
-        rowsAll.forEach(row => {
-            const text = normalize(row.textContent);
-            const show = text.includes(keyword);
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        visibleCountEl.textContent = visible;
-    }
-
-    function getComparable(row, mode){
-        const ds = row.dataset;
-
-        // ALL VISITS view modes
-        if (mode && mode.startsWith('vdate')) return Number(ds.vdate || 0);
-        if (mode && mode.startsWith('created')) return Number(ds.created || 0);
-        if (mode && mode.startsWith('treat')) return Number(ds.treat || 0);
-
-        // PATIENTS view modes
-        if (mode && mode.startsWith('last')) return Number(ds.last || 0);
-        if (mode && mode.startsWith('count')) return Number(ds.count || 0);
-
-        // Shared
-        if (mode && mode.startsWith('patient')) return ds.patient || '';
-
-        return Number(ds.vdate || ds.last || 0);
-    }
-
-    function applySort() {
-        if (!sortSelect) return;
-
-        const mode = sortSelect.value;
-
-        const sorted = [...rowsAll].sort((a, b) => {
-            const va = getComparable(a, mode);
-            const vb = getComparable(b, mode);
-
-            if (typeof va === 'string' || typeof vb === 'string') {
-                const A = String(va), B = String(vb);
-                if (A < B) return mode.endsWith('_desc') ? 1 : -1;
-                if (A > B) return mode.endsWith('_desc') ? -1 : 1;
-
-                const tb = Number(b.dataset.vdate || b.dataset.last || 0);
-                const ta = Number(a.dataset.vdate || a.dataset.last || 0);
-                return tb - ta;
-            }
-
-            if (va === vb) {
-                const cb = Number(b.dataset.created || 0);
-                const ca = Number(a.dataset.created || 0);
-                if (cb !== ca) return cb - ca;
-                return String(a.dataset.patient || '').localeCompare(String(b.dataset.patient || ''));
-            }
-
-            const asc = mode.endsWith('_asc');
-            return asc ? (va - vb) : (vb - va);
-        });
-
-        sorted.forEach(r => tbody.appendChild(r));
-    }
-
-    function applyAll(){
-        applySort();
-        applySearch();
-    }
-
-    totalCountEl.textContent = rowsAll.length;
-    visibleCountEl.textContent = rowsAll.length;
-
-    // Events with skeleton
-    let searchDeb = null;
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchDeb);
-        showSkeletonSoft();
-        searchDeb = setTimeout(() => {
-            applySearch();
-            hideSkeleton();
-        }, 140);
-    });
-
-    sortSelect && sortSelect.addEventListener('change', () => {
-        showSkeletonImmediate(260);
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-        });
-    });
-
-    resetBtn.addEventListener('click', () => {
-        showSkeletonImmediate(260);
-        searchInput.value = '';
-        if (sortSelect) sortSelect.selectedIndex = 0;
-        if (window.KTListState) {
-            window.KTListState.setParam('q', '');
-            window.KTListState.setParam('sort', '');
-        }
-        requestAnimationFrame(() => {
-            applyAll();
-            hideSkeleton();
-            searchInput.focus();
-        });
-    });
-
-    // Initial load feel
-    showSkeletonImmediate(220);
-    requestAnimationFrame(() => {
-        applyAll();
-        hideSkeleton();
-    });
+    const sort = document.getElementById('visitSort');
+    if (sort) sort.value = new URLSearchParams(location.search).get('sort') || @json($isAll ? 'vdate_desc' : 'patient_asc');
 })();
 </script>
 

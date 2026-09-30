@@ -120,6 +120,7 @@ class StaffRecordAssistant
             if ($visit->installmentPlan && (int) $visit->installmentPlan->patient_id !== (int) $patient->id) $mislinkedPlans[] = $visit;
         }
         $installments = $plans->sum(fn ($plan) => $this->finance->planBalance($plan));
+        $unknownPlans = $plans->filter(fn ($plan) => $plan->hasUnknownTotal());
         $missingDownpayments = $plans->filter(fn ($plan) => (float) $plan->downpayment > 0 && !$this->finance->downpaymentPayment($plan));
         $links = [];
         foreach ($visits->filter(function ($visit) {
@@ -132,7 +133,11 @@ class StaffRecordAssistant
         foreach ($plans->filter(fn ($plan) => $this->finance->planBalance($plan) > 0)->take(5) as $plan) {
             $links[] = ['label' => 'Plan #'.$plan->id, 'url' => route('staff.installments.show', $plan)];
         }
-        $message = (($unresolved || $mislinkedPlans || $missingDownpayments->isNotEmpty()) ? 'Known recorded balance (incomplete)' : 'Remaining balance').': '.$this->money($ordinary + $installments).'. Ordinary visits: '.$this->money($ordinary).'; installment plans: '.$this->money($installments).'.';
+        $message = (($unresolved || $mislinkedPlans || $missingDownpayments->isNotEmpty() || $unknownPlans->isNotEmpty()) ? 'Known recorded balance (incomplete)' : 'Remaining balance').': '.$this->money($ordinary + $installments).'. Ordinary visits: '.$this->money($ordinary).'; installment plans: '.$this->money($installments).'.';
+        if ($unknownPlans->isNotEmpty()) {
+            $message .= ' Final contract balance: Not determinable — no total agreed for '. $unknownPlans->count().' open monthly contract(s).';
+            foreach ($unknownPlans->take(5) as $plan) $links[] = ['label' => 'Open monthly plan #'.$plan->id, 'url' => route('staff.installments.show', $plan)];
+        }
         if ($unresolved) {
             $message .= ' A complete balance is unavailable: the ordinary charges on mixed visit(s) '.collect($unresolved)->pluck('id')->map(fn ($id) => '#'.$id)->implode(', ').' cannot be allocated safely.';
             foreach (array_slice($unresolved, 0, 5) as $visit) $links[] = ['label' => 'Review mixed visit #'.$visit->id, 'url' => route('staff.visits.show', $visit)];
@@ -200,6 +205,13 @@ class StaffRecordAssistant
         $lines = [];
         $links = [];
         foreach ($plans as $plan) {
+            if ($plan->is_unpriced_contract) {
+                $details = app(\App\Services\OpenMonthlyContractService::class)->details($plan);
+                $final = $plan->hasUnknownTotal() ? 'Not determinable — no total agreed' : $this->money($this->finance->planBalance($plan));
+                $lines[] = 'Plan #'.$plan->id.': monthly '.$this->money($details['monthly_amount']).'; unpaid obligations due so far '.$this->money($details['unpaid_due']).'; next due '.($details['next_due_date'] ?: 'none (closed)').'. Final balance: '.$final.'.';
+                $links[] = ['label' => 'Plan #'.$plan->id.' monthly schedule', 'url' => route('staff.installments.show', $plan).'#installment-schedule'];
+                continue;
+            }
             $balance = $this->finance->planBalance($plan);
             if ($balance <= 0) continue;
             $links[] = ['label' => 'Plan #'.$plan->id.' schedule', 'url' => route('staff.installments.show', $plan).'#installment-schedule'];

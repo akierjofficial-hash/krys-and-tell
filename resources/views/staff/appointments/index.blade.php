@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.staff')
 
 @section('kt_live_scope', 'appointments')
 @section('kt_live_interval', 10000)
@@ -542,7 +542,7 @@
     </div>
 
     <div class="top-actions">
-        <form class="search-box" method="GET" action="{{ route('staff.appointments.index') }}">
+        <form class="search-box" method="GET" action="{{ route('staff.appointments.index') }}" data-live-search data-live-target="[data-live-results]">
             <i class="fa fa-search"></i>
             <input type="search" id="appointmentSearch" name="q" value="{{ request('q') }}" placeholder="Search all appointments" aria-label="Search all appointments">
             @if(request()->filled('sort'))<input type="hidden" name="sort" value="{{ request('sort') }}">@endif
@@ -553,7 +553,7 @@
         <form class="sort-box" method="GET" action="{{ route('staff.appointments.index') }}">
             <span class="sort-label">Sort</span>
             @foreach(['q','date_from','date_to'] as $filter)@if(request()->filled($filter))<input type="hidden" name="{{ $filter }}" value="{{ request($filter) }}">@endif @endforeach
-            <select id="appointmentSort" name="sort" class="sort-select" onchange="this.form.requestSubmit()">
+            <select id="appointmentSort" name="sort" class="sort-select" onchange="const url=new URL(location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');location.assign(url)">
                 <option value="dt_desc" @selected(request('sort', 'dt_desc') === 'dt_desc')>Date & time (newest)</option>
                 <option value="dt_asc" @selected(request('sort') === 'dt_asc')>Date & time (oldest)</option>
                 <option value="patient_asc" @selected(request('sort') === 'patient_asc')>Patient (A–Z)</option>
@@ -576,7 +576,7 @@
 </div>
 
 {{-- Table Card --}}
-<div class="card-shell" id="apptCard">
+<div data-live-results><div class="card-shell" id="apptCard">
     <div class="card-head">
         <div class="hint">
             Showing <strong id="visibleCount">{{ $appointments->count() }}</strong> /
@@ -737,6 +737,7 @@
 </div>
 
 @if($appointments->hasPages())<div class="mt-3">{{ $appointments->links('pagination::bootstrap-5') }}</div>@endif
+</div>
 
 {{-- ✅ Confirm Modal --}}
 <div class="kt-confirm" id="ktConfirm" aria-hidden="true" role="dialog" aria-modal="true">

@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.admin')
 @section('title', 'Staff & Admin Accounts')
 
 @section('kt_live_scope', 'users')
@@ -309,9 +309,9 @@
     {{-- Filters --}}
     <div class="glass filters mb-3">
         <div class="glass-inner">
-            <form class="row g-2" method="GET" action="{{ route('admin.users.index') }}">
+            <form class="row g-2" method="GET" action="{{ route('admin.users.index') }}" data-live-search data-live-extra="[data-live-extra]">
                 <div class="col-md-5">
-                    <input class="form-control" name="q" value="{{ $q }}" placeholder="Search name or email...">
+                    <input class="form-control" type="search" name="q" value="{{ $q }}" aria-label="Search staff and admin accounts" placeholder="Search name or email...">
                 </div>
 
                 <div class="col-md-3">
@@ -341,7 +341,7 @@
     </div>
 
     {{-- Table --}}
-    <div class="glass table-card">
+    <div class="glass table-card" data-live-results>
         <div class="glass-inner">
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
@@ -438,7 +438,7 @@
         </div>
     </div>
 
-    <div class="footer">
+    <div class="footer" data-live-extra>
         <div class="muted" style="font-size:13px;">
             Showing {{ $filteredCount }} accounts
         </div>
@@ -451,5 +451,5 @@
 @endsection
 
 @push('scripts')
-<script>document.querySelectorAll('.js-sensitive-action').forEach(button=>button.addEventListener('click',()=>{const form=document.getElementById('sensitiveActionForm');form.action=button.dataset.url;document.getElementById('sensitiveMethod').value=button.dataset.method;document.getElementById('sensitiveActionTitle').textContent=button.dataset.actionLabel;const deleting=button.dataset.method==='DELETE';document.getElementById('sensitiveActionDescription').textContent=deleting?'The account for '+button.dataset.name+' will move to Deleted Accounts and can be restored. Linked appointments are preserved but unlinked from this login.':'Deactivate '+button.dataset.name+'? Their active session will end on the next protected request.';document.getElementById('sensitiveSubmit').textContent=deleting?'Move to Deleted Accounts':button.dataset.actionLabel;bootstrap.Modal.getOrCreateInstance(document.getElementById('sensitiveActionModal')).show();}));</script>
+<script>document.addEventListener('click',event=>{const button=event.target.closest('.js-sensitive-action');if(!button)return;const form=document.getElementById('sensitiveActionForm');form.action=button.dataset.url;document.getElementById('sensitiveMethod').value=button.dataset.method;document.getElementById('sensitiveActionTitle').textContent=button.dataset.actionLabel;const deleting=button.dataset.method==='DELETE';document.getElementById('sensitiveActionDescription').textContent=deleting?'The account for '+button.dataset.name+' will move to Deleted Accounts and can be restored. Linked appointments are preserved but unlinked from this login.':'Deactivate '+button.dataset.name+'? Their active session will end on the next protected request.';document.getElementById('sensitiveSubmit').textContent=deleting?'Move to Deleted Accounts':button.dataset.actionLabel;bootstrap.Modal.getOrCreateInstance(document.getElementById('sensitiveActionModal')).show();});</script>
 @endpush

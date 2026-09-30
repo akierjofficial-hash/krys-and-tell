@@ -38,8 +38,12 @@ class PaymentWorkflowService
             $plan = InstallmentPlan::with('payments')->lockForUpdate()->findOrFail($data['target_id']);
             if ((int) $plan->patient_id !== (int) $data['patient_id']) $this->invalid('target_id', 'That plan does not belong to the selected patient.');
             if ($plan->status === InstallmentPlan::STATUS_COMPLETED) $this->invalid('target_id', 'This plan is closed. Reopen it before recording a payment.');
-            $balance = $this->finance->planBalance($plan);
-            $this->validateAmount((float) $data['amount'], $balance);
+            if (!$plan->hasUnknownTotal()) {
+                $balance = $this->finance->planBalance($plan);
+                $this->validateAmount((float) $data['amount'], $balance);
+            } elseif ((float) $data['amount'] <= 0) {
+                $this->invalid('amount', 'Enter a positive receipt amount.');
+            }
             $payment = InstallmentPayment::create([
                 'installment_plan_id' => $plan->id, 'visit_id' => null,
                 'month_number' => $this->finance->nextPlanMonth($plan), 'amount' => $data['amount'],

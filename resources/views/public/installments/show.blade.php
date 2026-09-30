@@ -15,6 +15,8 @@
     $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
     $months = (int) ($plan->months ?? 0);
     $isOpen = (bool) ($plan->is_open_contract ?? false);
+    $unknownTotal = $plan->hasUnknownTotal();
+    $openDetails = $plan->is_unpriced_contract ? app(\App\Services\OpenMonthlyContractService::class)->details($plan) : null;
 
     $totalCost = (float) ($plan->total_cost ?? 0);
     $downpayment = (float) ($plan->downpayment ?? 0);
@@ -61,11 +63,12 @@
     $paymentsTotal = (float) $payments->sum('amount');
     $hasDpRecord = (bool) $dpPayment;
     $paidAmount = $paymentsTotal + ($hasDpRecord ? 0 : $downpayment);
-    $remaining = max(0, $totalCost - $paidAmount);
+    $remaining = $unknownTotal ? null : max(0, $totalCost - $paidAmount);
+    if ($plan->is_unpriced_contract) $paidAmount = $openDetails['collected'];
 
     $status = strtoupper(trim((string) ($plan->status ?? 'PARTIALLY PAID')));
     $isCompleted = ($status === 'COMPLETED');
-    $isPaid = $remaining <= 0;
+    $isPaid = !$unknownTotal && $remaining <= 0;
 
     $refNo = 'INST-' . str_pad((string) ($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
 
@@ -101,7 +104,7 @@
         ->values();
 
     $colLabel = $isOpen ? 'Payment' : 'Month';
-    $statusLabel = $isCompleted ? 'COMPLETED' : ($isPaid ? 'FULLY PAID' : ($status !== '' ? $status : 'PENDING'));
+    $statusLabel = $isCompleted ? 'COMPLETED' : ($isPaid ? 'FULLY PAID' : ($unknownTotal ? 'ACTIVE MONTHLY' : ($status !== '' ? $status : 'PENDING')));
     $statusClass = $isCompleted ? 'kt-installments-badge--info' : ($isPaid ? 'kt-installments-badge--paid' : 'kt-installments-badge--pending');
 @endphp
 
@@ -151,7 +154,7 @@
                             <dd>{{ $serviceName }}</dd>
 
                             <dt>Term</dt>
-                            <dd>{{ $isOpen ? 'Open Contract (Unlimited)' : ($months . ' month(s)') }}</dd>
+                            <dd>{{ $plan->is_unpriced_contract ? 'Open contract — monthly fee until treatment ends' : ($isOpen ? 'Open Contract (Unlimited)' : ($months . ' month(s)')) }}</dd>
 
                             <dt>Primary Dentist</dt>
                             <dd>{{ $baseDentist }}</dd>
@@ -160,12 +163,17 @@
 
                     <div class="kt-installment-panel">
                         <h3>Summary</h3>
-                        <div class="kt-installment-show__remaining">PHP {{ number_format($remaining, 2) }}</div>
-                        <p>Remaining Balance</p>
+                        <div class="kt-installment-show__remaining">{{ $unknownTotal ? 'Not determinable — no total agreed' : 'PHP '.number_format($remaining, 2) }}</div>
+                        <p>{{ $unknownTotal ? 'Final contract balance' : 'Remaining Balance' }}</p>
                         <ul>
-                            <li><span>Total</span><strong>PHP {{ number_format($totalCost, 2) }}</strong></li>
+                            <li><span>Total</span><strong>{{ $unknownTotal ? 'Not agreed' : 'PHP '.number_format($totalCost, 2) }}</strong></li>
                             <li><span>Downpayment</span><strong>PHP {{ number_format($downpayment, 2) }}</strong></li>
-                            <li><span>Paid</span><strong>PHP {{ number_format($paidAmount, 2) }}</strong></li>
+                            <li><span>{{ $unknownTotal ? 'Actually collected' : 'Paid' }}</span><strong>PHP {{ number_format($paidAmount, 2) }}</strong></li>
+                            @if($openDetails)
+                                <li><span>Monthly amount</span><strong>PHP {{ number_format($openDetails['monthly_amount'], 2) }}</strong></li>
+                                <li><span>Next due</span><strong>{{ $openDetails['next_due_date'] ?? 'None — closed' }}</strong></li>
+                                <li><span>Unpaid monthly dues so far</span><strong>PHP {{ number_format($openDetails['unpaid_due'], 2) }}</strong></li>
+                            @endif
                         </ul>
                     </div>
                 </div>

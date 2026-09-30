@@ -342,6 +342,8 @@
 
     $procCount = $visit->procedures->count();
     $totalCost = (float) $visitCharge;
+    $unknownFinancedCharge = $visit->installmentPlan?->hasUnknownTotal()
+        && $visit->procedures->contains(fn ($procedure) => $procedure->price === null);
 
     $teeth = $visit->procedures
         ->pluck('tooth_number')
@@ -388,7 +390,7 @@
             </span>
             <span class="pill pill-green">
                 <i class="fa fa-peso-sign"></i>
-                ₱{{ number_format($totalCost, 2) }}
+                {{ $unknownFinancedCharge ? 'Known charges ₱'.number_format($totalCost, 2).' + financed charge not agreed' : '₱'.number_format($totalCost, 2) }}
             </span>
         </div>
     </div>

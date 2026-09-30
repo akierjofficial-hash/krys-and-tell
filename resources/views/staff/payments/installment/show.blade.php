@@ -342,12 +342,12 @@
     // ✅ Balance calculation (DP counted only once)
     $paymentsTotal = (float)$payments->sum('amount');
     $hasDpRecord = (bool)$dpPayment;
-    $paidAmount = $paymentsTotal + ($hasDpRecord ? 0 : $downpayment);
-    $remaining = max(0, $totalCost - $paidAmount);
+    $paidAmount = $plan->is_unpriced_contract ? $paymentsTotal : $paymentsTotal + ($hasDpRecord ? 0 : $downpayment);
+    $remaining = $plan->hasUnknownTotal() ? null : max(0, $totalCost - $paidAmount);
 
     $status = strtoupper(trim((string)($plan->status ?? 'PARTIALLY PAID')));
     $isCompleted = ($status === 'COMPLETED');
-    $isPaid = $remaining <= 0;
+    $isPaid = $remaining !== null && $remaining <= 0;
 
     $refNo = 'INST-' . str_pad((string)($plan->id ?? 0), 6, '0', STR_PAD_LEFT);
 
@@ -396,11 +396,15 @@
 
         @if($isOpen)
             @if(!$isCompleted)
-                <form action="{{ route('staff.installments.complete', $plan) }}" method="POST" style="display:inline;"
-                      onsubmit="return confirm('Mark this Open Contract plan as COMPLETED? This will stop payments even if balance is not fully paid.');">
+                <form action="{{ route('staff.installments.complete', $plan) }}" method="POST" style="display:inline;">
                     @csrf
+                    @if($plan->is_unpriced_contract)
+                        <label>End date <input class="form-control" type="date" id="closeEndDate" name="ended_at" value="{{ old('ended_at', now()->toDateString()) }}" required></label>
+                        <label>Closure review note <input class="form-control" name="closure_note" value="{{ old('closure_note') }}" minlength="5" required></label>
+                        <label class="d-block"><input type="checkbox" id="closeAcknowledge" name="acknowledge_unpaid" value="1" @checked(old('acknowledge_unpaid'))> I reviewed unpaid monthly obligations at the selected end date: <strong id="closeDueAmount">₱{{ number_format($openContractDetails['unpaid_due'], 2) }}</strong>.</label>
+                    @endif
                     <button type="submit" class="i-btn" title="Mark plan as completed">
-                        <i class="fa fa-circle-check"></i> Mark Completed
+                        <i class="fa fa-circle-check"></i> {{ $plan->is_unpriced_contract ? 'Close contract' : 'Mark Completed' }}
                     </button>
                 </form>
             @else
@@ -521,14 +525,24 @@
             <div class="i-panel">
                 <div class="i-section-title">Summary</div>
 
-                <div class="i-amount">₱{{ number_format($remaining, 2) }}</div>
+                <div class="i-amount">{{ $plan->hasUnknownTotal() ? 'Not determinable — no total agreed' : '₱'.number_format($remaining, 2) }}</div>
                 <div class="i-small">
-                    Remaining<br>
-                    Total: <strong>₱{{ number_format($totalCost, 2) }}</strong><br>
+                    Final contract balance<br>
+                    Total: <strong>{{ $plan->hasUnknownTotal() ? 'Not agreed' : '₱'.number_format($totalCost, 2) }}</strong><br>
                     Down: <strong>₱{{ number_format($downpayment, 2) }}</strong><br>
-                    Paid: <strong>₱{{ number_format($paidAmount, 2) }}</strong>
+                    {{ $plan->is_unpriced_contract ? 'Actually collected' : 'Paid' }}: <strong>₱{{ number_format($paidAmount, 2) }}</strong>
+                    @if($plan->is_unpriced_contract)<br>Monthly: <strong>₱{{ number_format($openContractDetails['monthly_amount'], 2) }}</strong><br>Next due: <strong>{{ $openContractDetails['next_due_date'] ?? 'None — contract ended' }}</strong><br>Unpaid monthly obligations due so far: <strong>₱{{ number_format($openContractDetails['unpaid_due'], 2) }}</strong>@endif
                 </div>
             </div>
+            @if($plan->hasUnknownTotal())
+                <div class="i-panel"><div class="i-section-title">Agree a final total later</div><p>Use this only when the clinic and patient explicitly agree a final amount. This change is audited.</p>
+                    <form method="POST" action="{{ route('staff.installments.agree-total', $plan) }}">@csrf
+                        <label>Agreed final total <input class="form-control" type="number" min="0.01" step="0.01" name="total_cost" required></label>
+                        <label>Reason / agreement reference <input class="form-control" name="reason" minlength="5" required></label>
+                        <button class="i-btn" type="submit">Record agreed total</button>
+                    </form>
+                </div>
+            @endif
         </div>
 
         <div class="i-table-wrap table-responsive" id="installment-schedule">
@@ -735,6 +749,33 @@
 </div>
 
 <script>
+@if($plan->is_unpriced_contract)
+(() => {
+    const dateInput = document.getElementById('closeEndDate');
+    const dueOutput = document.getElementById('closeDueAmount');
+    const acknowledge = document.getElementById('closeAcknowledge');
+    if (!dateInput || !dueOutput) return;
+    const firstDue = @json($plan->first_due_date?->toDateString());
+    const monthlyCents = Math.round(Number(@json((float) $plan->open_monthly_payment)) * 100);
+    const receipts = @json($payments->reject(fn ($payment) => $dpPayment && $payment->is($dpPayment))->map(fn ($payment) => ['date' => $payment->payment_date?->toDateString(), 'cents' => (int) round((float) $payment->amount * 100)])->values()->all());
+    const update = () => {
+        if (!firstDue || !dateInput.value || !monthlyCents) { dueOutput.textContent = 'Date or monthly amount missing'; return; }
+        const first = new Date(`${firstDue}T00:00:00Z`);
+        let count = 0;
+        for (let month = 0; ; month++) {
+            const base = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + month, 1));
+            const last = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)).getUTCDate();
+            const due = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), Math.min(first.getUTCDate(), last))).toISOString().slice(0, 10);
+            if (due > dateInput.value) break;
+            count++;
+        }
+        const received = receipts.filter(row => row.date && row.date <= dateInput.value).reduce((total, row) => total + row.cents, 0);
+        dueOutput.textContent = '₱' + (Math.max(0, count * monthlyCents - received) / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    };
+    dateInput.addEventListener('input', () => { if (acknowledge) acknowledge.checked = false; update(); });
+    update();
+})();
+@endif
 (() => {
     const btn  = document.getElementById('installmentPaymentsImportBtn');
     const file = document.getElementById('installmentPaymentsImportFile');

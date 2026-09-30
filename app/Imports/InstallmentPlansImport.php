@@ -63,6 +63,12 @@ class InstallmentPlansImport implements ToCollection, WithHeadingRow, SkipsEmpty
                     }
                 }
 
+                if (($plan && $plan->is_unpriced_contract) || ($this->toBool($row['is_unpriced_contract'] ?? null) ?? false)) {
+                    $this->skipped++;
+                    $this->errors[] = "Row {$rowNo}: open monthly contracts require Past Records Entry or the audited plan page; this fixed-total import cannot change them.";
+                    return;
+                }
+
                 $totalCost = $this->toMoney($row['total_cost'] ?? null);
                 if ($totalCost === null) {
                     // fallback: sum procedure prices if not provided

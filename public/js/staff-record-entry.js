@@ -12,8 +12,7 @@
     const option = (value, name, selected) => `<option value="${esc(value)}" ${String(value) === String(typeof selected === 'boolean' ? Number(selected) : selected) ? 'selected' : ''}>${esc(name)}</option>`;
     if (!c.patientId) {
         const input = $('re-patient-search'), results = $('re-patient-results');
-        let matches = [], active = -1;
-        const searchable = patient => `${patient.id} ${patient.first_name} ${patient.last_name} ${patient.last_name} ${patient.first_name} ${patient.birthdate || ''} ${patient.contact_number || ''}`.toLocaleLowerCase();
+        let matches = [], active = -1, timer, controller, sequence = 0;
         function openPatient(patient) {
             const url = new URL(c.baseUrl);
             url.searchParams.set('patient_id', patient.id);
@@ -21,8 +20,6 @@
             location.assign(url.toString());
         }
         function renderPatients() {
-            const term = input.value.trim().toLocaleLowerCase();
-            matches = c.patients.filter(patient => !term || searchable(patient).includes(term)).slice(0, 20);
             active = matches.length && active >= 0 ? Math.min(active, matches.length - 1) : -1;
             if (!matches.length) {
                 results.innerHTML = '<div class="re-muted p-3">No matching patients found.</div>';
@@ -33,16 +30,48 @@
             input.setAttribute('aria-expanded', 'true');
             input.setAttribute('aria-activedescendant', active >= 0 ? `re-patient-${active}` : '');
         }
+        async function searchPatients() {
+            controller?.abort();
+            controller = new AbortController();
+            const ticket = ++sequence;
+            results.hidden = false;
+            results.innerHTML = '<div class="re-muted p-3" role="status">Searching patients…</div>';
+            input.setAttribute('aria-expanded', 'true');
+            try {
+                const url = new URL(c.patientSearchUrl);
+                url.searchParams.set('q', input.value.trim());
+                const response = await fetch(url, {signal: controller.signal, headers: {'Accept':'application/json'}});
+                if (!response.ok) throw new Error('Lookup unavailable');
+                const data = await response.json();
+                if (ticket !== sequence) return;
+                matches = Array.isArray(data.patients) ? data.patients : [];
+                renderPatients();
+            } catch (error) {
+                if (error.name !== 'AbortError' && ticket === sequence) {
+                    results.innerHTML = '<div class="re-muted p-3" role="alert">Patient search is unavailable. Please retry.</div>';
+                }
+            }
+        }
+        function queueSearch(immediate = false) {
+            clearTimeout(timer);
+            controller?.abort();
+            ++sequence;
+            if (immediate) searchPatients();
+            else timer = setTimeout(searchPatients, 220);
+        }
         function closePatients() {
+            clearTimeout(timer);
+            controller?.abort();
+            ++sequence;
             results.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1;
         }
-        input.addEventListener('focus', renderPatients);
-        input.addEventListener('input', () => {active = -1;renderPatients();});
+        input.addEventListener('focus', () => queueSearch(true));
+        input.addEventListener('input', () => {active = -1;queueSearch();});
         input.addEventListener('keydown', event => {
             if (event.key === 'Escape') {closePatients();return;}
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
-                if (results.hidden) renderPatients();
+                if (results.hidden) queueSearch(true);
                 if (!matches.length) return;
                 active = active < 0
                     ? (event.key === 'ArrowDown' ? 0 : matches.length - 1)
@@ -72,10 +101,12 @@
     const visit = () => ({visit_date:c.mode === 'visit' ? c.today : '', doctor_id:$('re-default-doctor').value, notes:'', arrangement:'ordinary', procedures:[procedure()], payments:[], plan:null});
     let state = {id:uuid(), version:0, payload:{default_doctor_id:'',visits:[visit()]}}, drafts = [];
     let dirty = false, reviewed = null, timer, queue = Promise.resolve(), locked = false, revision = 0;
+    let fieldErrors = {};
     const cached = (() => {try {return JSON.parse(sessionStorage.getItem(storageKey));} catch {return null;}})();
     function localSave() {try {sessionStorage.setItem(storageKey, JSON.stringify(state));} catch { /* Server draft remains primary; unload warning stays enabled. */ }}
     function clearLocal() {try {sessionStorage.removeItem(storageKey);} catch {}}
     function errors(error) {
+        fieldErrors = error.errors || {};
         const box = $('re-errors'); box.hidden = false; box.replaceChildren();
         const title = document.createElement('strong'); title.textContent = error.message || 'Unable to save. Your entry is still on this page.'; box.append(title);
         Object.entries(error.errors || {}).forEach(([path, messages]) => {
@@ -84,13 +115,36 @@
             button.onclick = () => {
                 $('re-editor').hidden = false;
                 const fields = [...document.querySelectorAll('[data-path]')];
-                const field = fields.find(el => el.dataset.path === path)
+                const field = (path.endsWith('.service_id') ? document.querySelector(`[data-service-picker="${path.replace(/\.service_id$/, '')}"]`) : null)
+                    || fields.find(el => el.dataset.path === path)
                     || (path.endsWith('.plan.payments') ? fields.find(el => el.dataset.path.startsWith(`${path}.`) && el.dataset.path.endsWith('.amount')) : null)
                     || (path.endsWith('.plan.payments') ? fields.find(el => el.dataset.path === path.replace(/\.payments$/, '.downpayment')) : null);
-                if (field) { field.setAttribute('aria-invalid', 'true'); field.scrollIntoView({block:'center'}); field.focus(); }
+                if (field) {
+                    field.closest('details')?.setAttribute('open', '');
+                    field.setAttribute('aria-invalid', 'true'); field.scrollIntoView({block:'center'}); field.focus();
+                }
             }; box.append(button);
         });
+        showFieldErrors();
         box.scrollIntoView({block:'start'});
+    }
+    function showFieldErrors() {
+        document.querySelectorAll('.re-field-error').forEach(node => node.remove());
+        document.querySelectorAll('#re-visits [aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
+        Object.entries(fieldErrors).forEach(([path, messages]) => {
+            const field = path.endsWith('.service_id') ? document.querySelector(`[data-service-picker="${path.replace(/\.service_id$/, '')}"]`) : document.querySelector(`[data-path="${path}"]`);
+            const target = field
+                || (path.endsWith('.plan.payments') ? document.querySelector(`[data-path^="${path}."][data-path$=".amount"]`) || document.querySelector(`[data-path="${path.replace(/\.payments$/, '.downpayment')}"]`) : null)
+                || (path.endsWith('.payments') ? document.querySelector(`[data-path^="${path}."][data-path$=".amount"]`) : null)
+                || (path.endsWith('.procedures') ? document.querySelector(`[data-service-picker="${path}.0"]`) : null)
+                || (path.endsWith('.plan.total_cost') ? document.querySelector(`[data-path="${path.replace(/\.plan\.total_cost$/, '.plan.procedure_index')}"]`) : null);
+            if (!target) return;
+            target.closest('details')?.setAttribute('open', '');
+            target.setAttribute('aria-invalid', 'true');
+            const message = document.createElement('small'); message.className = 're-field-error';
+            message.textContent = [].concat(messages).join(' ');
+            (target.closest('label') || target.parentElement).append(message);
+        });
     }
     async function request(action, method, body, batchId=state.id) {
         const response = await fetch(`${c.baseUrl}/${batchId}/${action}`, {method, credentials:'same-origin', headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':c.csrf}, body:JSON.stringify(body)});
@@ -114,6 +168,10 @@
         });
     }
     function changed() {
+        fieldErrors = {};
+        $('re-errors').hidden = true;
+        document.querySelectorAll('.re-field-error').forEach(node => node.remove());
+        document.querySelectorAll('#re-visits [aria-invalid="true"]').forEach(node => node.removeAttribute('aria-invalid'));
         revision++; dirty = true; reviewed = null;
         $('re-review').hidden = true; $('re-editor').hidden = false;
         $('re-status').textContent = 'Unsaved changes'; localSave(); totals();
@@ -128,10 +186,18 @@
     }
     function select(label, path, options) {return `<label>${esc(label)}<select data-path="${path}">${options}</select></label>`;}
     function notes(label, path, value) {return `<label>${esc(label)}<textarea data-path="${path}" maxlength="2000">${esc(value)}</textarea></label>`;}
+    function serviceName(id) {
+        if (id === '' || id === null || id === undefined) return '';
+        return c.services.find(service => String(service.id) === String(id))?.name || `Treatment #${id} (unavailable — choose another)`;
+    }
+    function servicePicker(path, selectedId, visitIndex, procedureIndex) {
+        const listId = `re-service-options-${visitIndex}-${procedureIndex}`;
+        return `<div class="re-service-field"><label for="re-service-${visitIndex}-${procedureIndex}">Treatment / service</label><div class="re-service-picker"><input id="re-service-${visitIndex}-${procedureIndex}" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" autocomplete="off" data-service-picker="${path}" value="${esc(serviceName(selectedId))}" placeholder="Search or choose treatment"><input type="hidden" data-path="${path}.service_id" value="${esc(selectedId)}"><div id="${listId}" class="re-service-options" role="listbox" hidden></div></div></div>`;
+    }
     function treatmentOptions(v, selected, emptyLabel) {
         return option('', emptyLabel, selected) + state.payload.visits[v].procedures.map((p,i) => {
             const service = c.services.find(s => String(s.id) === String(p.service_id));
-            return option(i, `${service?.name || `Treatment ${i+1}`} — ${money(p.price)}`, selected);
+            return option(i, `${service?.name || `Treatment ${i+1}`} — ${p.price === null || p.price === '' ? 'Charge not agreed' : money(p.price)}`, selected);
         }).join('');
     }
     function paymentRow(p, path, v, j, installment=false) {
@@ -141,27 +207,50 @@
             related = `<label>Related treatment (optional)<select data-link="${path}">${option('', 'Collection only — no visit', selected)}${state.payload.visits.map((row,i) => option(`batch:${i}`, `Batch visit ${i+1}: ${row.visit_date || 'Date not entered'}`, selected)).join('')}${c.existingVisits.map(row => option(`existing:${row.id}`, `Existing #${row.id}: ${row.visit_date.slice(0,10)}`, selected)).join('')}</select></label>`;
         }
         const appliesTo = installment ? '' : select('Payment applies to', `${path}.procedure_index`, treatmentOptions(v, p.procedure_index, state.payload.visits[v].arrangement === 'installment' ? 'Choose non-installment treatment' : 'Entire visit / not allocated'));
-        return `<div class="re-row"><div class="re-grid re-payment-grid">${installment ? input('Payment / month number', `${path}.month_number`, p.month_number, 'number', 'inputmode="numeric"') : ''}${appliesTo}${input('Amount received', `${path}.amount`, p.amount, 'number')}${input('Payment date', `${path}.payment_date`, p.payment_date, 'date')}${select('Payment method', `${path}.method`, methods.map(m => option(m,m,p.method)).join(''))}${notes('Receipt notes', `${path}.notes`, p.notes)}${related}</div><button type="button" class="btn btn-sm btn-outline-danger mt-2" data-action="remove-payment" data-v="${v}" data-j="${j}" data-installment="${installment}">Remove receipt</button></div>`;
+        return `<div class="re-row re-receipt-row"><div class="re-row-heading"><strong>${installment ? 'Monthly receipt' : 'Ordinary receipt'} ${j+1}</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-payment" data-v="${v}" data-j="${j}" data-installment="${installment}">Remove receipt</button></div><div class="re-grid re-payment-grid">${installment ? input('Payment / month number', `${path}.month_number`, p.month_number, 'number', 'inputmode="numeric"') : ''}${appliesTo}${input('Amount received', `${path}.amount`, p.amount, 'number')}${input('Payment date', `${path}.payment_date`, p.payment_date, 'date')}${select('Payment method', `${path}.method`, methods.map(m => option(m,m,p.method)).join(''))}${notes('Receipt notes', `${path}.notes`, p.notes)}${related}</div></div>`;
     }
-    function render() {
+    function section(title, content, className = '') {
+        return `<section class="re-section ${className}"><h4>${title}</h4>${content}</section>`;
+    }
+    function planFields(v, i, base) {
+        const p = v.plan, path = `${base}.plan`, unknown = p.is_unpriced_contract == 1;
+        const overview = `<div class="re-grid re-plan-overview">${select('Financed treatment',`${path}.procedure_index`,treatmentOptions(i,p.procedure_index,'Choose financed treatment'))}${input('Plan start date',`${path}.start_date`,p.start_date,'date')}${unknown ? '<p class="re-unknown-total">Final total not agreed. The financed procedure charge stays blank.</p>' : input('Total agreed cost',`${path}.total_cost`,p.total_cost,'number')}</div>`;
+        const initial = `<div class="re-grid re-plan-grid">${input('Initial payment received (counted once)',`${path}.downpayment`,p.downpayment,'number')}${input('Initial payment date',`${path}.downpayment_date`,p.downpayment_date,'date')}${select('Initial payment method',`${path}.downpayment_method`,methods.map(m => option(m,m,p.downpayment_method)).join(''))}${unknown ? `${input('Monthly amount',`${path}.open_monthly_payment`,p.open_monthly_payment,'number')}${input('First monthly due date',`${path}.first_due_date`,p.first_due_date,'date')}` : `${select('Contract term',`${path}.is_open_contract`,option(0,'Fixed term',p.is_open_contract)+option(1,'Open term, agreed total',p.is_open_contract))}${p.is_open_contract == 1 ? input('Suggested monthly amount (optional)',`${path}.open_monthly_payment`,p.open_monthly_payment,'number') : input('Number of months',`${path}.months`,p.months,'number','inputmode="numeric"')}`}</div>`;
+        const end = unknown ? `<label class="re-ended-choice"><input type="checkbox" data-ended-toggle="${i}" ${p.ended_at ? 'checked' : ''}> Treatment has ended</label><div class="re-end-fields" ${p.ended_at ? '' : 'hidden'}><div class="re-grid">${input('Treatment end date',`${path}.ended_at`,p.ended_at,'date')}</div><label class="re-closure-review"><input type="checkbox" data-path="${path}.acknowledge_unpaid" value="1" ${p.acknowledge_unpaid == 1 ? 'checked' : ''}> I reviewed the monthly amounts due through the end date and any unpaid amount.</label></div>` : '';
+        const paste = c.mode === 'past' && unknown ? `<details class="re-paste-panel"><summary>Paste multiple past receipts</summary><div class="re-paste-content"><p class="re-muted">One per line: YYYY-MM-DD, amount, method. Example: 2024-02-01, 2000, Cash. Do not include the initial payment again.</p><label for="re-monthly-import-${i}">Past monthly receipts</label><textarea id="re-monthly-import-${i}" class="form-control" data-monthly-import="${i}" rows="4" placeholder="2024-02-01, 2000, Cash"></textarea><button type="button" class="btn btn-outline-secondary btn-sm" data-action="import-monthly-receipts" data-v="${i}">Import pasted receipts</button></div></details>` : '';
+        const receipts = `<div class="re-subsection"><h5>Past monthly payments</h5><p class="re-muted">Initial payment is counted above. Add only later monthly receipts here; a receipt does not create a treatment visit.</p>${p.payments.map((r,j) => paymentRow(r,`${path}.payments.${j}`,i,j,true)).join('')}<div class="re-payment-actions"><button type="button" class="btn btn-outline-primary btn-sm" data-action="add-installment-payment" data-v="${i}">+ Add monthly receipt</button>${paste}</div></div>`;
+        return section(unknown ? 'Open contract details' : 'Fixed-total installment details', overview + initial + end + `<p class="re-muted re-plan-hint" data-plan-suggestion="${i}"></p>` + receipts, 're-plan-section');
+    }
+    function render(focusServicePath = null) {
         const focusPath = document.activeElement?.dataset?.path;
+        const pasted = [...document.querySelectorAll('[data-monthly-import]')].map(el => [el.dataset.monthlyImport, el.value, el.closest('details')?.open]);
+        const expandedProcedures = new Set([...document.querySelectorAll('[data-procedure-details][open]')].map(el => el.dataset.procedureDetails));
         const batchCount = $('re-batch-count');
         if (batchCount) batchCount.textContent = `${state.payload.visits.length} ${state.payload.visits.length === 1 ? 'record' : 'records'} in batch`;
         $('re-visits').innerHTML = state.payload.visits.map((v,i) => {
             const base = `visits.${i}`;
             const procs = v.procedures.map((p,j) => {
                 const path = `${base}.procedures.${j}`;
-                return `<div class="re-row"><div class="re-grid re-procedure-grid"><label>Search treatments<input type="search" data-search-service="${path}" placeholder="Filter treatment list"></label>${select('Treatment / service', `${path}.service_id`, option('','Select treatment',p.service_id)+c.services.map(s => option(s.id,s.name,p.service_id)).join(''))}${input('Actual charge',`${path}.price`,p.price,'number')}${input('Tooth number(s)',`${path}.tooth_number`,p.tooth_number,'text','maxlength="50"')}${input('Surface',`${path}.surface`,p.surface,'text','maxlength="10"')}${input('Shade',`${path}.shade`,p.shade,'text','maxlength="10"')}${notes('Procedure notes',`${path}.notes`,p.notes)}</div><button type="button" class="btn btn-sm btn-outline-danger mt-2" data-action="remove-procedure" data-v="${i}" data-j="${j}">Remove procedure</button></div>`;
+                const details = [p.tooth_number, p.surface, p.shade, p.notes].some(Boolean);
+                return `<div class="re-row re-procedure-row"><div class="re-row-heading"><strong>Procedure ${j+1}</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-procedure" data-v="${i}" data-j="${j}">Remove procedure</button></div><div class="re-grid re-procedure-main">${servicePicker(path,p.service_id,i,j)}${input(v.plan?.is_unpriced_contract == 1 && Number(v.plan.procedure_index) === j ? 'Actual charge (not agreed)' : 'Actual charge',`${path}.price`,p.price,'number')}</div><details class="re-procedure-extra" data-procedure-details="${i}-${j}" ${details || expandedProcedures.has(`${i}-${j}`) ? 'open' : ''}><summary>More details: tooth, surface, shade & notes</summary><div class="re-grid re-procedure-extra-grid">${input('Tooth number(s)',`${path}.tooth_number`,p.tooth_number,'text','maxlength="50"')}${input('Surface',`${path}.surface`,p.surface,'text','maxlength="10"')}${input('Shade',`${path}.shade`,p.shade,'text','maxlength="10"')}${notes('Procedure notes',`${path}.notes`,p.notes)}</div></details></div>`;
             }).join('');
-            let billing = `<h4>${c.mode === 'visit' ? 'Payment received today (optional)' : 'Ordinary payments (optional)'}</h4><p class="re-muted">Add receipts for treatments paid outside an installment plan. In mixed billing, select the treatment each receipt pays for.</p>${v.payments.map((p,j) => paymentRow(p,`${base}.payments.${j}`,i,j)).join('')}<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-payment" data-v="${i}">+ Add ordinary receipt</button>`;
-            if (v.arrangement === 'installment') {
-                const p = v.plan, path = `${base}.plan`;
-                billing += `<h4>Installment plan</h4><div class="re-grid re-plan-grid">${select('Financed treatment',`${path}.procedure_index`,treatmentOptions(i,p.procedure_index,'Choose financed treatment'))}${input('Total agreed cost',`${path}.total_cost`,p.total_cost,'number')}${input('Downpayment received (counted once)',`${path}.downpayment`,p.downpayment,'number')}${input('Plan start date',`${path}.start_date`,p.start_date,'date')}${input('Downpayment date',`${path}.downpayment_date`,p.downpayment_date,'date')}${select('Downpayment method',`${path}.downpayment_method`,methods.map(m => option(m,m,p.downpayment_method)).join(''))}${select('Contract type',`${path}.is_open_contract`,option(0,'Fixed term',p.is_open_contract)+option(1,'Open contract',p.is_open_contract))}${p.is_open_contract == 1 ? input('Suggested monthly amount (optional)',`${path}.open_monthly_payment`,p.open_monthly_payment,'number') : input('Number of months',`${path}.months`,p.months,'number','inputmode="numeric"')}</div><div class="re-muted mt-2" data-plan-suggestion="${i}"></div><h4>Previous installment payments</h4><p class="re-muted">Do not enter the downpayment again here. Month 0 is reserved for it. A receipt creates no treatment visit; link a real visit only when appropriate.</p>${p.payments.map((r,j) => paymentRow(r,`${path}.payments.${j}`,i,j,true)).join('')}<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-installment-payment" data-v="${i}">+ Add installment receipt</button>`;
-            }
-            return `<section class="re-card"><div class="d-flex justify-content-between flex-wrap"><h3>Visit ${i+1}</h3>${c.mode === 'past' ? `<div class="re-actions mt-0"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-v="${i}">Duplicate visit</button><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-visit" data-v="${i}">Remove unsaved visit</button></div>` : ''}</div><div class="re-grid re-visit-grid">${input('Visit date',`${base}.visit_date`,v.visit_date,'date')}${select('Dentist',`${base}.doctor_id`,option('','Select dentist',v.doctor_id)+c.doctors.map(d => option(d.id,d.name+(d.is_active ? '' : ' (inactive)'),v.doctor_id)).join(''))}${notes('Visit notes',`${base}.notes`,v.notes)}</div><h4>Procedures</h4>${procs}<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-procedure" data-v="${i}">+ Add procedure</button><div class="re-grid re-arrangement-grid mt-3">${select('Payment arrangement',`${base}.arrangement`,option('ordinary','Ordinary payment / unpaid',v.arrangement)+option('installment','Installment or mixed billing',v.arrangement))}</div>${billing}<div class="re-totals" data-totals="${i}"></div></section>`;
+            const ordinaryReceipts = section('Ordinary payments', `<p class="re-muted">Use for treatments paid outside a plan. For mixed billing, choose the treatment each receipt pays for.</p>${v.payments.map((p,j) => paymentRow(p,`${base}.payments.${j}`,i,j)).join('')}<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-payment" data-v="${i}">+ Add ordinary receipt</button>`, 're-ordinary-section');
+            const arrangement = v.arrangement === 'ordinary' ? 'ordinary' : v.plan?.is_unpriced_contract == 1 ? 'open' : 'installment';
+            const arrangementChoices = select('Billing type',`${base}.arrangement`,option('ordinary','Paid normally / unpaid',arrangement)+option('installment','Fixed-total installment',arrangement)+option('open','Open contract — monthly fee until treatment ends',arrangement));
+            return `<section class="re-card re-visit-card" aria-label="Visit ${i+1}"><div class="re-visit-heading"><h3>Visit ${i+1}</h3>${c.mode === 'past' ? `<div class="re-actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-v="${i}">Duplicate visit</button><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-visit" data-v="${i}">Remove unsaved visit</button></div>` : ''}</div>${section('Visit details',`<div class="re-grid re-visit-grid">${input('Visit date',`${base}.visit_date`,v.visit_date,'date')}${select('Dentist',`${base}.doctor_id`,option('','Select dentist',v.doctor_id)+c.doctors.map(d => option(d.id,d.name+(d.is_active ? '' : ' (inactive)'),v.doctor_id)).join(''))}${notes('Visit notes',`${base}.notes`,v.notes)}</div>`)}${section('Procedures',`${procs}<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-procedure" data-v="${i}">+ Add procedure</button>`)}${section('Payment arrangement',`<div class="re-grid re-arrangement-grid">${arrangementChoices}</div><p class="re-muted">Choose how the financed treatment is billed. Ordinary receipts may also be entered for other procedures.</p>`)}${v.arrangement === 'installment' ? planFields(v,i,base) : ''}${ordinaryReceipts}${section('Review summary',`<div class="re-totals" data-totals="${i}" aria-live="polite"></div>`,'re-summary-section')}</section>`;
         }).join('');
+        pasted.forEach(([i, value, open]) => {
+            const field = document.querySelector(`[data-monthly-import="${i}"]`);
+            if (field) { field.value = value; if (open) field.closest('details').open = true; }
+        });
+        showFieldErrors();
         totals();
-        if (focusPath) document.querySelector(`[data-path="${focusPath}"]`)?.focus();
+        if (focusServicePath) {
+            const picker = document.querySelector(`[data-service-picker="${focusServicePath}"]`);
+            picker?.focus();
+            if (picker) closeServicePicker(picker);
+        }
+        else if (focusPath) document.querySelector(`[data-path="${focusPath}"]`)?.focus();
     }
     function figures(v) {
         const charge = sum(v.procedures,'price');
@@ -170,36 +259,166 @@
         const financedCharge = v.plan.procedure_index !== '' && v.plan.procedure_index != null ? cents(v.procedures[Number(v.plan.procedure_index)]?.price) : 0;
         const ordinaryCharge = charge-financedCharge;
         const planPaid = cents(v.plan.downpayment)+sum(v.plan.payments,'amount');
-        const planCost = cents(v.plan.total_cost);
+        const planCost = v.plan.is_unpriced_contract == 1 ? null : cents(v.plan.total_cost);
         const agreed = ordinaryCharge+planCost;
-        return {charge, agreed, paid:ordinaryPaid+planPaid, ordinaryPaid, ordinaryCharge, planPaid, planCost,
-            ordinaryBalance:ordinaryCharge-ordinaryPaid, planBalance:planCost-planPaid,
-            balance:(ordinaryCharge-ordinaryPaid)+(planCost-planPaid)};
+        return {charge, agreed:planCost === null ? null : agreed, paid:ordinaryPaid+planPaid, ordinaryPaid, ordinaryCharge, planPaid, planCost,
+            ordinaryBalance:ordinaryCharge-ordinaryPaid, planBalance:planCost === null ? null : planCost-planPaid,
+            balance:planCost === null ? null : (ordinaryCharge-ordinaryPaid)+(planCost-planPaid)};
+    }
+    function monthlyDue(v) {
+        const plan = v.plan;
+        if (!plan?.first_due_date || cents(plan.open_monthly_payment) <= 0) return null;
+        const first = new Date(`${plan.first_due_date}T00:00:00Z`);
+        if (Number.isNaN(first.getTime())) return null;
+        const cutoff = plan.ended_at || c.today;
+        let dueCount = 0;
+        for (let month = 0; ; month++) {
+            const firstOfMonth = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + month, 1));
+            const lastDay = new Date(Date.UTC(firstOfMonth.getUTCFullYear(), firstOfMonth.getUTCMonth() + 1, 0)).getUTCDate();
+            const due = new Date(Date.UTC(firstOfMonth.getUTCFullYear(), firstOfMonth.getUTCMonth(), Math.min(first.getUTCDate(), lastDay))).toISOString().slice(0, 10);
+            if (due > cutoff) break;
+            dueCount++;
+        }
+        const received = sum(plan.payments.filter(payment => payment.payment_date && payment.payment_date <= cutoff), 'amount');
+        return Math.max(0, dueCount * cents(plan.open_monthly_payment) - received) / 100;
     }
     function totals() {
-        let charge=0, agreed=0, paid=0, planOverpayments=0;
+        let charge=0, agreed=0, paid=0, planOverpayments=0, unknownPlans=0, knownBalance=0;
         state.payload.visits.forEach((v,i) => {
             const f = figures(v); charge+=f.charge; agreed+=f.agreed; paid+=f.paid;
             const target = document.querySelector(`[data-totals="${i}"]`);
-            if (f.planBalance < 0) planOverpayments++;
-            if (target) target.innerHTML = `<span>Treatment charge: ${money(f.charge/100)}</span>${v.arrangement === 'installment' ? `<span>Installment plan: ${money(v.plan.total_cost)}</span><span>Ordinary received: ${money(f.ordinaryPaid/100)}</span><span>Plan received: ${money(f.planPaid/100)}</span><span>Ordinary treatment balance: ${money(f.ordinaryBalance/100)}</span><span>Installment plan balance: ${money(f.planBalance/100)}</span>` : `<span>Received: ${money(f.paid/100)}</span>`}<span>Combined balance: ${money(f.balance/100)}</span><span>${f.planBalance < 0 ? 'Plan overpayment — correct before review' : f.balance < 0 ? 'Overpayment — correct before saving' : f.balance === 0 ? 'Fully paid' : f.paid ? 'Partially paid' : 'Unpaid'}</span>${f.planBalance < 0 ? `<div class="re-billing-warning" role="alert">Installment receipts exceed the agreed plan cost by ${money(-f.planBalance/100)}. Check whether a payment for another treatment was entered under installment receipts. Move it to ordinary receipts only if that matches the paper record.</div>` : ''}`;
+            if (f.planBalance !== null && f.planBalance < 0) planOverpayments++;
+            if (f.balance === null) { unknownPlans++; } else { knownBalance += f.balance; }
+            if (target) {
+                const item = (label, value) => `<div class="re-summary-item"><span>${label}</span><strong>${value}</strong></div>`;
+                const due = v.plan?.is_unpriced_contract == 1 ? monthlyDue(v) : null;
+                target.innerHTML = item('Total collected', money(f.paid/100))
+                    + (v.plan?.is_unpriced_contract == 1 ? item('Monthly dues so far', due === null ? 'Enter due date and monthly amount' : money(due)) : '')
+                    + (v.arrangement === 'installment' ? item('Known other balance', money(f.ordinaryBalance/100)) : '')
+                    + item(v.plan?.is_unpriced_contract == 1 ? 'Final contract balance' : 'Balance', f.balance === null ? 'Not determinable — no total agreed' : money(f.balance/100))
+                    + (f.planBalance !== null && f.planBalance < 0 ? `<div class="re-billing-warning" role="alert">Installment receipts exceed the agreed plan cost by ${money(-f.planBalance/100)}.</div>` : '');
+            }
             const suggestion = document.querySelector(`[data-plan-suggestion="${i}"]`);
-            if (suggestion) suggestion.textContent = v.plan.is_open_contract == 1 ? `Suggested monthly: ${money(v.plan.open_monthly_payment)}. No paid months will be generated.` : `Suggested monthly: ${money((cents(v.plan.total_cost)-cents(v.plan.downpayment))/100/Math.max(1,Number(v.plan.months)))}. No paid months will be generated.`;
+            if (suggestion) suggestion.textContent = v.plan.is_unpriced_contract == 1 ? 'Monthly dues stop at the treatment end date. Future months are not a final balance.' : v.plan.is_open_contract == 1 ? `Suggested monthly: ${money(v.plan.open_monthly_payment)}. No paid months will be generated.` : `Suggested monthly: ${money((cents(v.plan.total_cost)-cents(v.plan.downpayment))/100/Math.max(1,Number(v.plan.months)))}. No paid months will be generated.`;
         });
-        $('re-grand-totals').textContent = `Charges ${money(charge/100)} · Agreed total ${money(agreed/100)} · Received ${money(paid/100)} · Balance ${money((agreed-paid)/100)}${planOverpayments ? ` · ${planOverpayments} overpaid installment plan(s) need correction` : ''}`;
+        $('re-grand-totals').textContent = `${state.payload.visits.length} ${state.payload.visits.length === 1 ? 'visit' : 'visits'} in this batch${unknownPlans ? ` · ${unknownPlans} open contract${unknownPlans === 1 ? '' : 's'} with no agreed total` : ''}${planOverpayments ? ` · ${planOverpayments} installment overpayment${planOverpayments === 1 ? '' : 's'} to review` : ''}`;
     }
+    function closeServicePicker(input, restore = false) {
+        const list = document.getElementById(input.getAttribute('aria-controls'));
+        if (list) list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        input.serviceMatches = [];
+        input.serviceActive = -1;
+        if (restore) {
+            const id = state.payload.visits[Number(input.dataset.servicePicker.split('.')[1])]
+                ?.procedures[Number(input.dataset.servicePicker.split('.')[3])]?.service_id;
+            input.value = serviceName(id);
+        }
+    }
+    function showServiceOptions(input) {
+        const list = document.getElementById(input.getAttribute('aria-controls'));
+        if (!list) return;
+        const term = input.value.trim().toLocaleLowerCase();
+        const matches = c.services.filter(service => service.name.toLocaleLowerCase().includes(term));
+        input.serviceMatches = matches.slice(0, 15);
+        input.serviceActive = -1;
+        const path = `${input.dataset.servicePicker}.service_id`;
+        const hidden = document.querySelector(`[data-path="${path}"]`);
+        list.innerHTML = input.serviceMatches.length
+            ? input.serviceMatches.map((service, index) => `<button type="button" role="option" id="${list.id}-option-${index}" data-service-id="${esc(service.id)}" aria-selected="${String(service.id) === String(hidden?.value)}">${esc(service.name)}</button>`).join('')
+                + (matches.length > 15 ? '<div class="re-service-hint">More matches — keep typing</div>' : '')
+            : '<div class="re-service-hint">No matching treatments</div>';
+        list.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+    }
+    function chooseService(input, id) {
+        const service = c.services.find(item => String(item.id) === String(id));
+        if (!service) return;
+        const path = input.dataset.servicePicker;
+        const parts = path.split('.');
+        const visit = state.payload.visits[Number(parts[1])];
+        const procedure = visit?.procedures[Number(parts[3])];
+        if (!procedure) return;
+        at(`${path}.service_id`, String(service.id));
+        if ((procedure.price === '' || procedure.price === null)
+            && !(visit.plan?.is_unpriced_contract == 1 && Number(visit.plan.procedure_index) === Number(parts[3]))) {
+            procedure.price = service.base_price ?? '';
+        }
+        changed();
+        render(path);
+    }
+    $('re-visits').addEventListener('focusin', event => {
+        if (!event.target.matches('[data-service-picker]')) return;
+        document.querySelectorAll('[data-service-picker][aria-expanded="true"]').forEach(input => {
+            if (input !== event.target) closeServicePicker(input, true);
+        });
+        showServiceOptions(event.target);
+    });
+    $('re-visits').addEventListener('keydown', event => {
+        const input = event.target;
+        if (!input.matches('[data-service-picker]')) return;
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeServicePicker(input, true); return; }
+        if (event.key === 'Tab') { closeServicePicker(input, true); return; }
+        if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (input.getAttribute('aria-expanded') !== 'true') showServiceOptions(input);
+        const matches = input.serviceMatches || [];
+        if (event.key === 'Enter') {
+            const chosen = matches[input.serviceActive >= 0 ? input.serviceActive : (matches.length === 1 ? 0 : -1)];
+            if (chosen) chooseService(input, chosen.id);
+            return;
+        }
+        if (!matches.length) return;
+        input.serviceActive = input.serviceActive < 0
+            ? (event.key === 'ArrowDown' ? 0 : matches.length - 1)
+            : Math.max(0, Math.min(matches.length - 1, input.serviceActive + (event.key === 'ArrowDown' ? 1 : -1)));
+        const options = document.getElementById(input.getAttribute('aria-controls'))?.querySelectorAll('[role="option"]') || [];
+        options.forEach((option, index) => option.classList.toggle('is-active', index === input.serviceActive));
+        const active = options[input.serviceActive];
+        if (active) { input.setAttribute('aria-activedescendant', active.id); active.scrollIntoView({block:'nearest'}); }
+    });
+    $('re-visits').addEventListener('click', event => {
+        const option = event.target.closest('[data-service-id]');
+        if (!option) return;
+        const input = option.closest('.re-service-picker')?.querySelector('[data-service-picker]');
+        if (input) chooseService(input, option.dataset.serviceId);
+    });
+    document.addEventListener('pointerdown', event => {
+        if (event.target.closest('.re-service-picker')) return;
+        document.querySelectorAll('[data-service-picker][aria-expanded="true"]').forEach(input => closeServicePicker(input, true));
+    });
     $('re-visits').addEventListener('input', event => {
         const el = event.target;
-        if (el.dataset.searchService) {
-            const select = document.querySelector(`[data-path="${el.dataset.searchService}.service_id"]`);
-            const term = el.value.toLowerCase(), selected = select.value;
-            select.innerHTML = option('', 'Select treatment', selected) + c.services.filter(s => s.name.toLowerCase().includes(term) || String(s.id) === selected).map(s => option(s.id,s.name,selected)).join(''); return;
+        if (el.dataset.servicePicker) {
+            const path = `${el.dataset.servicePicker}.service_id`;
+            const selectedId = state.payload.visits[Number(el.dataset.servicePicker.split('.')[1])]
+                ?.procedures[Number(el.dataset.servicePicker.split('.')[3])]?.service_id;
+            const selectedName = serviceName(selectedId);
+            if (el.value !== selectedName && selectedId !== '' && selectedId != null) {
+                at(path, '');
+                document.querySelector(`[data-path="${path}"]`).value = '';
+                changed();
+            }
+            el.removeAttribute('aria-invalid');
+            showServiceOptions(el);
+            return;
         }
         if (!el.dataset.path || el.tagName === 'SELECT') return;
-        at(el.dataset.path, el.value); el.removeAttribute('aria-invalid'); changed();
+        at(el.dataset.path, el.type === 'checkbox' ? (el.checked ? 1 : 0) : el.value); el.removeAttribute('aria-invalid'); changed();
     });
     $('re-visits').addEventListener('change', event => {
         const el = event.target;
+        if (el.dataset.endedToggle !== undefined) {
+            const i = Number(el.dataset.endedToggle), plan = state.payload.visits[i]?.plan;
+            if (!plan) return;
+            if (!el.checked) { plan.ended_at = ''; plan.acknowledge_unpaid = 0; changed(); }
+            const group = el.closest('.re-plan-section')?.querySelector('.re-end-fields');
+            if (group) group.hidden = !el.checked;
+            if (el.checked) group?.querySelector(`[data-path="visits.${i}.plan.ended_at"]`)?.focus();
+            return;
+        }
         if (el.dataset.link) {
             const [kind,id] = el.value.split(':');
             at(`${el.dataset.link}.visit_id`, kind === 'existing' ? Number(id) : null);
@@ -208,23 +427,37 @@
         if (!el.dataset.path || el.tagName !== 'SELECT') return;
         const path = el.dataset.path, i = Number(path.split('.')[1]), v = state.payload.visits[i];
         if (path.endsWith('.arrangement')) {
+            const previous = v.arrangement === 'ordinary' ? 'ordinary' : v.plan?.is_unpriced_contract == 1 ? 'open' : 'installment';
             if (el.value === 'ordinary' && v.plan && (cents(v.plan.downpayment)>0 || v.plan.payments.some(p => cents(p.amount)>0))) {
-                if (!confirm('Switch to ordinary payments and remove the unsaved installment plan?')) {el.value=v.arrangement;return;}
+                if (!confirm('Switch to ordinary payments and remove the unsaved installment plan?')) {el.value=previous;return;}
             }
-            if (el.value === 'installment' && !v.plan) {
+            if (el.value !== 'ordinary' && !v.plan) {
                 const procedureIndex = v.procedures.length === 1 ? 0 : '';
-                v.plan = {procedure_index:procedureIndex,total_cost:procedureIndex === 0 ? v.procedures[0].price : '', downpayment:'0', start_date:v.visit_date, downpayment_date:v.visit_date, downpayment_method:'Cash', is_open_contract:0, months:'', open_monthly_payment:'', payments:[]};
+                v.plan = {procedure_index:procedureIndex,total_cost:procedureIndex === 0 ? v.procedures[0].price : '', downpayment:'0', start_date:v.visit_date, downpayment_date:v.visit_date, downpayment_method:'Cash', is_open_contract:0, is_unpriced_contract:0, first_due_date:'', ended_at:'', months:'', open_monthly_payment:'', payments:[]};
             }
             if (el.value === 'ordinary') v.plan = null;
+            if (el.value === 'open' && previous !== 'open') {
+                v.plan.is_unpriced_contract = 1; v.plan.is_open_contract = 1; v.plan.total_cost = null;
+                const financed = v.procedures[Number(v.plan.procedure_index)];
+                if (financed) financed.price = null;
+            }
+            if (el.value === 'installment' && previous === 'open') {
+                v.plan.is_unpriced_contract = 0; v.plan.is_open_contract = 0;
+                v.plan.ended_at = ''; v.plan.acknowledge_unpaid = 0;
+            }
+            v.arrangement = el.value === 'ordinary' ? 'ordinary' : 'installment';
+            changed(); render(); return;
         }
         at(path, el.value);
-        if (path.endsWith('.plan.procedure_index') && el.value !== '' && (v.plan.total_cost === '' || v.plan.total_cost === null)) {
-            v.plan.total_cost = v.procedures[Number(el.value)]?.price ?? '';
+        if (path.endsWith('.plan.is_unpriced_contract') && el.value === '1') {
+            v.plan.is_open_contract = 1; v.plan.total_cost = null;
+            const financed = v.procedures[Number(v.plan.procedure_index)];
+            if (financed) financed.price = null;
         }
-        if (path.endsWith('.service_id')) {
-            const p = v.procedures[Number(path.split('.')[3])];
-            // Suggest only while the amount is blank. Changing treatment never overwrites an entered charge.
-            if (p.price === '' || p.price === null) p.price = c.services.find(s => String(s.id) === el.value)?.base_price ?? '';
+        if (path.endsWith('.plan.procedure_index') && v.plan?.is_unpriced_contract == 1) {
+            if (el.value !== '' && v.procedures[Number(el.value)]) v.procedures[Number(el.value)].price = null;
+        } else if (path.endsWith('.plan.procedure_index') && el.value !== '' && (v.plan.total_cost === '' || v.plan.total_cost === null)) {
+            v.plan.total_cost = v.procedures[Number(el.value)]?.price ?? '';
         }
         changed(); render();
     });
@@ -240,6 +473,27 @@
                 break;
             case 'add-payment':v.payments.push(receipt(v.visit_date));break;
             case 'add-installment-payment':v.plan.payments.push({...receipt(c.mode === 'visit' ? c.today : ''),month_number:Math.max(0,...v.plan.payments.map(p => Number(p.month_number)||0))+1,visit_id:null,visit_index:null});break;
+            case 'import-monthly-receipts': {
+                const source = document.querySelector(`[data-monthly-import="${i}"]`);
+                const lines = (source?.value || '').trim().split(/\r?\n/).filter(Boolean);
+                const rows = [];
+                const methods = ['Cash', 'GCash', 'Card', 'Bank Transfer'];
+                for (const [lineNo, line] of lines.entries()) {
+                    const fields = line.split(/[,;\t]/).map(part => part.trim());
+                    if (lineNo === 0 && /^date$/i.test(fields[0])) continue;
+                    const amount = Number(fields[1]);
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(fields[0]) || !Number.isFinite(amount) || amount <= 0 || !methods.includes(fields[2])) {
+                        alert(`Line ${lineNo + 1}: use YYYY-MM-DD, amount, Cash/GCash/Card/Bank Transfer.`);
+                        return;
+                    }
+                    rows.push({payment_date:fields[0], amount:amount.toFixed(2), method:fields[2]});
+                }
+                if (!rows.length || v.plan.payments.length + rows.length > 200) { alert('Paste 1 to 200 monthly receipts.'); return; }
+                let next = Math.max(0, ...v.plan.payments.map(payment => Number(payment.month_number) || 0)) + 1;
+                rows.forEach(row => v.plan.payments.push({...receipt(row.payment_date), ...row, month_number:next++, visit_id:null, visit_index:null}));
+                source.value = '';
+                break;
+            }
             case 'remove-payment':(el.dataset.installment === 'true' ? v.plan.payments : v.payments).splice(j,1);break;
             case 'duplicate': {
                 const copy=structuredClone(v); copy.payments=[]; copy.plan=null; copy.arrangement='ordinary'; state.payload.visits.push(copy); break;
@@ -288,39 +542,102 @@
     });
     $('re-save-draft').onclick = () => {dirty=true;saveDraft().catch(errors);};
     function setLocked(value) {locked=value; ['re-editor','re-footer','re-review','re-drafts'].forEach(id => {$(id).querySelectorAll('input,select,textarea,button').forEach(el => el.disabled=value);});}
+    let saving = false;
+    function reviewReceipts(title, rows, details) {
+        return `<div class="re-review-payment-group"><h5>${title} <span>${rows.length}</span></h5>${rows.length
+            ? `<ul class="re-review-receipts">${rows.map((row, index) => `<li><span class="re-review-receipt-number">${index+1}</span><time datetime="${esc(row.payment_date)}">${esc(row.payment_date || 'Date missing')}</time><strong>${money(row.amount)}</strong><span>${esc(row.method || 'Method missing')}</span>${details ? `<small>${esc(details(row))}</small>` : ''}</li>`).join('')}</ul>`
+            : '<p class="re-muted">No receipts in this group.</p>'}</div>`;
+    }
+    function reviewWarning(warning) {
+        const activeIds = new Set(c.existingVisits.map(row => String(row.id)));
+        const message = esc(warning)
+            .replace(/resembles (Visit \d+, procedure \d+)/, (_, match) => {
+                const number = match.match(/Visit (\d+)/)?.[1];
+                return `<span>resembles <a href="#re-review-visit-${number}">${match}</a></span>`;
+            })
+            .replace(/#(\d+)/g, (match, id) => activeIds.has(id) && c.visitUrlTemplate
+                ? `<a href="${esc(c.visitUrlTemplate.replace('__VISIT_ID__', id))}" target="_blank" rel="noopener" aria-label="Open existing visit ${id} in a new tab">${match}</a>` : match);
+        return `<li>${message}</li>`;
+    }
+    function reviewVisit(v, i, warnings) {
+        const f = figures(v), plan = v.arrangement === 'installment' ? v.plan : null;
+        const unknown = plan?.is_unpriced_contract == 1;
+        const doctor = c.doctors.find(row => String(row.id) === String(v.doctor_id))?.name || 'Dentist unavailable';
+        const procedures = v.procedures.map((p, j) => {
+            const name = c.services.find(row => String(row.id) === String(p.service_id))?.name || `Treatment #${p.service_id}`;
+            const detail = [p.tooth_number && `Tooth ${p.tooth_number}`, p.surface && `Surface ${p.surface}`, p.shade && `Shade ${p.shade}`, p.notes].filter(Boolean).join(' · ');
+            return `<li><span><strong>${esc(name)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</span><span>${p.price === null || p.price === '' ? 'Charge not agreed' : money(p.price)}</span></li>`;
+        }).join('');
+        const arrangement = !plan ? 'Paid normally / unpaid' : unknown ? 'Open contract — monthly fee until treatment ends' : plan.is_open_contract == 1 ? 'Open term, agreed total' : 'Fixed-total installment';
+        const financed = plan ? c.services.find(row => String(row.id) === String(v.procedures[Number(plan.procedure_index)]?.service_id))?.name || `Procedure ${Number(plan.procedure_index)+1}` : '';
+        const initial = plan ? `<div class="re-review-payment-group"><h5>Initial payment <span>${cents(plan.downpayment)>0 ? 1 : 0}</span></h5>${cents(plan.downpayment)>0
+            ? `<div class="re-review-initial"><time datetime="${esc(plan.downpayment_date)}">${esc(plan.downpayment_date || 'Date missing')}</time><strong>${money(plan.downpayment)}</strong><span>${esc(plan.downpayment_method || 'Method missing')}</span></div>`
+            : '<p class="re-muted">No initial-payment receipt will be created.</p>'}</div>` : '';
+        const ordinary = reviewReceipts('Ordinary receipts', v.payments, row => {
+            const procedure = row.procedure_index !== '' && row.procedure_index != null ? v.procedures[Number(row.procedure_index)] : null;
+            return procedure ? `For ${c.services.find(service => String(service.id) === String(procedure.service_id))?.name || 'selected treatment'}` : 'For entire visit';
+        });
+        const monthly = plan ? reviewReceipts('Monthly receipts', plan.payments, row => row.visit_id ? `Linked visit #${row.visit_id}` : row.visit_index != null ? `Batch visit ${Number(row.visit_index)+1}` : 'Collection only — no treatment visit') : '';
+        const balance = unknown ? `<div class="re-review-unknown"><strong>No final total agreed</strong><span>Final balance cannot be calculated.</span></div>`
+            : `<div class="re-review-figure"><span>${plan ? 'Agreed plan total' : 'Treatment charge'}</span><strong>${money(plan ? plan.total_cost : f.charge/100)}</strong></div><div class="re-review-figure"><span>Balance</span><strong>${money(f.balance/100)}</strong></div>`;
+        return `<section class="re-card re-review-visit" id="re-review-visit-${i+1}" aria-labelledby="re-review-visit-title-${i+1}"><div class="re-review-visit-head"><div><span class="re-review-step">Visit ${i+1}</span><h3 id="re-review-visit-title-${i+1}">${esc(v.visit_date)}</h3><p>${esc(doctor)}</p></div>${warnings.length ? '<a class="re-review-duplicate-tag" href="#re-duplicate-warning">Possible duplicate — review below</a>' : ''}</div><div class="re-review-visit-body"><section><h4>Procedures</h4><ul class="re-review-procedures">${procedures}</ul>${v.notes ? `<p class="re-review-note"><strong>Visit notes:</strong> ${esc(v.notes)}</p>` : '<p class="re-muted">No visit notes recorded.</p>'}</section><section><h4>Payment arrangement</h4><p class="re-review-arrangement">${esc(arrangement)}${plan ? ` · ${esc(financed)}` : ''}</p>${plan && !unknown ? `<p class="re-muted">${plan.is_open_contract == 1 ? 'Open term with agreed total' : `${esc(plan.months)} monthly installments`}</p>` : ''}${plan ? initial + monthly : ''}${ordinary}</section></div><div class="re-review-visit-summary"><div class="re-review-figure"><span>Total collected</span><strong>${money(f.paid/100)}</strong></div>${unknown ? `<div class="re-review-figure"><span>Monthly amount</span><strong>${money(plan.open_monthly_payment)}</strong></div>` : ''}${plan ? `<div class="re-review-figure"><span>Known other balance</span><strong>${money(f.ordinaryBalance/100)}</strong></div>` : ''}${balance}</div></section>`;
+    }
+    function syncReviewSaveState() {
+        const button = $('re-save-all');
+        if (button) button.disabled = locked || saving || (!!reviewed?.warnings?.length && !$('re-ack')?.checked);
+    }
     $('re-review-button').onclick = async () => {
         clearTimeout(timer); $('re-errors').hidden=true;
+        $('re-status').textContent = 'Checking records for review…';
         try {
             setLocked(true);
             await enqueue(async () => {
                 reviewed = await request('review','POST',body()); state.version=reviewed.version;
                 state.payload=reviewed.payload; dirty=false;upsertDraft({...state,updated_at:new Date().toISOString()});localSave();
             });
-            $('re-editor').hidden=true; $('re-review').hidden=false;
-            const summaries = state.payload.visits.map((v,i) => {
-                const f=figures(v);
-                const lines=v.procedures.map(p => `${c.services.find(s=>s.id==p.service_id)?.name || p.service_id} · tooth ${p.tooth_number || '—'} · ${money(p.price)}`).join('\n');
-                const ordinaryReceipts=v.payments.map(p => {
-                    const treatment=p.procedure_index!==''&&p.procedure_index!=null ? c.services.find(s=>s.id==v.procedures[Number(p.procedure_index)]?.service_id)?.name : 'Entire visit';
-                    return `${p.payment_date} · ${p.method} · ${money(p.amount)} · For ${treatment}`;
-                }).join('\n');
-                const installmentReceipts=v.arrangement==='installment' ? v.plan.payments.map(p => `${p.payment_date} · Payment ${p.month_number} · ${p.method} · ${money(p.amount)}${p.visit_id ? ' · Visit #'+p.visit_id : p.visit_index != null ? ' · Batch visit '+(Number(p.visit_index)+1) : ' · Collection only'}`).join('\n') : '';
-                const financed=v.arrangement==='installment' ? c.services.find(s=>s.id==v.procedures[Number(v.plan.procedure_index)]?.service_id)?.name : '';
-                return `<div class="re-row"><strong>Visit ${i+1} · ${esc(v.visit_date)} · ${esc(c.doctors.find(d=>d.id==v.doctor_id)?.name)}</strong><div class="re-summary">${esc(lines)}</div><div class="re-summary mt-2">${ordinaryReceipts ? `Ordinary receipts:\n${esc(ordinaryReceipts)}\n` : ''}${v.arrangement==='installment' ? `Installment for ${esc(financed)} · Plan cost ${money(v.plan.total_cost)} · ${v.plan.is_open_contract == 1 ? 'Open contract' : v.plan.months+' months'}\nDownpayment ${money(v.plan.downpayment)} · ${esc(v.plan.downpayment_date || 'No downpayment')} · ${esc(v.plan.downpayment_method || '')}\n${installmentReceipts ? `Installment receipts:\n${esc(installmentReceipts)}` : 'No additional installment receipts'}` : (!ordinaryReceipts ? 'No receipts' : '')}</div><strong>Received ${money(f.paid/100)} · Combined balance ${money(f.balance/100)}</strong></div>`;
-            }).join('');
-            const warnings=reviewed.warnings.map(w=>`<li>${esc(w)}</li>`).join('');
-            let saveLabel='Save All Records';
-            if(c.mode==='visit') {const v=state.payload.visits[0];saveLabel=v.arrangement==='installment'?'Save Visit & Create Installment Plan':v.payments.length?'Save Visit & Record Payment':'Save Visit';}
-            $('re-review').innerHTML=`<h3>Review Records</h3>${summaries}${warnings?`<div class="alert alert-warning"><strong>Possible duplicates</strong><ul>${warnings}</ul><label><input type="checkbox" id="re-ack"> I checked these matches and confirm these are separate records.</label></div>`:'<p>No possible duplicates found.</p>'}<div class="re-actions"><button class="btn btn-outline-secondary" type="button" id="re-back">Return to correct entry</button><button class="btn btn-primary" type="button" id="re-save-all">${saveLabel}</button></div>`;
-            $('re-back').onclick=()=>{$('re-review').hidden=true;$('re-editor').hidden=false;render();};
+            $('re-editor').hidden=true; $('re-footer').hidden=true; $('re-review').hidden=false;
+            const patient = c.selectedPatient;
+            const name = patient ? `${patient.last_name}, ${patient.first_name}` : `Patient #${c.patientId}`;
+            const count = state.payload.visits.reduce((total, visit) => total + visit.payments.length
+                + (visit.arrangement === 'installment' ? visit.plan.payments.length + (cents(visit.plan.downpayment)>0 ? 1 : 0) : 0), 0);
+            const warnings = reviewed.warnings || [];
+            const cards = state.payload.visits.map((visit, i) => reviewVisit(visit, i, warnings.filter(warning => warning.startsWith(`Visit ${i+1},`)))).join('');
+            const duplicates = warnings.length ? `<section class="re-review-warning" id="re-duplicate-warning" aria-labelledby="re-duplicate-title"><h3 id="re-duplicate-title">Possible duplicate records</h3><p>These entries resemble records already in this batch or the patient’s history. Open each available matching visit and check the paper record. Correct a duplicate using Back to edit. If these are separate visits, confirm below before saving.</p><ul>${warnings.map(reviewWarning).join('')}</ul><label class="re-review-ack"><input type="checkbox" id="re-ack"> I checked the matches and confirm these are separate records.</label></section>`
+                : '<p class="re-review-clear">No possible duplicate visits found in this review.</p>';
+            const saveLabel = c.mode === 'past' ? 'Save all records' : 'Save visit records';
+            $('re-review').innerHTML = `<div class="re-card re-review-header"><span class="re-review-step">Final checkpoint</span><h2 id="re-review-heading" tabindex="-1">Review Records</h2><div class="re-review-identity"><div><span>Patient</span><strong>${esc(name)}</strong></div><div><span>Patient ID</span><strong>P${String(c.patientId).padStart(5,'0')}</strong></div><div><span>Visits</span><strong>${state.payload.visits.length}</strong></div><div><span>Receipts to create</span><strong>${count}</strong></div></div><div class="re-review-unsaved" role="status"><strong>Not saved yet.</strong><span>Check the visits and payments below against the paper records before creating them.</span></div></div>${cards}${duplicates}<div id="re-save-error" class="alert alert-danger" role="alert" tabindex="-1" hidden></div><div class="re-review-actions"><p>Saving will create the ${state.payload.visits.length} clinical visit${state.payload.visits.length===1?'':'s'}, their procedures, ${count} receipt${count===1?'':'s'}${state.payload.visits.some(v=>v.arrangement==='installment')?', and the listed installment plans':''} for this patient.</p><div><button class="btn btn-outline-secondary" type="button" id="re-back">Back to edit</button><button class="btn btn-primary" type="button" id="re-save-all">${saveLabel}</button></div></div>`;
+            $('re-back').onclick=()=>{$('re-review').hidden=true;$('re-footer').hidden=false;$('re-editor').hidden=false;render();$('re-editor').focus();};
+            $('re-ack')?.addEventListener('change', syncReviewSaveState);
             $('re-save-all').onclick=saveAll;
-            $('re-status').textContent='Reviewed — no clinical records saved yet';$('re-review').scrollIntoView({block:'start'});
-        } catch(error) {errors(error);} finally {setLocked(false);}
+            $('re-status').textContent='Reviewed — no clinical records saved yet';
+            $('re-review-heading').focus();
+        } catch(error) {errors(error);} finally {setLocked(false);syncReviewSaveState();}
     };
     async function saveAll() {
-        if (!reviewed) return;
-        try {setLocked(true);const result=await request('save','POST',{review_hash:reviewed.review_hash,acknowledge_duplicates:!!$('re-ack')?.checked});dirty=false;clearLocal();location.href=result.redirect;}
-        catch(error){errors(error);setLocked(false);}
+        if (!reviewed || saving || (reviewed.warnings?.length && !$('re-ack')?.checked)) return;
+        saving = true;
+        const button = $('re-save-all'), failure = $('re-save-error');
+        failure.hidden = true;
+        button.textContent = 'Saving records…';
+        $('re-review').setAttribute('aria-busy', 'true');
+        $('re-status').textContent = 'Saving records…';
+        try {
+            setLocked(true);
+            const result = await request('save','POST',{review_hash:reviewed.review_hash,acknowledge_duplicates:!!$('re-ack')?.checked});
+            dirty=false;clearLocal();location.href=result.redirect;
+        } catch(error) {
+            failure.textContent = [error.message || 'Could not save these records.', ...Object.values(error.errors || {}).flat()].join(' ');
+            failure.hidden = false;
+            failure.focus();
+            $('re-review').querySelector('.re-review-unsaved strong').textContent = 'Save not confirmed.';
+            $('re-review').querySelector('.re-review-unsaved span').textContent = 'The result could not be confirmed. Check the patient record or retry this batch.';
+            $('re-status').textContent = 'Save not confirmed — check the patient record or retry';
+        } finally {
+            saving = false;
+            $('re-review').removeAttribute('aria-busy');
+            button.textContent = c.mode === 'past' ? 'Save all records' : 'Save visit records';
+            setLocked(false);syncReviewSaveState();
+        }
     }
     $('re-discard').onclick=async()=>{
         if(!confirm('Discard this unfinished draft? Saved patient records will remain unchanged.'))return;

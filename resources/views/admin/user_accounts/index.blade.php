@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(request()->header('X-KT-Live-Search') === '1' ? 'layouts.live-search' : 'layouts.admin')
 @section('title', 'Website Accounts')
 
 @section('kt_live_scope', 'user_accounts')
@@ -323,9 +323,9 @@
 
     <div class="glass filters mb-3">
         <div class="glass-inner">
-            <form class="row g-2" method="GET" action="{{ route('admin.user_accounts.index') }}">
+            <form class="row g-2" method="GET" action="{{ route('admin.user_accounts.index') }}" data-live-search data-live-extra="[data-live-extra]">
                 <div class="col-md-6">
-                    <input class="form-control" name="q" value="{{ $q }}" placeholder="Search name or email...">
+                    <input class="form-control" type="search" name="q" value="{{ $q }}" aria-label="Search website accounts" placeholder="Search name or email...">
                 </div>
 
                 @if($hasActive)
@@ -352,7 +352,7 @@
         </div>
     </div>
 
-    <div class="glass table-card">
+    <div class="glass table-card" data-live-results>
         <div class="glass-inner">
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
@@ -445,7 +445,7 @@
         </div>
     </div>
 
-    <div class="footer">
+    <div class="footer" data-live-extra>
         <div class="email" style="font-size:13px;">
             Showing {{ $users->firstItem() ?? 0 }} to {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} users
         </div>
@@ -456,5 +456,5 @@
 <div class="modal fade" id="deleteWebsiteAccountModal" tabindex="-1" aria-labelledby="deleteWebsiteAccountTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="deleteWebsiteAccountForm" method="POST">@csrf @method('DELETE')<div class="modal-header"><h2 class="modal-title fs-5" id="deleteWebsiteAccountTitle">Move account to Deleted Accounts?</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="deleteWebsiteAccountText"></p><p class="text-muted mb-0">The account can be restored later. Existing appointments are preserved and unlinked from the website login.</p></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger">Move to Deleted Accounts</button></div></form></div></div></div>
 @endsection
 @push('scripts')
-<script>document.querySelectorAll('.js-delete-account').forEach(button=>button.addEventListener('click',()=>{document.getElementById('deleteWebsiteAccountForm').action=button.dataset.url;document.getElementById('deleteWebsiteAccountText').textContent='Deactivate first when temporary access control is enough. Continue with soft deletion for '+button.dataset.name+'?';bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteWebsiteAccountModal')).show();}));</script>
+<script>document.addEventListener('click',event=>{const button=event.target.closest('.js-delete-account');if(!button)return;document.getElementById('deleteWebsiteAccountForm').action=button.dataset.url;document.getElementById('deleteWebsiteAccountText').textContent='Deactivate first when temporary access control is enough. Continue with soft deletion for '+button.dataset.name+'?';bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteWebsiteAccountModal')).show();});</script>
 @endpush

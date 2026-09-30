@@ -89,14 +89,23 @@ class FinancialService
         return $payments + ($this->downpaymentPayment($plan) ? 0 : (float) $plan->downpayment);
     }
 
-    public function planBalance(InstallmentPlan $plan): float
+    public function planBalance(InstallmentPlan $plan): ?float
     {
+        if ($plan->hasUnknownTotal()) return null;
         return max(0, round((float) $plan->total_cost - $this->planPaid($plan), 2));
     }
 
     public function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
         $plan->load('payments');
+        if ($plan->hasUnknownTotal()) {
+            $plan->balance = null;
+            if ($plan->status !== InstallmentPlan::STATUS_COMPLETED) {
+                $plan->status = $plan->payments->isEmpty() ? InstallmentPlan::STATUS_PENDING : InstallmentPlan::STATUS_PARTIALLY_PAID;
+            }
+            $plan->save();
+            return $plan;
+        }
         $paid = $this->planPaid($plan);
         $balance = max(0, round((float) $plan->total_cost - $paid, 2));
         $plan->balance = $balance;
@@ -138,14 +147,23 @@ class FinancialService
         $receivedToday = $this->collectedOn($today);
         $receivedMonth = $this->collectedBetween($monthStart, $monthEnd);
 
-        $visits = Visit::with(['procedures', 'payments'])->whereDoesntHave('installmentPlan')->get();
+        $visits = Visit::with(['procedures', 'payments', 'installmentPlan'])->get();
         $plans = InstallmentPlan::with('payments')->get();
+        $incompleteMixed = 0;
+        $ordinary = $visits->sum(function ($visit) use (&$incompleteMixed) {
+            if (!$visit->installmentPlan) return $this->visitBalance($visit);
+            $balance = $this->ordinaryBalanceOnFinancedVisit($visit, $visit->installmentPlan);
+            if ($balance === null) $incompleteMixed++;
+            return $balance ?? 0;
+        });
+        $unknown = $plans->filter(fn ($plan) => $plan->hasUnknownTotal())->count();
         return [
             'today' => $receivedToday,
             'month' => $receivedMonth,
-            'outstanding' => $visits->sum(fn ($visit) => $this->visitBalance($visit))
-                + $plans->sum(fn ($plan) => $this->planBalance($plan)),
-            'active_plans' => $plans->filter(fn ($plan) => $this->planBalance($plan) > 0
+            'outstanding' => $ordinary + $plans->sum(fn ($plan) => $this->planBalance($plan)),
+            'incomplete_balances' => $unknown + $incompleteMixed,
+            'unknown_total_plans' => $unknown,
+            'active_plans' => $plans->filter(fn ($plan) => ($plan->hasUnknownTotal() || $this->planBalance($plan) > 0)
                 && $plan->status !== InstallmentPlan::STATUS_COMPLETED)->count(),
         ];
     }

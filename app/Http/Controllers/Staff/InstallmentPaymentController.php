@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Doctor;
 use App\Services\PaymentWorkflowService;
+use App\Services\FinancialService;
 
 class InstallmentPaymentController extends Controller
 {
@@ -55,6 +56,7 @@ class InstallmentPaymentController extends Controller
 
     private function ensureDownpaymentPayment(InstallmentPlan $plan): void
     {
+        if ($plan->hasUnknownTotal()) return;
         $plan->loadMissing('payments');
 
         $down = (float)($plan->downpayment ?? 0);
@@ -92,6 +94,7 @@ class InstallmentPaymentController extends Controller
 
     private function recomputePlan(InstallmentPlan $plan): InstallmentPlan
     {
+        if ($plan->hasUnknownTotal()) return app(FinancialService::class)->recomputePlan($plan);
         $plan->load('payments');
 
         $totalCost = (float)($plan->total_cost ?? 0);
@@ -204,7 +207,7 @@ class InstallmentPaymentController extends Controller
         $rules = [
             'month_number' => $isOpen ? 'nullable|integer|min:1' : 'required|integer|min:1',
             'doctor_id'    => $hasDoctors ? 'required|exists:doctors,id' : 'nullable|exists:doctors,id',
-            'amount'       => 'required|numeric|min:0',
+            'amount'       => $plan->is_unpriced_contract ? 'required|numeric|gt:0' : 'required|numeric|min:0',
             'method'       => 'required|string|max:50',
             'payment_date' => 'required|date',
             'notes'        => 'nullable|string|max:2000',
@@ -250,7 +253,7 @@ class InstallmentPaymentController extends Controller
         if ((int)$payment->installment_plan_id !== (int)$plan->id) abort(404);
 
         $request->validate([
-            'amount'       => 'required|numeric|min:0',
+            'amount'       => $plan->is_unpriced_contract ? 'required|numeric|gt:0' : 'required|numeric|min:0',
             'method'       => 'required|string|max:50',
             'payment_date' => 'required|date',
             'doctor_id'    => 'nullable|exists:doctors,id',
@@ -274,7 +277,7 @@ class InstallmentPaymentController extends Controller
         $paidWithoutThis = ($paymentsTotal - $old) + ($hasDpRecord ? 0 : $down);
         $newPaid = $paidWithoutThis + $new;
 
-        if ($newPaid > $totalCost + 0.0001) {
+        if (!$plan->hasUnknownTotal() && $newPaid > $totalCost + 0.0001) {
             return back()->withErrors('Updated amount makes total paid exceed the plan total cost.')->withInput();
         }
 

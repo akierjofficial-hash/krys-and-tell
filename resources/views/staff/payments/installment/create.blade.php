@@ -327,8 +327,10 @@
                                 $inInstallment = \App\Models\InstallmentPlan::where('visit_id', $visit->id)->exists();
 
                                 $balance = max($due - $paid, 0);
+                                $unpricedVisit = $visit->price === null && $procs->isNotEmpty()
+                                    && $procs->every(fn ($procedure) => $procedure->price === null) && $paid <= 0;
 
-                                if ($due <= 0 || $balance <= 0 || $inInstallment) {
+                                if ((!$unpricedVisit && ($due <= 0 || $balance <= 0)) || $inInstallment) {
                                     continue;
                                 }
 
@@ -343,10 +345,11 @@
                                 data-type="visit"
                                 data-treatments="{{ $treatmentsText }}"
                                 data-amount="{{ $balance }}"
+                                data-unpriced="{{ $unpricedVisit ? 1 : 0 }}"
                                 data-date="{{ $dateForInput }}"
                                 {{ old('visit_id', request('visit_id')) == $visit->id ? 'selected' : '' }}
                             >
-                                Visit - {{ $pName }} ({{ $dateLabel }}) — Balance ₱{{ number_format($balance, 2) }}
+                                Visit - {{ $pName }} ({{ $dateLabel }}) — {{ $unpricedVisit ? 'Charge not agreed' : 'Balance ₱'.number_format($balance, 2) }}
                             </option>
                         @endforeach
                     </select>
@@ -417,7 +420,7 @@
                         value="{{ old('total_cost') }}"
                         required
                     >
-                    <div class="helper">Auto-filled from selection (editable). This stays required even for Open Contract.</div>
+                    <div class="helper">Auto-filled from selection. Leave blank only for “Open contract — monthly fee until treatment ends.”</div>
 
                     <div class="mini-sum" id="calcSummary" style="display:none;">
                         <div>
@@ -444,7 +447,7 @@
                         value="{{ old('downpayment') }}"
                         required
                     >
-                    <div class="helper">Defaults to 50% of total cost (you can override).</div>
+                    <div class="helper">Enter the actual initial payment received. For fixed totals, the suggested amount can be changed.</div>
                 </div>
 
                 <div class="col-12 col-md-6">
@@ -472,6 +475,11 @@
                             Open Contract (no fixed months — pay any amount until fully paid)
                         </label>
                         <div class="helper">If enabled, Payment Term is hidden and you must set Monthly Payment (auto-fills in Pay page).</div>
+                    </div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="isUnpricedContract" name="is_unpriced_contract" value="1" @checked(old('is_unpriced_contract'))>
+                        <label class="form-check-label" for="isUnpricedContract"><strong>Open contract — monthly fee until treatment ends</strong></label>
+                        <div class="helper">No final total or fixed term was agreed. The final balance will be shown as not determinable.</div>
                     </div>
                 </div>
 
@@ -518,6 +526,11 @@
                     >
                     <div class="helper">Auto-fills from Visit/Appointment date when available.</div>
                 </div>
+                <div class="col-12 col-md-6 d-none" id="firstDueWrap">
+                    <label class="form-labelx">First monthly due date *</label>
+                    <input type="date" id="firstDueInput" name="first_due_date" class="inputx" value="{{ old('first_due_date') }}">
+                    <div class="helper">Future months use this calendar day; shorter months use their last day.</div>
+                </div>
 
                 {{-- Treatments --}}
                 <div class="col-12">
@@ -560,6 +573,9 @@
     const openMonthlyInput  = document.getElementById('openMonthlyInput');
 
     const startDateInput    = document.getElementById('startDateInput');
+    const unpricedInput = document.getElementById('isUnpricedContract');
+    const firstDueWrap = document.getElementById('firstDueWrap');
+    const firstDueInput = document.getElementById('firstDueInput');
 
     const treatmentsBox     = document.getElementById('treatmentsBox');
     const treatmentsHidden  = document.getElementById('treatmentsHidden');
@@ -587,9 +603,13 @@
         const amt = n(opt.getAttribute('data-amount'));
         const tx  = opt.getAttribute('data-treatments') || '';
         const dt  = opt.getAttribute('data-date') || '';
+        if (opt.getAttribute('data-unpriced') === '1' && unpricedInput) {
+            unpricedInput.checked = true;
+            toggleOpenContractUI();
+        }
 
         // total cost
-        if (totalCostInput) totalCostInput.value = amt ? amt.toFixed(2) : '0.00';
+        if (totalCostInput && !unpricedInput?.checked) totalCostInput.value = amt ? amt.toFixed(2) : '0.00';
 
         // treatments
         if (treatmentsBox) treatmentsBox.value = tx;
@@ -600,10 +620,10 @@
 
         // default downpayment 50%
         autoDownpayment = true;
-        if (downpaymentInput) downpaymentInput.value = (amt / 2).toFixed(2);
+        if (downpaymentInput && !unpricedInput?.checked) downpaymentInput.value = (amt / 2).toFixed(2);
 
         // suggest open monthly (only if user hasn't typed)
-        if (openMonthlyInput && !openMonthlyTouched && !openMonthlyInput.value){
+        if (openMonthlyInput && !unpricedInput?.checked && !openMonthlyTouched && !openMonthlyInput.value){
             const bal = Math.max(amt - n(downpaymentInput?.value), 0);
             const guessMonths = Math.max(1, Math.round(n(monthsInput?.value) || 6));
             openMonthlyInput.value = (bal / guessMonths).toFixed(2);
@@ -621,7 +641,12 @@
     }
 
     function toggleOpenContractUI(){
+        const unknown = !!unpricedInput?.checked;
+        if (unknown && isOpenContract) isOpenContract.checked = true;
         const open = !!(isOpenContract && isOpenContract.checked);
+        if (firstDueWrap) firstDueWrap.classList.toggle('d-none', !unknown);
+        if (firstDueInput) firstDueInput.required = unknown;
+        if (totalCostInput) { totalCostInput.required = !unknown; totalCostInput.disabled = unknown; if (unknown) totalCostInput.value = ''; }
 
         // Months UI (fixed-term)
         if (monthsWrap) monthsWrap.style.display = open ? 'none' : '';
@@ -644,7 +669,7 @@
                 openMonthlyInput.disabled = false;
                 openMonthlyInput.required = true;
 
-                if (!openMonthlyTouched && !openMonthlyInput.value){
+                if (!unknown && !openMonthlyTouched && !openMonthlyInput.value){
                     const total = n(totalCostInput?.value);
                     const down  = n(downpaymentInput?.value);
                     const bal   = Math.max(total - down, 0);
@@ -661,6 +686,12 @@
     }
 
     function recalc(){
+        if (unpricedInput?.checked) {
+            if (calcSummary) calcSummary.style.display = '';
+            if (balanceText) balanceText.textContent = 'Not determinable — no total agreed';
+            if (monthlyText) monthlyText.textContent = money(openMonthlyInput?.value);
+            return;
+        }
         const total = n(totalCostInput && totalCostInput.value);
         let down = n(downpaymentInput && downpaymentInput.value);
 
@@ -718,7 +749,7 @@
         downpaymentInput.addEventListener('blur', () => {
             const total = n(totalCostInput && totalCostInput.value);
             let down = n(downpaymentInput.value);
-            if (down > total) down = total;
+            if (!unpricedInput?.checked && down > total) down = total;
             downpaymentInput.value = down.toFixed(2);
             recalc();
         });
@@ -776,6 +807,10 @@
     if (isOpenContract){
         isOpenContract.addEventListener('change', toggleOpenContractUI);
     }
+    if (unpricedInput) unpricedInput.addEventListener('change', () => {
+        if (unpricedInput.checked) { autoDownpayment = false; openMonthlyTouched = true; }
+        toggleOpenContractUI();
+    });
 
     // Init
     window.addEventListener('load', () => {

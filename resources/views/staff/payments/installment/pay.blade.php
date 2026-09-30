@@ -266,6 +266,8 @@
     use Carbon\Carbon;
 
     $isOpenContract = (bool)($plan->is_open_contract ?? false);
+    $unknownTotal = $plan->hasUnknownTotal();
+    $openDetails = $unknownTotal ? app(\App\Services\OpenMonthlyContractService::class)->details($plan) : null;
 
     // ✅ monthly amount saved from create/edit (Open Contract)
     $openMonthly = (float)($plan->open_monthly_payment ?? 0);
@@ -305,10 +307,10 @@
     $shift = $dpIsLegacyMonth1 ? 1 : 0;
 
     $hasDpRecord = (bool) $dpPayment;
-    $totalPaid = $paymentsTotal + ($hasDpRecord ? 0 : $down);
+    $totalPaid = $unknownTotal ? $openDetails['collected'] : $paymentsTotal + ($hasDpRecord ? 0 : $down);
 
-    $remainingBalance = max(0, $total - $totalPaid);
-    $remainingBalanceAttr = number_format($remainingBalance, 2, '.', '');
+    $remainingBalance = $unknownTotal ? null : max(0, $total - $totalPaid);
+    $remainingBalanceAttr = $unknownTotal ? null : number_format($remainingBalance, 2, '.', '');
 
     // selected month safe-guard (fixed-term)
     $selectedMonth = (int) old('month_number', $nextMonth ?? 1);
@@ -322,7 +324,7 @@
     // ✅ Default amount:
     // - Open contract -> open_monthly_payment (if > 0) else remaining
     // - Fixed term -> monthly suggested (if > 0) else remaining
-    $defaultOpenAmount = ($openMonthly > 0) ? min($remainingBalance, $openMonthly) : $remainingBalance;
+    $defaultOpenAmount = $unknownTotal ? $openMonthly : (($openMonthly > 0) ? min($remainingBalance, $openMonthly) : $remainingBalance);
 
     $computedDefault = $isOpenContract
         ? $defaultOpenAmount
@@ -450,7 +452,7 @@
             @endif
         </div>
         <div class="hint">
-            Make sure the amount does not exceed the remaining balance. A <strong>Visit</strong> entry will be auto-created for this payment.
+            {{ $unknownTotal ? 'Record the amount actually received. A payment receipt alone does not create a treatment visit.' : 'Make sure the amount does not exceed the remaining balance.' }}
         </div>
     </div>
 
@@ -470,7 +472,7 @@
 
             <div class="tile">
                 <div class="k"><i class="fa fa-peso-sign"></i> Total Treatment Cost</div>
-                <div class="v">₱{{ number_format((float)($plan->total_cost ?? 0), 2) }}</div>
+                <div class="v">{{ $unknownTotal ? 'Not agreed' : '₱'.number_format((float)$plan->total_cost, 2) }}</div>
             </div>
 
             <div class="tile">
@@ -479,8 +481,9 @@
             </div>
 
             <div class="tile">
-                <div class="k"><i class="fa fa-circle-exclamation"></i> Remaining Balance</div>
-                <div class="v balance">₱{{ number_format($remainingBalance, 2) }}</div>
+                <div class="k"><i class="fa fa-circle-exclamation"></i> {{ $unknownTotal ? 'Final contract balance' : 'Remaining Balance' }}</div>
+                <div class="v balance">{{ $unknownTotal ? 'Not determinable — no total agreed' : '₱'.number_format($remainingBalance, 2) }}</div>
+                @if($unknownTotal)<small>Collected ₱{{ number_format($openDetails['collected'], 2) }} · Due so far ₱{{ number_format($openDetails['unpaid_due'], 2) }} · Next due {{ $openDetails['next_due_date'] ?? 'none' }}</small>@endif
             </div>
 
             @if($isOpenContract && $openMonthly > 0)
@@ -554,7 +557,7 @@
                         class="inputx"
                         step="0.01"
                         min="0"
-                        max="{{ $remainingBalanceAttr }}"
+                        @if(!$unknownTotal) max="{{ $remainingBalanceAttr }}" @endif
                         value="{{ old('amount', $computedDefaultAttr) }}"
                         data-suggested="{{ $isOpenContract ? ($openMonthly > 0 ? $openMonthlyAttr : $computedDefaultAttr) : $monthlySuggestedAttr }}"
                         required
@@ -600,7 +603,7 @@
                     @if(!$hasDocs)
                         <div class="helper">No active dentists found. Add dentists in Admin → Doctors (set Active), then try again.</div>
                     @else
-                        <div class="helper">This dentist will be assigned to the auto-created <strong>Visit</strong> for this payment.</div>
+                        <div class="helper">{{ $unknownTotal ? 'This receipt is collection only; record any clinical adjustment as a separate visit.' : 'Dentist on the existing treatment visit.' }}</div>
                     @endif
                 </div>
 

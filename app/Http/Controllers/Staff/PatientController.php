@@ -408,7 +408,8 @@ class PatientController extends Controller
             ->orderByDesc('payment_date')
             ->paginate(10, ['*'], 'installment_payments_page');
 
-        $installmentTotalPaid = (float) $installmentPlans->sum(fn ($plan) => $finance->planPaid($plan));
+        $installmentTotalPaid = (float) $installmentPlans->sum(fn ($plan) => $plan->is_unpriced_contract
+            ? $plan->payments->sum('amount') : $finance->planPaid($plan));
 
         $installmentPaymentsCount = (int) InstallmentPayment::whereHas('plan', function ($q) use ($patient) {
             $q->where('patient_id', $patient->id);

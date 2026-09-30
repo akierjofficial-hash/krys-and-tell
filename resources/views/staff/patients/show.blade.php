@@ -806,15 +806,18 @@
                                         </thead>
                                         <tbody>
                                             @foreach($installmentPlans as $plan)
+                                                @php $monthlyDetails = $plan->is_unpriced_contract ? app(\App\Services\OpenMonthlyContractService::class)->details($plan) : null; @endphp
                                                 <tr>
                                                     <td style="font-weight:950;">
                                                         <a class="linkx" href="{{ route('staff.installments.show', $plan->id) }}">#{{ $plan->id }}</a>
                                                     </td>
                                                     <td class="muted">{{ $plan->service?->name ?? '—' }}</td>
-                                                    <td style="font-weight:950;">₱{{ number_format((float)$plan->total_cost, 2) }}</td>
-                                                    <td style="font-weight:950;">₱{{ number_format($plan->computed_balance, 2) }}</td>
+                                                    <td style="font-weight:950;">{{ $plan->hasUnknownTotal() ? 'Not agreed' : '₱'.number_format((float)$plan->total_cost, 2) }}</td>
+                                                    <td style="font-weight:950;">{{ $plan->hasUnknownTotal() ? 'Not determinable — no total agreed' : '₱'.number_format($plan->computed_balance, 2) }}
+                                                        @if($monthlyDetails)<small class="d-block muted">Collected ₱{{ number_format($monthlyDetails['collected'], 2) }} · Monthly ₱{{ number_format($monthlyDetails['monthly_amount'], 2) }} · Due so far ₱{{ number_format($monthlyDetails['unpaid_due'], 2) }} · Next {{ $monthlyDetails['next_due_date'] ?? 'none' }}</small>@endif
+                                                    </td>
                                                     <td class="muted">{{ $plan->status ?? '—' }}</td>
-                                                    <td class="muted">{{ $plan->is_open_contract ? 'Open Contract' : 'Fixed Term' }}</td>
+                                                    <td class="muted">{{ $plan->is_unpriced_contract ? 'Open contract — monthly fee until treatment ends' : ($plan->is_open_contract ? 'Open Contract' : 'Fixed Term') }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>

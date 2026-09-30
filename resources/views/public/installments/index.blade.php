@@ -49,9 +49,11 @@
                         $startDate = $plan->start_date ? Carbon::parse($plan->start_date) : null;
                         $months = (int) ($plan->months ?? 0);
                         $isOpen = (bool) ($plan->is_open_contract ?? false);
+                        $unknownTotal = $plan->hasUnknownTotal();
+                        $openDetails = $plan->is_unpriced_contract ? app(\App\Services\OpenMonthlyContractService::class)->details($plan) : null;
 
                         $remaining = $plan->balance;
-                        if ($remaining === null) {
+                        if ($remaining === null && !$unknownTotal) {
                             $totalCost = (float) ($plan->total_cost ?? 0);
                             $paymentsTotal = (float) ($plan->payments?->sum('amount') ?? 0);
                             $downpayment = (float) ($plan->downpayment ?? 0);
@@ -59,9 +61,9 @@
                         }
 
                         $status = strtoupper(trim((string) ($plan->status ?? '')));
-                        $statusLabel = $status !== '' ? $status : ((float) $remaining <= 0 ? 'FULLY PAID' : 'PENDING');
+                        $statusLabel = $unknownTotal ? ($status === 'COMPLETED' ? 'COMPLETED' : 'ACTIVE MONTHLY') : ($status !== '' ? $status : ((float) $remaining <= 0 ? 'FULLY PAID' : 'PENDING'));
                         $statusClass = 'kt-installments-badge--pending';
-                        if (str_contains($statusLabel, 'FULL') || str_contains($statusLabel, 'PAID') || (float) $remaining <= 0) {
+                        if (str_contains($statusLabel, 'FULL') || str_contains($statusLabel, 'PAID') || (!$unknownTotal && (float) $remaining <= 0)) {
                             $statusClass = 'kt-installments-badge--paid';
                         }
                         if (str_contains($statusLabel, 'COMPLETE')) {
@@ -85,11 +87,12 @@
 
                         <div class="kt-installments-card__bottom">
                             <div>
-                                <small>Remaining Balance</small>
-                                <strong>PHP {{ number_format((float) $remaining, 2) }}</strong>
+                                <small>{{ $unknownTotal ? 'Final contract balance' : 'Remaining Balance' }}</small>
+                                <strong>{{ $unknownTotal ? 'Not determinable — no total agreed' : 'PHP '.number_format((float) $remaining, 2) }}</strong>
+                                @if($openDetails)<small>Collected PHP {{ number_format($openDetails['collected'], 2) }} · Monthly PHP {{ number_format($openDetails['monthly_amount'], 2) }} · Due so far PHP {{ number_format($openDetails['unpaid_due'], 2) }}</small>@endif
                             </div>
                             <div class="kt-installments-card__term">
-                                {{ $isOpen ? 'Open Contract' : ($months > 0 ? ($months . ' month(s)') : '-') }}
+                                {{ $plan->is_unpriced_contract ? 'Open contract — monthly fee until treatment ends' : ($isOpen ? 'Open Contract' : ($months > 0 ? ($months . ' month(s)') : '-')) }}
                             </div>
                         </div>
                     </a>
